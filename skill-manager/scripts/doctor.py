@@ -21,6 +21,7 @@
   7. 内容改过但版本号没跟上（带 * 的）
   8. 插件缓存里没被登记表引用的孤儿版本目录（纯占磁盘）
   9. 项目注册表里已经不存在的路径
+ 10. 落后主仓的 git worktree（里面的 skill 是主仓的旧副本）
 
 铁律：--fix 只做有依据的补录（查 lock、查 GitHub API），绝不发明数据。
 查不出来的就如实报出来，让人去 trace —— 编一个看起来权威的默认值最有害。
@@ -225,6 +226,25 @@ def main():
     if projects:
         print(f"     已登记 {len(projects)} 个项目：" +
               "、".join(os.path.basename(p) for p in projects if os.path.isdir(p)))
+
+    # 10. worktree
+    #
+    # 它们已从项目列表里归并掉（同一批 skill 不重复数），但**必须报出来**：
+    # 排除是为了不重复计数，不是为了假装它不存在。落后主分支的 worktree
+    # 里躺着一份旧 skill，你在主分支修好的东西它一概没有——不说清楚，
+    # 人就会盯着一份旧副本反复怀疑「我明明修过了怎么还报」。
+    print("\n[10] Git worktree")
+    worktrees = core.detected_worktrees()
+    stale = []
+    for wt, main in worktrees.items():
+        behind = core.worktree_behind(wt, main)
+        if behind:
+            stale.append(f"{os.path.basename(wt)} 落后 {os.path.basename(main)} "
+                         f"{behind} 个提交 · {wt}")
+    r.section(f"没有落后的 worktree（共 {len(worktrees)} 个，已归并到主仓）"
+              if worktrees else "没有 worktree",
+              "个 worktree 落后主仓（里面的 skill 是旧副本，别拿它当准）", stale,
+              hint="进去 git merge <主分支> 同步；用不上了就 git worktree remove")
 
     print(f"\n{'─' * 50}")
     if r.problems == 0:

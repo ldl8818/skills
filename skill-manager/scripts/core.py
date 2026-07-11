@@ -400,14 +400,95 @@ def session_activity():
     return out
 
 
+# ── git worktree：同一个仓库的另一份检出，不是另一个项目 ──────
+
+def _git(cwd, *args):
+    """在 cwd 跑一条只读 git 命令，失败一律返回空串（不抛、不卡）。"""
+    try:
+        r = subprocess.run(["git", "-C", cwd, *args],
+                           capture_output=True, text=True, timeout=5)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def worktree_main(path):
+    """path 是 git worktree 就返回它主仓的路径，否则 None。
+
+    判据不需要跑 git：worktree 的 `.git` 是个**文件**（内容
+    `gitdir: <主仓>/.git/worktrees/<名>`），普通仓库的 `.git` 是目录。
+
+    为什么要认它（2026-07-11 实战）：项目级 skill 是 git 跟踪的文件，
+    所以 worktree 里的 `.claude/skills` 只是主仓那批 skill 的**另一份检出**。
+    当成独立项目扫，同一批 skill 就被数两遍；更坑的是落后的分支会反复报
+    「来源未登记」——那些你早在主分支上修好并提交了的问题。
+    人会以为自己没修好，其实是在看一份旧副本。
+    """
+    dotgit = os.path.join(path, ".git")
+    if not os.path.isfile(dotgit):     # 目录 = 普通仓库；文件 = worktree
+        return None
+    try:
+        with open(dotgit, encoding="utf-8") as f:
+            line = f.read().strip()
+    except OSError:
+        return None
+    if not line.startswith("gitdir:"):
+        return None
+    gitdir = line.split(":", 1)[1].strip()
+    marker = f"{os.sep}.git{os.sep}worktrees{os.sep}"
+    if marker not in gitdir:
+        return None
+    main = gitdir.split(marker)[0]
+    return main if os.path.isdir(main) else None
+
+
+def worktree_behind(wt, main):
+    """worktree 落后主仓当前 HEAD 多少个提交（0 = 跟得上，或算不出来）。"""
+    head = _git(main, "rev-parse", "HEAD")
+    if not head:
+        return 0
+    n = _git(wt, "rev-list", "--count", f"HEAD..{head}")
+    return int(n) if n.isdigit() else 0
+
+
+def _project_pool():
+    """候选项目 = 注册表 ∪ 有过会话记录的目录（worktree 还没剔除）。"""
+    pool = {p for p in load_projects() if os.path.isdir(p)}
+    pool |= {p for p in session_activity() if is_project_dir(p)}
+    return pool
+
+
+def detected_worktrees():
+    """{worktree 路径: 主仓路径} —— candidate 里因为是 worktree 而被归并掉的。
+
+    doctor 拿它报告，别静默吞掉：排除是为了不重复计数，
+    不是为了假装它不存在。落后主分支的 worktree 必须让人看见。
+    """
+    out = {}
+    for p in sorted(_project_pool()):
+        main = worktree_main(p)
+        if main:
+            out[p] = main
+    return out
+
+
 def known_projects():
-    """所有「有 skill 的项目」= 注册表 ∪ 有过会话记录的目录。
+    """所有「有 skill 的项目」= 注册表 ∪ 有过会话记录的目录，剔除 worktree。
 
     光靠注册表不够：只有在项目里跑过 skill-manager 才会登记，
     你天天开发但没跑过它的项目就永远看不见。会话记录能自动发现它们。
+
+    worktree 归到主仓头上（主仓可能自己还没被发现——你一直在 worktree 里干活、
+    从没在主仓跑过 Claude Code，那它就既不在注册表也没有会话记录）。
     """
-    pool = {p for p in load_projects() if os.path.isdir(p)}
-    pool |= {p for p in session_activity() if is_project_dir(p)}
+    pool = _project_pool()
+    for p in sorted(pool):
+        main = worktree_main(p)
+        if not main:
+            continue
+        pool.discard(p)
+        if is_project_dir(main):
+            pool.add(main)
     return sorted(pool)
 
 
