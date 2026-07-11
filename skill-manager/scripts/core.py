@@ -28,6 +28,7 @@
 import os
 import re
 import json
+import filecmp
 import hashlib
 import subprocess
 import unicodedata
@@ -265,6 +266,58 @@ def fingerprint(skill_dir, extra_strip=()):
             except Exception:
                 pass
     return h.hexdigest()[:16]
+
+
+def content_matches_upstream(local_dir, upstream_dir):
+    """判定本地这份 skill 是否就是上游 upstream_dir 那一版。
+
+    方向性比对：上游的每个文件都必须在本地存在且内容一致；**本地多出的文件
+    不参与判定**。skill 运行时自生成的文件（配置、自学的站点笔记）和 update
+    保留的本地独有文件，都不改变「它装自哪一版」。反方向不能放松：
+    上游有而本地没有（或内容不同），就不是这一版。
+    整目录指纹相等做不到这一点——一个自生成的 config.env 就让所有版本永远比不中。
+
+    keep_local_description 只声明在本地那份 SKILL.md 里，剥字段的口径由本地
+    声明决定、对两边同时生效（见 strip_managed_fields 的 extra 说明）。
+    """
+    extra = ()
+    local_md = os.path.join(local_dir, "SKILL.md")
+    if not os.path.isfile(local_md):
+        local_md += ".disabled"
+    try:
+        if str(parse_skill_md(local_md).get(
+                "keep_local_description", "")).lower() == "true":
+            extra = ("description",)
+    except Exception:
+        pass
+
+    is_self = os.path.abspath(local_dir) == SM_DIR
+    for root, dirs, files in os.walk(upstream_dir):
+        dirs[:] = sorted(d for d in dirs if d not in FP_IGNORE_DIRS)
+        for fn in sorted(files):
+            if fn in FP_IGNORE_FILES or fn.endswith(FP_IGNORE_SUFFIX):
+                continue
+            if is_self and fn in SM_DATA_FILES:
+                continue
+            rel = os.path.relpath(os.path.join(root, fn), upstream_dir)
+            lp = os.path.join(local_dir, rel)
+            if fn == "SKILL.md" and not os.path.isfile(lp):
+                lp += ".disabled"  # 本地被禁用的 skill 同样能定版
+            if not os.path.isfile(lp):
+                return False
+            try:
+                if fn in ("SKILL.md", "SKILL.md.disabled"):
+                    a = strip_managed_fields(
+                        open(os.path.join(root, fn), encoding="utf-8").read(), extra)
+                    b = strip_managed_fields(
+                        open(lp, encoding="utf-8").read(), extra)
+                    if a != b:
+                        return False
+                elif not filecmp.cmp(os.path.join(root, fn), lp, shallow=False):
+                    return False
+            except Exception:
+                return False
+    return True
 
 
 # ── 中文描述 ──────────────────────────────────────────────

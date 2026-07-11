@@ -113,6 +113,15 @@ def fetch_at(slug, ref, dest):
 def find_skill_dir(root, name, hint=""):
     if hint and os.path.isfile(os.path.join(root, hint, "SKILL.md")):
         return os.path.join(root, hint)
+    # 单 skill 仓库：仓库根就是 skill 本体。解压后的临时目录名是随机的，
+    # 不能靠「目录名 == skill 名」认出它，要看 frontmatter 里的 name。
+    root_md = os.path.join(root, "SKILL.md")
+    if os.path.isfile(root_md):
+        try:
+            if core.parse_skill_md(root_md).get("name") == name:
+                return root
+        except Exception:
+            pass
     for base in (root, os.path.join(root, "skills"), os.path.join(root, name)):
         if os.path.isfile(os.path.join(base, name, "SKILL.md")):
             return os.path.join(base, name)
@@ -127,11 +136,14 @@ def find_skill_dir(root, name, hint=""):
     return None
 
 
-def pin_version(slug, name, local_fp, hint=""):
-    """逐个版本下载比对，找出与本地内容完全一致的那一版。
+def pin_version(slug, name, local_dir, hint=""):
+    """逐个版本下载比对，找出与本地内容一致的那一版。
 
     绝不假设「本地 == 上游最新」：本地 Waza 8 个 skill 装于 07-05，
     上游最新是 v3.31.2（07-10 发布），实际本地是 v3.31.1。猜就会猜错。
+
+    比对是方向性的（core.content_matches_upstream）：上游文件逐一比对，
+    本地自生成的运行时文件不参与——否则一个 config.env 就让所有版本永远比不中。
     """
     refs = list_tags(slug) or ["HEAD"]
     print(f"    比对 {len(refs)} 个版本 …", flush=True)
@@ -143,7 +155,7 @@ def pin_version(slug, name, local_fp, hint=""):
             sd = find_skill_dir(tmp, name, hint)
             if not sd:
                 continue
-            if core.fingerprint(sd) == local_fp:
+            if core.content_matches_upstream(local_dir, sd):
                 rel = os.path.relpath(sd, tmp)
                 ver = ""
                 vf = os.path.join(tmp, "VERSION")
@@ -169,7 +181,11 @@ def commit_of(slug, ref):
 def trace(s, repo=None, path_hint=""):
     print(f"\n🔍 {s.name}（{s.scope_label}）")
 
-    hit = {"url": repo, "path": path_hint, "via": "手动指定"} if repo else from_lock(s.name)
+    # 来源优先级与 --all 批量路径一致：手动指定 > 已登记的 github_url > 安装器 lock
+    hit = ({"url": repo, "path": path_hint, "via": "手动指定"} if repo
+           else {"url": s.github_url, "path": getattr(s, "github_path", "") or "",
+                 "via": "frontmatter 登记"} if s.github_url
+           else from_lock(s.name))
 
     if not hit:
         print("    安装器没有记录 → 联网搜 GitHub")
@@ -190,7 +206,7 @@ def trace(s, repo=None, path_hint=""):
         print("    ❌ 不是 GitHub 地址，无法比对")
         return None
 
-    pinned = pin_version(slug, s.name, core.fingerprint(s.path), hit.get("path", ""))
+    pinned = pin_version(slug, s.name, s.path, hit.get("path", ""))
     if not pinned:
         print(f"    ⚠ 近 {MAX_TAGS} 个版本都对不上本地内容")
         print("       → 你可能改过它，或者装的是更老的版本；来源仍按上面登记")
@@ -230,12 +246,6 @@ def trace_batch(slug, group, path_hint=""):
     一次比对该仓库下所有待溯源的 skill。
     """
     url = f"https://github.com/{slug}"
-    # keep_local_description 只写在本地那份 SKILL.md 里，上游那份没有。比对时要拿本地的
-    # 声明去剥上游那边的同名字段，否则一边剥了一边没剥，口径不对称，永远比不中。
-    extra = {s.name: ("description",) if str(
-        core.parse_skill_md(s.md_path).get("keep_local_description", "")
-    ).lower() == "true" else () for s in group}
-    local_fp = {s.name: core.fingerprint(s.path, extra[s.name]) for s in group}
     pending = {s.name: s for s in group}
     refs = list_tags(slug) or ["HEAD"]
     print(f"\n📦 {slug} —— {len(group)} 个 skill，比对 {len(refs)} 个版本")
@@ -257,7 +267,7 @@ def trace_batch(slug, group, path_hint=""):
             sha = date = ""
             for name in list(pending):
                 sd = find_skill_dir(tmp, name, path_hint)
-                if sd and core.fingerprint(sd, extra[name]) == local_fp[name]:
+                if sd and core.content_matches_upstream(pending[name].path, sd):
                     if not sha:
                         sha, date = commit_of(slug, ref)
                     resolved[name] = {"github_url": url,
