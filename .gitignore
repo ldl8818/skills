@@ -141,3 +141,114 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# ─────────────────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+sdist/
+wheels/
+*.egg-info/
+*.egg
+.installed.cfg
+MANIFEST
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# 测试与类型检查缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.hypothesis/
+htmlcov/
+.coverage
+.coverage.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ─────────────────────────────────────────────────────────
+# 操作系统
+# ─────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.AppleDouble
+.LSOverride
+Icon?
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*~
+.directory
+
+# ─────────────────────────────────────────────────────────
+# 编辑器与 IDE
+# ─────────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.iml
+*.swp
+*.swo
+*.sublime-workspace
+.netrwhist
+
+# ─────────────────────────────────────────────────────────
+# 临时文件、备份、脚本产物
+# ─────────────────────────────────────────────────────────
+tmp/
+temp/
+scratch/
+scratchpad/
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.pid
+*.out
+
+# ─────────────────────────────────────────────────────────
+# 密钥与本机配置（绝不入库）
+# ─────────────────────────────────────────────────────────
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+config.env
+secrets.json
+credentials.json
+
+# ─────────────────────────────────────────────────────────
+# skill 本机运行数据
+#
+# 这些文件由 skill 在本机跑起来后自动生成，记录的是「这台机器的状态」
+# （装了哪些 skill、各自内容指纹、在哪些项目跑过），换台机器毫无意义，
+# 且含本机绝对路径。缺失时代码会兜底成空表并重新生成，不影响使用。
+# ─────────────────────────────────────────────────────────
+skill-manager/fingerprints.json
+skill-manager/projects.json
+skill-manager/evolution.json
+skill-manager/descriptions_zh.json

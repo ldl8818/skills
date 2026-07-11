@@ -13,6 +13,11 @@
   裸名字自动判断是 skill 还是插件。
 - 删插件要清的不止一处：登记表、缓存目录、中文描述表、全局与项目的启用开关。
   漏一处就留下指向不存在插件的脏数据（doctor 第 1 项就是为这种残留加的）。
+
+2026-07-11 补漏：删「直装 skill」这条路径漏得比插件更狠——
+- 中文描述表压根没清，删完就在 descriptions_zh.json 留个死条目（doctor 第 3 项擦屁股）；
+- 指纹用裸名 `name` 查表，可真正的 key 是 `global:<name>`，永远查不中，等于从没清过。
+**「删干净」的判定标准是「所有留了它名字的地方」，两条路径要对称，不是插件那条想周全了就完事。**
 """
 import os
 import sys
@@ -43,18 +48,28 @@ def delete_direct_skill(name, dry_run=False):
         return False
 
     fps = core.read_json(core.FINGERPRINTS, {})
+    zh = core.read_json(core.DESCRIPTIONS_ZH, {})
+    # 指纹的 key 是 core._make_direct_skill 里的 f"{scope}:{name}"，不是裸名。
+    # 拿裸名去查表永远查不中，删了也清不掉——旧版就是这么漏的。
+    fp_key = f"global:{name}"
+
     print(f"将删除 skill：{name}")
     print(f"   目录       {skill_dir}")
-    if name in fps:
-        print(f"   指纹记录   fingerprints.json → {name}")
+    if fp_key in fps:
+        print(f"   指纹记录   fingerprints.json → {fp_key}")
+    if name in zh:
+        print(f"   中文描述   descriptions_zh.json → {name}")
     if dry_run:
         print("\n（--dry-run：只看不做）")
         return True
 
     dest = archive_dir(skill_dir, name)
-    if name in fps:
-        del fps[name]
+    if fp_key in fps:
+        del fps[fp_key]
         core.write_json(core.FINGERPRINTS, fps)
+    if name in zh:
+        del zh[name]
+        core.write_json(core.DESCRIPTIONS_ZH, zh)
     print(f"\n✅ 已删除 {name}")
     print(f"📦 已归档到 {dest}（后悔了搬回 ~/.claude/skills/ 即可）")
     return True
