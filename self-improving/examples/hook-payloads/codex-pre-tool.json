@@ -1,0 +1,12 @@
+{
+  "cwd": "/workspace",
+  "hook_event_name": "PreToolUse",
+  "model": "example-model",
+  "permission_mode": "default",
+  "session_id": "example-session",
+  "tool_input": {"command": "pwd"},
+  "tool_name": "Bash",
+  "tool_use_id": "example-tool",
+  "transcript_path": null,
+  "turn_id": "example-turn"
+}

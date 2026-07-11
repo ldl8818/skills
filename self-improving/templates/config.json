@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "memory_root": "~/Documents/self-improving-memory",
+  "state_root": "~/.local/state/self-improving",
+  "agents": {
+    "claude": {"enabled": true, "settings_file": "~/.claude/settings.json", "project_memory_root": "~/.claude/projects"},
+    "codex": {"enabled": true, "hooks_file": "~/.codex/hooks.json", "agents_file": "~/.codex/AGENTS.md", "config_file": "~/.codex/config.toml"}
+  },
+  "persistence": {"enabled": true, "capture_corrections": false, "capture_command_errors": false, "max_candidate_chars": 500}
+}

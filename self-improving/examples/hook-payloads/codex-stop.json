@@ -1,0 +1,11 @@
+{
+  "cwd": "/workspace",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "done",
+  "model": "example-model",
+  "permission_mode": "default",
+  "session_id": "example-session",
+  "stop_hook_active": false,
+  "transcript_path": null,
+  "turn_id": "example-turn"
+}

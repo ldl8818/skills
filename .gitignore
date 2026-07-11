@@ -252,3 +252,6 @@ skill-manager/fingerprints.json
 skill-manager/projects.json
 skill-manager/evolution.json
 skill-manager/descriptions_zh.json
+
+# Skill evaluation workspaces contain local snapshots and generated reviews.
+self-improving-workspace/
