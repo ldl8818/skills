@@ -9,14 +9,24 @@ never copied into the public repository.
 ## Claude Code
 The installer wires `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse` and `Stop` while preserving existing groups.
 
+At `SessionStart`, the common Hook validates the line and character budgets and
+injects the small `memory.md` core. It then reads only approvals written by the
+2.2 review command, filters them by the current project/global scope, applies
+the configured count and character budgets, and emits them in a separate
+`<verified-corrections>` block. Raw candidate and error files are never read as
+instructions.
+
 ## Codex
 The installer uses the same lifecycle names but a separate adapter. Codex currently applies Pre/Post Tool Hooks to shell commands, ignores matchers for UserPromptSubmit and Stop, and uses startup/resume matching for SessionStart.
 
 `PreToolUse` prevents direct writes and common relative, absolute and `$HOME`
-shell writes to the configured `memory.md`. Because arbitrary shell syntax
+shell writes to the configured `memory.md`, `corrections.md` and verified JSONL store. It also refuses approval/rejection commands invoked through an Agent shell. Because arbitrary shell syntax
 cannot be parsed safely with string matching, this is an accidental-write guard,
-not a complete sandbox or access-control mechanism. Keep private memory under
-version control when audit and rollback matter.
+not a complete sandbox or access-control mechanism. Code running as the same OS
+user can deliberately call internal Python APIs or obfuscate a write. Keep
+private memory under version control when audit and rollback matter, and run
+approval/revocation commands yourself in a normal terminal rather than asking
+an Agent to do so.
 
 Installation must preserve unrelated Hooks such as status or notification integrations. After Codex upgrades, run `doctor` and a real-session smoke test because Hook payload fields may evolve.
 

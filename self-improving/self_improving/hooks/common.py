@@ -13,7 +13,7 @@ from self_improving.config import load_config, resolved
 from self_improving.events import normalize
 from self_improving.paths import atomic_write_json
 from self_improving.security import contains_secret
-from self_improving.storage import append_candidate, append_error, persistence_enabled
+from self_improving.storage import VERIFIED_RELATIVE, append_candidate, append_error, pending_correction_count, persistence_enabled, verified_corrections
 
 
 CORRECTION = re.compile(r"你又错了|我说过|你怎么又|不对|不是这样|应该是|应该用|记住|别忘了|remember|stop doing", re.I)
@@ -45,28 +45,33 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
         return False
     command = str(event.tool_input.get("command") or "")
     file_path = str(event.tool_input.get("file_path") or "")
-    authority = (memory_root / "memory.md").resolve()
+    authorities = tuple((memory_root / name).resolve() for name in ("memory.md", "corrections.md", VERIFIED_RELATIVE))
     if file_path:
         try:
             candidate = Path(file_path).expanduser()
             if not candidate.is_absolute() and event.cwd:
                 candidate = Path(event.cwd) / candidate
-            if candidate.resolve() == authority:
+            if candidate.resolve() in authorities:
                 return True
         except OSError:
             pass
     if not command:
         return False
     expanded = command.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
+    if re.search(r"(?:self_improving|self-improving)\s+review\s+(?:approve|reject|revoke)\b", expanded):
+        return True
+    internal_authority_api = any(name in expanded for name in ("self_improving.review", "self_improving.storage", "append_verified_correction"))
+    if ("corrections.md" in expanded or "verified-corrections.jsonl" in expanded or internal_authority_api) and re.search(r"\b(?:python\d*|node|ruby|perl)\b", expanded):
+        return True
     write_signal = bool(re.search(r">{1,2}(?!\s*(?:/dev/null\b|&\d))|\b(?:tee|rm|mv|cp|truncate)\b|\b(?:sed|perl)\s+-i", expanded))
     if not write_signal:
         return False
-    if str(authority) in expanded or str(memory_root / "memory.md") in expanded:
+    if any(str(authority) in expanded for authority in authorities):
         return True
     cwd = Path(event.cwd).expanduser().resolve() if event.cwd else None
-    if cwd == memory_root.resolve() and re.search(r"(?:^|[/\s'\"])memory\.md(?:$|[\s'\"])", expanded):
+    if cwd == memory_root.resolve() and re.search(r"(?:^|[/\s'\"])(?:memory|corrections)\.md(?:$|[\s'\"])", expanded):
         return True
-    return bool(str(memory_root.resolve()) in expanded and "memory.md" in expanded)
+    return bool(str(memory_root.resolve()) in expanded and any(name in expanded for name in ("memory.md", "corrections.md", "verified-corrections.jsonl")))
 
 
 def dispatch(platform: str, declared_event: str, payload: dict) -> int:
@@ -76,7 +81,7 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
     state_root = Path(config["state_root"])
     _record_schema(state_root, platform, event.event, payload)
     if _dangerous_authority_write(event, root):
-        print("⛔ 权威记忆 memory.md 只能通过审核流程修改。", file=sys.stderr)
+        print("⛔ 核心记忆和已验证纠错只能通过审核流程修改。", file=sys.stderr)
         return 2
     if event.event == "SessionStart":
         memory_path = root / "memory.md"
@@ -86,19 +91,32 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
         memory = memory_path.read_text(encoding="utf-8")
         lines = memory.splitlines()
         valid_title = lines and lines[0].startswith(("# Memory ·", "# Memory "))
-        if not 5 <= len(lines) <= 50 or not valid_title or contains_secret(memory):
+        injection = config.get("injection", {})
+        core_limit = int(injection.get("max_core_chars", 8000))
+        if not 5 <= len(lines) <= 50 or len(memory) > core_limit or not valid_title or contains_secret(memory):
             print(f"<memory-source-warning>共享记忆结构异常或疑似含敏感信息：{memory_path}</memory-source-warning>")
             return 0
         print("<self-improving-memory>")
         print(memory.rstrip())
         print("</self-improving-memory>")
+        if injection.get("include_verified_corrections", True):
+            corrections = verified_corrections(
+                root,
+                int(injection.get("max_verified_corrections", 20)),
+                int(injection.get("max_verified_chars", 4000)),
+                event.cwd,
+            )
+            if corrections:
+                print("<verified-corrections>")
+                print("以下内容已经人工审核；当前文件和可验证证据与其冲突时，以当前证据为准。")
+                for answer in corrections:
+                    print(f"- {answer}")
+                print("</verified-corrections>")
         return 0
     if event.event == "Stop":
-        inbox = root / ".learnings/CORRECTIONS_INBOX.md"
-        if inbox.exists():
-            pending = inbox.read_text(encoding="utf-8").count("| candidate |")
-            if pending >= 3:
-                print(f'<memory-review-reminder pending="{pending}">请审核纠错候选。</memory-review-reminder>')
+        pending = pending_correction_count(root)
+        if pending >= 3:
+            print(f'<memory-review-reminder pending="{pending}">请审核纠错候选。</memory-review-reminder>')
         return 0
     if not persistence_enabled(config):
         print('<self-improving-persistence enabled="false"/>')

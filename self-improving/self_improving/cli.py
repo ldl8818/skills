@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 from pathlib import Path
+import shutil
 import sys
 
-from self_improving.config import default_config, load_config, resolved, write_config
+from self_improving.config import default_config, load_config, resolved, with_defaults, write_config
 from self_improving import __version__
 from self_improving.doctor import print_report
 from self_improving.hooks.common import run as run_hook
 from self_improving.installer import install_hooks, install_skill_links, uninstall_hooks, uninstall_skill_links
 from self_improving.indexing import sync_index
 from self_improving.migration import discover_legacy, write_manifest
-from self_improving.paths import PACKAGE_ROOT, expand_path
-from self_improving.review import decide, list_candidates
+from self_improving.paths import PACKAGE_ROOT, default_config_path, expand_path
+from self_improving.review import decide, list_candidates, revoke
 from self_improving.storage import initialize_memory, validate_delete_target
 
 
@@ -27,6 +29,8 @@ def _agents(value: str) -> tuple[str, ...]:
 
 
 def command_init(args: argparse.Namespace) -> int:
+    if default_config_path().exists():
+        raise ValueError("self-improving is already configured; use upgrade instead of init")
     config = default_config(args.memory_root)
     enabled = set(args.agents)
     for platform in config["agents"]:
@@ -87,7 +91,10 @@ def command_review(args: argparse.Namespace) -> int:
         rows = list_candidates(root)
         print("\n".join(rows) if rows else "没有待审核候选。")
         return 0
-    print(decide(root, state_root, args.fingerprint, args.review_action, args.correct or ""))
+    if args.review_action == "revoke":
+        print(revoke(root, state_root, args.fingerprint))
+        return 0
+    print(decide(root, state_root, args.fingerprint, args.review_action, getattr(args, "correct", "") or "", getattr(args, "scope", "") or ""))
     return 0
 
 
@@ -98,6 +105,8 @@ def command_migrate(args: argparse.Namespace) -> int:
     if not args.apply:
         print("当前为预览；加 --apply 才会写配置和 Hook。")
         return 0
+    if default_config_path().exists():
+        raise ValueError("self-improving is already configured; migrate refuses to overwrite it")
     if not discovery["memory_root"]:
         print("未找到旧版记忆目录。", file=sys.stderr)
         return 1
@@ -121,18 +130,22 @@ def command_migrate(args: argparse.Namespace) -> int:
 
 
 def command_upgrade(_: argparse.Namespace) -> int:
-    config = load_config()
+    config = with_defaults(load_config())
     live = resolved(config)
     initialize_memory(Path(live["memory_root"]), PACKAGE_ROOT)
     config.pop("temp_root", None)
     config.pop("retention", None)
     config["persistence"].pop("central_error_fallback", None)
+    config_path = default_config_path()
+    backup_dir = Path(live["state_root"]) / "backups" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(config_path, backup_dir / "self-improving-config.json")
     write_config(config)
     for platform, settings in config["agents"].items():
         if settings.get("enabled"):
             install_hooks(config, platform)
     sync_index(Path(live["memory_root"]))
-    print("配置与 Hook 已升级；私人记忆未改动。")
+    print(f"配置与 Hook 已升级；历史记忆未改写；配置备份：{backup_dir / 'self-improving-config.json'}")
     return print_report()
 
 
@@ -193,6 +206,9 @@ def build_parser() -> argparse.ArgumentParser:
         action.add_argument("--fingerprint", required=True)
         if name == "approve":
             action.add_argument("--correct", required=True)
+            action.add_argument("--scope", required=True, help="global or project:/absolute/path")
+    revoke_action = review_sub.add_parser("revoke")
+    revoke_action.add_argument("--fingerprint", required=True)
     review.set_defaults(func=command_review)
 
     migrate = sub.add_parser("migrate")

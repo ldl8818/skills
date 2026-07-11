@@ -1,5 +1,19 @@
 # Self-improving cross-agent memory
-A configurable, review-gated memory system for Claude Code and Codex. Program code can be public; user memory remains in a separate private directory.
+
+A configurable, review-gated memory system for Claude Code and Codex. It captures explicit corrections, waits for human approval, and automatically supplies approved answers to both Agents in later sessions. Program code can be public; user memory remains in a separate private directory.
+
+中文用户请从 [五分钟从零开始](docs/quickstart-zh.md) 阅读。遇到问题看 [中文排错手册](docs/troubleshooting-zh.md)。
+
+## 它怎样变聪明
+
+```text
+你明确纠正 Agent
+  → Hook 自动放入“不可信候选箱”
+  → 你批准一次正确答案
+  → Claude Code 与 Codex 下次会话自动采用
+```
+
+正常工作流中，未经批准的候选不会成为 Agent 指令。系统不会自己判断真理，也不会把网页、邮件或命令错误自动晋升为权威记忆。需要注意：Hook 是防误操作和流程守门，不是把同一 macOS/Linux 用户下的任意 Shell 变成低权限沙箱。
 
 ## Requirements
 - Python 3.11+
@@ -38,8 +52,8 @@ python3 -m self_improving doctor
 ```
 
 `sync` refreshes the stable knowledge index. Hook injection reads the configured
-`memory.md` directly; it does not copy private memory into Claude or Codex
-instruction files.
+`memory.md` and approved correction answers directly; it does not copy private
+memory into Claude or Codex instruction files.
 
 The health report separates Hook configuration from current-version event
 contract coverage. A new
@@ -83,13 +97,21 @@ refused.
 
 ```bash
 python3 -m self_improving review list
-python3 -m self_improving review approve --fingerprint '[fp:...]' --correct 'verified rule'
+python3 -m self_improving review approve --fingerprint '[fp:...]' --correct '先读取当前文件，再根据实际内容判断。' --scope global
 python3 -m self_improving review reject --fingerprint '[fp:...]'
+python3 -m self_improving review revoke --fingerprint '[fp:...]'
 ```
 
-## Supported behavior
-Claude Code and Codex use separate adapters because their Hook payloads and lifecycle coverage differ. Codex currently limits Pre/Post Tool Hooks to shell commands. The PreToolUse guard blocks direct file-tool writes and common shell writes to `memory.md`, but shell text inspection is not an operating-system security boundary and cannot prove that every possible command is blocked. Human review, current-file verification and version control remain the authoritative safeguards.
+Approved answers are injected at the next `SessionStart`. The default budget is
+the newest 20 answers and 4,000 answer characters. Raw candidates are never
+injected. Use `--scope global` only for rules that apply everywhere; use
+`--scope 'project:/absolute/project/path'` for project-only rules. Legacy rows
+already present in `corrections.md` remain audit history and are not silently
+activated by an upgrade. See [configuration](docs/configuration.md) for the switches.
 
-Only Claude Code and Codex are supported in version 2.0. Obsidian, Git, Gemini,
+## Supported behavior
+Claude Code and Codex use separate adapters because their Hook payloads and lifecycle coverage differ. Codex currently limits Pre/Post Tool Hooks to shell commands. The PreToolUse guard blocks direct file-tool writes and common shell writes to `memory.md`, `corrections.md` and the machine-authoritative approval store. It also blocks an Agent from invoking approval commands through a hooked shell. Shell text inspection is not an operating-system security boundary and cannot prove that every obfuscated command is blocked. Human review outside the Agent tool loop, current-file verification and version control remain the authoritative safeguards.
+
+Only Claude Code and Codex are supported in version 2.2. Obsidian, Git, Gemini,
 OpenClaw and other editors or Agents are not required and are not silently
 treated as installed.

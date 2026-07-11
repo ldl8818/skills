@@ -1,4 +1,13 @@
 # Changelog
+## 2.2.0 - 2026-07-12
+- Inject human-approved corrections into new Claude Code and Codex sessions within configurable count and character budgets.
+- Keep raw correction candidates out of Agent instructions and preserve the human review gate.
+- Store new approvals in a machine-readable private JSONL ledger with explicit global/project scope; legacy Markdown rows remain audit-only.
+- Add an 8,000-character default budget for the core memory and protect both authority stores from common Agent writes and shell-invoked approval bypasses.
+- Add learning-loop health reporting for pending, approved, and currently injectable corrections.
+- Add a Chinese zero-to-one guide and troubleshooting guide for first-time users.
+- Keep 2.1.x configuration compatible and fill the new injection defaults during upgrade.
+
 ## 2.1.1 - 2026-07-11
 - Fixed the authority-write guard falsely blocking read-only commands: redirects to `/dev/null` and file descriptors (e.g. `2>/dev/null`, `2>&1`) no longer count as write signals.
 

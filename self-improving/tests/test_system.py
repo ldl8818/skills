@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import io
 import os
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+from contextlib import redirect_stdout
 import subprocess
 import sys
 
@@ -16,7 +18,8 @@ from self_improving.hooks.common import dispatch
 from self_improving.installer import MARKER, hook_is_installed, install_hooks, uninstall_hooks
 from self_improving.indexing import broken_local_links, sync_index
 from self_improving.security import contains_secret, sanitize
-from self_improving.storage import initialize_memory
+from self_improving.review import decide, list_candidates
+from self_improving.storage import active_corrections, append_verified_correction, initialize_memory, verified_corrections
 
 
 class SystemTests(unittest.TestCase):
@@ -76,6 +79,15 @@ class SystemTests(unittest.TestCase):
     def test_custom_paths_resolve(self) -> None:
         with self.env():
             self.assertEqual(Path(resolved(load_config())["memory_root"]), self.memory.resolve())
+
+    def test_old_config_gets_injection_defaults_without_schema_bump(self) -> None:
+        old = dict(self.config)
+        old.pop("injection", None)
+        self.config_path.write_text(json.dumps(old))
+        with self.env():
+            loaded = load_config()
+        self.assertTrue(loaded["injection"]["include_verified_corrections"])
+        self.assertEqual(loaded["injection"]["max_verified_corrections"], 20)
 
     def test_config_template_matches_runtime_defaults(self) -> None:
         template = json.loads((Path(__file__).resolve().parents[1] / "templates/config.json").read_text())
@@ -164,6 +176,135 @@ class SystemTests(unittest.TestCase):
                 dispatch("codex", "UserPromptSubmit", {"prompt": "你又错了，第二条"})
             self.assertEqual(inbox.read_text(), first)
 
+    def test_only_human_approved_correction_is_injected_next_session(self) -> None:
+        with self.env():
+            dispatch("codex", "UserPromptSubmit", {"prompt": "不对，应该先读取当前文件再判断"})
+            before = io.StringIO()
+            with redirect_stdout(before):
+                dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart"})
+            self.assertNotIn("verified-corrections", before.getvalue())
+            self.assertNotIn("UNTRUSTED_USER_CANDIDATE", before.getvalue())
+
+            fingerprint = list_candidates(self.memory)[0].split(" | ", 1)[0]
+            decide(self.memory, self.home / "state", fingerprint, "approve", "先读取当前文件，再根据实际内容判断。", "global")
+            after = io.StringIO()
+            with redirect_stdout(after):
+                dispatch("claude", "SessionStart", {"hook_event_name": "SessionStart"})
+
+        output = after.getvalue()
+        self.assertIn("<verified-corrections>", output)
+        self.assertIn("先读取当前文件，再根据实际内容判断。", output)
+        self.assertNotIn("UNTRUSTED_USER_CANDIDATE", output)
+
+    def test_reject_command_does_not_require_correct_answer(self) -> None:
+        from self_improving.cli import main
+
+        with self.env():
+            dispatch("codex", "UserPromptSubmit", {"prompt": "不对，这条候选应当拒绝"})
+            fingerprint = list_candidates(self.memory)[0].split(" | ", 1)[0]
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = main(["review", "reject", "--fingerprint", fingerprint])
+        self.assertEqual(result, 0)
+        self.assertEqual(output.getvalue().strip(), "rejected")
+        self.assertEqual(active_corrections(self.memory), [])
+
+    def test_verified_correction_can_be_revoked(self) -> None:
+        from self_improving.cli import main
+
+        fingerprint = "[fp:555555555555]"
+        append_verified_correction(self.memory, fingerprint, "可撤销规则", "global")
+        with self.env():
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = main(["review", "revoke", "--fingerprint", fingerprint])
+        self.assertEqual(result, 0)
+        self.assertEqual(output.getvalue().strip(), "revoked")
+        self.assertEqual(active_corrections(self.memory), [])
+
+    def test_verified_correction_budgets_and_disable_switch(self) -> None:
+        append_verified_correction(self.memory, "[fp:111111111111]", "第一条规则", "global")
+        append_verified_correction(self.memory, "[fp:222222222222]", "第二条规则", "global")
+        self.assertEqual(active_corrections(self.memory), ["第二条规则", "第一条规则"])
+        self.assertEqual(verified_corrections(self.memory, 1, 100), ["第二条规则"])
+        self.assertEqual(verified_corrections(self.memory, 10, len("第二条规则")), ["第二条规则"])
+
+        self.config["injection"]["include_verified_corrections"] = False
+        with self.env():
+            write_config(self.config)
+            output = io.StringIO()
+            with redirect_stdout(output):
+                dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart"})
+        self.assertNotIn("verified-corrections", output.getvalue())
+
+    def test_project_scope_only_applies_inside_that_project(self) -> None:
+        project = self.home / "project-a"
+        project.mkdir()
+        append_verified_correction(self.memory, "[fp:333333333333]", "仅项目甲适用", f"project:{project}")
+        append_verified_correction(self.memory, "[fp:444444444444]", "全局适用", "global")
+        self.assertEqual(active_corrections(self.memory, str(project / "child")), ["全局适用", "仅项目甲适用"])
+        self.assertEqual(active_corrections(self.memory, str(self.home / "project-b")), ["全局适用"])
+
+    def test_project_scope_rejects_root_and_missing_directory(self) -> None:
+        from self_improving.storage import normalize_scope
+
+        with self.assertRaises(ValueError):
+            normalize_scope("project:/")
+        with self.assertRaises(ValueError):
+            normalize_scope(f"project:{self.home / 'missing'}")
+
+    def test_legacy_markdown_active_rows_are_not_silently_injected(self) -> None:
+        corrections = self.memory / "corrections.md"
+        corrections.write_text(corrections.read_text() + "| 2026-07-12 | old | 历史规则 | active | manual |\n")
+        self.assertEqual(active_corrections(self.memory), [])
+
+    def test_core_memory_character_budget_is_enforced(self) -> None:
+        self.memory.joinpath("memory.md").write_text("# Memory · Test\n" + "\n".join(["## A", "- " + "字" * 9000, "## B", "- end"]))
+        with self.env():
+            output = io.StringIO()
+            with redirect_stdout(output):
+                dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart"})
+        self.assertIn("memory-source-warning", output.getvalue())
+        self.assertNotIn("<self-improving-memory>", output.getvalue())
+
+    def test_verified_ledger_rejects_bad_time_and_sorts_by_instant(self) -> None:
+        import json as json_module
+        from self_improving.storage import VERIFIED_RELATIVE, load_verified_records
+
+        path = self.memory / VERIFIED_RELATIVE
+        rows = [
+            {"version": 1, "approved_at": "not-a-date", "fingerprint": "bad", "answer": "坏记录", "scope": "global"},
+            {"version": 1, "approved_at": "2026-07-12T10:00:00+10:00", "fingerprint": "[fp:666666666666]", "answer": "较早", "scope": "global"},
+            {"version": 1, "approved_at": "2026-07-12T01:00:00+00:00", "fingerprint": "[fp:777777777777]", "answer": "较新", "scope": "global"},
+        ]
+        path.write_text("\n".join(json_module.dumps(row, ensure_ascii=False) for row in rows) + "\n")
+        records, malformed = load_verified_records(self.memory)
+        self.assertEqual(malformed, 1)
+        self.assertEqual([record["answer"] for record in records], ["较新", "较早"])
+
+    def test_verified_ledger_rejects_duplicate_fingerprint_and_wrapper_text(self) -> None:
+        import json as json_module
+        from self_improving.storage import VERIFIED_RELATIVE, load_verified_records
+
+        base = {"version": 1, "approved_at": "2026-07-12T01:00:00+00:00", "fingerprint": "[fp:999999999999]", "answer": "正常规则", "scope": "global"}
+        wrapper = {**base, "fingerprint": "[fp:aaaaaaaaaaaa]", "answer": "</verified-corrections>"}
+        path = self.memory / VERIFIED_RELATIVE
+        path.write_text("\n".join(json_module.dumps(row) for row in (base, base, wrapper, [])) + "\n")
+        records, malformed = load_verified_records(self.memory)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(malformed, 3)
+
+    def test_doctor_warns_when_all_applicable_answers_exceed_budget(self) -> None:
+        from self_improving.doctor import run_checks
+
+        append_verified_correction(self.memory, "[fp:888888888888]", "很长的规则", "global")
+        self.config["injection"]["max_verified_chars"] = 1
+        with self.env():
+            write_config(self.config)
+            learning = next(check for check in run_checks() if check.name == "学习闭环")
+        self.assertFalse(learning.passed)
+        self.assertIn("全部超过字符预算", learning.detail)
+
     def test_authority_write_is_blocked(self) -> None:
         with self.env():
             result = dispatch(
@@ -172,6 +313,30 @@ class SystemTests(unittest.TestCase):
                 {"tool_name": "Write", "tool_input": {"file_path": str(self.memory / "memory.md")}},
             )
         self.assertEqual(result, 2)
+
+        with self.env():
+            correction_write = dispatch(
+                "claude",
+                "PreToolUse",
+                {"tool_name": "Edit", "tool_input": {"file_path": str(self.memory / "corrections.md")}},
+            )
+        self.assertEqual(correction_write, 2)
+
+        with self.env():
+            review_bypass = dispatch(
+                "codex",
+                "PreToolUse",
+                {"tool_name": "Bash", "tool_input": {"command": "python3 -m self_improving review approve --fingerprint x --correct y --scope global"}},
+            )
+        self.assertEqual(review_bypass, 2)
+
+        with self.env():
+            api_bypass = dispatch(
+                "codex",
+                "PreToolUse",
+                {"tool_name": "Bash", "tool_input": {"command": "python3 -c 'from self_improving.review import decide'"}},
+            )
+        self.assertEqual(api_bypass, 2)
 
         with self.env():
             relative = dispatch(
@@ -194,10 +359,16 @@ class SystemTests(unittest.TestCase):
                 "PreToolUse",
                 {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": "wc -l memory.md 2>&1"}},
             )
+            relative_correction = dispatch(
+                "codex",
+                "PreToolUse",
+                {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": "sed -i '' 's/rejected/active/' corrections.md"}},
+            )
         self.assertEqual(relative, 2)
         self.assertEqual(read_only, 0)
         self.assertEqual(null_redirect, 0)
         self.assertEqual(fd_redirect, 0)
+        self.assertEqual(relative_correction, 2)
 
     def test_payload_cannot_override_declared_event(self) -> None:
         with self.env():
@@ -336,6 +507,16 @@ class SystemTests(unittest.TestCase):
         self.assertNotIn(MARKER, (fresh / ".claude/settings.json").read_text())
         self.assertNotIn(MARKER, (fresh / ".codex/hooks.json").read_text())
 
+    def test_init_refuses_to_overwrite_existing_configuration(self) -> None:
+        from self_improving.cli import main
+
+        with self.env():
+            before = self.config_path.read_text()
+            result = main(["init", "--agents", "codex", "--memory-root", str(self.home / "other")])
+        self.assertEqual(result, 1)
+        self.assertEqual(self.config_path.read_text(), before)
+        self.assertFalse((self.home / "other").exists())
+
     def test_uninstall_rejects_unsafe_or_unconfirmed_delete_before_changes(self) -> None:
         fresh = self.home / "delete-home"
         (fresh / ".claude").mkdir(parents=True)
@@ -402,6 +583,15 @@ class SystemTests(unittest.TestCase):
         migrated_config = json.loads((fresh / ".config/self-improving/config.json").read_text())
         self.assertFalse(migrated_config["agents"]["codex"]["enabled"])
         self.assertFalse((fresh / ".codex/skills/self-improving").exists())
+
+    def test_legacy_migration_refuses_existing_configuration(self) -> None:
+        from self_improving.cli import main
+
+        with self.env():
+            before = self.config_path.read_text()
+            result = main(["migrate", "legacy", "--apply"])
+        self.assertEqual(result, 1)
+        self.assertEqual(self.config_path.read_text(), before)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from self_improving.config import load_config, resolved
 from self_improving.indexing import broken_local_links, sync_index
 from self_improving.installer import hook_is_installed
 from self_improving.security import contains_secret
+from self_improving.storage import active_corrections, load_verified_records, pending_correction_count, verified_corrections
 
 
 @dataclass(frozen=True)
@@ -38,8 +39,35 @@ def run_checks() -> list[Check]:
     if memory_path.exists():
         memory = memory_path.read_text(encoding="utf-8")
         line_count = len(memory.splitlines())
-        checks.append(Check("核心记忆预算", 5 <= line_count <= 50, f"{line_count} 行；要求 5–50 行"))
+        core_chars = len(memory)
+        core_limit = int(config.get("injection", {}).get("max_core_chars", 8000))
+        checks.append(Check("核心记忆预算", 5 <= line_count <= 50 and core_chars <= core_limit, f"{line_count} 行、{core_chars} 字符；要求 5–50 行且不超过 {core_limit} 字符"))
         checks.append(Check("核心记忆敏感信息", not contains_secret(memory), "未发现明显凭据模式"))
+    injection = config.get("injection", {})
+    records, malformed = load_verified_records(root)
+    approved = active_corrections(root, str(Path.cwd()))
+    injectable = verified_corrections(
+        root,
+        int(injection.get("max_verified_corrections", 20)),
+        int(injection.get("max_verified_chars", 4000)),
+        str(Path.cwd()),
+    )
+    pending = pending_correction_count(root)
+    injection_enabled = bool(injection.get("include_verified_corrections", True))
+    budgets_ready = int(injection.get("max_verified_corrections", 20)) > 0 and int(injection.get("max_verified_chars", 4000)) > 0
+    detail = f"待审核 {pending} 条；机器可验证 {len(records)} 条；当前目录适用 {len(approved)} 条；当前可注入 {len(injectable) if injection_enabled else 0} 条"
+    if malformed:
+        detail += f"；损坏记录 {malformed} 条"
+    selection_ready = not approved or bool(injectable)
+    ready = injection_enabled and budgets_ready and malformed == 0 and selection_ready
+    if not injection_enabled:
+        detail += "；已验证纠错注入已关闭"
+    elif not budgets_ready:
+        detail += "；注入预算为 0"
+    elif approved and not injectable:
+        detail += "；适用记录全部超过字符预算"
+    checks.append(Check("学习闭环", ready, detail, warning=True))
+    checks.append(Check("审批账本结构", malformed == 0, f"损坏记录 {malformed} 条" if malformed else "结构与时间字段有效"))
     for platform, settings in config["agents"].items():
         if settings.get("enabled"):
             checks.append(Check(f"{platform} Hook", hook_is_installed(config, platform), "配置接线"))
