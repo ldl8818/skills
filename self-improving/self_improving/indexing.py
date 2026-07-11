@@ -9,17 +9,6 @@ from urllib.parse import unquote
 from self_improving.paths import atomic_write
 
 
-FIXED_NAMES = {
-    "memory.md",
-    "index.md",
-    "corrections.md",
-    "CORRECTIONS_INBOX.md",
-    "ERRORS.md",
-    "FEATURE_REQUESTS.md",
-    "LEARNINGS.md",
-    "README.md",
-    "SKILL.md",
-}
 VOLATILE_PARTS = {".learnings"}
 LINK = re.compile(r"(?<!!)\[[^]]*]\(([^)]+)\)")
 

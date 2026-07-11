@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import re
 from datetime import datetime, timezone, timedelta
 import json
 
 from self_improving import __version__
 from self_improving.config import load_config, resolved
-from self_improving.indexing import FIXED_NAMES, broken_local_links, sync_index
+from self_improving.indexing import broken_local_links, sync_index
 from self_improving.installer import hook_is_installed
 from self_improving.security import contains_secret
 
@@ -57,9 +56,6 @@ def run_checks() -> list[Check]:
                 except (OSError, ValueError, KeyError, json.JSONDecodeError):
                     continue
             checks.append(Check(f"{platform} 事件契约", count == len(seen), f"当前版本已验证 {count}/{len(seen)} 类", warning=True))
-    dated = re.compile(r"^\d{4}-\d{2}-\d{2}-.+\.md$")
-    invalid = [p.relative_to(root) for p in root.rglob("*.md") if p.name not in FIXED_NAMES and not dated.fullmatch(p.name)] if root.exists() else []
-    checks.append(Check("文档命名", not invalid, ", ".join(map(str, invalid)) or "符合规范", warning=True))
     if root.exists():
         index_ok, index_path = sync_index(root, check=True)
         checks.append(Check("知识索引", index_ok, str(index_path), warning=True))

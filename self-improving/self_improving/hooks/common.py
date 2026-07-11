@@ -58,7 +58,7 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
     if not command:
         return False
     expanded = command.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
-    write_signal = bool(re.search(r">|\b(?:tee|rm|mv|cp|truncate)\b|\b(?:sed|perl)\s+-i", expanded))
+    write_signal = bool(re.search(r">{1,2}(?!\s*(?:/dev/null\b|&\d))|\b(?:tee|rm|mv|cp|truncate)\b|\b(?:sed|perl)\s+-i", expanded))
     if not write_signal:
         return False
     if str(authority) in expanded or str(memory_root / "memory.md") in expanded:

@@ -9,6 +9,7 @@ from unittest.mock import patch
 import subprocess
 import sys
 
+from self_improving import __version__
 from self_improving.config import default_config, load_config, resolved, write_config
 from self_improving.events import normalize
 from self_improving.hooks.common import dispatch
@@ -70,7 +71,7 @@ class SystemTests(unittest.TestCase):
             env=env,
             check=False,
         )
-        self.assertEqual(version.stdout.strip(), "self-improving 2.0.0")
+        self.assertEqual(version.stdout.strip(), f"self-improving {__version__}")
 
     def test_custom_paths_resolve(self) -> None:
         with self.env():
@@ -183,8 +184,20 @@ class SystemTests(unittest.TestCase):
                 "PreToolUse",
                 {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": f"cat {self.memory / 'memory.md'}"}},
             )
+            null_redirect = dispatch(
+                "codex",
+                "PreToolUse",
+                {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": "grep -n 边界 memory.md 2>/dev/null"}},
+            )
+            fd_redirect = dispatch(
+                "codex",
+                "PreToolUse",
+                {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": "wc -l memory.md 2>&1"}},
+            )
         self.assertEqual(relative, 2)
         self.assertEqual(read_only, 0)
+        self.assertEqual(null_redirect, 0)
+        self.assertEqual(fd_redirect, 0)
 
     def test_payload_cannot_override_declared_event(self) -> None:
         with self.env():
