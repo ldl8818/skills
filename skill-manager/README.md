@@ -65,8 +65,8 @@ cp -r skills/skill-manager ~/.claude/skills/
 
 ## 设计文档
 
-`SKILL.md` 是给 Claude 读的行为定义，也是唯一的行为真身，里面记着每条规则背后的事故与权衡。
-想改这个 skill，先读它。
+`SKILL.md` 是给 Claude 读的行为定义，只写「怎么用」；每条规则背后的事故与权衡在
+`references/maintenance.md`（数据层契约、实现细节、事故簿）。想改这个 skill，两个都先读。
 
 ## License
 
