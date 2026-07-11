@@ -11,7 +11,7 @@ description: >
 zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
 license: MIT
 update_policy: frozen
-version: 1.8.2
+version: 1.9.0
 ---
 
 # Skill 生命周期管理器

@@ -30,6 +30,7 @@ import re
 import sys
 import json
 import shutil
+import difflib
 import tempfile
 import subprocess
 import urllib.request
@@ -230,13 +231,49 @@ def merge_skill_md(upstream_content, old_content, meta_fields):
     return new
 
 
+def validate_skill_md(content):
+    """落盘后自检：合并有没有把 frontmatter 搞坏。返回缺失的必需字段列表（空 = 通过）。"""
+    meta = parse_frontmatter(content or "")
+    return [k for k in ("name", "description") if not meta.get(k)]
+
+
+HEADER_RE = re.compile(r"^##\s+(.+?)\s*$", re.M)
+
+
+def summarize_change(old_content, new_content):
+    """粗粒度总结这次更新改了什么，供 update 后打印——不做静默换血。
+
+    只挑用户/agent 关心的两类信号：description 变了（决定 Claude 选不选它的
+    那句话）、章节增减（功能新增/废弃的直接信号）。逐行 diff 太啰嗦，不展开。
+    """
+    old_meta = parse_frontmatter(old_content or "")
+    new_meta = parse_frontmatter(new_content or "")
+    lines = []
+    if old_meta.get("description", "") != new_meta.get("description", ""):
+        lines.append("⚠️  description 变了（决定 Claude 选不选它的那句话），建议看一眼还准不准")
+    added = set(HEADER_RE.findall(new_content or "")) - set(HEADER_RE.findall(old_content or ""))
+    removed = set(HEADER_RE.findall(old_content or "")) - set(HEADER_RE.findall(new_content or ""))
+    if added:
+        lines.append(f"新增章节：{'、'.join(sorted(added))}")
+    if removed:
+        lines.append(f"移除章节：{'、'.join(sorted(removed))}（可能是废弃了对应用法）")
+    if not lines:
+        diff = list(difflib.unified_diff(
+            (old_content or "").splitlines(), (new_content or "").splitlines(), lineterm=""))
+        changed = sum(1 for l in diff if l[:1] in "+-" and l[:3] not in ("+++", "---"))
+        if changed:
+            lines.append(f"内容有改动（{changed} 行），未检测到 description/章节层面的明显差异")
+    return lines
+
+
 def merge_skill_dir(src, dst, meta_fields):
-    """上游目录合并进本地：覆盖同名文件，保留本地独有文件。"""
+    """上游目录合并进本地：覆盖同名文件，保留本地独有文件。返回 (旧 SKILL.md, 新 SKILL.md)。"""
     old_md = ""
     dst_md = os.path.join(dst, "SKILL.md")
     if os.path.isfile(dst_md):
         with open(dst_md, encoding="utf-8") as f:
             old_md = f.read()
+    new_md = None
     for root, dirs, files in os.walk(src):
         dirs[:] = [d for d in dirs if d != ".git"]
         rel = os.path.relpath(root, src)
@@ -249,10 +286,12 @@ def merge_skill_dir(src, dst, meta_fields):
             if rel == "." and fn == "SKILL.md":
                 with open(s, encoding="utf-8") as f:
                     upstream = f.read()
+                new_md = merge_skill_md(upstream, old_md, meta_fields)
                 with open(t, "w", encoding="utf-8") as f:
-                    f.write(merge_skill_md(upstream, old_md, meta_fields))
+                    f.write(new_md)
             else:
                 shutil.copy2(s, t)
+    return old_md, new_md
 
 
 def update_direct_skill(skill_name):
@@ -324,7 +363,17 @@ def update_direct_skill(skill_name):
         rel = os.path.relpath(src, tmp)
         if rel != ".":
             fields["github_path"] = rel
-        merge_skill_dir(src, skill_dir, fields)
+        old_md, new_md = merge_skill_dir(src, skill_dir, fields)
+
+        missing = validate_skill_md(new_md)
+        if missing:
+            shutil.rmtree(skill_dir, ignore_errors=True)
+            shutil.copytree(backup_dir, skill_dir, symlinks=True)
+            print(f"❌ 合并后 SKILL.md 缺少必需字段 {missing}，已从备份回滚，本地未改动")
+            return False
+
+        for line in summarize_change(old_md, new_md):
+            print(f"   {line}")
         print(f"✅ {skill_name} 已合并更新到 {remote_hash[:8]}（本地独有文件与 User-Learned 段已保留）")
         return True
     except Exception as e:
