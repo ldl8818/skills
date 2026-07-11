@@ -1,0 +1,49 @@
+name: self-improving
+
+on:
+  push:
+    paths:
+      - "self-improving/**"
+      - ".github/workflows/self-improving.yml"
+  pull_request:
+    paths:
+      - "self-improving/**"
+      - ".github/workflows/self-improving.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run unit and lifecycle tests
+        working-directory: self-improving
+        run: python -m unittest discover -s tests -v
+      - name: Compile package
+        working-directory: self-improving
+        run: python -m compileall -q self_improving
+      - name: Build and smoke-test installed CLI
+        working-directory: self-improving
+        run: |
+          python -m venv "$RUNNER_TEMP/self-improving-venv"
+          "$RUNNER_TEMP/self-improving-venv/bin/pip" install .
+          HOME="$RUNNER_TEMP/self-improving-home" \
+            "$RUNNER_TEMP/self-improving-venv/bin/self-improving" init \
+              --agents claude \
+              --memory-root "$RUNNER_TEMP/self-improving-memory"
+          HOME="$RUNNER_TEMP/self-improving-home" \
+            "$RUNNER_TEMP/self-improving-venv/bin/self-improving" sync --check
+          test -f "$RUNNER_TEMP/self-improving-home/.claude/skills/self-improving/SKILL.md"
+          test -f "$RUNNER_TEMP/self-improving-home/.claude/skills/self-improving/templates/config.json"
+          test -f "$RUNNER_TEMP/self-improving-home/.claude/skills/self-improving/examples/hook-payloads/codex-stop.json"
+          HOME="$RUNNER_TEMP/self-improving-home" \
+            "$RUNNER_TEMP/self-improving-venv/bin/self-improving" uninstall --keep-data
+          test -f "$RUNNER_TEMP/self-improving-memory/memory.md"

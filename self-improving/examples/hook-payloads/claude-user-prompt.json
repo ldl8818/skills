@@ -1,0 +1,9 @@
+{
+  "cwd": "/workspace",
+  "hook_event_name": "UserPromptSubmit",
+  "permission_mode": "default",
+  "prompt": "不对，应该先核验事实",
+  "prompt_id": "example-prompt",
+  "session_id": "example-session",
+  "transcript_path": "/state/transcript.jsonl"
+}

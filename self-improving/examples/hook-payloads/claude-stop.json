@@ -1,0 +1,12 @@
+{
+  "background_tasks": [],
+  "cwd": "/workspace",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "done",
+  "permission_mode": "default",
+  "prompt_id": "example-prompt",
+  "session_crons": [],
+  "session_id": "example-session",
+  "stop_hook_active": false,
+  "transcript_path": "/state/transcript.jsonl"
+}

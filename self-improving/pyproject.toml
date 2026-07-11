@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "self-improving-memory"
+version = "2.0.0"
+description = "Configurable cross-agent memory and correction workflow for Claude Code and Codex"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+[project.scripts]
+self-improving = "self_improving.cli:main"
+
+[tool.setuptools]
+packages = ["self_improving", "self_improving.hooks"]
+
+[tool.setuptools.data-files]
+self_improving_skill = ["SKILL.md", "README.md", "CHANGELOG.md", "LICENSE"]
+"self_improving_skill/docs" = ["docs/*.md"]
+"self_improving_skill/templates" = ["templates/*.md", "templates/*.json"]
+"self_improving_skill/examples" = ["examples/*.json"]
+"self_improving_skill/examples/hook-payloads" = ["examples/hook-payloads/*.json"]
+
+[project.urls]
+Repository = "https://github.com/ldl8818/skills"

@@ -1,0 +1,11 @@
+{
+  "cwd": "/workspace",
+  "hook_event_name": "PreToolUse",
+  "permission_mode": "default",
+  "prompt_id": "example-prompt",
+  "session_id": "example-session",
+  "tool_input": {"command": "pwd", "description": "Example command"},
+  "tool_name": "Bash",
+  "tool_use_id": "example-tool",
+  "transcript_path": "/state/transcript.jsonl"
+}
