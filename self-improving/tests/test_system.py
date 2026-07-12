@@ -461,53 +461,35 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(claude_read_only, 0)
         self.assertEqual(output.getvalue(), "")
 
-        with self.env():
-            review_bypass = dispatch(
-                "codex",
-                "PreToolUse",
-                {"tool_name": "Bash", "tool_input": {"command": "python3 -m self_improving review approve --fingerprint x --correct y --scope global"}},
-            )
-        self.assertEqual(review_bypass, 2)
+        # Codex（0.144+）解析同一套 ask 协议：守门命中同样弹框请用户批准。
+        def codex_decision(payload: dict) -> tuple[int, str]:
+            with self.env():
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    code = dispatch("codex", "PreToolUse", payload)
+            return code, output.getvalue()
 
-        with self.env():
-            api_bypass = dispatch(
-                "codex",
-                "PreToolUse",
-                {"tool_name": "Bash", "tool_input": {"command": "python3 -c 'from self_improving.review import decide'"}},
-            )
-        self.assertEqual(api_bypass, 2)
+        for command in (
+            "python3 -m self_improving review approve --fingerprint x --correct y --scope global",
+            "python3 -c 'from self_improving.review import decide'",
+        ):
+            code, text = codex_decision({"tool_name": "Bash", "tool_input": {"command": command}})
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "ask")
 
-        with self.env():
-            relative = dispatch(
-                "codex",
-                "PreToolUse",
-                {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": "printf hacked >> memory.md"}},
-            )
-            read_only = dispatch(
-                "codex",
-                "PreToolUse",
-                {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": f"cat {self.memory / 'memory.md'}"}},
-            )
-            null_redirect = dispatch(
-                "codex",
-                "PreToolUse",
-                {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": "grep -n 边界 memory.md 2>/dev/null"}},
-            )
-            fd_redirect = dispatch(
-                "codex",
-                "PreToolUse",
-                {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": "wc -l memory.md 2>&1"}},
-            )
-            relative_correction = dispatch(
-                "codex",
-                "PreToolUse",
-                {"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": "sed -i '' 's/rejected/active/' corrections.md"}},
-            )
-        self.assertEqual(relative, 2)
-        self.assertEqual(read_only, 0)
-        self.assertEqual(null_redirect, 0)
-        self.assertEqual(fd_redirect, 0)
-        self.assertEqual(relative_correction, 2)
+        for command, expects_ask in (
+            ("printf hacked >> memory.md", True),
+            (f"cat {self.memory / 'memory.md'}", False),
+            ("grep -n 边界 memory.md 2>/dev/null", False),
+            ("wc -l memory.md 2>&1", False),
+            ("sed -i '' 's/rejected/active/' corrections.md", True),
+        ):
+            code, text = codex_decision({"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": command}})
+            self.assertEqual(code, 0)
+            if expects_ask:
+                self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "ask")
+            else:
+                self.assertEqual(text, "")
 
     def test_payload_cannot_override_declared_event(self) -> None:
         with self.env():

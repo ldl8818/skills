@@ -32,14 +32,13 @@ content — cannot forge it.
 ## Codex
 The installer uses the same lifecycle names but a separate adapter. Codex currently applies Pre/Post Tool Hooks to shell commands, ignores matchers for UserPromptSubmit and Stop, and uses startup/resume matching for SessionStart.
 
-`PreToolUse` hard-blocks direct writes and common relative, absolute and `$HOME`
-shell writes to the configured `memory.md`, `corrections.md` and verified JSONL store. It also refuses approval/rejection commands invoked through an Agent shell. Codex has no equivalent of the Claude Code `ask` permission dialog, so the block stays unconditional there. Because arbitrary shell syntax
+`PreToolUse` guards direct writes and common relative, absolute and `$HOME`
+shell writes to the configured `memory.md`, `corrections.md` and verified JSONL store, as well as approval/rejection commands invoked through an Agent shell. Since 2.5.0 the guard emits the same `ask` permission decision as on Claude Code — codex-cli 0.144.1 verifiably parses the identical `hookSpecificOutput` protocol, so the user approves or rejects the specific call in the Codex permission dialog. Codex versions too old to parse hook decisions do not enforce the guard; upgrade Codex. Because arbitrary shell syntax
 cannot be parsed safely with string matching, this is an accidental-write guard,
 not a complete sandbox or access-control mechanism. Code running as the same OS
 user can deliberately call internal Python APIs or obfuscate a write. Keep
-private memory under version control when audit and rollback matter, and run
-approval/revocation commands yourself in a normal terminal rather than asking
-an Agent to do so.
+private memory under version control when audit and rollback matter, and only
+approve permission dialogs whose command you have actually read.
 
 Installation must preserve unrelated Hooks such as status or notification integrations. After Codex upgrades, run `doctor` and a real-session smoke test because Hook payload fields may evolve.
 

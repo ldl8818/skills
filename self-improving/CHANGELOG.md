@@ -1,4 +1,7 @@
 # Changelog
+## 2.5.0 - 2026-07-12
+- Codex authority-write guard now emits the same PreToolUse `ask` permission decision as Claude Code, verified against codex-cli 0.144.1 which parses the identical `hookSpecificOutput` protocol. One-click batch approval now works the same way on both platforms; no more hand-pasting commands into a terminal. Codex versions too old to parse hook decisions do not enforce the guard — upgrade Codex.
+
 ## 2.4.0 - 2026-07-12
 - Add an agent pre-review path toward low-friction learning: `review list --json` emits machine-readable pending candidates, and `SessionStart` injects a review reminder with pre-review guidance once pending candidates reach the reminder threshold. Agents draft distilled rules and recommendations; approval still requires explicit user consent in conversation plus the client permission dialog, and raw candidates are still never injected.
 - Recognize Chinese memory directory names (`领域知识`, `项目`, `创作风格`, `归档`, `草稿`) as index categories alongside the legacy English names, whose labels now match (`archive` → `归档`, `styles` → `创作风格`).

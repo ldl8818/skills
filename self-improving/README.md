@@ -13,7 +13,7 @@ A configurable, review-gated memory system for Claude Code and Codex. It capture
   → Claude Code 与 Codex 下次会话自动采用
 ```
 
-正常工作流中，未经批准的候选不会成为 Agent 指令。系统不会自己判断真理，也不会把网页、邮件或命令错误自动晋升为权威记忆。在 Claude Code 中，Agent 写权威文件会弹出权限确认框，由你当场批准或拒绝这一次调用（2.3.0 起）；Codex 端保持无条件硬拦。需要注意：Hook 是防误操作和流程守门，不是把同一 macOS/Linux 用户下的任意 Shell 变成低权限沙箱。
+正常工作流中，未经批准的候选不会成为 Agent 指令。系统不会自己判断真理，也不会把网页、邮件或命令错误自动晋升为权威记忆。Agent 写权威文件会弹出权限确认框，由你当场批准或拒绝这一次调用（Claude Code 2.3.0 起；Codex 0.144+ 2.5.0 起，更旧的 Codex 不解析决策输出、守门不生效，请升级）。需要注意：Hook 是防误操作和流程守门，不是把同一 macOS/Linux 用户下的任意 Shell 变成低权限沙箱。
 
 ## Requirements
 - Python 3.11+
