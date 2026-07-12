@@ -1,4 +1,8 @@
 # Changelog
+## 2.4.0 - 2026-07-12
+- Add an agent pre-review path toward low-friction learning: `review list --json` emits machine-readable pending candidates, and `SessionStart` injects a review reminder with pre-review guidance once pending candidates reach the reminder threshold. Agents draft distilled rules and recommendations; approval still requires explicit user consent in conversation plus the client permission dialog, and raw candidates are still never injected.
+- Recognize Chinese memory directory names (`领域知识`, `项目`, `创作风格`, `归档`, `草稿`) as index categories alongside the legacy English names, whose labels now match (`archive` → `归档`, `styles` → `创作风格`).
+
 ## 2.3.0 - 2026-07-12
 - Claude Code authority-write guard now returns a PreToolUse `ask` decision instead of a hard block: the user approves or rejects the specific write in the client permission dialog, which in-session text (including injected content) cannot forge. Codex keeps the hard block because it has no equivalent ask mechanism.
 - Add `方案` as a recognized memory index category alongside the legacy `设计` directory name.

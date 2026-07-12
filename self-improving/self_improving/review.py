@@ -15,12 +15,25 @@ ROW = re.compile(r"^\| (?P<timestamp>[^|]+) \| (?P<source>[^|]+) \| (?P<candidat
 STABLE_LEGACY_ID = re.compile(r"^legacy:[0-9a-f]{12}$")
 
 
-def list_candidates(root: Path) -> list[str]:
+def candidate_entries(root: Path) -> list[dict]:
     path = root / ".learnings/CORRECTIONS_INBOX.md"
     if not path.exists():
         return []
     rows = [match for line in path.read_text(encoding="utf-8").splitlines() if (match := ROW.match(line))]
-    return [f"{row['fingerprint']} | {row['source'].strip()} | {row['candidate'].strip()}" for row in rows if row["status"].strip() == "candidate"]
+    return [
+        {
+            "fingerprint": row["fingerprint"],
+            "timestamp": row["timestamp"].strip(),
+            "source": row["source"].strip(),
+            "candidate": row["candidate"].strip(),
+        }
+        for row in rows
+        if row["status"].strip() == "candidate"
+    ]
+
+
+def list_candidates(root: Path) -> list[str]:
+    return [f"{entry['fingerprint']} | {entry['source']} | {entry['candidate']}" for entry in candidate_entries(root)]
 
 
 def legacy_entries(root: Path) -> list[dict]:

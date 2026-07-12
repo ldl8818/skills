@@ -25,10 +25,15 @@ def _category(relative: Path) -> str:
     if relative.name in {"memory.md", "corrections.md"} or len(relative.parts) == 1:
         return "核心 / 架构"
     return {
-        "domains": "领域",
+        "domains": "领域知识",
         "projects": "项目",
-        "styles": "风格",
-        "archive": "冷存储",
+        "styles": "创作风格",
+        "archive": "归档",
+        "领域知识": "领域知识",
+        "项目": "项目",
+        "创作风格": "创作风格",
+        "归档": "归档",
+        "草稿": "草稿",
         "设计": "设计",
         "方案": "方案",
         ".learnings": "候选学习",

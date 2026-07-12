@@ -540,6 +540,24 @@ class SystemTests(unittest.TestCase):
         sync_index(self.memory)
         self.assertEqual(path.read_text(), first)
 
+    def test_candidate_entries_json_and_session_start_review_reminder(self) -> None:
+        from self_improving.review import candidate_entries
+        from self_improving.storage import append_candidate
+
+        state = self.home / "state"
+        for text in ("规则甲", "规则乙", "规则丙"):
+            append_candidate(self.memory, state, "claude-user-prompt", text, 500)
+        entries = candidate_entries(self.memory)
+        self.assertEqual(len(entries), 3)
+        self.assertTrue(all(entry["fingerprint"].startswith("[fp:") for entry in entries))
+        self.assertIn("规则甲", entries[0]["candidate"])
+        with self.env():
+            output = io.StringIO()
+            with redirect_stdout(output):
+                dispatch("claude", "SessionStart", {"hook_event_name": "SessionStart"})
+        self.assertIn('<memory-review-reminder pending="3">', output.getvalue())
+        self.assertIn("review list --json", output.getvalue())
+
     def test_local_link_check_and_secret_redaction(self) -> None:
         note = self.memory / "2026-07-11-note.md"
         note.write_text("# Note\n\n[missing](missing.md)\n")

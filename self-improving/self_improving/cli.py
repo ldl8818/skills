@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime
+import json
 from pathlib import Path
 import shutil
 import sys
@@ -16,7 +17,7 @@ from self_improving.installer import install_hooks, install_skill_links, uninsta
 from self_improving.indexing import sync_index
 from self_improving.migration import discover_legacy, write_manifest
 from self_improving.paths import PACKAGE_ROOT, default_config_path, expand_path
-from self_improving.review import decide, import_legacy, list_candidates, list_legacy, revoke
+from self_improving.review import candidate_entries, decide, import_legacy, list_candidates, list_legacy, revoke
 from self_improving.storage import initialize_memory, validate_delete_target
 
 
@@ -88,6 +89,9 @@ def command_review(args: argparse.Namespace) -> int:
     root = Path(config["memory_root"])
     state_root = Path(config["state_root"])
     if args.review_action == "list":
+        if args.json:
+            print(json.dumps(candidate_entries(root), ensure_ascii=False, indent=2))
+            return 0
         rows = list_candidates(root)
         print("\n".join(rows) if rows else "没有待审核候选。")
         return 0
@@ -207,7 +211,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     review = sub.add_parser("review")
     review_sub = review.add_subparsers(dest="review_action", required=True)
-    review_sub.add_parser("list")
+    list_action = review_sub.add_parser("list")
+    list_action.add_argument("--json", action="store_true", help="machine-readable output for agent pre-review")
     review_sub.add_parser("legacy-list")
     for name in ("approve", "reject"):
         action = review_sub.add_parser(name)

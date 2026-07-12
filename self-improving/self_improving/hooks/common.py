@@ -18,6 +18,7 @@ from self_improving.storage import VERIFIED_RELATIVE, append_candidate, append_e
 
 CORRECTION = re.compile(r"你又错了|我说过|你怎么又|不对|不是这样|应该是|应该用|记住|别忘了|remember|stop doing", re.I)
 ERROR = re.compile(r"error:|failed|command not found|no such file|permission denied|fatal:|exception|traceback|non-zero|interrupted", re.I)
+REVIEW_REMINDER_THRESHOLD = 3
 
 
 def _schema_shape(value):
@@ -123,10 +124,20 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
                 for answer in corrections:
                     print(f"- {answer}")
                 print("</verified-corrections>")
+        pending = pending_correction_count(root)
+        if pending >= REVIEW_REMINDER_THRESHOLD:
+            print(
+                f'<memory-review-reminder pending="{pending}">'
+                f"纠错候选箱已有 {pending} 条待审。请在合适时机向用户提议预审："
+                "运行 python3 -m self_improving review list --json 读取候选，"
+                "逐条提炼规则草稿并给出批准/拒绝建议与作用范围，经用户明确同意后再执行 review approve/reject"
+                "（多条可用 && 串联成一条命令）。未经用户同意禁止批准。"
+                "</memory-review-reminder>"
+            )
         return 0
     if event.event == "Stop":
         pending = pending_correction_count(root)
-        if pending >= 3:
+        if pending >= REVIEW_REMINDER_THRESHOLD:
             print(f'<memory-review-reminder pending="{pending}">请审核纠错候选。</memory-review-reminder>')
         return 0
     if not persistence_enabled(config):

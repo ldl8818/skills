@@ -16,6 +16,11 @@ the configured count and character budgets, and emits them in a separate
 `<verified-corrections>` block. Raw candidate and error files are never read as
 instructions. If any approval-ledger event is malformed, verified-correction
 injection fails closed for that session and `doctor` reports a hard failure.
+When pending candidates reach the reminder threshold (3), `SessionStart` also
+injects a review reminder that points the agent at the pre-review flow
+(`review list --json`, draft rules and recommendations, then user-confirmed
+batch approval). The reminder is guidance only; raw candidates are never
+injected.
 
 At `PreToolUse`, writes to the authority files (`memory.md`, `corrections.md`,
 the verified JSONL ledger) and shell-invoked approval commands emit an `ask`
