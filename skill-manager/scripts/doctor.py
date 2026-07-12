@@ -49,7 +49,12 @@ def trash(path):
     if shutil.which("trash"):
         subprocess.run(["trash", path], check=True)
     else:
-        shutil.rmtree(path, ignore_errors=True)
+        archive = os.path.join(core.CLAUDE_DIR, "skills-archive", "_doctor_removed")
+        os.makedirs(archive, exist_ok=True)
+        target = os.path.join(archive, os.path.basename(path))
+        if os.path.exists(target):
+            target += f".{os.getpid()}"
+        shutil.move(path, target)
 
 
 class Report:

@@ -7,16 +7,17 @@
   「已安装」，让人误判它们还在占用上下文。同期还发现 installed_plugins.json
   可以指向一个不存在的目录（baoyu 更新中断），项目级插件静默失效且无人察觉。
 
-  根因是「状态散落在 6 处、每个脚本各读一套」。本模块把这 6 处归集成
+  根因是「状态散落在 7 处、每个脚本各读一套」。本模块把这 7 处归集成
   唯一事实来源，list / check / update / toggle / doctor / bump 全部走这里。
 
-真实状态的 6 个来源：
+真实状态的 7 个来源：
   1. ~/.claude/skills/<name>/SKILL.md            全局直装（.disabled 后缀 = 禁用）
   2. <project>/.claude/skills/<name>/SKILL.md    项目直装
   3. ~/.claude/plugins/installed_plugins.json    插件的安装路径与版本
   4. ~/.claude/settings.json  → enabledPlugins   插件的全局启用状态
   5. <project>/.claude/settings.json → enabledPlugins  插件的项目级启用状态
   6. ~/.claude/commands/*.md                     自定义斜杠命令
+  7. ~/.agents/.skill-lock.json                  安装器来源记录
 
 版本语义（见 SKILL.md「版本规范」）：
   本地/拷贝/冻结  → 人工 semver（1.0.0），起手 1.0.0
@@ -31,6 +32,7 @@ import json
 import filecmp
 import hashlib
 import subprocess
+import tempfile
 import unicodedata
 from datetime import datetime, date
 
@@ -83,15 +85,69 @@ def read_json(path, default=None):
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except FileNotFoundError:
         return {} if default is None else default
 
 
 def write_json(path, data):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        f.write("\n")
+    """原子写 JSON；损坏的旧文件绝不被空表静默覆盖。"""
+    parent = os.path.dirname(path)
+    os.makedirs(parent, exist_ok=True)
+    mode = os.stat(path).st_mode & 0o777 if os.path.exists(path) else 0o600
+    fd, tmp = tempfile.mkstemp(prefix=".skill-manager-", dir=parent, text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def write_text_atomic(path, text):
+    parent = os.path.dirname(path)
+    os.makedirs(parent, exist_ok=True)
+    mode = os.stat(path).st_mode & 0o777 if os.path.exists(path) else 0o644
+    fd, tmp = tempfile.mkstemp(prefix=".skill-manager-", dir=parent, text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def safe_component(value, label="名称"):
+    """只接受一个路径组件，拒绝绝对路径、分隔符和点目录。"""
+    value = str(value or "")
+    if (not value or value in (".", "..") or os.path.isabs(value)
+            or os.path.basename(value) != value or "/" in value or "\\" in value
+            or "\x00" in value):
+        raise ValueError(f"{label}不是安全的单段名称：{value!r}")
+    return value
+
+
+def contained_path(root, *parts):
+    """返回 root 内的规范化路径；逃逸时拒绝。"""
+    base = os.path.realpath(root)
+    candidate = os.path.realpath(os.path.join(root, *parts))
+    if os.path.commonpath((base, candidate)) != base:
+        raise ValueError(f"路径逃逸允许范围：{candidate}")
+    return candidate
 
 
 # ── frontmatter 解析（免 PyYAML 依赖，任何 python3 可跑）───
@@ -110,9 +166,21 @@ def parse_frontmatter(text):
         line = lines[i]
         if line.strip() == "---":
             break
+        nested = re.match(r"^  ([A-Za-z_][\w.-]*):\s*(.*)$", line)
+        if nested and any(l.strip() == "metadata:" for l in lines[1:i]):
+            key, val = nested.group(1), nested.group(2).strip()
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+                val = val[1:-1]
+            meta[key] = val
+            i += 1
+            continue
         m = re.match(r"^([A-Za-z_][\w.-]*):\s*(.*)$", line)
         if m:
             key, val = m.group(1), m.group(2).strip()
+            if key == "metadata" and val == "":
+                meta["metadata"] = ""
+                i += 1
+                continue
             if val in (">", "|", ">-", "|-", ""):
                 block = []
                 j = i + 1
@@ -158,18 +226,30 @@ def set_frontmatter_field(path, key, value):
     except StopIteration:
         raise ValueError(f"{path} 的 frontmatter 没有闭合")
 
-    val = f'"{value}"' if isinstance(value, str) and (":" in value or "#" in value) else value
-    new_line = f"{key}: {val}"
+    val = json.dumps(value, ensure_ascii=False) if isinstance(value, str) else value
+    managed = key in MANAGED_FIELDS or key in ("source", "update_policy", "self_mutating")
+    new_line = f"  {key}: {val}" if managed else f"{key}: {val}"
 
-    for i in range(1, end):
-        if re.match(rf"^{re.escape(key)}:\s", lines[i]) or lines[i].strip() == f"{key}:":
-            lines[i] = new_line
-            break
+    if managed:
+        lines = [line for i, line in enumerate(lines)
+                 if not (1 <= i < end and re.match(
+                     rf"^\s*{re.escape(key)}:\s", line))]
+        end = next(i for i in range(1, len(lines)) if lines[i].strip() == "---")
+        metadata_line = next(
+            (i for i in range(1, end) if lines[i].strip() == "metadata:"), None)
+        if metadata_line is None:
+            lines.insert(end, "metadata:")
+            metadata_line = end
+        lines.insert(metadata_line + 1, new_line)
     else:
-        lines.insert(end, new_line)
+        for i in range(1, end):
+            if re.match(rf"^{re.escape(key)}:\s", lines[i]) or lines[i].strip() == f"{key}:":
+                lines[i] = new_line
+                break
+        else:
+            lines.insert(end, new_line)
 
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+    write_text_atomic(path, "\n".join(lines))
 
 
 def remove_frontmatter_field(path, key):
@@ -183,11 +263,10 @@ def remove_frontmatter_field(path, key):
     except StopIteration:
         return False
     kept = [l for i, l in enumerate(lines)
-            if not (1 <= i < end and re.match(rf"^{re.escape(key)}:\s", l))]
+            if not (1 <= i < end and re.match(rf"^\s*{re.escape(key)}:\s", l))]
     if len(kept) == len(lines):
         return False
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("\n".join(kept))
+    write_text_atomic(path, "\n".join(kept))
     return True
 
 
@@ -231,7 +310,13 @@ def strip_managed_fields(text, extra=()):
         fields.append("description")
     kept = [l for i, l in enumerate(lines)
             if not (1 <= i < end and any(
-                re.match(rf"^{re.escape(k)}:\s", l) for k in fields))]
+                re.match(rf"^\s*{re.escape(k)}:\s", l) for k in fields))]
+    for i, line in enumerate(list(kept)):
+        if line.strip() == "metadata:":
+            following = kept[i + 1] if i + 1 < len(kept) else "---"
+            if not following.startswith((" ", "\t")):
+                kept.pop(i)
+            break
     return "\n".join(kept)
 
 
@@ -371,7 +456,7 @@ def is_project_dir(path):
     """有项目级 skill 或项目级插件配置，才算一个「有 skill 的项目」。
 
     HOME 和 ~/.claude 必须排除：~/.claude/skills 就是全局 skill 目录，
-    把 HOME 当成项目会让 27 个全局 skill 又被当作「项目:dylan」重列一遍。
+    把 HOME 当成项目会让全局 skill 又被当作「项目:alice」重列一遍。
     以前靠注册表里碰巧没有 HOME 才没暴露；现在项目会从会话记录自动发现，
     这个坑就在路上了，堵在源头。
     """
@@ -404,8 +489,8 @@ def _session_cwd(jsonl, max_lines=200):
     """从会话 .jsonl 里读出权威的项目路径。
 
     会话目录名是把 `/` 换成 `-` 编码的，反解有歧义 ——
-    `-Users-dylan-dev-caipiao-feature` 既可能是 dev/caipiao-feature
-    也可能是 dev/caipiao/feature，光看名字分不出来。文件内的 cwd 字段是
+    `-home-alice-dev-demo-feature` 既可能是 dev/demo-feature
+    也可能是 dev/demo/feature，光看名字分不出来。文件内的 cwd 字段是
     权威路径，读它就没歧义。cwd 不一定在第一行，扫前若干行即可。
     """
     try:
@@ -695,7 +780,14 @@ def resolve_target(name, quiet=False):
     registry = read_json(INSTALLED_PLUGINS_JSON, {}).get("plugins", {})
 
     if "@" in name:
+        for part in name.split("@", 1):
+            safe_component(part, "插件名")
         return "plugin", name, None
+
+    try:
+        safe_component(name, "skill 名")
+    except ValueError as exc:
+        return None, None, str(exc)
 
     if os.path.isfile(os.path.join(GLOBAL_SKILLS_DIR, name, "SKILL.md")):
         return "skill", name, None

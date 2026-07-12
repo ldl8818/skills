@@ -22,6 +22,7 @@
 import os
 import sys
 import shutil
+import copy
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -32,8 +33,10 @@ ARCHIVE_ROOT = os.path.join(core.CLAUDE_DIR, "skills-archive", "_deleted")
 
 def archive_dir(path, label):
     """把目录移进归档区（而非 rmtree），返回归档后的路径。"""
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    core.safe_component(label, "归档标签")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     dest = os.path.join(ARCHIVE_ROOT, f"{label}.{ts}")
+    core.contained_path(ARCHIVE_ROOT, os.path.basename(dest))
     os.makedirs(ARCHIVE_ROOT, exist_ok=True)
     shutil.move(path, dest)
     return dest
@@ -41,17 +44,19 @@ def archive_dir(path, label):
 
 # ── 删直装 skill ──────────────────────────────────────────
 
-def delete_direct_skill(name, dry_run=False):
-    skill_dir = os.path.join(core.GLOBAL_SKILLS_DIR, name)
+def delete_direct_skill(name, dry_run=False, project=None):
+    core.safe_component(name, "skill 名")
+    root = os.path.join(os.path.abspath(project), ".claude", "skills") if project else core.GLOBAL_SKILLS_DIR
+    skill_dir = os.path.join(root, name)
     if not os.path.isdir(skill_dir):
-        print(f"❌ {name} 不在 ~/.claude/skills/ 下")
+        print(f"❌ {name} 不在 {root} 下")
         return False
 
     fps = core.read_json(core.FINGERPRINTS, {})
     zh = core.read_json(core.DESCRIPTIONS_ZH, {})
     # 指纹的 key 是 core._make_direct_skill 里的 f"{scope}:{name}"，不是裸名。
     # 拿裸名去查表永远查不中，删了也清不掉——旧版就是这么漏的。
-    fp_key = f"global:{name}"
+    fp_key = f"{os.path.abspath(project) if project else 'global'}:{name}"
 
     print(f"将删除 skill：{name}")
     print(f"   目录       {skill_dir}")
@@ -64,12 +69,18 @@ def delete_direct_skill(name, dry_run=False):
         return True
 
     dest = archive_dir(skill_dir, name)
-    if fp_key in fps:
-        del fps[fp_key]
-        core.write_json(core.FINGERPRINTS, fps)
-    if name in zh:
-        del zh[name]
-        core.write_json(core.DESCRIPTIONS_ZH, zh)
+    try:
+        if fp_key in fps:
+            del fps[fp_key]
+            core.write_json(core.FINGERPRINTS, fps)
+        if name in zh:
+            del zh[name]
+            core.write_json(core.DESCRIPTIONS_ZH, zh)
+    except Exception:
+        if os.path.exists(dest) and not os.path.exists(skill_dir):
+            os.makedirs(os.path.dirname(skill_dir), exist_ok=True)
+            shutil.move(dest, skill_dir)
+        raise
     print(f"\n✅ 已删除 {name}")
     print(f"📦 已归档到 {dest}（后悔了搬回 ~/.claude/skills/ 即可）")
     return True
@@ -112,6 +123,7 @@ def _plugin_data_dirs(key):
 
 def delete_plugin(key, dry_run=False):
     registry = core.read_json(core.INSTALLED_PLUGINS_JSON, {})
+    original_registry = copy.deepcopy(registry)
     plugins = registry.get("plugins", {})
     if key not in plugins:
         print(f"❌ 插件 {key} 未安装")
@@ -121,10 +133,21 @@ def delete_plugin(key, dry_run=False):
     install_path = installs[0].get("installPath", "")
     # 连版本目录的父目录一起删（cache/<市场>/<插件名>/），只删版本目录会留个空壳
     plugin_cache = os.path.dirname(install_path) if install_path else ""
+    if plugin_cache:
+        expected_root = os.path.join(core.CLAUDE_DIR, "plugins", "cache")
+        resolved_cache = os.path.realpath(plugin_cache)
+        if os.path.commonpath((os.path.realpath(expected_root), resolved_cache)) != os.path.realpath(expected_root):
+            print(f"❌ 登记的 installPath 越过插件缓存边界，拒绝移动：{install_path}")
+            return False
+        expected_name = key.split("@")[0]
+        if os.path.basename(resolved_cache) != expected_name:
+            print(f"❌ 登记的 installPath 与插件名不匹配，拒绝移动：{install_path}")
+            return False
 
     zh = core.read_json(core.DESCRIPTIONS_ZH, {})
     sub_skills = [s for s in _plugin_skill_names(install_path) if s in zh]
     settings_hits = _settings_with_plugin(key)
+    original_settings = {path: core.read_json(path, {}) for path in settings_hits}
     data_dirs = _plugin_data_dirs(key)
 
     print(f"将删除插件：{key}")
@@ -143,27 +166,36 @@ def delete_plugin(key, dry_run=False):
         return True
 
     dest = ""
-    if plugin_cache and os.path.isdir(plugin_cache):
-        dest = archive_dir(plugin_cache, key.replace("@", "_at_"))
-    for d in data_dirs:
-        # 有数据的一并归档（别静默丢掉用户数据）；空目录直接删
-        if any(os.scandir(d)):
-            archive_dir(d, os.path.basename(d) + ".data")
-        else:
-            os.rmdir(d)
+    moved = []
+    try:
+        if plugin_cache and os.path.isdir(plugin_cache):
+            dest = archive_dir(plugin_cache, key.replace("@", "_at_"))
+            moved.append((dest, plugin_cache))
+        for d in data_dirs:
+            archived = archive_dir(d, os.path.basename(d) + ".data")
+            moved.append((archived, d))
 
-    del plugins[key]
-    core.write_json(core.INSTALLED_PLUGINS_JSON, registry)
+        del plugins[key]
+        core.write_json(core.INSTALLED_PLUGINS_JSON, registry)
 
-    if sub_skills:
-        for s in sub_skills:
-            del zh[s]
-        core.write_json(core.DESCRIPTIONS_ZH, zh)
+        if sub_skills:
+            for s in sub_skills:
+                del zh[s]
+            core.write_json(core.DESCRIPTIONS_ZH, zh)
 
-    for path in settings_hits:
-        data = core.read_json(path, {})
-        del data["enabledPlugins"][key]
-        core.write_json(path, data)
+        for path in settings_hits:
+            data = copy.deepcopy(original_settings[path])
+            del data["enabledPlugins"][key]
+            core.write_json(path, data)
+    except Exception:
+        core.write_json(core.INSTALLED_PLUGINS_JSON, original_registry)
+        for path, data in original_settings.items():
+            core.write_json(path, data)
+        for archived, original in reversed(moved):
+            if os.path.exists(archived) and not os.path.exists(original):
+                os.makedirs(os.path.dirname(original), exist_ok=True)
+                shutil.move(archived, original)
+        raise
 
     print(f"\n✅ 已删除插件 {key}")
     if dest:
@@ -173,6 +205,14 @@ def delete_plugin(key, dry_run=False):
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
+    project = None
+    if "--project" in argv:
+        i = argv.index("--project")
+        if i + 1 >= len(argv):
+            print("❌ --project 后面要跟项目路径")
+            sys.exit(1)
+        project = argv[i + 1]
+        del argv[i:i + 2]
     names = [a for a in argv if not a.startswith("-")]
     flags = {a for a in argv if a.startswith("-")}
 
@@ -184,11 +224,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     dry = "--dry-run" in flags
-    kind, key, err = core.resolve_target(names[0])
+    kind, key, err = ("skill", names[0], None) if project else core.resolve_target(names[0])
     if err:
         print(f"❌ {err}")
         sys.exit(1)
 
     ok = (delete_plugin(key, dry) if kind == "plugin"
-          else delete_direct_skill(key, dry))
+          else delete_direct_skill(key, dry, project))
     sys.exit(0 if ok else 1)

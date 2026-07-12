@@ -34,6 +34,8 @@ import difflib
 import tempfile
 import subprocess
 import urllib.request
+import urllib.parse
+import tarfile
 import concurrent.futures
 from datetime import datetime
 
@@ -55,58 +57,22 @@ SEMVER_TAG = re.compile(r"^v?\d+\.\d+\.\d+$")
 # ── frontmatter 轻量解析（免 PyYAML） ──────────────────────
 
 def parse_frontmatter(text):
-    """解析顶层 key: value（含 >/| 折叠块），返回 dict（值均为 str）。"""
-    meta = {}
-    lines = text.split("\n")
-    if not lines or lines[0].strip() != "---":
-        return meta
-    i = 1
-    while i < len(lines):
-        line = lines[i]
-        if line.strip() == "---":
-            break
-        m = re.match(r"^([A-Za-z_][\w.-]*):\s*(.*)$", line)
-        if m:
-            key, val = m.group(1), m.group(2).strip()
-            if val in (">", "|", ">-", "|-", ""):
-                block = []
-                j = i + 1
-                while j < len(lines) and lines[j].strip() != "---" and (
-                        lines[j].startswith((" ", "\t")) or not lines[j].strip()):
-                    if lines[j].strip():
-                        block.append(lines[j].strip())
-                    j += 1
-                if block:
-                    meta[key] = " ".join(block)
-                    i = j - 1
-                else:
-                    meta[key] = val
-            else:
-                if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
-                    val = val[1:-1]
-                meta[key] = val
-        i += 1
-    return meta
+    return core.parse_frontmatter(text)
 
 
 def set_frontmatter_field(content, key, value):
-    """在 frontmatter 中设置/替换一个字段（保持其余内容原样）。"""
-    lines = content.split("\n")
-    if not lines or lines[0].strip() != "---":
-        return content
-    end = None
-    for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
-            end = i
-            break
-    if end is None:
-        return content
-    for i in range(1, end):
-        if lines[i].startswith(f"{key}:"):
-            lines[i] = f"{key}: {value}"
-            return "\n".join(lines)
-    lines.insert(end, f"{key}: {value}")
-    return "\n".join(lines)
+    fd, path = tempfile.mkstemp(prefix="skill-frontmatter-", text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        core.set_frontmatter_field(path, key, value)
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    finally:
+        try:
+            os.unlink(path)
+        except FileNotFoundError:
+            pass
 
 
 # ── 远端与下载 ────────────────────────────────────────────
@@ -161,14 +127,44 @@ def get_commit_date(github_url, sha):
 
 def download_repo(github_url, ref, dest_dir):
     """下载仓库某个提交的 tarball 并解压到 dest_dir（去掉顶层目录）。"""
-    url = github_url.rstrip("/")
-    tar_url = f"{url}/archive/{ref}.tar.gz"
+    parsed = urllib.parse.urlsplit(github_url)
+    if (parsed.scheme != "https" or parsed.hostname != "github.com"
+            or parsed.username or parsed.password or parsed.query or parsed.fragment):
+        raise ValueError("github_url 只允许无认证信息的 https://github.com/<owner>/<repo>")
+    parts = [p for p in parsed.path.strip("/").removesuffix(".git").split("/") if p]
+    if len(parts) != 2 or any(not re.fullmatch(r"[A-Za-z0-9_.-]+", p) for p in parts):
+        raise ValueError("github_url 的 owner/repo 格式不合法")
+    if not re.fullmatch(r"[0-9a-fA-F]{40}|v?\d+\.\d+\.\d+|HEAD", ref or ""):
+        raise ValueError("下载 ref 不是允许的 commit/tag")
+    tar_url = f"https://github.com/{parts[0]}/{parts[1]}/archive/{ref}.tar.gz"
     os.makedirs(dest_dir, exist_ok=True)
-    proc = subprocess.run(
-        f'curl -fsSL "{tar_url}" | tar -xz -C "{dest_dir}" --strip-components=1',
-        shell=True, timeout=120
-    )
-    return proc.returncode == 0 and os.listdir(dest_dir)
+    archive = os.path.join(dest_dir, ".download.tar.gz")
+    with urllib.request.urlopen(
+            urllib.request.Request(tar_url, headers={"User-Agent": "skill-manager"}),
+            timeout=120) as response, open(archive, "wb") as out:
+        shutil.copyfileobj(response, out)
+    with tarfile.open(archive, "r:gz") as tf:
+        members = tf.getmembers()
+        for member in members:
+            stripped = member.name.split("/", 1)[1] if "/" in member.name else ""
+            if not stripped:
+                continue
+            target = os.path.realpath(os.path.join(dest_dir, stripped))
+            if os.path.commonpath((os.path.realpath(dest_dir), target)) != os.path.realpath(dest_dir):
+                raise ValueError("上游归档包含路径逃逸")
+            if member.issym() or member.islnk() or not (member.isfile() or member.isdir()):
+                raise ValueError("上游归档包含不安全的链接或设备文件")
+            if member.isdir():
+                os.makedirs(target, exist_ok=True)
+            else:
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                source = tf.extractfile(member)
+                if source is None:
+                    raise ValueError("上游归档中的普通文件无法读取")
+                with source, open(target, "wb") as out:
+                    shutil.copyfileobj(source, out)
+    os.unlink(archive)
+    return bool(os.listdir(dest_dir))
 
 
 # ── 直装 skill：整目录合并更新 ─────────────────────────────
@@ -177,7 +173,9 @@ def find_skill_source(extract_root, skill_name, github_path=None):
     """在解压的仓库里定位 skill 源目录（含 SKILL.md）。"""
     candidates = []
     if github_path:
-        candidates.append(os.path.join(extract_root, github_path))
+        if os.path.isabs(github_path) or ".." in github_path.split(os.sep):
+            raise ValueError("github_path 不得是绝对路径或包含 ..")
+        candidates.append(core.contained_path(extract_root, github_path))
     candidates += [
         extract_root,                                       # 单 skill 仓库
         os.path.join(extract_root, "skills", skill_name),   # 常见聚合布局
@@ -294,8 +292,10 @@ def merge_skill_dir(src, dst, meta_fields):
     return old_md, new_md
 
 
-def update_direct_skill(skill_name):
-    skill_dir = os.path.join(SKILLS_DIR, skill_name)
+def update_direct_skill(skill_name, project=None):
+    core.safe_component(skill_name, "skill 名")
+    root = os.path.join(os.path.abspath(project), ".claude", "skills") if project else SKILLS_DIR
+    skill_dir = os.path.realpath(os.path.join(root, skill_name))
     skill_md = os.path.join(skill_dir, "SKILL.md")
     if not os.path.exists(skill_md):
         print(f"❌ {skill_name} 不存在")
@@ -328,13 +328,14 @@ def update_direct_skill(skill_name):
     print(f"📥 目标版本：{target_ref}（{remote_hash[:8]}）")
 
     # 整目录备份（回滚入口，删除请手动清理 _update_backups）
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     backup_dir = os.path.join(BACKUP_ROOT, f"{skill_name}.{ts}")
     os.makedirs(BACKUP_ROOT, exist_ok=True)
     shutil.copytree(skill_dir, backup_dir, symlinks=True)
     print(f"📦 已整目录备份到 skills-archive/_update_backups/{os.path.basename(backup_dir)}")
 
     tmp = tempfile.mkdtemp(prefix="skillupd_")
+    stage = tempfile.mkdtemp(prefix=f".{skill_name}.stage-", dir=os.path.dirname(skill_dir))
     try:
         print(f"📥 下载 {remote_hash[:8]} ...")
         if not download_repo(github_url, remote_hash, tmp):
@@ -363,24 +364,34 @@ def update_direct_skill(skill_name):
         rel = os.path.relpath(src, tmp)
         if rel != ".":
             fields["github_path"] = rel
-        old_md, new_md = merge_skill_dir(src, skill_dir, fields)
+        shutil.rmtree(stage)
+        shutil.copytree(skill_dir, stage, symlinks=True)
+        old_md, new_md = merge_skill_dir(src, stage, fields)
 
         missing = validate_skill_md(new_md)
         if missing:
-            shutil.rmtree(skill_dir, ignore_errors=True)
-            shutil.copytree(backup_dir, skill_dir, symlinks=True)
-            print(f"❌ 合并后 SKILL.md 缺少必需字段 {missing}，已从备份回滚，本地未改动")
+            print(f"❌ 合并后 SKILL.md 缺少必需字段 {missing}，本地未改动")
             return False
+
+        old_live = f"{skill_dir}.old-{os.getpid()}"
+        os.rename(skill_dir, old_live)
+        try:
+            os.rename(stage, skill_dir)
+        except Exception:
+            os.rename(old_live, skill_dir)
+            raise
+        shutil.rmtree(old_live)
 
         for line in summarize_change(old_md, new_md):
             print(f"   {line}")
         print(f"✅ {skill_name} 已合并更新到 {remote_hash[:8]}（本地独有文件与 User-Learned 段已保留）")
         return True
     except Exception as e:
-        print(f"❌ 更新失败: {e}（可从备份恢复: {backup_dir}）")
+        print(f"❌ 更新失败: {e}（在线目录保持原状；备份: {backup_dir}）")
         return False
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+        shutil.rmtree(stage, ignore_errors=True)
 
 
 # ── 插件更新：monorepo 定位 + 验证后提交 ───────────────────
@@ -451,7 +462,11 @@ def update_plugin(plugin_key):
         print(f"❌ 无法连接到 {github_url}")
         return False
 
-    install = registry["plugins"][plugin_key][0]
+    installs = registry["plugins"][plugin_key]
+    if not installs or not isinstance(installs[0], dict):
+        print(f"❌ 插件 {plugin_key} 的登记结构损坏，拒绝更新")
+        return False
+    install = installs[0]
     local_hash = install.get("gitCommitSha", "")
     if local_hash and (remote_hash.startswith(local_hash) or local_hash.startswith(remote_hash[:12])):
         print(f"✅ {plugin_key} 已是最新版本 ({remote_hash[:8]})")
@@ -472,11 +487,12 @@ def update_plugin(plugin_key):
 
         version = plugin_version_of(plugin_root, remote_hash[:12])
         cache_dir = os.path.join(CLAUDE_DIR, "plugins", "cache", marketplace, plugin_name)
-        new_dir = os.path.join(cache_dir, version)
+        core.safe_component(marketplace, "marketplace 名")
+        core.safe_component(plugin_name, "plugin 名")
+        new_dir = core.contained_path(
+            cache_dir, f"{remote_hash[:12]}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}")
         if os.path.abspath(new_dir) == os.path.abspath(install.get("installPath", "")):
             new_dir = os.path.join(cache_dir, remote_hash[:12])
-        if os.path.exists(new_dir):
-            shutil.rmtree(new_dir)
         os.makedirs(cache_dir, exist_ok=True)
         shutil.move(plugin_root, new_dir)
 
@@ -491,8 +507,7 @@ def update_plugin(plugin_key):
             "lastUpdated": datetime.now().isoformat(),
             "gitCommitSha": remote_hash,
         })
-        with open(INSTALLED_PLUGINS_JSON, "w", encoding="utf-8") as f:
-            json.dump(registry, f, indent=4)
+        core.write_json(INSTALLED_PLUGINS_JSON, registry)
 
         old_path = install.get("installPath", "")
         print(f"✅ {plugin_key} 已更新到 v{version} ({remote_hash[:8]})")
@@ -500,6 +515,11 @@ def update_plugin(plugin_key):
             print(f"🗑  旧版本目录可手动清理: {old_path}")
         return True
     except Exception as e:
+        candidate = locals().get("new_dir")
+        if candidate and os.path.isdir(candidate):
+            cache_root = os.path.realpath(os.path.join(CLAUDE_DIR, "plugins", "cache"))
+            if os.path.commonpath((cache_root, os.path.realpath(candidate))) == cache_root:
+                shutil.rmtree(candidate, ignore_errors=True)
         print(f"❌ 更新失败: {e}（登记表未改动，旧版本继续可用）")
         return False
     finally:
@@ -508,7 +528,9 @@ def update_plugin(plugin_key):
 
 # ── 单个更新（名字解析走 core.resolve_target，update / delete 共用） ──
 
-def update_one(name):
+def update_one(name, project=None):
+    if project:
+        return update_direct_skill(name, project)
     kind, key, err = core.resolve_target(name)
     if err:
         print(f"❌ {err}")
@@ -574,6 +596,14 @@ def update_all(dry_run=False):
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
+    project = None
+    if "--project" in argv:
+        i = argv.index("--project")
+        if i + 1 >= len(argv):
+            print("❌ --project 后面要跟项目路径")
+            sys.exit(1)
+        project = argv[i + 1]
+        del argv[i:i + 2]
     names = [a for a in argv if not a.startswith("-")]
     flags = {a for a in argv if a.startswith("-")}
 
@@ -585,11 +615,14 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if not names:
+        if project:
+            print("❌ --project 只能用于更新单个项目级 skill")
+            sys.exit(1)
         sys.exit(0 if update_all(dry_run="--dry-run" in flags) else 1)
 
     if "--dry-run" in flags:
-        kind, key, err = core.resolve_target(names[0])
+        kind, key, err = ("skill", names[0], None) if project else core.resolve_target(names[0])
         print(f"❌ {err}" if err else f"（--dry-run）将更新{'插件' if kind == 'plugin' else 'skill'}：{key}")
         sys.exit(1 if err else 0)
 
-    sys.exit(0 if update_one(names[0]) else 1)
+    sys.exit(0 if update_one(names[0], project) else 1)

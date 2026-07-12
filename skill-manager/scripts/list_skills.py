@@ -11,7 +11,7 @@
 现在启用状态一律从 settings.json 真实读取（见 core.py）。
 
 2026-07-11 二改（项目视图）：
-  · 默认 list 会把「只在别的项目启用」的插件整块印出来（曾在 caipiao 里
+  · 默认 list 会把「只在别的项目启用」的插件整块印出来（例如在 demo-a 里
     印出 creative 的 21 行）—— 根因是插件的生效范围拿全量项目算，
     算完却不筛。现在生效范围照旧全量算（否则看不见 baoyu 只在 creative 开），
     但**只展示视野内的项目**，视野外的折叠成一行摘要。项目越多，收益越大。
@@ -49,8 +49,8 @@ def version_cell(s):
 def scope_projects(label):
     """从 scope_label 反解出项目名。
 
-    直装 skill 是「项目:caipiao」；插件可能同时在多个项目启用，
-    core 会拼成「项目:caipiao/creative」。返回 [] 表示全局。
+    直装 skill 是「项目:demo-a」；插件可能同时在多个项目启用，
+    core 会拼成「项目:demo-a/demo-b」。返回 [] 表示全局。
     """
     if not label.startswith("项目:"):
         return []

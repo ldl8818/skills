@@ -2,16 +2,17 @@
 name: skill-manager
 description: >
   Skill 生命周期管理器。列出、检查更新、更新、启用/禁用、定版本号、自检、删除已安装的 skill。
-  覆盖全局直装（~/.claude/skills/）、项目级（<项目>/.claude/skills/）、
+  覆盖全局直装（~/.claude/skills/）、项目级（项目目录/.claude/skills/）、
   插件（~/.claude/plugins/）三种来源，并区分「装了」和「真正生效」。
   触发词：列出技能、列出所有技能、我有哪些技能、查看 skill、skill 列表、
   检查更新、有没有新版本、更新 skill、启用 skill、禁用 skill、删除 skill、
   skill 体检、skill 自检、升版本号、这个 skill 哪来的、溯源、
   list skills、check updates、enable/disable skill、skill doctor、bump version、trace source。
-zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
 license: MIT
-update_policy: frozen
-version: 1.9.0
+metadata:
+  zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
+  update_policy: frozen
+  version: 2.0.0
 ---
 
 # Skill 生命周期管理器
@@ -40,11 +41,11 @@ version: 1.9.0
 | 列出技能 | `list`（全局 + 当前项目）；`list <项目>`；`list --all [-n N]` 全景，展开最近活跃前 3 个、其余折叠 | `list_skills.py` |
 | 检查更新 | `check`（本地版本 vs 上游最新） | `scan_and_check.py` |
 | 溯源 | `trace <名字> [--repo <URL>] [--write]`；`trace --all --write` 批量 | `trace_source.py` |
-| 更新 | `update <名字>`；无参 = 批量更新所有有新版的；`--dry-run` 只列不做 | `update_skill.py` |
+| 更新 | `update <名字> [--project <路径>]`；无参 = 批量更新所有有新版的；`--dry-run` 只列不做 | `update_skill.py` |
 | 启用 / 禁用 | `enable\|disable <名字> [--project <路径>]` | `toggle_skill.py` |
-| 升版本号 | `bump <名字> [patch\|minor\|major]` | `bump_skill.py` |
+| 升版本号 | `bump <名字> [patch\|minor\|major] [--project <路径>]` | `bump_skill.py` |
 | 体检 | `doctor [--fix]`（`--fix` 只做有依据的补录，绝不发明数据） | `doctor.py` |
-| 删除 | `delete <名字> [--dry-run]` | `delete_skill.py` |
+| 删除 | `delete <名字> [--project <路径>] [--dry-run]` | `delete_skill.py` |
 
 插件写裸名即可，脚本会自动补全 `@市场名`。全部脚本零第三方依赖，`python3` 直接跑。
 
@@ -93,19 +94,21 @@ version: 1.9.0
 
 ## 元数据字段
 
-写在各 skill 自己的 SKILL.md frontmatter 里：
+写在各 skill 自己的 SKILL.md frontmatter 的 `metadata` 中；旧版顶层字段仍可读取，
+后续写入会迁移到规范位置：
 
 ```yaml
-version: 3.31.1               # GitHub 来源用上游版本号；本地/冻结用人工 semver
-zh_description: 一句话中文用途  # 列表显示用；直装写这里，插件只能写 descriptions_zh.json
-source: local                 # 显式声明「自己写的」——不写就是 unknown，不靠推断
-github_url: https://github.com/tw93/Waza   # 来源仓库
-github_hash: <40 位 commit sha>            # 装的是哪个 commit（trace 比对确认）
-github_date: 07-05                         # commit 日期（上游无版本号时显示用）
-github_path: skills/hunt                   # 聚合仓库里的子目录（聚合仓库必填）
-update_policy: frozen                      # 绝版/深度定制：check 显示 🔒，update 拒绝
-self_mutating: true                        # 设计上会自我改写，豁免 dirty 报警
-keep_local_description: true               # description 已本地调优，update 别用上游盖掉
+metadata:
+  version: 3.31.1               # GitHub 来源用上游版本号；本地/冻结用人工 semver
+  zh_description: 一句话中文用途  # 直装写这里，插件走 descriptions_zh.json
+  source: local                 # 显式声明「自己写的」
+  github_url: https://github.com/example/skills
+  github_hash: 0123456789abcdef0123456789abcdef01234567
+  github_date: 07-05
+  github_path: skills/example
+  update_policy: frozen
+  self_mutating: true
+  keep_local_description: true
 ```
 
 `keep_local_description` 存在的原因：`description` 是决定 Claude 选不选这个 skill 的
@@ -123,8 +126,8 @@ keep_local_description: true               # description 已本地调优，updat
 
 - **删除是移走**：移进 `~/.claude/skills-archive/_deleted/<名>.<时间戳>/`，后悔可搬回；
   连带登记（指纹、中文描述、插件缓存/登记/开关）由脚本对称清理。
-- **更新前整目录备份**到 `~/.claude/skills-archive/_update_backups/`；合并式落盘，
-  本地独有文件与本地定制字段保留；任何一步失败都不改动本地。
+- **更新前整目录备份**到 `~/.claude/skills-archive/_update_backups/`；在 staging 中完成
+  合并与验证后原子替换，本地独有文件与本地定制字段保留；失败不改在线目录。
 - **插件更新结构验证通过才写登记表**；失败保留旧版继续可用。
 
 ## 其他约定

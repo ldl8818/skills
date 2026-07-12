@@ -56,11 +56,14 @@ def toggle_plugin(key, enable, project):
     print("   重启 Claude Code 会话后生效")
 
 
-def toggle_direct(name, enable):
+def toggle_direct(name, enable, project=None):
     """在全局和所有已登记项目里找这个 skill。"""
-    roots = [(core.GLOBAL_SKILLS_DIR, "全局")]
-    for p in core.load_projects():
-        roots.append((os.path.join(p, ".claude", "skills"), f"项目 {os.path.basename(p)}"))
+    core.safe_component(name, "skill 名")
+    roots = ([(os.path.join(os.path.abspath(project), ".claude", "skills"),
+               f"项目 {os.path.basename(os.path.abspath(project))}")] if project else
+             [(core.GLOBAL_SKILLS_DIR, "全局")] + [
+                 (os.path.join(p, ".claude", "skills"), f"项目 {os.path.basename(p)}")
+                 for p in core.load_projects()])
 
     for root, where in roots:
         d = os.path.join(root, name)
@@ -95,6 +98,12 @@ def main():
         sys.exit(1)
 
     action, name = sys.argv[1], sys.argv[2]
+    try:
+        if "@" not in name:
+            core.safe_component(name, "skill 名")
+    except ValueError as exc:
+        print(f"❌ {exc}")
+        sys.exit(1)
     enable = action == "enable"
     project = None
     if "--project" in sys.argv:
@@ -107,14 +116,14 @@ def main():
             print(f"❌ 项目路径不存在：{project}")
             sys.exit(1)
 
-    key = resolve_plugin_key(name)
+    project_direct = (project and os.path.isdir(os.path.join(
+        os.path.abspath(project), ".claude", "skills", name)))
+    key = None if project_direct else resolve_plugin_key(name)
     if key:
         toggle_plugin(key, enable, project)
         return
 
-    if project:
-        print("ℹ️  --project 只对插件有意义；直装 skill 放在哪个目录就只在哪生效")
-    if not toggle_direct(name, enable):
+    if not toggle_direct(name, enable, project):
         print(f"❌ 找不到 skill 或插件：{name}")
         print("   用 /skill-manager list 查看全部名字")
         sys.exit(1)

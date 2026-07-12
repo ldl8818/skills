@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Manager"
+  short_description: "安全管理 Skill 的来源、版本、启停、更新与删除"
+  default_prompt: "Use $skill-manager to inspect installed skills and perform the requested lifecycle operation safely."

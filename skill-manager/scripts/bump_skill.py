@@ -26,9 +26,10 @@ else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 
-def find_skill(name):
+def find_skill(name, project=None):
+    wanted = os.path.abspath(project) if project else "global"
     for s in core.collect_all(all_projects=True):
-        if s.name == name and s.source in ("github", "local", "frozen"):
+        if s.name == name and s.scope == wanted and s.source in ("github", "local", "frozen"):
             return s
     return None
 
@@ -37,13 +38,25 @@ def main():
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
-    name = sys.argv[1]
-    level = sys.argv[2] if len(sys.argv) > 2 else "patch"
+    argv = sys.argv[1:]
+    project = None
+    if "--project" in argv:
+        i = argv.index("--project")
+        if i + 1 >= len(argv):
+            print("❌ --project 后面要跟项目路径")
+            sys.exit(1)
+        project = argv[i + 1]
+        del argv[i:i + 2]
+    if not argv:
+        print(__doc__)
+        sys.exit(1)
+    name = argv[0]
+    level = argv[1] if len(argv) > 1 else "patch"
     if level not in ("patch", "minor", "major"):
         print(f"❌ 递增级别只能是 patch / minor / major，收到：{level}")
         sys.exit(1)
 
-    s = find_skill(name)
+    s = find_skill(name, project)
     if not s:
         print(f"❌ 找不到直装 skill：{name}（插件的版本由上游维护，不能 bump）")
         sys.exit(1)
@@ -58,15 +71,21 @@ def main():
     new = core.bump_semver(old, level)
 
     core.set_frontmatter_field(s.md_path, "version", new)
-
-    # 重新记账：指纹和版本号对齐，* 消失
-    fps = core.read_json(core.FINGERPRINTS, {})
-    fps[f"{s.scope}:{name}"] = {
-        "hash": core.fingerprint(s.path),
-        "ident": new,
-        "updated": date.today().isoformat(),
-    }
-    core.write_json(core.FINGERPRINTS, fps)
+    try:
+        # 重新记账：指纹和版本号对齐，* 消失
+        fps = core.read_json(core.FINGERPRINTS, {})
+        fps[f"{s.scope}:{name}"] = {
+            "hash": core.fingerprint(s.path),
+            "ident": new,
+            "updated": date.today().isoformat(),
+        }
+        core.write_json(core.FINGERPRINTS, fps)
+    except Exception:
+        if old:
+            core.set_frontmatter_field(s.md_path, "version", old)
+        else:
+            core.remove_frontmatter_field(s.md_path, "version")
+        raise
 
     if old:
         print(f"✅ {name}  {old} → {new}（{level}）")

@@ -91,7 +91,8 @@ def list_tags(slug):
                             f"https://github.com/{slug}"],
                            capture_output=True, text=True, timeout=25)
         tags = [l.split("refs/tags/")[-1] for l in r.stdout.splitlines()
-                if "refs/tags/" in l and not l.endswith("^{}")]
+                if "refs/tags/" in l and not l.endswith("^{}")
+                and core.SEMVER_TAG.match(l.split("refs/tags/")[-1])]
 
         def key(t):
             nums = re.findall(r"\d+", t)
@@ -103,11 +104,8 @@ def list_tags(slug):
 
 
 def fetch_at(slug, ref, dest):
-    proc = subprocess.run(
-        f'curl -fsSL "https://github.com/{slug}/archive/{ref}.tar.gz" '
-        f'| tar -xz -C "{dest}" --strip-components=1',
-        shell=True, capture_output=True, timeout=120)
-    return proc.returncode == 0 and os.listdir(dest)
+    from update_skill import download_repo
+    return download_repo(f"https://github.com/{slug}", ref, dest)
 
 
 def find_skill_dir(root, name, hint=""):
@@ -192,7 +190,7 @@ def trace(s, repo=None, path_hint=""):
         cands = search_github(s.name)
         if not cands:
             print("    ❌ GitHub 上也没搜到 → 确实来源不明")
-            print(f"       确认是自己写的就跑：/skill-manager mark-local {s.name}")
+            print(f"       确认是自己写的，请在 SKILL.md metadata 下登记 source: local")
             return None
         print("    候选仓库：")
         for c in cands:
