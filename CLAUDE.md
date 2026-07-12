@@ -12,7 +12,7 @@
 - 测试：`cd self-improving && python3 -m unittest discover -s tests`（本机未装 pytest）。
 - 升版本必须同步四处：`self_improving/__init__.py`、`pyproject.toml`、`SKILL.md` frontmatter、`CHANGELOG.md` 新条目。测试断言动态引用 `__version__`，不用改。
 - 升版本后 doctor 的「事件契约」会降为 ⚠（旧版本验证记录按设计作废），由下次真实 Claude/Codex 新会话自动补齐；不得用历史记录冒充当前版本已验证。
-- 行为变更（用户可感知）需同步 `docs/` 相应文件与私人记忆库中的架构文档（`Doraemon跨Agent记忆系统架构.md`，改动时按版本头约定递增 VX.Y.Z）。
+- 行为变更（用户可感知）按受众清单**全量**同步，缺一不发：`docs/hooks.md`、`README.md`、`SKILL.md`、`docs/quickstart-zh.md` 与 `docs/troubleshooting-zh.md`（新手中文指南，2.5.0 时曾漏、最易漏）、私人记忆库架构文档（`Doraemon跨Agent记忆系统架构.md`，按版本头约定递增 VX.Y.Z）。
 - 改完运行：`python3 -m self_improving sync && python3 -m self_improving doctor`。
 
 ## 已知坑
