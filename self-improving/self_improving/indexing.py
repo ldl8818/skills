@@ -30,6 +30,7 @@ def _category(relative: Path) -> str:
         "styles": "风格",
         "archive": "冷存储",
         "设计": "设计",
+        "方案": "方案",
         ".learnings": "候选学习",
     }.get(relative.parts[0], "其他")
 
@@ -73,6 +74,10 @@ def sync_index(root: Path, check: bool = False) -> tuple[bool, Path]:
 def broken_local_links(root: Path) -> list[str]:
     broken: list[str] = []
     for source in root.rglob("*.md"):
+        relative = source.relative_to(root)
+        # 自动捕获的候选/日志（.learnings/）不是文档，其中的不可信文本不做断链检查。
+        if any(part in VOLATILE_PARTS for part in relative.parts):
+            continue
         text = source.read_text(encoding="utf-8")
         for raw in LINK.findall(text):
             target = raw.strip().strip("<>").split("#", 1)[0]

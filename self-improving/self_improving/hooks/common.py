@@ -81,6 +81,17 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
     state_root = Path(config["state_root"])
     _record_schema(state_root, platform, event.event, payload)
     if _dangerous_authority_write(event, root):
+        if platform == "claude":
+            # Claude Code 支持 PreToolUse 的 ask 决策：弹出权限框由用户当场批准，
+            # 批准动作发生在客户端 UI，会话内文本（含注入内容）无法伪造。
+            print(json.dumps({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "ask",
+                    "permissionDecisionReason": "本次调用将写入核心记忆或已验证纠错（权威文件），需要你亲自批准。",
+                }
+            }, ensure_ascii=False))
+            return 0
         print("⛔ 核心记忆和已验证纠错只能通过审核流程修改。", file=sys.stderr)
         return 2
     if event.event == "SessionStart":

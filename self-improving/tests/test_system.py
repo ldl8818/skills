@@ -422,21 +422,44 @@ class SystemTests(unittest.TestCase):
         self.assertIn("全部超过字符预算", learning.detail)
 
     def test_authority_write_is_blocked(self) -> None:
+        # Claude 端：权威写入不硬拦，改为输出 ask 决策交用户当场批准。
         with self.env():
-            result = dispatch(
-                "claude",
-                "PreToolUse",
-                {"tool_name": "Write", "tool_input": {"file_path": str(self.memory / "memory.md")}},
-            )
-        self.assertEqual(result, 2)
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = dispatch(
+                    "claude",
+                    "PreToolUse",
+                    {"tool_name": "Write", "tool_input": {"file_path": str(self.memory / "memory.md")}},
+                )
+        self.assertEqual(result, 0)
+        decision = json.loads(output.getvalue())["hookSpecificOutput"]
+        self.assertEqual(decision["hookEventName"], "PreToolUse")
+        self.assertEqual(decision["permissionDecision"], "ask")
 
         with self.env():
-            correction_write = dispatch(
-                "claude",
-                "PreToolUse",
-                {"tool_name": "Edit", "tool_input": {"file_path": str(self.memory / "corrections.md")}},
-            )
-        self.assertEqual(correction_write, 2)
+            output = io.StringIO()
+            with redirect_stdout(output):
+                correction_write = dispatch(
+                    "claude",
+                    "PreToolUse",
+                    {"tool_name": "Edit", "tool_input": {"file_path": str(self.memory / "corrections.md")}},
+                )
+        self.assertEqual(correction_write, 0)
+        self.assertEqual(
+            json.loads(output.getvalue())["hookSpecificOutput"]["permissionDecision"], "ask"
+        )
+
+        # Claude 端只读调用不弹框：exit 0 且无任何决策输出。
+        with self.env():
+            output = io.StringIO()
+            with redirect_stdout(output):
+                claude_read_only = dispatch(
+                    "claude",
+                    "PreToolUse",
+                    {"tool_name": "Bash", "tool_input": {"command": f"cat {self.memory / 'memory.md'}"}},
+                )
+        self.assertEqual(claude_read_only, 0)
+        self.assertEqual(output.getvalue(), "")
 
         with self.env():
             review_bypass = dispatch(
@@ -520,6 +543,8 @@ class SystemTests(unittest.TestCase):
     def test_local_link_check_and_secret_redaction(self) -> None:
         note = self.memory / "2026-07-11-note.md"
         note.write_text("# Note\n\n[missing](missing.md)\n")
+        captured = self.memory / ".learnings/ERRORS.md"
+        captured.write_text(captured.read_text() + "| now | Bash | 捕获文本 [gone](gone.md) | fp | open_error |\n")
         self.assertEqual(broken_local_links(self.memory), ["2026-07-11-note.md -> missing.md"])
         secret = "api_key=abcdefghijklmnopqrstuvwxyz"
         self.assertTrue(contains_secret(secret))

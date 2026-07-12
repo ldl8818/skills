@@ -17,11 +17,18 @@ the configured count and character budgets, and emits them in a separate
 instructions. If any approval-ledger event is malformed, verified-correction
 injection fails closed for that session and `doctor` reports a hard failure.
 
+At `PreToolUse`, writes to the authority files (`memory.md`, `corrections.md`,
+the verified JSONL ledger) and shell-invoked approval commands emit an `ask`
+permission decision (2.3.0) instead of a hard block: Claude Code shows its
+permission dialog and the user approves or rejects that specific call. The
+approval happens in the client UI, so in-session text — including injected
+content — cannot forge it.
+
 ## Codex
 The installer uses the same lifecycle names but a separate adapter. Codex currently applies Pre/Post Tool Hooks to shell commands, ignores matchers for UserPromptSubmit and Stop, and uses startup/resume matching for SessionStart.
 
-`PreToolUse` prevents direct writes and common relative, absolute and `$HOME`
-shell writes to the configured `memory.md`, `corrections.md` and verified JSONL store. It also refuses approval/rejection commands invoked through an Agent shell. Because arbitrary shell syntax
+`PreToolUse` hard-blocks direct writes and common relative, absolute and `$HOME`
+shell writes to the configured `memory.md`, `corrections.md` and verified JSONL store. It also refuses approval/rejection commands invoked through an Agent shell. Codex has no equivalent of the Claude Code `ask` permission dialog, so the block stays unconditional there. Because arbitrary shell syntax
 cannot be parsed safely with string matching, this is an accidental-write guard,
 not a complete sandbox or access-control mechanism. Code running as the same OS
 user can deliberately call internal Python APIs or obfuscate a write. Keep

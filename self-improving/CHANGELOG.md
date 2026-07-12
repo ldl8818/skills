@@ -1,4 +1,9 @@
 # Changelog
+## 2.3.0 - 2026-07-12
+- Claude Code authority-write guard now returns a PreToolUse `ask` decision instead of a hard block: the user approves or rejects the specific write in the client permission dialog, which in-session text (including injected content) cannot forge. Codex keeps the hard block because it has no equivalent ask mechanism.
+- Add `方案` as a recognized memory index category alongside the legacy `设计` directory name.
+- Stop link-checking auto-captured candidate logs under `.learnings/`: untrusted captured text is not a document and produced false broken-link warnings in `doctor`.
+
 ## 2.2.1 - 2026-07-12
 - Add `review legacy-list` with content-derived stable IDs and an explicit `review import-legacy` path that requires a newly distilled answer and global/project scope.
 - Make the private approval ledger append-only: approval, revocation and re-approval are auditable events in one authoritative file instead of cross-file state changes.
