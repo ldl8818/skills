@@ -2,7 +2,7 @@
 
 A configurable, review-gated memory system for Claude Code and Codex. It captures explicit corrections, waits for human approval, and automatically supplies approved answers to both Agents in later sessions. Program code can be public; user memory remains in a separate private directory.
 
-中文用户请从 [五分钟从零开始](docs/quickstart-zh.md) 阅读。遇到问题看 [中文排错手册](docs/troubleshooting-zh.md)。
+中文用户请从 [五分钟从零开始](docs/quickstart-zh.md) 阅读。遇到问题看 [中文排错手册](docs/troubleshooting-zh.md)。想了解系统怎么设计、为什么这样设计，看 [Doraemon 跨 Agent 自我进化记忆系统架构与设计](docs/architecture-zh.md)。
 
 ## 它怎样变聪明
 
