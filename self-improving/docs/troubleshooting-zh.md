@@ -1,5 +1,6 @@
 # 中文排错手册
 
+> V1.2.0 · 2026-07-12 · 适用于 self-improving 2.5.0，更新 Agent 代跑批准的弹框说明。
 > V1.1.0 · 2026-07-12 · 适用于 self-improving 2.2.1，增加旧流水导入排错。
 
 先进入下载目录，再执行体检：
@@ -81,7 +82,11 @@ python3 -m self_improving persistence enable
 python3 -m self_improving review revoke --fingerprint '[fp:12ab34cd56ef]'
 ```
 
-看到 `revoked` 后，新会话不再注入该规则，审计记录仍保留。不要让 Agent 代跑批准或撤销命令；这些命令应由人在普通终端执行。
+看到 `revoked` 后，新会话不再注入该规则，审计记录仍保留。Agent 代跑批准或撤销命令时，客户端会弹出权限确认框（Claude Code 2.3.0 起、Codex 0.144+ 2.5.0 起），核对命令内容后再点允许；你也可以自己在普通终端执行，效果相同。
+
+## Agent 写记忆文件时弹出权限确认框
+
+这是守门机制在工作：任何对核心记忆、纠错库或审批账本的写入都需要你当场批准。看清弹框里的命令内容——是你刚同意的操作就点允许，莫名其妙的写入就点拒绝。太旧的 Codex 版本不解析这套确认协议，守门不生效，请升级 Codex。
 
 若要整体暂停已批准纠错注入，把配置中的 `include_verified_corrections` 改为 `false`。历史数据会保留。
 
