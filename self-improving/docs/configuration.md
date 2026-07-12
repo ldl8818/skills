@@ -37,8 +37,10 @@ a private Git working tree. The software does not infer or publish a remote.
 - `max_verified_corrections`: maximum number of newest approved answers; range 0–200.
 - `max_verified_chars`: maximum total characters from approved answers; range 0–20,000.
 
-Only approvals written to `.self-improving/verified-corrections.jsonl` by the
-2.2 review command qualify. Each approval has an approval time and either a
+Only approval events written to the append-only
+`.self-improving/verified-corrections.jsonl` ledger by the review command
+qualify. Approval and revocation are folded into current state from that single
+audit source. Each approval has an approval time and either a
 `global` or `project:/absolute/path` scope. Raw candidates, legacy Markdown rows,
 rejected rows, error logs, malformed records and answers matching credential
 patterns are excluded. Existing 2.1.x configurations receive the new limits,

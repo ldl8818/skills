@@ -16,7 +16,7 @@ from self_improving.installer import install_hooks, install_skill_links, uninsta
 from self_improving.indexing import sync_index
 from self_improving.migration import discover_legacy, write_manifest
 from self_improving.paths import PACKAGE_ROOT, default_config_path, expand_path
-from self_improving.review import decide, list_candidates, revoke
+from self_improving.review import decide, import_legacy, list_candidates, list_legacy, revoke
 from self_improving.storage import initialize_memory, validate_delete_target
 
 
@@ -91,8 +91,15 @@ def command_review(args: argparse.Namespace) -> int:
         rows = list_candidates(root)
         print("\n".join(rows) if rows else "没有待审核候选。")
         return 0
+    if args.review_action == "legacy-list":
+        rows = list_legacy(root)
+        print("\n".join(rows) if rows else "没有可迁移的 active/promoted 旧流水。")
+        return 0
     if args.review_action == "revoke":
         print(revoke(root, state_root, args.fingerprint))
+        return 0
+    if args.review_action == "import-legacy":
+        print(import_legacy(root, state_root, args.legacy_id, args.correct, args.scope))
         return 0
     print(decide(root, state_root, args.fingerprint, args.review_action, getattr(args, "correct", "") or "", getattr(args, "scope", "") or ""))
     return 0
@@ -201,6 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
     review = sub.add_parser("review")
     review_sub = review.add_subparsers(dest="review_action", required=True)
     review_sub.add_parser("list")
+    review_sub.add_parser("legacy-list")
     for name in ("approve", "reject"):
         action = review_sub.add_parser(name)
         action.add_argument("--fingerprint", required=True)
@@ -209,6 +217,10 @@ def build_parser() -> argparse.ArgumentParser:
             action.add_argument("--scope", required=True, help="global or project:/absolute/path")
     revoke_action = review_sub.add_parser("revoke")
     revoke_action.add_argument("--fingerprint", required=True)
+    legacy_action = review_sub.add_parser("import-legacy")
+    legacy_action.add_argument("--legacy-id", required=True, help="stable id returned by review legacy-list")
+    legacy_action.add_argument("--correct", required=True)
+    legacy_action.add_argument("--scope", required=True, help="global or project:/absolute/path")
     review.set_defaults(func=command_review)
 
     migrate = sub.add_parser("migrate")

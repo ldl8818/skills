@@ -14,7 +14,8 @@ injects the small `memory.md` core. It then reads only approvals written by the
 2.2 review command, filters them by the current project/global scope, applies
 the configured count and character budgets, and emits them in a separate
 `<verified-corrections>` block. Raw candidate and error files are never read as
-instructions.
+instructions. If any approval-ledger event is malformed, verified-correction
+injection fails closed for that session and `doctor` reports a hard failure.
 
 ## Codex
 The installer uses the same lifecycle names but a separate adapter. Codex currently applies Pre/Post Tool Hooks to shell commands, ignores matchers for UserPromptSubmit and Stop, and uses startup/resume matching for SessionStart.

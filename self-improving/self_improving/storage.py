@@ -87,13 +87,13 @@ def pending_correction_count(root: Path) -> int:
 
 
 def load_verified_records(root: Path) -> tuple[list[dict], int]:
-    """Load machine-authoritative approvals; legacy Markdown is audit-only."""
+    """Fold the append-only approval event ledger into current active records."""
     path = root / VERIFIED_RELATIVE
     if not path.exists():
         return [], 0
-    records: list[dict] = []
+    active: dict[str, dict] = {}
+    active_sources: dict[str, str] = {}
     malformed = 0
-    seen_fingerprints: set[str] = set()
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
@@ -105,48 +105,81 @@ def load_verified_records(root: Path) -> tuple[list[dict], int]:
         if not isinstance(record, dict):
             malformed += 1
             continue
-        required = (record.get("version") == 1 and isinstance(record.get("approved_at"), str)
-                    and isinstance(record.get("fingerprint"), str) and isinstance(record.get("answer"), str)
-                    and isinstance(record.get("scope"), str))
-        scope = record.get("scope", "")
+        event = record.get("event", "approve")
+        event_at_text = record.get("event_at", record.get("approved_at", ""))
         try:
-            approved_at = datetime.fromisoformat(record.get("approved_at", ""))
-        except ValueError:
-            approved_at = None
+            event_at = datetime.fromisoformat(event_at_text)
+        except (TypeError, ValueError):
+            event_at = None
+        fingerprint = record.get("fingerprint", "")
+        common_valid = (record.get("version") == 1 and isinstance(event, str) and event in {"approve", "revoke"}
+                        and isinstance(event_at_text, str) and event_at is not None and event_at.tzinfo is not None
+                        and isinstance(fingerprint, str) and FINGERPRINT.fullmatch(fingerprint))
+        if not common_valid:
+            malformed += 1
+            continue
+        if event == "revoke":
+            current = active.pop(fingerprint, None)
+            if current is None:
+                malformed += 1
+                continue
+            source_id = current.get("source_id")
+            if source_id:
+                active_sources.pop(source_id, None)
+            continue
+
+        required = isinstance(record.get("answer"), str) and isinstance(record.get("scope"), str)
+        scope = record.get("scope", "")
         scope_valid = scope == "global"
-        if scope.startswith("project:/"):
+        if isinstance(scope, str) and scope.startswith("project:/"):
             project = Path(scope.removeprefix("project:"))
             scope_valid = (project.is_absolute() and project != Path(project.anchor)
                            and scope == f"project:{project.expanduser().resolve()}")
-        fingerprint = record.get("fingerprint", "")
-        if (not required or approved_at is None or approved_at.tzinfo is None or not FINGERPRINT.fullmatch(record.get("fingerprint", ""))
-                or fingerprint in seen_fingerprints or not scope_valid or not record.get("answer", "").strip()
+        source_id = record.get("source_id", f"candidate:{fingerprint}")
+        if (not required or not isinstance(source_id, str) or not source_id.strip()
+                or fingerprint in active or source_id in active_sources or not scope_valid or not record.get("answer", "").strip()
                 or "verified-corrections" in record.get("answer", "").lower() or contains_secret(record.get("answer", ""))):
             malformed += 1
             continue
-        record["_approved_utc"] = approved_at.astimezone(timezone.utc)
-        records.append(record)
-        seen_fingerprints.add(fingerprint)
+        normalized = dict(record)
+        normalized["event"] = "approve"
+        normalized["event_at"] = event_at_text
+        normalized["source_id"] = source_id
+        normalized["_approved_utc"] = event_at.astimezone(timezone.utc)
+        active[fingerprint] = normalized
+        active_sources[source_id] = fingerprint
+    records = list(active.values())
     records.sort(key=lambda item: item["_approved_utc"], reverse=True)
     return records, malformed
 
 
-def append_verified_correction(root: Path, fingerprint: str, answer: str, scope: str) -> None:
+def append_verified_correction(root: Path, fingerprint: str, answer: str, scope: str, source_id: str | None = None) -> bool:
     if not FINGERPRINT.fullmatch(fingerprint):
         raise ValueError("invalid correction fingerprint")
     scope = normalize_scope(scope)
     path = root / VERIFIED_RELATIVE
     current = path.read_text(encoding="utf-8") if path.exists() else ""
-    if any(record["fingerprint"] == fingerprint for record in load_verified_records(root)[0]):
-        return
+    records, malformed = load_verified_records(root)
+    if malformed:
+        raise ValueError("verified correction ledger is malformed")
+    source_id = source_id or f"candidate:{fingerprint}"
+    for existing in records:
+        if existing["fingerprint"] == fingerprint or existing.get("source_id") == source_id:
+            same = existing["fingerprint"] == fingerprint and existing["answer"] == answer and existing["scope"] == scope and existing.get("source_id") == source_id
+            if same:
+                return False
+            raise ValueError("an active rule already exists for this source; revoke it before changing answer or scope")
     record = {
         "version": 1,
-        "approved_at": datetime.now(timezone.utc).isoformat(timespec="microseconds"),
+        "event": "approve",
+        "event_at": datetime.now(timezone.utc).isoformat(timespec="microseconds"),
         "fingerprint": fingerprint,
         "answer": answer,
         "scope": scope,
+        "source_id": source_id,
     }
     atomic_write(path, current + json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
+    return True
 
 
 def normalize_scope(scope: str, *, require_project: bool = True) -> str:
@@ -171,21 +204,20 @@ def revoke_verified_correction(root: Path, fingerprint: str) -> bool:
     path = root / VERIFIED_RELATIVE
     if not path.exists():
         return False
-    kept: list[str] = []
-    found = False
-    for line in path.read_text(encoding="utf-8").splitlines():
-        try:
-            record = json.loads(line)
-        except json.JSONDecodeError:
-            kept.append(line)
-            continue
-        if record.get("fingerprint") == fingerprint:
-            found = True
-        else:
-            kept.append(line)
-    if found:
-        atomic_write(path, ("\n".join(kept) + "\n") if kept else "")
-    return found
+    current = path.read_text(encoding="utf-8")
+    records, malformed = load_verified_records(root)
+    if malformed:
+        raise ValueError("verified correction ledger is malformed")
+    if not any(record["fingerprint"] == fingerprint for record in records):
+        return False
+    event = {
+        "version": 1,
+        "event": "revoke",
+        "event_at": datetime.now(timezone.utc).isoformat(timespec="microseconds"),
+        "fingerprint": fingerprint,
+    }
+    atomic_write(path, current + json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
+    return True
 
 
 def _scope_applies(scope: str, cwd: str | None) -> bool:
@@ -202,7 +234,10 @@ def _scope_applies(scope: str, cwd: str | None) -> bool:
 
 
 def active_corrections(root: Path, cwd: str | None = None) -> list[str]:
-    return [record["answer"] for record in load_verified_records(root)[0] if _scope_applies(record["scope"], cwd)]
+    records, malformed = load_verified_records(root)
+    if malformed:
+        return []
+    return [record["answer"] for record in records if _scope_applies(record["scope"], cwd)]
 
 
 def verified_corrections(root: Path, max_count: int, max_chars: int, cwd: str | None = None) -> list[str]:

@@ -10,8 +10,10 @@ Captured text is truncated, redacted for common credential patterns and marked u
 Only a correction answer explicitly approved through the 2.2 `review approve`
 command may be injected into later Agent sessions. Approval is a trust decision:
 review the wording and choose `global` or a specific `project:/absolute/path`.
-Historical Markdown rows are audit-only until explicitly reviewed under this
-contract. Injection can be disabled without deleting history by setting
+Historical Markdown rows are legacy audit-only until explicitly reviewed under
+this contract. New approval and revocation history lives in one append-only
+JSONL authority file, avoiding a split state between Markdown and runtime.
+Injection can be disabled without deleting history by setting
 `injection.include_verified_corrections` to `false`.
 
 The Hook guard prevents common accidental Agent writes and standard shell

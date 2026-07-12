@@ -100,6 +100,8 @@ python3 -m self_improving review list
 python3 -m self_improving review approve --fingerprint '[fp:...]' --correct '先读取当前文件，再根据实际内容判断。' --scope global
 python3 -m self_improving review reject --fingerprint '[fp:...]'
 python3 -m self_improving review revoke --fingerprint '[fp:...]'
+python3 -m self_improving review legacy-list
+python3 -m self_improving review import-legacy --legacy-id 'legacy:12ab34cd56ef' --correct '重新提炼后的现行规则' --scope global
 ```
 
 Approved answers are injected at the next `SessionStart`. The default budget is
@@ -108,6 +110,11 @@ injected. Use `--scope global` only for rules that apply everywhere; use
 `--scope 'project:/absolute/project/path'` for project-only rules. Legacy rows
 already present in `corrections.md` remain audit history and are not silently
 activated by an upgrade. See [configuration](docs/configuration.md) for the switches.
+
+To reuse a legacy row, distill it into a concise current rule and import it
+explicitly with `review import-legacy`. The command requires a scope and returns
+a verified fingerprint that can later be revoked. There is intentionally no
+bulk “activate every active row” command.
 
 ## Supported behavior
 Claude Code and Codex use separate adapters because their Hook payloads and lifecycle coverage differ. Codex currently limits Pre/Post Tool Hooks to shell commands. The PreToolUse guard blocks direct file-tool writes and common shell writes to `memory.md`, `corrections.md` and the machine-authoritative approval store. It also blocks an Agent from invoking approval commands through a hooked shell. Shell text inspection is not an operating-system security boundary and cannot prove that every obfuscated command is blocked. Human review outside the Agent tool loop, current-file verification and version control remain the authoritative safeguards.

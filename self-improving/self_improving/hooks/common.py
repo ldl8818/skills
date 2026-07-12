@@ -58,7 +58,7 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
     if not command:
         return False
     expanded = command.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
-    if re.search(r"(?:self_improving|self-improving)\s+review\s+(?:approve|reject|revoke)\b", expanded):
+    if re.search(r"(?:self_improving|self-improving)\s+review\s+(?:approve|reject|revoke|import-legacy)\b", expanded):
         return True
     internal_authority_api = any(name in expanded for name in ("self_improving.review", "self_improving.storage", "append_verified_correction"))
     if ("corrections.md" in expanded or "verified-corrections.jsonl" in expanded or internal_authority_api) and re.search(r"\b(?:python\d*|node|ruby|perl)\b", expanded):

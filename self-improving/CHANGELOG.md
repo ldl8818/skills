@@ -1,4 +1,9 @@
 # Changelog
+## 2.2.1 - 2026-07-12
+- Add `review legacy-list` with content-derived stable IDs and an explicit `review import-legacy` path that requires a newly distilled answer and global/project scope.
+- Make the private approval ledger append-only: approval, revocation and re-approval are auditable events in one authoritative file instead of cross-file state changes.
+- Enforce one active rule per legacy source; changing its answer or scope requires revocation first.
+
 ## 2.2.0 - 2026-07-12
 - Inject human-approved corrections into new Claude Code and Codex sessions within configurable count and character budgets.
 - Keep raw correction candidates out of Agent instructions and preserve the human review gate.

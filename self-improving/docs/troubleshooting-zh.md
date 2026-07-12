@@ -1,6 +1,6 @@
 # 中文排错手册
 
-> V1.0.0 · 2026-07-12 · 适用于 self-improving 2.2.0。
+> V1.1.0 · 2026-07-12 · 适用于 self-improving 2.2.1，增加旧流水导入排错。
 
 先进入下载目录，再执行体检：
 
@@ -103,3 +103,9 @@ python3 -m self_improving uninstall --keep-data
 ```
 
 这只移除受管 Hook 和 Skill 入口，保留私人记忆。程序不会自动删除私人数据。不要为了排错直接删 `~/.claude/settings.json` 或 `~/.codex/hooks.json`，其中可能还有其他工具的 Hook。
+
+## 旧流水导入提示行不存在或状态不允许
+
+`review import-legacy` 只接受 `review legacy-list` 返回的稳定 `legacy:...` 编号。它由旧行原文生成，不会因其他行插入而漂移；如果该行内容被修改，必须重新运行 `legacy-list`。`superseded`、`obsolete`、`rejected` 都不允许复活。
+
+导入时的 `--correct` 不是复制事故全文，而是重新写成一句仍然适用的现行规则。项目规则必须用 `project:/绝对路径`，且该目录需要真实存在。

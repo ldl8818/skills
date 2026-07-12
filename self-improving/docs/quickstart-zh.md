@@ -1,6 +1,6 @@
 # 五分钟从零开始
 
-> V1.0.0 · 2026-07-12 · 适用于 self-improving 2.2.0。
+> V1.1.0 · 2026-07-12 · 适用于 self-improving 2.2.1，补充旧流水按范围显式导入。
 
 这份教程带你完成一次完整闭环：安装 → 自动捕获纠错 → 人工批准 → 新会话自动采用。无需安装 Obsidian，也无需懂 Python 编程。
 
@@ -174,3 +174,18 @@ python3 -m self_improving uninstall --keep-data
 ```
 
 不要手工删除私人记忆。需要排错时看 [中文排错手册](troubleshooting-zh.md)。
+
+## 11. 旧版纠错流水怎么办
+
+旧 `corrections.md` 是事故与晋升历史，不要整表自动启用：已经晋升的规则通常已在核心或领域文档中，再导入只会重复；被替代、废弃的规则更不能复活。
+
+仍然有效、但尚未进入现行记忆的规则，应先缩成一句当前可执行规则，再明确选择范围：
+
+```bash
+python3 -m self_improving review import-legacy \
+  --legacy-id 'legacy:12ab34cd56ef' \
+  --correct '工具要求原文展示时，完整原文必须进入最终回复。' \
+  --scope global
+```
+
+先运行 `python3 -m self_improving review legacy-list` 取得由旧行原文生成的稳定 `legacy:...` 编号；它不会因其他行插入而漂移。导入命令会返回 `[fp:...]` 指纹。它和普通批准一样受预算、项目范围和撤销机制管理。系统故意不提供“把全部 active 一键启用”，因为旧流水没有可靠范围，批量全局注入会把彩票、抖音等项目经验带到无关任务。
