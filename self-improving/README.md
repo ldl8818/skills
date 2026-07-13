@@ -119,6 +119,6 @@ bulk “activate every active row” command.
 ## Supported behavior
 Claude Code and Codex use separate adapters because their Hook payloads and lifecycle coverage differ. Codex currently limits Pre/Post Tool Hooks to shell commands. The PreToolUse guard blocks direct file-tool writes and common shell writes to `memory.md`, `corrections.md` and the machine-authoritative approval store. It also blocks an Agent from invoking approval commands through a hooked shell. Shell text inspection is not an operating-system security boundary and cannot prove that every obfuscated command is blocked. Human review outside the Agent tool loop, current-file verification and version control remain the authoritative safeguards.
 
-Only Claude Code and Codex are supported in version 2.2. Obsidian, Git, Gemini,
+Only Claude Code and Codex are supported. Obsidian, Git, Gemini,
 OpenClaw and other editors or Agents are not required and are not silently
 treated as installed.

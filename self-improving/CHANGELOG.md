@@ -1,4 +1,11 @@
 # Changelog
+## 2.5.1 - 2026-07-13
+- Skill triggering and self-containment fixes from a best-practices review. The SKILL.md description now carries Chinese trigger phrases (`zh_description` in metadata is never injected into agent context, so Chinese requests previously had nothing to match); the Commands section states that commands must run from the skill install directory and how to locate it (the package is not installed into site-packages, so `python3 -m self_improving` fails elsewhere); the full `review approve/reject/revoke/legacy-list/import-legacy` command templates used by the pre-review flow are listed; references carry when-to-read guidance.
+- Replace the cryptic "2.2 review command" wording with "`review approve` command" across SKILL.md, `docs/privacy.md`, `docs/hooks.md`, `docs/migration.md` and `docs/quickstart-zh.md`; drop the stale "in version 2.2" support statement in README. Documentation only, no code behavior changes.
+- Add `.DS_Store` to `.gitignore` for clones without a global ignore file.
+- `migrate legacy` preview no longer suggests `--apply` when a configuration already exists; it now says apply will refuse and points to `upgrade`, matching the documented refusal behavior.
+- Replace the lottery/short-video project names in the Chinese quickstart with a neutral example, and switch its scope example to a placeholder absolute path, so the repo's own red-line scan passes on every published doc.
+
 ## 2.5.0 - 2026-07-12
 - Codex authority-write guard now emits the same PreToolUse `ask` permission decision as Claude Code, verified against codex-cli 0.144.1 which parses the identical `hookSpecificOutput` protocol. One-click batch approval now works the same way on both platforms; no more hand-pasting commands into a terminal. Codex versions too old to parse hook decisions do not enforce the guard — upgrade Codex.
 

@@ -1,5 +1,6 @@
 # 五分钟从零开始
 
+> V1.2.1 · 2026-07-13 · 适用于 self-improving 2.5.1，术语澄清：「2.2 审核命令」改为「`review approve` 审核命令」。
 > V1.2.0 · 2026-07-12 · 适用于 self-improving 2.5.0，补充预审一键批准流程。
 > V1.1.0 · 2026-07-12 · 适用于 self-improving 2.2.1，补充旧流水按范围显式导入。
 
@@ -49,7 +50,7 @@ python3 -m self_improving init \
 完全退出并重新打开已启用的 Claude Code 或 Codex 会话。启动时，Hook 会读取：
 
 - `memory.md`：精简的长期核心记忆。
-- `.self-improving/verified-corrections.jsonl`：只读取 2.2 审核命令写入、且范围适用于当前目录的正确答案；`corrections.md` 只是人类审计流水。
+- `.self-improving/verified-corrections.jsonl`：只读取 `review approve` 审核命令写入、且范围适用于当前目录的正确答案；`corrections.md` 只是人类审计流水。
 
 第一次安装还没有已批准纠错，因此第二部分为空是正常现象。
 
@@ -93,7 +94,7 @@ python3 -m self_improving review approve \
 `--scope global` 表示所有项目都适用。只适用于一个项目时必须写绝对路径，例如：
 
 ```bash
---scope 'project:/Users/你的名字/dev/某项目'
+--scope 'project:/path/to/某项目'
 ```
 
 跨 Agent 只表示 Claude Code 与 Codex 共享同一条经验，不等于所有项目都该收到这条经验。
@@ -191,4 +192,4 @@ python3 -m self_improving review import-legacy \
   --scope global
 ```
 
-先运行 `python3 -m self_improving review legacy-list` 取得由旧行原文生成的稳定 `legacy:...` 编号；它不会因其他行插入而漂移。导入命令会返回 `[fp:...]` 指纹。它和普通批准一样受预算、项目范围和撤销机制管理。系统故意不提供“把全部 active 一键启用”，因为旧流水没有可靠范围，批量全局注入会把彩票、抖音等项目经验带到无关任务。
+先运行 `python3 -m self_improving review legacy-list` 取得由旧行原文生成的稳定 `legacy:...` 编号；它不会因其他行插入而漂移。导入命令会返回 `[fp:...]` 指纹。它和普通批准一样受预算、项目范围和撤销机制管理。系统故意不提供“把全部 active 一键启用”，因为旧流水没有可靠范围，批量全局注入会把单个项目的特定经验带到所有无关任务里。

@@ -7,7 +7,7 @@ The public Skill repository and private memory repository are separate assets.
 
 Captured text is truncated, redacted for common credential patterns and marked untrusted. Redaction cannot identify every form of personal or proprietary information, so persistence should be disabled for sensitive or externally controlled material.
 
-Only a correction answer explicitly approved through the 2.2 `review approve`
+Only a correction answer explicitly approved through the `review approve`
 command may be injected into later Agent sessions. Approval is a trust decision:
 review the wording and choose `global` or a specific `project:/absolute/path`.
 Historical Markdown rows are legacy audit-only until explicitly reviewed under

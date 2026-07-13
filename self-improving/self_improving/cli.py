@@ -114,7 +114,10 @@ def command_migrate(args: argparse.Namespace) -> int:
     print("旧版记忆目录：" + str(discovery["memory_root"]))
     print(f"旧版外围脚本：{len(discovery['legacy_scripts'])} 个")
     if not args.apply:
-        print("当前为预览；加 --apply 才会写配置和 Hook。")
+        if default_config_path().exists():
+            print("检测到已有 self-improving 配置：--apply 会拒绝覆盖；已配置环境请改用 upgrade。")
+        else:
+            print("当前为预览；加 --apply 才会写配置和 Hook。")
         return 0
     if default_config_path().exists():
         raise ValueError("self-improving is already configured; migrate refuses to overwrite it")

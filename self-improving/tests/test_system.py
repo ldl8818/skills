@@ -734,6 +734,17 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(result, 1)
         self.assertEqual(self.config_path.read_text(), before)
 
+    def test_legacy_migration_preview_warns_when_already_configured(self) -> None:
+        from self_improving.cli import main
+
+        with self.env():
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = main(["migrate", "legacy"])
+        self.assertEqual(result, 0)
+        self.assertIn("upgrade", output.getvalue())
+        self.assertNotIn("加 --apply 才会写配置和 Hook", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

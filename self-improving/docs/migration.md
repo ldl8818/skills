@@ -16,7 +16,7 @@ Migration keeps the existing memory directory in place, writes versioned configu
 Migration refuses to overwrite an existing self-improving configuration. Use
 `upgrade` for an installation that is already configured. Historical
 `corrections.md` rows remain audit history; they are not silently imported into
-the 2.2 verified-injection ledger.
+the verified-injection ledger.
 
 To retain a still-valid legacy lesson, review and distill it rather than copying
 the whole historical incident into every prompt:

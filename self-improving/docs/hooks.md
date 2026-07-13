@@ -11,7 +11,7 @@ The installer wires `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolU
 
 At `SessionStart`, the common Hook validates the line and character budgets and
 injects the small `memory.md` core. It then reads only approvals written by the
-2.2 review command, filters them by the current project/global scope, applies
+`review approve` command, filters them by the current project/global scope, applies
 the configured count and character budgets, and emits them in a separate
 `<verified-corrections>` block. Raw candidate and error files are never read as
 instructions. If any approval-ledger event is malformed, verified-correction
