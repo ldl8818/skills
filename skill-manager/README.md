@@ -23,7 +23,7 @@ rsync -a --delete \
   skills/skill-manager/ ~/.claude/skills/skill-manager/
 ```
 
-不熟 `rsync` 的话，首次安装用 `cp -R skills/skill-manager ~/.claude/skills/` 也一样（干净克隆里没有本机数据文件）；上面的 rsync 写法在重装 / 升级时更稳，不会误覆盖你已积累的数据。
+不熟 `rsync` 的话，用 `cp -R skills/skill-manager ~/.claude/skills/` 也一样。命令里排除的几个 json 是老版本（≤2.1.0）可能残留在 skill 目录里的本机数据；2.2.0 起运行数据统一住 `~/.claude/data/skill-manager/`，代码目录随便覆盖重装都碰不到它。
 
 装好后**重启 Claude Code 会话**才会加载。之后说「列出我的技能」「检查更新」即可触发，也可以直接用斜杠命令。
 
@@ -60,7 +60,8 @@ rsync -a --delete \
 ## 本机数据文件（仓库里没有，首次运行自动生成）
 
 这些 json 记录的是「**这台机器的状态**」，换台机器毫无意义，且含本机绝对路径，
-所以不入库（见根目录 `.gitignore`）：
+所以既不入仓库、也不放在 skill 代码目录里，统一存放在 **`~/.claude/data/skill-manager/`**
+（2.2.0 起；旧版本存在 skill 目录里的数据，新版本首次运行时自动搬过去）：
 
 | 文件 | 内容 | 维护方式 |
 |------|------|---------|
@@ -75,7 +76,7 @@ JSON 一旦存在但损坏或不可读，命令会硬失败并指名坏的是哪
 `zh_description` 字段（跟着 skill 走，搬家、拷给别人都不丢）；**插件的 SKILL.md
 会被上游更新整个覆盖**，写进去下次更新就没了。这张表是手工维护的，换机器时值得单独备份。
 
-（同目录还可能出现 `evolution.json`——那是另一个 skill（skill-evolution-manager）的
+（skill 代码目录里还可能出现 `evolution.json`——那是另一个 skill（skill-evolution-manager）的
 数据文件，本 skill 不读写它，只负责不把它算进指纹。）
 
 ## 验证

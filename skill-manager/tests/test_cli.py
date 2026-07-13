@@ -37,6 +37,18 @@ class CliSmokeTests(unittest.TestCase):
                                      result.stdout + result.stderr)
                     self.assertIn("用法", result.stdout)
 
+    def test_legacy_data_migrates_to_data_dir(self):
+        with tempfile.TemporaryDirectory() as home:
+            legacy = Path(home) / ".claude" / "skills" / "skill-manager"
+            legacy.mkdir(parents=True)
+            (legacy / "descriptions_zh.json").write_text('{"demo": "示例"}', encoding="utf-8")
+            result = self.run_cli("list_skills.py", home=home)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            moved = Path(home) / ".claude" / "data" / "skill-manager" / "descriptions_zh.json"
+            self.assertEqual(moved.read_text(encoding="utf-8"), '{"demo": "示例"}')
+            # 搬家是移动不是复制：旧位置留副本会在下轮被误当权威数据
+            self.assertFalse((legacy / "descriptions_zh.json").exists())
+
     def test_corrupt_state_file_fails_with_path_in_message(self):
         with tempfile.TemporaryDirectory() as home:
             sm = Path(home) / ".claude" / "skills" / "skill-manager"

@@ -53,9 +53,31 @@ INSTALLED_PLUGINS_JSON = os.path.join(CLAUDE_DIR, "plugins", "installed_plugins.
 KNOWN_MARKETPLACES_JSON = os.path.join(CLAUDE_DIR, "plugins", "known_marketplaces.json")
 
 SM_DIR = os.path.join(GLOBAL_SKILLS_DIR, "skill-manager")
-DESCRIPTIONS_ZH = os.path.join(SM_DIR, "descriptions_zh.json")
-FINGERPRINTS = os.path.join(SM_DIR, "fingerprints.json")
-PROJECTS = os.path.join(SM_DIR, "projects.json")
+
+# 运行数据自 2.2.0 起住 ~/.claude/data/：数据记录的是「这台机器的状态」，
+# 不是 skill 的一部分。跟代码同住的年代要靠 4 处补偿硬撑（仓库 .gitignore、
+# 指纹自指排除、安装命令的 --exclude 清单、更新合并保数据），
+# 而且用户重装时漏抄一个 --exclude 就会删掉自己的账本。分居后这些全部消失。
+DATA_DIR = os.path.join(CLAUDE_DIR, "data", "skill-manager")
+DESCRIPTIONS_ZH = os.path.join(DATA_DIR, "descriptions_zh.json")
+FINGERPRINTS = os.path.join(DATA_DIR, "fingerprints.json")
+PROJECTS = os.path.join(DATA_DIR, "projects.json")
+
+
+def _migrate_legacy_data():
+    """≤2.1.0 的数据存在 skill 自身目录里，首次运行自动搬到 DATA_DIR。
+
+    只搬「旧位置有、新位置没有」的文件；两边都有时不动旧的（不猜哪份是真，
+    残留交给人判断）。搬家是一次性的：搬完旧位置就空了，此后这里是空操作。
+    """
+    for fn in ("descriptions_zh.json", "fingerprints.json", "projects.json"):
+        old, new = os.path.join(SM_DIR, fn), os.path.join(DATA_DIR, fn)
+        if os.path.isfile(old) and not os.path.exists(new):
+            os.makedirs(DATA_DIR, exist_ok=True)
+            shutil.move(old, new)
+
+
+_migrate_legacy_data()
 
 # Claude Code 的会话记录目录：每个项目一个子目录，每跑一次会话写一份 .jsonl。
 # 最新那份的 mtime = 最后一次在该项目里干活的时间 —— 这是「最近在写哪个项目」
@@ -73,10 +95,9 @@ FP_IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv"}
 FP_IGNORE_FILES = {".DS_Store"}
 FP_IGNORE_SUFFIX = (".pyc", ".log")
 
-# skill-manager 的运行时数据恰好就存在它自己的 skill 目录里，
-# 不排除的话，每记一次账它自己的指纹就变一次 —— 永远 dirty（自指 bug）。
-# evolution.json 本 skill 不读写（由 skill-evolution-manager 维护），
-# 但它也落在这个目录里，同样要排除。
+# ≤2.1.0 的运行数据存在 skill 自己的目录里，老安装可能还有残留；
+# evolution.json（skill-evolution-manager 的数据，本 skill 不读写）也住这里。
+# 不排除的话，它们会让 skill-manager 自己的指纹永远 dirty（自指 bug）。
 SM_DATA_FILES = {"fingerprints.json", "projects.json",
                  "descriptions_zh.json", "evolution.json"}
 

@@ -113,6 +113,7 @@ class Report:
 
 def main():
     print("\n🩺 skill-manager 自检" + ("（--fix 模式，会动文件）" if FIX else "（只读）"))
+    print(f"   数据目录：{core.DATA_DIR}")
     r = Report()
     skills = core.collect_all(all_projects=True)
 
