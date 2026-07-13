@@ -31,4 +31,6 @@ jobs:
         working-directory: skill-manager
         run: python -m compileall -q scripts
       - name: Public-repository redline scan
-        run: '! grep -RInE "/Users/|dylan|caipiao|彩票|抖音" skill-manager --exclude-dir=__pycache__'
+        # Only generic patterns here: this file is public, so project-specific
+        # forbidden words must stay in the maintainer's local word list.
+        run: '! grep -RInE "/Users/|dylan" skill-manager --exclude-dir=__pycache__'
