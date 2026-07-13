@@ -6,6 +6,14 @@ Claude Code and Codex sessions. Only field names and synthetic example values
 are committed under `examples/hook-payloads/`; transcripts and user content are
 never copied into the public repository.
 
+At `UserPromptSubmit`, correction capture applies a pre-filter before keyword
+matching: a message that begins with a client-injected system tag (such as a
+task notification or an injected reminder) is not the user speaking and is
+never treated as a correction, and keywords that appear only inside fenced
+code blocks (pasted logs, diffs) do not trigger capture. Human text before an
+appended reminder block still counts. Exact same-day repeats were already
+deduplicated by fingerprint.
+
 ## Claude Code
 The installer wires `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse` and `Stop` while preserving existing groups.
 

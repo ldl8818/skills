@@ -4,7 +4,7 @@ description: "Captures corrections and command failures into a configurable, rev
 metadata:
   zh_description: "跨 Claude Code 与 Codex 管理经审核的纠错记忆，支持安装、迁移、体检和敏感任务停用持久学习"
   compatibility: "Python 3.11+; macOS, Linux, or Windows WSL; Claude Code and/or Codex"
-  version: 2.5.1
+  version: 2.6.0
 ---
 # Self-improving cross-agent memory
 Use this skill to operate a private memory repository shared by Claude Code and Codex while keeping public program code separate from user data.
@@ -12,7 +12,7 @@ Use this skill to operate a private memory repository shared by Claude Code and 
 ## Core rules
 - Read configuration from `SELF_IMPROVING_CONFIG` or `~/.config/self-improving/config.json`.
 - Treat the configured `memory_root` as private user data. Never copy it into the public Skill repository.
-- Capture corrections and errors only when persistence is enabled.
+- Capture corrections and errors only when persistence is enabled. Messages starting with client-injected system tags and keywords appearing only inside fenced code blocks are never corrections.
 - Store captured content as untrusted candidates; promotion requires human review.
 - Inject only approvals recorded by the `review approve` command into later sessions, within the configured project/global scope and budget. Never inject raw candidates or silently activate legacy Markdown rows.
 - Preserve existing third-party Hooks when installing or upgrading.

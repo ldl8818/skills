@@ -1,5 +1,6 @@
 # Doraemon 跨 Agent 自我进化记忆系统架构与设计
 
+> V1.1.0 · 2026-07-13 · 捕获前置过滤：系统标签开头的消息与代码围栏内的关键词不再当作纠错，适用 self-improving 2.6.0。
 > V1.0.0 · 2026-07-12 · 首版：从私人架构档案拆分出的公开架构说明，适用 self-improving 2.5.0。
 
 本文解释 self-improving 的整体设计：系统分成哪几层、Hook 怎样接入 Claude Code 与 Codex、一条纠错从捕获到生效要过哪些关卡，以及关键方案为什么这样取舍。安装与日常操作请读 [五分钟从零开始](quickstart-zh.md)，本文不重复命令细节。
@@ -92,7 +93,7 @@ tool_input / tool_output / exit_status / trust_level
 | 事件 | 行为 |
 |---|---|
 | `SessionStart` | 校验核心记忆的结构与预算，再按当前目录和预算注入已批准纠错；候选达阈值时附带预审提醒 |
-| `UserPromptSubmit` | 明确纠错经脱敏、截断、按天去重后进入候选箱 |
+| `UserPromptSubmit` | 明确纠错经脱敏、截断、按天去重后进入候选箱；以系统标签（如任务通知、注入提醒）开头的消息和只出现在代码围栏内的关键词不算纠错——那不是人在说话 |
 | `PreToolUse` | 命中权威文件（`memory.md`、`corrections.md`、审批账本）常见写入或 Shell 批准/撤销命令时，弹权限框由用户当场批准（Claude Code 2.3.0 起，Codex 0.144+ 起） |
 | `PostToolUse` | 按配置捕获命令失败；默认关闭集中错误持久化 |
 | `Stop` | 候选达到提醒阈值时提示审核，不自动晋升 |

@@ -5,7 +5,7 @@ The public Skill repository and private memory repository are separate assets.
 - Explicit user correction prompts, when correction capture is enabled.
 - Shell command failures, only when error capture is enabled.
 
-Captured text is truncated, redacted for common credential patterns and marked untrusted. Redaction cannot identify every form of personal or proprietary information, so persistence should be disabled for sensitive or externally controlled material.
+Messages that begin with client-injected system tags (task notifications, reminders) and keywords that appear only inside fenced code blocks are never treated as corrections, which also keeps machine-generated paths out of the candidate inbox. Captured text is truncated, redacted for common credential patterns and marked untrusted. Redaction cannot identify every form of personal or proprietary information, so persistence should be disabled for sensitive or externally controlled material.
 
 Only a correction answer explicitly approved through the `review approve`
 command may be injected into later Agent sessions. Approval is a trust decision:

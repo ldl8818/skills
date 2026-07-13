@@ -1,4 +1,7 @@
 # Changelog
+## 2.6.0 - 2026-07-13
+- Correction capture now pre-filters non-human text, fixing real noise observed in review: messages beginning with client-injected system tags (`<task-notification>`, `<system-reminder>` and similar, fullwidth variants included) are never treated as corrections, and correction keywords appearing only inside fenced code blocks (pasted logs, diffs) no longer trigger capture. Human text outside the fences still captures normally. This keeps review effort and machine-generated private paths out of the candidate inbox; the human review gate is unchanged.
+
 ## 2.5.1 - 2026-07-13
 - Skill triggering and self-containment fixes from a best-practices review. The SKILL.md description now carries Chinese trigger phrases (`zh_description` in metadata is never injected into agent context, so Chinese requests previously had nothing to match); the Commands section states that commands must run from the skill install directory and how to locate it (the package is not installed into site-packages, so `python3 -m self_improving` fails elsewhere); the full `review approve/reject/revoke/legacy-list/import-legacy` command templates used by the pre-review flow are listed; references carry when-to-read guidance.
 - Replace the cryptic "2.2 review command" wording with "`review approve` command" across SKILL.md, `docs/privacy.md`, `docs/hooks.md`, `docs/migration.md` and `docs/quickstart-zh.md`; drop the stale "in version 2.2" support statement in README. Documentation only, no code behavior changes.

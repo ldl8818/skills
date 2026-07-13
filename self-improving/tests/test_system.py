@@ -176,6 +176,22 @@ class SystemTests(unittest.TestCase):
                 dispatch("codex", "UserPromptSubmit", {"prompt": "你又错了，第二条"})
             self.assertEqual(inbox.read_text(), first)
 
+    def test_machine_messages_are_not_captured_as_corrections(self) -> None:
+        inbox = self.memory / ".learnings/CORRECTIONS_INBOX.md"
+        with self.env():
+            dispatch("claude", "UserPromptSubmit", {"prompt": "<task-notification>任务完成，记住检查输出</task-notification>"})
+            dispatch("claude", "UserPromptSubmit", {"prompt": "＜task-notification＞全角变体，别忘了＜/task-notification＞"})
+            dispatch("claude", "UserPromptSubmit", {"prompt": "<system-reminder>候选箱已有记录，记住审核</system-reminder>"})
+            self.assertNotIn("UNTRUSTED_USER_CANDIDATE", inbox.read_text())
+
+    def test_keywords_inside_fenced_blocks_are_not_captured(self) -> None:
+        inbox = self.memory / ".learnings/CORRECTIONS_INBOX.md"
+        with self.env():
+            dispatch("claude", "UserPromptSubmit", {"prompt": "帮我看下这段日志\n```\nerror: 不对，应该是 utf-8\n```\n谢谢"})
+            self.assertNotIn("UNTRUSTED_USER_CANDIDATE", inbox.read_text())
+            dispatch("claude", "UserPromptSubmit", {"prompt": "不对，应该用 utf-8。报错如下\n```\nUnicodeDecodeError\n```"})
+            self.assertIn("应该用 utf-8", inbox.read_text())
+
     def test_only_human_approved_correction_is_injected_next_session(self) -> None:
         with self.env():
             dispatch("codex", "UserPromptSubmit", {"prompt": "不对，应该先读取当前文件再判断"})
