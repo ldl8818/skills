@@ -10,9 +10,9 @@ description: >
   list skills、check updates、enable/disable skill、skill doctor、bump version、trace source。
 license: MIT
 metadata:
+  version: "2.1.0"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
-  version: 2.0.0
 ---
 
 # Skill 生命周期管理器
@@ -47,7 +47,9 @@ metadata:
 | 体检 | `doctor [--fix]`（`--fix` 只做有依据的补录，绝不发明数据） | `doctor.py` |
 | 删除 | `delete <名字> [--project <路径>] [--dry-run]` | `delete_skill.py` |
 
-插件写裸名即可，脚本会自动补全 `@市场名`。全部脚本零第三方依赖，`python3` 直接跑。
+插件写裸名即可，脚本会自动补全 `@市场名`。全部脚本零第三方依赖，
+`python3`（≥ 3.9）直接跑；check / trace / update 需要本机装有 `git`。
+所有脚本支持 `--help` 查看完整用法。
 
 ## 状态模型
 

@@ -219,6 +219,9 @@ def render_overview(skills, view_paths, all_mode, hidden_projects):
 
 def main():
     argv = sys.argv[1:]
+    if any(a in ("-h", "--help") for a in argv):
+        print(__doc__)
+        return 0
     all_mode = "--all" in argv
     expand = DEFAULT_EXPAND
     if "-n" in argv:

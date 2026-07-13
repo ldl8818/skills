@@ -35,6 +35,9 @@ def find_skill(name, project=None):
 
 
 def main():
+    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+        print(__doc__)
+        sys.exit(0)
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)

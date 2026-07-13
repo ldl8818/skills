@@ -28,13 +28,21 @@
 """
 import os
 import re
+import sys
 import json
+import shutil
 import filecmp
 import hashlib
 import subprocess
 import tempfile
 import unicodedata
 from datetime import datetime, date
+
+# 用到了 removesuffix（3.9+）。不在这里拦，老版本会在 update/trace 跑到一半才抛
+# AttributeError —— 运行时炸比导入时炸难排查得多。
+if sys.version_info < (3, 9):
+    sys.exit(f"❌ skill-manager 需要 Python ≥ 3.9，当前是 "
+             f"{sys.version_info[0]}.{sys.version_info[1]}。请升级 python3 后重试。")
 
 HOME = os.path.expanduser("~")
 CLAUDE_DIR = os.path.join(HOME, ".claude")
@@ -66,7 +74,9 @@ FP_IGNORE_FILES = {".DS_Store"}
 FP_IGNORE_SUFFIX = (".pyc", ".log")
 
 # skill-manager 的运行时数据恰好就存在它自己的 skill 目录里，
-# 不排除的话，每记一次账它自己的指纹就变一次 —— 永远 dirty（自指 bug）
+# 不排除的话，每记一次账它自己的指纹就变一次 —— 永远 dirty（自指 bug）。
+# evolution.json 本 skill 不读写（由 skill-evolution-manager 维护），
+# 但它也落在这个目录里，同样要排除。
 SM_DATA_FILES = {"fingerprints.json", "projects.json",
                  "descriptions_zh.json", "evolution.json"}
 
@@ -87,6 +97,11 @@ def read_json(path, default=None):
             return json.load(f)
     except FileNotFoundError:
         return {} if default is None else default
+    except json.JSONDecodeError as e:
+        # 硬失败是有意的（用空表继续跑会在下次写入时覆盖真实配置），
+        # 但裸 traceback 连坏的是哪个文件都不说，等于让人自己去猜。
+        raise SystemExit(f"❌ {path} 已损坏，无法解析（{e}）。\n"
+                         f"   为避免用空数据覆盖它，已停止。请修复或删除该文件后重试。")
 
 
 def write_json(path, data):
@@ -166,7 +181,9 @@ def parse_frontmatter(text):
         line = lines[i]
         if line.strip() == "---":
             break
-        nested = re.match(r"^  ([A-Za-z_][\w.-]*):\s*(.*)$", line)
+        # 缩进不限定两个空格：用户手工编辑常用 4 空格或 tab，
+        # 限死会把 metadata 字段静默忽略、来源判成 unknown
+        nested = re.match(r"^(?: {2,}|\t+)([A-Za-z_][\w.-]*):\s*(.*)$", line)
         if nested and any(l.strip() == "metadata:" for l in lines[1:i]):
             key, val = nested.group(1), nested.group(2).strip()
             if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
@@ -713,6 +730,14 @@ def repo_slug(url):
 SEMVER_TAG = re.compile(r"^v?\d+\.\d+\.\d+$")
 
 
+def require_git():
+    """检查更新 / 溯源 / 更新都靠 git ls-remote 读上游。没装 git 时若不拦，
+    报错会是「连不上 <url>」—— 用户会去查网络，实际是没装 git，方向全错。"""
+    if shutil.which("git") is None:
+        raise SystemExit("❌ 未检测到 git 命令：检查更新 / 溯源 / 更新需要用 git "
+                         "读取上游仓库，请先安装 git 后重试。")
+
+
 def remote_tags(url):
     """列出上游的语义化 tag → 它指向的 **commit** sha。
 
@@ -722,6 +747,7 @@ def remote_tags(url):
     然后 GitHub API 查这个 sha 会直接报「No commit found」（vercel-labs/skills 就是）。
     Waza 用的是 lightweight tag（直接指向 commit），所以碰巧没暴露这个 bug。
     """
+    require_git()
     try:
         r = subprocess.run(["git", "ls-remote", "--tags", url],
                            capture_output=True, text=True, timeout=25)
@@ -750,6 +776,7 @@ def latest_tag(url):
 
 
 def remote_head(url):
+    require_git()
     try:
         r = subprocess.run(["git", "ls-remote", url, "HEAD"],
                            capture_output=True, text=True, timeout=20)

@@ -40,8 +40,32 @@ if hasattr(sys.stdout, "reconfigure"):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
+if any(a in ("-h", "--help") for a in sys.argv[1:]):
+    print(__doc__)
+    sys.exit(0)
+
 FIX = "--fix" in sys.argv
 PLUGIN_CACHE = os.path.join(core.CLAUDE_DIR, "plugins", "cache")
+
+
+def dir_size(path):
+    """纯 Python 算目录大小 —— 别用 `du`，Windows 上没有这个命令。"""
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for fn in files:
+            try:
+                total += os.path.getsize(os.path.join(root, fn))
+            except OSError:
+                pass
+    return total
+
+
+def human_size(n):
+    for unit in ("B", "K", "M", "G", "T"):
+        if n < 1024:
+            return f"{n:.0f}{unit}"
+        n /= 1024
+    return f"{n:.0f}P"
 
 
 def trash(path):
@@ -210,9 +234,7 @@ def main():
                 for ver in sorted(os.listdir(pp)):
                     vp = os.path.abspath(os.path.join(pp, ver))
                     if os.path.isdir(vp) and vp not in live_paths:
-                        size = subprocess.run(["du", "-sh", vp], capture_output=True,
-                                              text=True).stdout.split("\t")[0].strip()
-                        orphans.append(f"{vp}  ({size})")
+                        orphans.append(f"{vp}  ({human_size(dir_size(vp))})")
     r.section("缓存里没有无人引用的旧版本", "个孤儿版本目录（无人引用，纯占磁盘）",
               orphans, fixable=True, fixer=lambda it: trash(it.split("  (")[0]))
 

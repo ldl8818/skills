@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 import tempfile
@@ -30,8 +29,10 @@ class CoreContractTests(unittest.TestCase):
             self.assertEqual(core.read_json(missing, {"default": True}), {"default": True})
             broken = os.path.join(root, "broken.json")
             Path(broken).write_text("{", encoding="utf-8")
-            with self.assertRaises(json.JSONDecodeError):
+            # 损坏必须硬失败（不许空表顶上），且报错要指名是哪个文件坏了
+            with self.assertRaises(SystemExit) as ctx:
                 core.read_json(broken, {})
+            self.assertIn(broken, str(ctx.exception))
 
     def test_write_json_is_complete_and_leaves_no_temp_file(self):
         with tempfile.TemporaryDirectory() as root:

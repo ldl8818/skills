@@ -12,7 +12,9 @@ SCRIPTS = ROOT / "scripts"
 
 class CliSmokeTests(unittest.TestCase):
     def run_cli(self, script, *args, home):
-        env = {**os.environ, "HOME": home, "PYTHONDONTWRITEBYTECODE": "1"}
+        # USERPROFILE 一起盖掉：Windows 的 expanduser 走它，不盖会读写真实 ~/.claude
+        env = {**os.environ, "HOME": home, "USERPROFILE": home,
+               "PYTHONDONTWRITEBYTECODE": "1"}
         return subprocess.run(
             [sys.executable, str(SCRIPTS / script), *args], env=env,
             cwd=home, text=True, capture_output=True, timeout=20)
@@ -23,6 +25,27 @@ class CliSmokeTests(unittest.TestCase):
             result = self.run_cli("scan_and_check.py", "--json", home=home)
             self.assertEqual(result.returncode, 0)
             self.assertEqual(result.stdout.strip(), "[]")
+
+    def test_help_flag_prints_usage_and_exits_zero(self):
+        with tempfile.TemporaryDirectory() as home:
+            for script in ("list_skills.py", "scan_and_check.py", "doctor.py",
+                           "update_skill.py", "delete_skill.py", "toggle_skill.py",
+                           "bump_skill.py", "trace_source.py"):
+                with self.subTest(script=script):
+                    result = self.run_cli(script, "--help", home=home)
+                    self.assertEqual(result.returncode, 0,
+                                     result.stdout + result.stderr)
+                    self.assertIn("用法", result.stdout)
+
+    def test_corrupt_state_file_fails_with_path_in_message(self):
+        with tempfile.TemporaryDirectory() as home:
+            sm = Path(home) / ".claude" / "skills" / "skill-manager"
+            sm.mkdir(parents=True)
+            (sm / "fingerprints.json").write_text("{broken", encoding="utf-8")
+            result = self.run_cli("list_skills.py", home=home)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("fingerprints.json", result.stderr)
+            self.assertIn("已损坏", result.stderr)
 
     def test_delete_rejects_path_traversal(self):
         with tempfile.TemporaryDirectory() as home:

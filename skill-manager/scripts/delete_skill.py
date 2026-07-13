@@ -19,6 +19,7 @@
 - 指纹用裸名 `name` 查表，可真正的 key 是 `global:<name>`，永远查不中，等于从没清过。
 **「删干净」的判定标准是「所有留了它名字的地方」，两条路径要对称，不是插件那条想周全了就完事。**
 """
+import io
 import os
 import sys
 import shutil
@@ -27,6 +28,11 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import core
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+else:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 ARCHIVE_ROOT = os.path.join(core.CLAUDE_DIR, "skills-archive", "_deleted")
 
@@ -205,6 +211,9 @@ def delete_plugin(key, dry_run=False):
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
+    if any(a in ("-h", "--help") for a in argv):
+        print(__doc__)
+        sys.exit(0)
     project = None
     if "--project" in argv:
         i = argv.index("--project")
@@ -220,7 +229,7 @@ if __name__ == "__main__":
     if unknown or not names:
         if unknown:
             print(f"❌ 不认识的参数: {'、'.join(sorted(unknown))}")
-        print("用法: python3 delete_skill.py <名字> [--dry-run]")
+        print("用法: python3 delete_skill.py <名字> [--project <路径>] [--dry-run]")
         sys.exit(1)
 
     dry = "--dry-run" in flags

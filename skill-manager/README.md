@@ -1,5 +1,7 @@
 # skill-manager
 
+> Skill lifecycle manager for Claude Code / Codex. CLI output is in Chinese.
+
 Claude Code / Codex 的 skill 生命周期管理器：**列出、溯源、查更新、启停、定版本、自检、删除**。
 
 一台机器上的 skill 通常来自三个地方——全局直装（`~/.claude/skills/`）、项目级
@@ -21,9 +23,11 @@ rsync -a --delete \
   skills/skill-manager/ ~/.claude/skills/skill-manager/
 ```
 
-之后在 Claude Code 里说「列出我的技能」「检查更新」即可触发，也可以直接用斜杠命令。
+不熟 `rsync` 的话，首次安装用 `cp -R skills/skill-manager ~/.claude/skills/` 也一样（干净克隆里没有本机数据文件）；上面的 rsync 写法在重装 / 升级时更稳，不会误覆盖你已积累的数据。
 
-**要求**：`python3`（macOS / Linux 自带）。**零第三方依赖**，全部标准库，不需要 pip install。
+装好后**重启 Claude Code 会话**才会加载。之后说「列出我的技能」「检查更新」即可触发，也可以直接用斜杠命令。
+
+**要求**：`python3` ≥ 3.9（macOS / Linux 自带）和 `git`（检查更新、溯源、更新时用到）。**零第三方依赖**，全部标准库，不需要 pip install。
 
 ## 命令
 
@@ -31,8 +35,9 @@ rsync -a --delete \
 /skill-manager list                      # 全局 + 当前目录的项目级 skill
 /skill-manager list <项目名|路径>         # 指定项目：项目 skill 与全局 skill 分块列
 /skill-manager list --all                # 全景：按最近活跃展开前 3 个项目，其余折叠
+/skill-manager list --all -n 10          # 多展开几个（-n 0 = 全部展开）
 /skill-manager check                     # 本地版本 vs 上游最新
-/skill-manager trace <名字> [--write]     # 溯源：查出处、靠内容比对定版本
+/skill-manager trace <名字> [--repo <URL>] [--path <子目录>] [--write]  # 溯源：查出处、内容比对定版
 /skill-manager trace --all --write       # 批量溯源所有来源不明的
 /skill-manager update [名字] [--project <路径>] # 更新单个；不给名字 = 更新所有有新版的
 /skill-manager update --dry-run          # 只列出将要更新的，不动手
@@ -42,6 +47,8 @@ rsync -a --delete \
 /skill-manager doctor [--fix]            # 自检 10 项；--fix 只做有依据的补录
 /skill-manager delete <名字> [--project <路径>] [--dry-run] # 归档删除
 ```
+
+任何脚本加 `--help` 都能看完整用法说明。
 
 几个设计要点：
 
@@ -59,11 +66,17 @@ rsync -a --delete \
 |------|------|---------|
 | `fingerprints.json` | 每个 skill 的整目录内容哈希，用来发现「内容改了、版本号没跟上」 | 自动 |
 | `projects.json` | 跑过本 skill 的项目注册表 | 自动 |
-| `evolution.json` | 使用过程中积累的偏好与修正 | 自动 |
 | `descriptions_zh.json` | **插件** skill 的中文描述外挂表 | 手工 |
 
 自动维护的文件会在首次需要写入时生成；手工维护的 `descriptions_zh.json` 缺失时按空表读取。
-JSON 一旦存在但损坏或不可读，命令会硬失败，避免用空表覆盖真实配置。
+JSON 一旦存在但损坏或不可读，命令会硬失败并指名坏的是哪个文件，避免用空表覆盖真实配置。
+
+为什么插件的中文描述要走外挂表：直装 skill 的中文描述写进各自 `SKILL.md` 的
+`zh_description` 字段（跟着 skill 走，搬家、拷给别人都不丢）；**插件的 SKILL.md
+会被上游更新整个覆盖**，写进去下次更新就没了。这张表是手工维护的，换机器时值得单独备份。
+
+（同目录还可能出现 `evolution.json`——那是另一个 skill（skill-evolution-manager）的
+数据文件，本 skill 不读写它，只负责不把它算进指纹。）
 
 ## 验证
 
@@ -73,17 +86,15 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 python3 -m compileall -q scripts
 ```
 
-Codex 安装应复用 Claude 真身，建立单 Skill 软链接：
+## Codex 侧安装（可选）
+
+Codex 复用 Claude 真身，建立单 Skill 软链接：
 
 ```bash
 ln -s ~/.claude/skills/skill-manager ~/.codex/skills/skill-manager
 ```
 
 不要把整个 `~/.codex/skills/` 链到其他目录，也不要在 Codex 侧维护实体副本。
-
-关于最后一个：直装 skill 的中文描述应写进各自 `SKILL.md` 的 `zh_description` 字段
-（跟着 skill 走，搬家、拷给别人都不丢）；**插件只能走外挂表**——因为插件的 SKILL.md
-会被上游更新整个覆盖，写进去下次更新就没了。这张表是手工维护的，换机器时值得单独备份。
 
 ## 设计文档
 

@@ -25,6 +25,7 @@
   子目录；结构验证通过才写 installed_plugins.json，失败保留旧版运行
 - frontmatter 声明 update_policy: frozen 的 skill 拒绝更新（绝版 / 深度定制）
 """
+import io
 import os
 import re
 import sys
@@ -42,16 +43,16 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import core
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+else:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
 CLAUDE_DIR = os.path.expanduser("~/.claude")
 SKILLS_DIR = os.path.join(CLAUDE_DIR, "skills")
 INSTALLED_PLUGINS_JSON = os.path.join(CLAUDE_DIR, "plugins", "installed_plugins.json")
 KNOWN_MARKETPLACES_JSON = os.path.join(CLAUDE_DIR, "plugins", "known_marketplaces.json")
 BACKUP_ROOT = os.path.join(CLAUDE_DIR, "skills-archive", "_update_backups")
-
-# 只认纯语义化 tag（v3.31.2 / 1.5.16）。聚合仓库常给每个 skill 单独打 tag
-# （如 neat-freak-v1.0.2），按「数字最大」去挑会挑到别的 skill 的 tag 上 ——
-# 认不出来就老实回退 HEAD，别乱猜。
-SEMVER_TAG = re.compile(r"^v?\d+\.\d+\.\d+$")
 
 
 # ── frontmatter 轻量解析（免 PyYAML） ──────────────────────
@@ -78,17 +79,8 @@ def set_frontmatter_field(content, key, value):
 # ── 远端与下载 ────────────────────────────────────────────
 
 def get_remote_hash(url):
-    try:
-        result = subprocess.run(
-            ["git", "ls-remote", url, "HEAD"],
-            capture_output=True, text=True, timeout=15
-        )
-        if result.returncode == 0:
-            parts = result.stdout.split()
-            return parts[0] if parts else None
-    except Exception:
-        pass
-    return None
+    # 判定单源：ls-remote 的实现（含「没装 git」的人话报错）统一在 core
+    return core.remote_head(url)
 
 
 def latest_release(url):
@@ -596,6 +588,9 @@ def update_all(dry_run=False):
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
+    if any(a in ("-h", "--help") for a in argv):
+        print(__doc__)
+        sys.exit(0)
     project = None
     if "--project" in argv:
         i = argv.index("--project")
@@ -610,7 +605,7 @@ if __name__ == "__main__":
     unknown = flags - {"--dry-run"}
     if unknown:
         print(f"❌ 不认识的参数: {'、'.join(sorted(unknown))}")
-        print("用法: python3 update_skill.py [名字] [--dry-run]")
+        print("用法: python3 update_skill.py [名字] [--project <路径>] [--dry-run]")
         print("      不给名字 = 检查并更新所有有新版的")
         sys.exit(1)
 
@@ -621,8 +616,12 @@ if __name__ == "__main__":
         sys.exit(0 if update_all(dry_run="--dry-run" in flags) else 1)
 
     if "--dry-run" in flags:
+        # 只解析目标，不联网查新版（批量 dry-run 才做真实比对）——如实说清，别让人
+        # 把「将更新」误读成「确认有新版」
         kind, key, err = ("skill", names[0], None) if project else core.resolve_target(names[0])
-        print(f"❌ {err}" if err else f"（--dry-run）将更新{'插件' if kind == 'plugin' else 'skill'}：{key}")
+        print(f"❌ {err}" if err else
+              f"（--dry-run）目标解析为{'插件' if kind == 'plugin' else 'skill'}：{key}"
+              f"（是否有新版以实际执行时的比对为准）")
         sys.exit(1 if err else 0)
 
     sys.exit(0 if update_one(names[0], project) else 1)

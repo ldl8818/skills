@@ -11,10 +11,8 @@
 """
 import io
 import os
-import re
 import sys
 import json
-import subprocess
 import concurrent.futures
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -25,12 +23,11 @@ if hasattr(sys.stdout, "reconfigure"):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-AS_JSON = "--json" in sys.argv
+if any(a in ("-h", "--help") for a in sys.argv[1:]):
+    print(__doc__)
+    sys.exit(0)
 
-# 只认纯语义化 tag（v3.31.2 / 1.5.16）。聚合仓库常给每个 skill 单独打 tag
-# （如 neat-freak-v1.0.2），按「数字最大」去挑会挑到别的 skill 的 tag 上 ——
-# 认不出来就老实回退 HEAD，别乱猜。
-SEMVER_TAG = re.compile(r"^v?\d+\.\d+\.\d+$")
+AS_JSON = "--json" in sys.argv
 
 
 def remote_latest(url, tags_ok=True):

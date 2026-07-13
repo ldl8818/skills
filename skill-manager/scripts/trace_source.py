@@ -158,7 +158,8 @@ def pin_version(slug, name, local_dir, hint=""):
                 ver = ""
                 vf = os.path.join(tmp, "VERSION")
                 if os.path.isfile(vf):
-                    ver = open(vf).read().strip()
+                    with open(vf, encoding="utf-8") as f:
+                        ver = f.read().strip()
                 if not ver and ref != "HEAD":
                     ver = ref.lstrip("v")
                 return {"ref": ref, "path": rel, "version": ver}
@@ -259,7 +260,8 @@ def trace_batch(slug, group, path_hint=""):
             ver = ""
             vf = os.path.join(tmp, "VERSION")
             if os.path.isfile(vf):
-                ver = open(vf).read().strip()
+                with open(vf, encoding="utf-8") as f:
+                    ver = f.read().strip()
             if not ver and ref != "HEAD":
                 ver = ref.lstrip("v")
             sha = date = ""
@@ -296,6 +298,9 @@ def trace_batch(slug, group, path_hint=""):
 
 
 def main():
+    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+        print(__doc__)
+        sys.exit(0)
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     repo = path_hint = None
     if "--repo" in sys.argv:

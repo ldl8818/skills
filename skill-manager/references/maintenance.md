@@ -62,6 +62,14 @@ dirty 检测（`fingerprint` + `fingerprints.json`），别拿它比上游。
 > find_skill_dir 认不出「仓库根就是 skill」的单 skill 仓库（解压临时目录名随机，
 > 靠目录名匹配必失败，改为看 frontmatter 的 name）。
 
+### 运行数据存放在 skill 自身目录（已知取舍）
+`fingerprints.json` / `projects.json` / `descriptions_zh.json` 落在
+`~/.claude/skills/skill-manager/` 里。这个选址的代价是四处补偿：指纹的自指排除
+（`SM_DATA_FILES`）、仓库根 `.gitignore`、README 安装命令的 `--exclude` 清单、
+update 合并时「本地独有文件保留」；好处是零配置、数据跟着 skill 走。
+若未来迁移，方向是 `~/.claude/data/skill-manager/`（新位置优先、旧位置读旧写新一次性搬迁）。
+在那之前：**新增数据文件或改名时，上述四处都要同步过一遍，漏一处就是自指 dirty 或数据被更新冲掉。**
+
 ### check 与 update 口径一致
 update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有新版」）；
 插件按 commit 装，就拿 commit 比。

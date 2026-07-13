@@ -93,6 +93,9 @@ def toggle_direct(name, enable, project=None):
 
 
 def main():
+    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+        print(__doc__)
+        sys.exit(0)
     if len(sys.argv) < 3 or sys.argv[1] not in ("enable", "disable"):
         print(__doc__)
         sys.exit(1)
