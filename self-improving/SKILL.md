@@ -4,7 +4,7 @@ description: "Captures corrections and command failures into a configurable, rev
 metadata:
   zh_description: "跨 Claude Code 与 Codex 管理经审核的纠错记忆，支持安装、迁移、体检和敏感任务停用持久学习"
   compatibility: "Python 3.11+; macOS, Linux, or Windows WSL; Claude Code and/or Codex"
-  version: 2.6.0
+  version: 2.6.1
 ---
 # Self-improving cross-agent memory
 Use this skill to operate a private memory repository shared by Claude Code and Codex while keeping public program code separate from user data.

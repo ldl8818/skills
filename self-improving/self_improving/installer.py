@@ -25,11 +25,32 @@ LEGACY_HOOK_NAMES = (
 )
 
 
-def hook_command(platform: str, event: str) -> str:
+def _hook_command_parts(platform: str, event: str) -> tuple[str, str]:
     package = shlex.quote(str(PACKAGE_ROOT))
-    python = shlex.quote(sys.executable)
     config = shlex.quote(str(default_config_path()))
-    return f"cd {package} && SELF_IMPROVING_CONFIG={config} {python} -m self_improving hook --platform {platform} --event {event} # {MARKER}"
+    prefix = f"cd {package} && SELF_IMPROVING_CONFIG={config} "
+    suffix = f" -m self_improving hook --platform {platform} --event {event} # {MARKER}"
+    return prefix, suffix
+
+
+def hook_command(platform: str, event: str) -> str:
+    prefix, suffix = _hook_command_parts(platform, event)
+    return f"{prefix}{shlex.quote(sys.executable)}{suffix}"
+
+
+def hook_command_matches(command: str, platform: str, event: str) -> bool:
+    """判定已登记的 Hook 命令是否等效于本包的期望命令。
+
+    只放开解释器一段：安装与体检可能由不同 Python 运行（如项目 venv vs Homebrew），
+    逐字比对会把接线正常的 Hook 误判为未安装（2.6.1 修复的 doctor 假 ❌）。
+    包路径、配置路径、平台、事件仍须精确一致，包搬家或命令陈旧照常报警。
+    """
+    prefix, suffix = _hook_command_parts(platform, event)
+    return (
+        command.startswith(prefix)
+        and command.endswith(suffix)
+        and len(command) > len(prefix) + len(suffix)
+    )
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -145,7 +166,7 @@ def hook_is_installed(config: dict[str, Any], platform: str) -> bool:
         return False
     return all(
         any(
-            isinstance(hook, dict) and str(hook.get("command", "")) == hook_command(platform, event)
+            isinstance(hook, dict) and hook_command_matches(str(hook.get("command", "")), platform, event)
             for group in hooks.get(event, []) if isinstance(group, dict)
             for hook in group.get("hooks", []) if isinstance(group.get("hooks", []), list)
         )

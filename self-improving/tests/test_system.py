@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from contextlib import redirect_stdout
+import shlex
 import subprocess
 import sys
 
@@ -15,7 +16,7 @@ from self_improving import __version__
 from self_improving.config import default_config, load_config, resolved, write_config
 from self_improving.events import normalize
 from self_improving.hooks.common import dispatch
-from self_improving.installer import MARKER, hook_is_installed, install_hooks, uninstall_hooks
+from self_improving.installer import MARKER, hook_command, hook_is_installed, install_hooks, uninstall_hooks
 from self_improving.indexing import broken_local_links, sync_index
 from self_improving.security import contains_secret, sanitize
 from self_improving.review import decide, list_candidates
@@ -520,6 +521,16 @@ class SystemTests(unittest.TestCase):
         self.claude.write_text(json.dumps({"hooks": groups}))
         with self.env():
             self.assertFalse(hook_is_installed(self.config, "claude"))
+
+    def test_hook_installed_by_other_interpreter_is_reported_as_installed(self) -> None:
+        # 安装与体检可能由不同 Python 运行；只要包路径/配置/平台/事件一致就算已接线
+        with self.env():
+            groups = {}
+            for event in ("SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"):
+                command = hook_command("claude", event).replace(shlex.quote(sys.executable), "/other/python3.99")
+                groups[event] = [{"hooks": [{"type": "command", "command": command}]}]
+            self.claude.write_text(json.dumps({"hooks": groups}))
+            self.assertTrue(hook_is_installed(self.config, "claude"))
 
     def test_session_start_injects_validated_memory_and_records_schema(self) -> None:
         with self.env():

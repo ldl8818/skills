@@ -1,4 +1,7 @@
 # Changelog
+## 2.6.1 - 2026-07-16
+- `doctor` no longer reports a false "Hook wiring" failure when run from a different Python interpreter than the one that installed the hooks (e.g. a project venv vs the Homebrew install). The check now matches the registered command's package path, config path, platform and event exactly while allowing any interpreter segment; stale or relocated hook commands still fail the check as before.
+
 ## 2.6.0 - 2026-07-13
 - Correction capture now pre-filters non-human text, fixing real noise observed in review: messages beginning with client-injected system tags (`<task-notification>`, `<system-reminder>` and similar, fullwidth variants included) are never treated as corrections, and correction keywords appearing only inside fenced code blocks (pasted logs, diffs) no longer trigger capture. Human text outside the fences still captures normally. This keeps review effort and machine-generated private paths out of the candidate inbox; the human review gate is unchanged.
 
