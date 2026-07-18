@@ -7,17 +7,15 @@
   「已安装」，让人误判它们还在占用上下文。同期还发现 installed_plugins.json
   可以指向一个不存在的目录（baoyu 更新中断），项目级插件静默失效且无人察觉。
 
-  根因是「状态散落在 7 处、每个脚本各读一套」。本模块把这 7 处归集成
+  根因是「状态散落在多处、每个脚本各读一套」。本模块把这些位置归集成
   唯一事实来源，list / check / update / toggle / doctor / bump 全部走这里。
 
-真实状态的 7 个来源：
-  1. ~/.claude/skills/<name>/SKILL.md            全局直装（.disabled 后缀 = 禁用）
-  2. <project>/.claude/skills/<name>/SKILL.md    项目直装
-  3. ~/.claude/plugins/installed_plugins.json    插件的安装路径与版本
-  4. ~/.claude/settings.json  → enabledPlugins   插件的全局启用状态
-  5. <project>/.claude/settings.json → enabledPlugins  插件的项目级启用状态
-  6. ~/.claude/commands/*.md                     自定义斜杠命令
-  7. ~/.agents/.skill-lock.json                  安装器来源记录
+真实状态的来源按作用域与安装方式分类：
+  1. 通用目录与各客户端的用户级 skills 目录              全局 Skill
+  2. <project> 下的通用目录与客户端专用 skills 目录       项目 Skill
+  3. Claude/Codex 插件缓存与 manifest                         插件安装状态
+  4. Claude settings.json、Codex config.toml                   插件启用状态
+  5. ~/.claude/commands、~/.agents/.skill-lock.json            命令与来源记录
 
 版本语义（见 SKILL.md「版本规范」）：
   本地/拷贝/冻结  → 人工 semver（1.0.0），起手 1.0.0
@@ -45,39 +43,79 @@ if sys.version_info < (3, 9):
              f"{sys.version_info[0]}.{sys.version_info[1]}。请升级 python3 后重试。")
 
 HOME = os.path.expanduser("~")
+AGENTS_DIR = os.path.join(HOME, ".agents")
+AGENTS_SKILLS_DIR = os.path.join(AGENTS_DIR, "skills")
 CLAUDE_DIR = os.path.join(HOME, ".claude")
+CODEX_DIR = os.path.join(HOME, ".codex")
+GEMINI_DIR = os.path.join(HOME, ".gemini")
+GROK_DIR = os.path.join(HOME, ".grok")
 GLOBAL_SKILLS_DIR = os.path.join(CLAUDE_DIR, "skills")
 COMMANDS_DIR = os.path.join(CLAUDE_DIR, "commands")
 GLOBAL_SETTINGS = os.path.join(CLAUDE_DIR, "settings.json")
 INSTALLED_PLUGINS_JSON = os.path.join(CLAUDE_DIR, "plugins", "installed_plugins.json")
 KNOWN_MARKETPLACES_JSON = os.path.join(CLAUDE_DIR, "plugins", "known_marketplaces.json")
+CODEX_CONFIG = os.path.join(CODEX_DIR, "config.toml")
+CODEX_PLUGIN_CACHE = os.path.join(CODEX_DIR, "plugins", "cache")
+CODEX_SKILLS_DIR = os.path.join(CODEX_DIR, "skills")
+CODEX_SYSTEM_SKILLS_DIR = os.path.join(CODEX_SKILLS_DIR, ".system")
+GEMINI_SKILLS_DIR = os.path.join(GEMINI_DIR, "skills")
+GROK_SKILLS_DIR = os.path.join(GROK_DIR, "skills")
+ANTIGRAVITY_SKILLS_DIR = os.path.join(GEMINI_DIR, "config", "skills")
+ANTIGRAVITY_IDE_SKILLS_DIR = os.path.join(GEMINI_DIR, "antigravity", "skills")
+ANTIGRAVITY_CLI_SKILLS_DIR = os.path.join(GEMINI_DIR, "antigravity-cli", "skills")
 
-SM_DIR = os.path.join(GLOBAL_SKILLS_DIR, "skill-manager")
-
-# 运行数据自 2.2.0 起住 ~/.claude/data/：数据记录的是「这台机器的状态」，
-# 不是 skill 的一部分。跟代码同住的年代要靠 4 处补偿硬撑（仓库 .gitignore、
-# 指纹自指排除、安装命令的 --exclude 清单、更新合并保数据），
-# 而且用户重装时漏抄一个 --exclude 就会删掉自己的账本。分居后这些全部消失。
-DATA_DIR = os.path.join(CLAUDE_DIR, "data", "skill-manager")
+# 管理器自己的状态不得寄生在某个客户端目录里；否则没装 Claude
+# 的 Gemini/Grok/Codex 用户也会被迫创建 ~/.claude。SKILL_MANAGER_HOME 只用于测试
+# 或受管环境重定向，默认是客户端中立目录。
+STATE_DIR = os.path.abspath(os.path.expanduser(
+    os.environ.get("SKILL_MANAGER_HOME", os.path.join(HOME, ".skill-manager"))))
+DATA_DIR = os.path.join(STATE_DIR, "data")
+ARCHIVE_DIR = os.path.join(STATE_DIR, "archive")
 DESCRIPTIONS_ZH = os.path.join(DATA_DIR, "descriptions_zh.json")
 FINGERPRINTS = os.path.join(DATA_DIR, "fingerprints.json")
 PROJECTS = os.path.join(DATA_DIR, "projects.json")
 
 
-def _migrate_legacy_data():
-    """≤2.1.0 的数据存在 skill 自身目录里，首次运行自动搬到 DATA_DIR。
+def _legacy_data_dirs():
+    """历史状态目录，新的独立账本优先从这些位置搬迁。"""
+    skill_roots = (
+        AGENTS_SKILLS_DIR, GLOBAL_SKILLS_DIR, CODEX_SKILLS_DIR,
+        GEMINI_SKILLS_DIR, GROK_SKILLS_DIR, ANTIGRAVITY_SKILLS_DIR,
+        ANTIGRAVITY_IDE_SKILLS_DIR, ANTIGRAVITY_CLI_SKILLS_DIR,
+    )
+    return [os.path.join(CLAUDE_DIR, "data", "skill-manager")] + [
+        os.path.join(root, "skill-manager") for root in skill_roots]
 
-    只搬「旧位置有、新位置没有」的文件；两边都有时不动旧的（不猜哪份是真，
+
+def _migrate_legacy_data():
+    """旧数据首次运行自动搬到客户端中立的 DATA_DIR。
+
+    只搬「旧位置有、新位置没有」的第一份；多处都有时不合并（不猜哪份是真，
     残留交给人判断）。搬家是一次性的：搬完旧位置就空了，此后这里是空操作。
     """
     for fn in ("descriptions_zh.json", "fingerprints.json", "projects.json"):
-        old, new = os.path.join(SM_DIR, fn), os.path.join(DATA_DIR, fn)
-        if os.path.isfile(old) and not os.path.exists(new):
-            os.makedirs(DATA_DIR, exist_ok=True)
-            shutil.move(old, new)
+        new = os.path.join(DATA_DIR, fn)
+        if os.path.exists(new):
+            continue
+        for old_dir in _legacy_data_dirs():
+            old = os.path.join(old_dir, fn)
+            if os.path.isfile(old):
+                os.makedirs(DATA_DIR, exist_ok=True)
+                shutil.move(old, new)
+                break
 
 
-_migrate_legacy_data()
+_MIGRATION_CHECKED = False
+
+
+def _ensure_data_migrated(path):
+    """只在真正读写运行账本时检查搬家，导入 core 本身不应改磁盘。"""
+    global _MIGRATION_CHECKED
+    managed = {DESCRIPTIONS_ZH, FINGERPRINTS, PROJECTS}
+    if not _MIGRATION_CHECKED and os.path.abspath(path) in {
+            os.path.abspath(p) for p in managed}:
+        _migrate_legacy_data()
+        _MIGRATION_CHECKED = True
 
 # Claude Code 的会话记录目录：每个项目一个子目录，每跑一次会话写一份 .jsonl。
 # 最新那份的 mtime = 最后一次在该项目里干活的时间 —— 这是「最近在写哪个项目」
@@ -85,7 +123,7 @@ _migrate_legacy_data()
 # 跟开发活跃度无关，别拿它当活跃度用。
 SESSIONS_DIR = os.path.join(CLAUDE_DIR, "projects")
 
-# 第 7 个状态来源：skill 安装器（Waza / vercel skills CLI）留下的安装记录。
+# skill 安装器（Waza / vercel skills CLI）留下的安装记录。
 # 它权威地记着每个 skill 是从哪个仓库、哪个路径装来的。之前没读它，
 # 才会把 tw93/Waza 装的 8 个 skill 误判成「本地自建」。
 SKILL_LOCK = os.path.join(HOME, ".agents", ".skill-lock.json")
@@ -113,6 +151,7 @@ MANAGED_FIELDS = ("version", "zh_description", "github_url",
 # ── 基础 IO ──────────────────────────────────────────────
 
 def read_json(path, default=None):
+    _ensure_data_migrated(path)
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -127,6 +166,7 @@ def read_json(path, default=None):
 
 def write_json(path, data):
     """原子写 JSON；损坏的旧文件绝不被空表静默覆盖。"""
+    _ensure_data_migrated(path)
     parent = os.path.dirname(path)
     os.makedirs(parent, exist_ok=True)
     mode = os.stat(path).st_mode & 0o777 if os.path.exists(path) else 0o600
@@ -364,7 +404,7 @@ def fingerprint(skill_dir, extra_strip=()):
     extra_strip 传给 strip_managed_fields —— 比对本地与上游时，用本地的声明
     统一两边的口径（见 strip_managed_fields 的 extra 说明）。
     """
-    is_self = os.path.abspath(skill_dir) == SM_DIR
+    is_self = os.path.basename(os.path.realpath(skill_dir)) == "skill-manager"
     h = hashlib.sha256()
     for root, dirs, files in os.walk(skill_dir):
         dirs[:] = sorted(d for d in dirs if d not in FP_IGNORE_DIRS)
@@ -414,7 +454,7 @@ def content_matches_upstream(local_dir, upstream_dir):
     except Exception:
         pass
 
-    is_self = os.path.abspath(local_dir) == SM_DIR
+    is_self = os.path.basename(os.path.realpath(local_dir)) == "skill-manager"
     for root, dirs, files in os.walk(upstream_dir):
         dirs[:] = sorted(d for d in dirs if d not in FP_IGNORE_DIRS)
         for fn in sorted(files):
@@ -493,15 +533,17 @@ def load_projects():
 def is_project_dir(path):
     """有项目级 skill 或项目级插件配置，才算一个「有 skill 的项目」。
 
-    HOME 和 ~/.claude 必须排除：~/.claude/skills 就是全局 skill 目录，
+    HOME 和客户端的全局配置目录必须排除，否则全局 skill 可能
     把 HOME 当成项目会让全局 skill 又被当作「项目:alice」重列一遍。
     以前靠注册表里碰巧没有 HOME 才没暴露；现在项目会从会话记录自动发现，
     这个坑就在路上了，堵在源头。
     """
-    path = os.path.abspath(path)
-    if path in (HOME, CLAUDE_DIR):
+    path = os.path.realpath(os.path.abspath(path))
+    excluded = (HOME, AGENTS_DIR, CLAUDE_DIR, CODEX_DIR, GEMINI_DIR, GROK_DIR,
+                STATE_DIR)
+    if path in {os.path.realpath(p) for p in excluded}:
         return False
-    return (os.path.isdir(os.path.join(path, ".claude", "skills"))
+    return (any(os.path.isdir(root) for _, root in project_skill_roots(path))
             or os.path.isfile(os.path.join(path, ".claude", "settings.json")))
 
 
@@ -595,7 +637,7 @@ def worktree_main(path):
     `gitdir: <主仓>/.git/worktrees/<名>`），普通仓库的 `.git` 是目录。
 
     为什么要认它（2026-07-11 实战）：项目级 skill 是 git 跟踪的文件，
-    所以 worktree 里的 `.claude/skills` 只是主仓那批 skill 的**另一份检出**。
+    所以 worktree 里的项目级 Skill 目录只是主仓那批 Skill 的**另一份检出**。
     当成独立项目扫，同一批 skill 就被数两遍；更坑的是落后的分支会反复报
     「来源未登记」——那些你早在主分支上修好并提交了的问题。
     人会以为自己没修好，其实是在看一份旧副本。
@@ -704,6 +746,34 @@ def resolve_project(token):
 
 def enabled_plugins_of(settings_path):
     return read_json(settings_path, {}).get("enabledPlugins", {})
+
+
+def enabled_codex_plugins(config_path=CODEX_CONFIG):
+    """读取 Codex config.toml 的插件开关，不依赖 Python 3.11 的 tomllib。"""
+    if not os.path.isfile(config_path):
+        return {}
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError as exc:
+        raise SystemExit(f"❌ 无法读取 Codex 插件配置 {config_path}: {exc}")
+
+    enabled, current = {}, None
+    header = re.compile(r'^\s*\[plugins\."([^"\n]+)"\]\s*(?:#.*)?$')
+    any_header = re.compile(r"^\s*\[[^\]]+\]\s*(?:#.*)?$")
+    switch = re.compile(r"^\s*enabled\s*=\s*(true|false)\s*(?:#.*)?$", re.I)
+    for line in text.splitlines():
+        match = header.match(line)
+        if match:
+            current = match.group(1)
+            continue
+        if any_header.match(line):
+            current = None
+            continue
+        match = switch.match(line)
+        if current and match:
+            enabled[current] = match.group(1).lower() == "true"
+    return enabled
 
 
 def plugin_scopes(plugin_key, project_paths):
@@ -837,7 +907,10 @@ def resolve_target(name, quiet=False):
     except ValueError as exc:
         return None, None, str(exc)
 
-    if os.path.isfile(os.path.join(GLOBAL_SKILLS_DIR, name, "SKILL.md")):
+    direct_path, direct_error = resolve_direct_path(name)
+    if direct_error:
+        return None, None, direct_error
+    if direct_path:
         return "skill", name, None
 
     matches = [k for k in registry if k.split("@")[0] == name]
@@ -849,7 +922,7 @@ def resolve_target(name, quiet=False):
         cand = "\n".join(f"   {k}" for k in sorted(matches))
         return None, None, f"插件 {name} 装在多个市场，请指明是哪个：\n{cand}"
 
-    return None, None, (f"找不到 {name}（既不是 ~/.claude/skills/ 下的 skill，"
+    return None, None, (f"找不到 {name}（既不是已支持全局目录下的 skill，"
                         f"也不是已安装的插件）。跑 /skill-manager list 看看有哪些。")
 
 
@@ -991,6 +1064,133 @@ def collect_direct(skills_root, scope, scope_label, zh_map, fps, touched, lock):
     return out
 
 
+def global_skill_roots():
+    """返回已核实客户端的全局 Skill 位置，共享目录优先展示。"""
+    return [
+        ("共享", AGENTS_SKILLS_DIR),
+        ("Claude", GLOBAL_SKILLS_DIR),
+        ("Gemini CLI", GEMINI_SKILLS_DIR),
+        ("Grok", GROK_SKILLS_DIR),
+        ("Antigravity 2.0", ANTIGRAVITY_SKILLS_DIR),
+        ("Antigravity IDE", ANTIGRAVITY_IDE_SKILLS_DIR),
+        ("Antigravity CLI", ANTIGRAVITY_CLI_SKILLS_DIR),
+        ("Codex", CODEX_SKILLS_DIR),
+    ]
+
+
+def project_skill_roots(project_path):
+    """返回项目级位置；通用标准优先，Antigravity 旧别名最后。"""
+    return [
+        ("共享", os.path.join(project_path, ".agents", "skills")),
+        ("Claude", os.path.join(project_path, ".claude", "skills")),
+        ("Codex", os.path.join(project_path, ".codex", "skills")),
+        ("Gemini CLI", os.path.join(project_path, ".gemini", "skills")),
+        ("Grok", os.path.join(project_path, ".grok", "skills")),
+        ("Antigravity 旧别名", os.path.join(project_path, ".agent", "skills")),
+    ]
+
+
+def _direct_groups(roots):
+    """按 realpath 合并软链接入口，避免把同一个 Skill 重复计数。"""
+    groups = {}
+    for priority, (label, root) in enumerate(roots):
+        if not os.path.isdir(root):
+            continue
+        for name in sorted(os.listdir(root)):
+            path = os.path.join(root, name)
+            md = os.path.join(path, "SKILL.md")
+            md_dis = os.path.join(path, "SKILL.md.disabled")
+            if not os.path.isdir(path) or not (os.path.isfile(md) or os.path.isfile(md_dis)):
+                continue
+            groups.setdefault(os.path.realpath(path), []).append({
+                "name": name,
+                "path": path,
+                "md_path": md if os.path.isfile(md) else md_dis,
+                "enabled": os.path.isfile(md),
+                "label": label,
+                "priority": priority,
+            })
+    return groups
+
+
+def resolve_direct_path(name, project=None):
+    """按统一目录模型解析一个直装 Skill，返回（目录，错误）。"""
+    safe_component(name, "skill 名")
+    roots = project_skill_roots(os.path.abspath(project)) if project else global_skill_roots()
+    candidates = []
+    for entries in _direct_groups(roots).values():
+        matches = [entry for entry in entries if entry["name"] == name]
+        if not matches:
+            continue
+        matches.sort(key=lambda e: (not e["enabled"], e["priority"], e["path"]))
+        candidates.append(matches[0]["path"])
+    if len(candidates) == 1:
+        return candidates[0], None
+    if len(candidates) > 1:
+        choices = "\n".join(f"   {path}" for path in sorted(candidates))
+        return None, f"发现多个同名直装 skill，请先保留一个或明确整理目录：\n{choices}"
+    return None, None
+
+
+def collect_global_direct(zh_map, fps, touched, lock):
+    """收集共享全局与客户端全局 Skill，同一实体只显示一次。"""
+    out = []
+    for entries in _direct_groups(global_skill_roots()).values():
+        entries.sort(key=lambda e: (not e["enabled"], e["priority"], e["path"]))
+        chosen = entries[0]
+        labels = {e["label"] for e in entries}
+        if "共享" in labels:
+            scope_label = "全局直装（共享）"
+        else:
+            ordered = []
+            for label, _ in global_skill_roots():
+                if label in labels and label not in ordered:
+                    ordered.append(label)
+            scope_label = f"全局直装（{' + '.join(ordered)}）"
+        out.append(_make_direct_skill(
+            chosen["name"], chosen["path"], chosen["md_path"],
+            any(e["enabled"] for e in entries), "global", scope_label,
+            zh_map, fps, touched, lock))
+    return out
+
+
+def collect_project_direct(project_path, zh_map, fps, touched, lock):
+    """收集一个项目的通用与客户端 Skill 目录，按实体去重。"""
+    out = []
+    scope_label = "项目:" + os.path.basename(project_path)
+    for entries in _direct_groups(project_skill_roots(project_path)).values():
+        entries.sort(key=lambda e: (not e["enabled"], e["priority"], e["path"]))
+        chosen = entries[0]
+        out.append(_make_direct_skill(
+            chosen["name"], chosen["path"], chosen["md_path"],
+            any(e["enabled"] for e in entries), project_path, scope_label,
+            zh_map, fps, touched, lock))
+    return out
+
+
+def collect_codex_system_skills(zh_map):
+    """盘点 Codex 管理的内置 Skill；只读，不纳入直装生命周期操作。"""
+    out = []
+    if not os.path.isdir(CODEX_SYSTEM_SKILLS_DIR):
+        return out
+    for name in sorted(os.listdir(CODEX_SYSTEM_SKILLS_DIR)):
+        path = os.path.join(CODEX_SYSTEM_SKILLS_DIR, name)
+        md_path = os.path.join(path, "SKILL.md")
+        if not os.path.isdir(path) or not os.path.isfile(md_path):
+            continue
+        meta = parse_skill_md(md_path)
+        desc, desc_zh = resolve_desc(name, meta, zh_map)
+        out.append(Skill(
+            name=name, desc=desc, desc_zh=desc_zh, source="codex-system",
+            kind=KIND_SKILL, origin="Codex 内置", frozen=False,
+            scope="system", scope_label="Codex 内置", enabled=True,
+            version=str(meta.get("version", "—")), dirty=False, path=path,
+            github_url="", github_hash="", github_date="", github_path="",
+            update_policy="", plugin_key="", marketplace="", md_path=md_path,
+        ))
+    return out
+
+
 def collect_plugins(zh_map, project_paths):
     """插件能力：启用状态从 settings.json 真实读取，不再假设「装了 = 在用」。
 
@@ -1043,6 +1243,64 @@ def collect_plugins(zh_map, project_paths):
                         continue
                     cp = os.path.join(cmds_dir, fn)
                     out.append(mk(f"{plugin_name}:{fn[:-3]}", cp, cp, "plugin-cmd"))
+    return out
+
+
+def collect_codex_plugins(zh_map):
+    """从 Codex 缓存 manifest 收集插件，并用 config.toml 判定是否启用。"""
+    out = []
+    configured = enabled_codex_plugins()
+    if not os.path.isdir(CODEX_PLUGIN_CACHE):
+        return out
+
+    candidates = {}
+    for marketplace in sorted(os.listdir(CODEX_PLUGIN_CACHE)):
+        marketplace_dir = os.path.join(CODEX_PLUGIN_CACHE, marketplace)
+        if not os.path.isdir(marketplace_dir):
+            continue
+        for plugin_name in sorted(os.listdir(marketplace_dir)):
+            plugin_dir = os.path.join(marketplace_dir, plugin_name)
+            if not os.path.isdir(plugin_dir):
+                continue
+            version_dirs = sorted(
+                os.listdir(plugin_dir),
+                key=lambda d: os.path.getmtime(os.path.join(plugin_dir, d)), reverse=True)
+            for version_dir in version_dirs:
+                root = os.path.join(plugin_dir, version_dir)
+                manifest_path = os.path.join(root, ".codex-plugin", "plugin.json")
+                if not os.path.isfile(manifest_path):
+                    continue
+                try:
+                    with open(manifest_path, encoding="utf-8") as f:
+                        manifest = json.load(f)
+                except (OSError, json.JSONDecodeError):
+                    continue
+                key = f"{manifest.get('name', plugin_name)}@{marketplace}"
+                candidates.setdefault(key, (root, manifest, marketplace))
+
+    for plugin_key, (root, manifest, marketplace) in sorted(candidates.items()):
+        plugin_name = manifest.get("name", plugin_key.split("@", 1)[0])
+        version = str(manifest.get("version", "—"))
+        enabled = configured.get(plugin_key, False)
+        skills_dir = os.path.join(root, "skills")
+        if not os.path.isdir(skills_dir):
+            continue
+        for name in sorted(os.listdir(skills_dir)):
+            path = os.path.join(skills_dir, name)
+            md_path = os.path.join(path, "SKILL.md")
+            if not os.path.isdir(path) or not os.path.isfile(md_path):
+                continue
+            meta = parse_skill_md(md_path)
+            desc, desc_zh = resolve_desc(name, meta, zh_map)
+            out.append(Skill(
+                name=name, desc=desc, desc_zh=desc_zh, source="codex-plugin",
+                kind=KIND_PLUGIN, origin=f"Codex:{marketplace}", frozen=False,
+                scope="plugin", scope_label="Codex 全局" if enabled else "—", enabled=enabled,
+                version=version, dirty=False, path=path,
+                github_url="", github_hash="", github_date="", github_path="",
+                update_policy="", plugin_key=plugin_key, marketplace=marketplace,
+                md_path=md_path,
+            ))
     return out
 
 
@@ -1110,14 +1368,13 @@ def collect_all(cwd=None, all_projects=False, projects=None):
     else:
         project_paths = []
 
-    skills = collect_direct(GLOBAL_SKILLS_DIR, "global", "全局",
-                            zh_map, fps, touched, lock)
+    skills = collect_global_direct(zh_map, fps, touched, lock)
+    skills += collect_codex_system_skills(zh_map)
     for p in project_paths:
-        label = "项目:" + os.path.basename(p)
-        skills += collect_direct(os.path.join(p, ".claude", "skills"),
-                                 p, label, zh_map, fps, touched, lock)
+        skills += collect_project_direct(p, zh_map, fps, touched, lock)
 
     skills += collect_plugins(zh_map, known_projects() or project_paths)
+    skills += collect_codex_plugins(zh_map)
     skills += collect_commands(zh_map)
 
     if touched:

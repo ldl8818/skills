@@ -2,15 +2,16 @@
 name: skill-manager
 description: >
   Skill 生命周期管理器。列出、检查更新、更新、启用/禁用、定版本号、自检、删除已安装的 skill。
-  覆盖全局直装（~/.claude/skills/）、项目级（项目目录/.claude/skills/）、
-  插件（~/.claude/plugins/）三种来源，并区分「装了」和「真正生效」。
+  覆盖 Claude Code、OpenAI Codex、Grok、Gemini CLI、Google Antigravity 的
+  共享全局、客户端全局、项目级 Skill 目录、Claude 插件生命周期和 Codex 插件状态盘点，
+  同时只读盘点 Codex 内置 Skill；按真实路径去重，并区分「已安装、已启用、本会话已生效」。
   触发词：列出技能、列出所有技能、我有哪些技能、查看 skill、skill 列表、
   检查更新、有没有新版本、更新 skill、启用 skill、禁用 skill、删除 skill、
   skill 体检、skill 自检、升版本号、这个 skill 哪来的、溯源、
   list skills、check updates、enable/disable skill、skill doctor、bump version、trace source。
 license: MIT
 metadata:
-  version: "2.2.0"
+  version: "2.4.0"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
@@ -41,31 +42,38 @@ metadata:
 | 列出技能 | `list`（全局 + 当前项目）；`list <项目>`；`list --all [-n N]` 全景，展开最近活跃前 3 个、其余折叠 | `list_skills.py` |
 | 检查更新 | `check`（本地版本 vs 上游最新） | `scan_and_check.py` |
 | 溯源 | `trace <名字> [--repo <URL>] [--write]`；`trace --all --write` 批量 | `trace_source.py` |
-| 更新 | `update <名字> [--project <路径>]`；无参 = 批量更新所有有新版的；`--dry-run` 只列不做 | `update_skill.py` |
-| 启用 / 禁用 | `enable\|disable <名字> [--project <路径>]` | `toggle_skill.py` |
+| 更新 | `update <名字> [--project <路径>]`；直装或 Claude 插件；无参 = 批量；`--dry-run` 只列不做 | `update_skill.py` |
+| 启用 / 禁用 | `enable\|disable <名字> [--project <路径>]`；直装或 Claude 插件 | `toggle_skill.py` |
 | 升版本号 | `bump <名字> [patch\|minor\|major] [--project <路径>]` | `bump_skill.py` |
 | 体检 | `doctor [--fix]`（`--fix` 只做有依据的补录，绝不发明数据） | `doctor.py` |
-| 删除 | `delete <名字> [--project <路径>] [--dry-run]` | `delete_skill.py` |
+| 删除 | `delete <名字> [--project <路径>] [--dry-run]`；直装或 Claude 插件 | `delete_skill.py` |
 
-插件写裸名即可，脚本会自动补全 `@市场名`。全部脚本零第三方依赖，
+Claude 插件写裸名即可，脚本会自动补全 `@市场名`。全部脚本零第三方依赖，
 `python3`（≥ 3.9）直接跑；check / trace / update 需要本机装有 `git`。
 所有脚本支持 `--help` 查看完整用法。
 
 ## 状态模型
 
-真实状态散落在 7 个地方，任何一处对不上都会导致「看起来在用、其实没生效」：
+先按用户能理解的作用域与安装方式分类，再从配置判断是否启用。软链接不是另一份安装，
+指向同一真实路径的条目会合并显示，避免重复计数。
 
-| # | 位置 | 管什么 |
-|---|------|--------|
-| 1 | `~/.claude/skills/<名>/SKILL.md` | 全局直装（`.disabled` 后缀 = 禁用） |
-| 2 | `<项目>/.claude/skills/<名>/SKILL.md` | 项目级直装 |
-| 3 | `~/.claude/plugins/installed_plugins.json` | 插件的安装路径与版本 |
-| 4 | `~/.claude/settings.json` → `enabledPlugins` | 插件的**全局**启用开关 |
-| 5 | `<项目>/.claude/settings.json` → `enabledPlugins` | 插件的**项目级**开关（覆盖全局） |
-| 6 | `~/.claude/commands/*.md`、`<插件>/commands/*.md` | 斜杠命令 |
-| 7 | `~/.agents/.skill-lock.json` | 安装器记录：每个 skill 从哪个仓库装来的 |
+列表中的「生效」表示配置与文件状态允许客户端加载；已经打开的旧会话是否完成加载，
+仍以客户端当前会话的 Skill 清单为准，必要时重启会话后确认。
 
-插件可以「全局关、单项目开」（4 关 5 开），`list` 显示为「项目:<项目名>」。
+| 分类 | 位置 | 含义 |
+|---|---|---|
+| 全局直装（共享） | `~/.agents/skills/<名>/` | Agent Skills 通用位置；Codex 官方全局作用域，多客户端也可共同采用 |
+| 全局直装（客户端） | `~/.claude/skills/`、`~/.gemini/skills/`、`~/.grok/skills/`、`~/.gemini/config/skills/`、`~/.gemini/antigravity/skills/`、`~/.gemini/antigravity-cli/skills/`、`~/.codex/skills/` | 各客户端的用户级入口 |
+| 项目级 | `<项目>/.agents/skills/`、`.claude/skills/`、`.codex/skills/`、`.gemini/skills/`、`.grok/skills/`、`.agent/skills/` | 通用入口、客户端专用入口与 Antigravity 旧别名 |
+| Codex 内置 | `~/.codex/skills/.system/<名>/` | Codex 管理的内置能力；只读盘点，不当作用户安装或插件 |
+| Claude 插件 | `~/.claude/plugins/installed_plugins.json`、缓存、全局／项目 `enabledPlugins` | 插件位置、版本及全局／项目启用状态 |
+| Codex 插件 | `~/.codex/config.toml`、`~/.codex/plugins/cache/` | 插件开关、缓存 manifest 与版本 |
+| 辅助状态 | `~/.agents/.skill-lock.json`、`~/.claude/commands/` | 安装来源记录与斜杠命令；不算独立安装来源 |
+
+Claude 插件可以「全局关、单项目开」，`list` 显示为「项目:<项目名>」。
+Codex 插件由 `list` 和 `doctor` 只读盘点；其启停、更新、删除仍使用 Codex 自身机制，避免把 Claude 的 JSON 写入逻辑误用于 Codex TOML 配置。
+各客户端对目录的官方承诺并不相同；遇到「某 Agent 是否真会加载这个目录」，
+读 `references/client-paths.md`，不要根据目录名猜。
 
 ## 溯源（trace）
 
@@ -126,9 +134,9 @@ metadata:
 
 ## 安全设计
 
-- **删除是移走**：移进 `~/.claude/skills-archive/_deleted/<名>.<时间戳>/`，后悔可搬回；
+- **删除是移走**：移进 `~/.skill-manager/archive/deleted/<名>.<时间戳>/`，后悔可搬回；
   连带登记（指纹、中文描述、插件缓存/登记/开关）由脚本对称清理。
-- **更新前整目录备份**到 `~/.claude/skills-archive/_update_backups/`；在 staging 中完成
+- **更新前整目录备份**到 `~/.skill-manager/archive/update-backups/`；在 staging 中完成
   合并与验证后原子替换，本地独有文件与本地定制字段保留；失败不改在线目录。
 - **插件更新结构验证通过才写登记表**；失败保留旧版继续可用。
 

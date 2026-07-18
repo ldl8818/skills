@@ -59,15 +59,16 @@ def toggle_plugin(key, enable, project):
 def toggle_direct(name, enable, project=None):
     """在全局和所有已登记项目里找这个 skill。"""
     core.safe_component(name, "skill 名")
-    roots = ([(os.path.join(os.path.abspath(project), ".claude", "skills"),
-               f"项目 {os.path.basename(os.path.abspath(project))}")] if project else
-             [(core.GLOBAL_SKILLS_DIR, "全局")] + [
-                 (os.path.join(p, ".claude", "skills"), f"项目 {os.path.basename(p)}")
-                 for p in core.load_projects()])
+    scopes = ([(os.path.abspath(project), f"项目 {os.path.basename(os.path.abspath(project))}")]
+              if project else [(None, "全局")] + [
+                  (p, f"项目 {os.path.basename(p)}") for p in core.load_projects()])
 
-    for root, where in roots:
-        d = os.path.join(root, name)
-        if not os.path.isdir(d):
+    for scope, where in scopes:
+        d, error = core.resolve_direct_path(name, scope)
+        if error:
+            print(f"❌ {error}")
+            return None
+        if not d:
             continue
         md = os.path.join(d, "SKILL.md")
         md_dis = os.path.join(d, "SKILL.md.disabled")
@@ -119,14 +120,22 @@ def main():
             print(f"❌ 项目路径不存在：{project}")
             sys.exit(1)
 
-    project_direct = (project and os.path.isdir(os.path.join(
-        os.path.abspath(project), ".claude", "skills", name)))
+    project_direct = False
+    if project:
+        direct_path, direct_error = core.resolve_direct_path(name, project)
+        if direct_error:
+            print(f"❌ {direct_error}")
+            sys.exit(1)
+        project_direct = direct_path is not None
     key = None if project_direct else resolve_plugin_key(name)
     if key:
         toggle_plugin(key, enable, project)
         return
 
-    if not toggle_direct(name, enable, project):
+    result = toggle_direct(name, enable, project)
+    if result is None:
+        sys.exit(1)
+    if not result:
         print(f"❌ 找不到 skill 或插件：{name}")
         print("   用 /skill-manager list 查看全部名字")
         sys.exit(1)

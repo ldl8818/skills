@@ -73,7 +73,7 @@ def trash(path):
     if shutil.which("trash"):
         subprocess.run(["trash", path], check=True)
     else:
-        archive = os.path.join(core.CLAUDE_DIR, "skills-archive", "_doctor_removed")
+        archive = os.path.join(core.ARCHIVE_DIR, "doctor-removed")
         os.makedirs(archive, exist_ok=True)
         target = os.path.join(archive, os.path.basename(path))
         if os.path.exists(target):
@@ -135,15 +135,17 @@ def main():
     # 2. 断掉的软链接
     print("\n[2] 软链接完整性")
     dangling = []
-    for root in [core.GLOBAL_SKILLS_DIR] + [
-            os.path.join(p, ".claude", "skills") for p in core.load_projects()]:
+    roots = [root for _, root in core.global_skill_roots()]
+    for project in core.load_projects():
+        roots.extend(root for _, root in core.project_skill_roots(project))
+    for root in dict.fromkeys(roots):
         if not os.path.isdir(root):
             continue
         for n in sorted(os.listdir(root)):
             f = os.path.join(root, n)
             if os.path.islink(f) and not os.path.exists(f):
                 dangling.append(f"{f} → {os.readlink(f)}")
-    r.section("没有断掉的软链接", "个软链接已断（指向的真身没了）", dangling, fixable=True,
+    r.section("没有断掉的软链接", "个软链接已断（目标目录不存在）", dangling, fixable=True,
               fixer=lambda it: os.unlink(it.split(" → ")[0]))
 
     # 3 & 4. 中文描述
@@ -163,7 +165,8 @@ def main():
 
     print("\n[4] 描述可读性")
     # 只要求生效中的 skill 有中文描述：未启用的不占上下文，也就不会被看到
-    no_zh = [f"{s.name}（{s.scope_label}）" for s in skills if s.enabled and not s.desc_zh]
+    no_zh = [f"{s.name}（{s.scope_label}）" for s in skills
+             if s.enabled and not s.desc_zh and s.source != "codex-system"]
     r.section("生效中的 skill 都有中文描述", "个生效中的 skill 还是英文描述", no_zh,
               hint="让 Claude 读 SKILL.md 后补 zh_description 字段（插件类补进 descriptions_zh.json）")
 

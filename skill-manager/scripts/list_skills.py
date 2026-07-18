@@ -34,7 +34,7 @@ else:
 MAX_DESC = 40
 DEFAULT_EXPAND = 3  # --all 默认展开几个项目
 
-PLUGIN_SOURCES = ("plugin", "plugin-cmd")
+PLUGIN_SOURCES = ("plugin", "plugin-cmd", "codex-plugin")
 
 
 def is_plugin(s):
@@ -55,6 +55,17 @@ def scope_projects(label):
     if not label.startswith("项目:"):
         return []
     return label[len("项目:"):].split("/")
+
+
+def is_global_scope(label):
+    return label in ("全局", "Codex 内置") or label.endswith(" 全局") \
+        or label.startswith("全局直装（")
+
+
+def plugin_group_label(s):
+    client = "Codex" if s.source == "codex-plugin" else "Claude"
+    scope = "全局" if is_global_scope(s.scope_label) else s.scope_label
+    return f"{client} 插件 · {scope}"
 
 
 def print_table(skills):
@@ -87,7 +98,11 @@ def print_disabled_plugins(skills):
         return
     total = sum(len(v) for v in groups.values())
     print(f"\n○ 未启用的插件（{len(groups)} 个插件，含 {total} 个 skill，不占用上下文）\n")
-    rows = [(k, str(len(v)), f"/skill-manager enable {k}") for k, v in sorted(groups.items())]
+    rows = []
+    for key, group in sorted(groups.items()):
+        command = ("在 ~/.codex/config.toml 启用" if group[0].source == "codex-plugin"
+                   else f"/skill-manager enable {key}")
+        rows.append((key, str(len(group)), command))
     w_k = max(core.dw("插件"), max(core.dw(r[0]) for r in rows))
     w_c = max(core.dw("skill 数"), max(core.dw(r[1]) for r in rows))
     print(f" {core.pad('插件', w_k)} | {core.pad('skill 数', w_c)} | 启用方式")
@@ -129,7 +144,7 @@ def print_folded(folded, acts, paths_by_name, title):
 def print_warnings(skills, live):
     # 健康提示：细节交给 doctor，这里只提醒有没有账要平。
     # 口径必须和 doctor 一致——只看生效中的，否则两个命令会给出互相矛盾的数字
-    no_zh = [s for s in live if not s.desc_zh]
+    no_zh = [s for s in live if not s.desc_zh and s.source != "codex-system"]
     dirty = [s for s in skills if s.dirty]
     undef = [s for s in live if s.version == "未定版"]
     warn = []
@@ -144,20 +159,27 @@ def print_warnings(skills, live):
 
 
 def render_project(path, skills):
-    """单项目视图：项目 skill 和全局 skill 分两块列，各自成表。"""
+    """单项目视图：直装 Skill 与插件分开，范围仍按项目／全局统计。"""
     live = [s for s in skills if s.enabled]
     name = os.path.basename(path)
     mine = sort_skills([s for s in live if name in scope_projects(s.scope_label)])
-    glob = sort_skills([s for s in live if s.scope_label == "全局"])
+    glob = sort_skills([s for s in live if is_global_scope(s.scope_label)])
 
     print(f"\n📦 {name}   {path}")
     print(f"   项目 {len(mine)} · 全局 {len(glob)} · "
           f"合计 {len(mine) + len(glob)} 个在此生效")
 
-    print(f"\n● 项目独有（{len(mine)}）\n")
-    print_table(mine)
-    print(f"\n● 全局（{len(glob)}）· 每个项目都有\n")
-    print_table(glob)
+    sections = [
+        ("项目级 Skill", [s for s in mine if not is_plugin(s)]),
+        ("项目启用的插件", [s for s in mine if is_plugin(s)]),
+        ("全局直装", [s for s in glob if not is_plugin(s) and s.source != "codex-system"]),
+        ("Codex 内置", [s for s in glob if s.source == "codex-system"]),
+        ("全局启用的插件", [s for s in glob if is_plugin(s)]),
+    ]
+    for title, group in sections:
+        if group:
+            print(f"\n● {title}（{len(group)}）\n")
+            print_table(group)
 
     dead_direct = [s for s in skills if not s.enabled and not is_plugin(s)]
     if dead_direct:
@@ -170,7 +192,7 @@ def render_project(path, skills):
 
 
 def render_overview(skills, view_paths, all_mode, hidden_projects):
-    """默认视图 / --all 视图：全局一块，视野内的项目各一块，视野外折叠。"""
+    """默认视图 / --all 视图：直装 Skill 与插件分开，再标明各自作用域。"""
     live = [s for s in skills if s.enabled]
     dead_direct = [s for s in skills if not s.enabled and not is_plugin(s)]
     dead_plugin = [s for s in skills if not s.enabled and is_plugin(s)]
@@ -198,11 +220,22 @@ def render_overview(skills, view_paths, all_mode, hidden_projects):
 
     by_scope = {}
     for s in shown:
+        if is_plugin(s):
+            continue
         by_scope.setdefault(s.scope_label, []).append(s)
-    for label in sorted(by_scope, key=lambda x: (x != "全局", x)):
+    for label in sorted(by_scope, key=lambda x: (not is_global_scope(x), x)):
         group = sort_skills(by_scope[label])
-        print(f"\n● {label}生效（{len(group)}）\n" if label == "全局"
+        print(f"\n● {label}生效（{len(group)}）\n" if is_global_scope(label)
               else f"\n● {label}（{len(group)}）\n")
+        print_table(group)
+
+    by_plugin_scope = {}
+    for s in shown:
+        if is_plugin(s):
+            by_plugin_scope.setdefault(plugin_group_label(s), []).append(s)
+    for label in sorted(by_plugin_scope):
+        group = sort_skills(by_plugin_scope[label])
+        print(f"\n● {label}（{len(group)}）\n")
         print_table(group)
 
     if dead_direct:
@@ -238,7 +271,7 @@ def main():
                 print(f"\n找不到项目「{token}」。已知项目：")
                 for p in core.rank_projects():
                     print(f"  {os.path.basename(p):<20} {p}")
-                print("\n（项目要有 .claude/skills 或 .claude/settings.json 才算数）\n")
+                print("\n（项目要有已支持的 Skill 目录，或 .claude/settings.json 才算数）\n")
                 return 1
             print(f"\n「{token}」匹配到 {len(cands)} 个项目，指定完整路径再来一次："
                   "\n（同名撞车不替你猜）\n")

@@ -7,7 +7,7 @@
 
 2026-07-11 重写：
 - 旧版 `shutil.rmtree` 硬删，删错了没救。现在一律**移到归档目录**
-  `~/.claude/skills-archive/_deleted/<名>.<时间戳>/`，跟 update 的备份同一套思路，
+  `~/.skill-manager/archive/deleted/<名>.<时间戳>/`，跟 update 的备份同一套思路，
   后悔了搬回去就行。真要腾空间再去手动清那个目录。
 - 旧版只认 `~/.claude/skills/` 下的目录，插件删不掉。现在走 `core.resolve_target`，
   裸名字自动判断是 skill 还是插件。
@@ -34,7 +34,7 @@ if hasattr(sys.stdout, "reconfigure"):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-ARCHIVE_ROOT = os.path.join(core.CLAUDE_DIR, "skills-archive", "_deleted")
+ARCHIVE_ROOT = os.path.join(core.ARCHIVE_DIR, "deleted")
 
 
 def archive_dir(path, label):
@@ -52,10 +52,13 @@ def archive_dir(path, label):
 
 def delete_direct_skill(name, dry_run=False, project=None):
     core.safe_component(name, "skill 名")
-    root = os.path.join(os.path.abspath(project), ".claude", "skills") if project else core.GLOBAL_SKILLS_DIR
-    skill_dir = os.path.join(root, name)
-    if not os.path.isdir(skill_dir):
-        print(f"❌ {name} 不在 {root} 下")
+    skill_dir, error = core.resolve_direct_path(name, project)
+    if error:
+        print(f"❌ {error}")
+        return False
+    if not skill_dir:
+        scope = os.path.abspath(project) if project else "支持的全局目录"
+        print(f"❌ {name} 不在{scope}下")
         return False
 
     fps = core.read_json(core.FINGERPRINTS, {})
@@ -88,7 +91,7 @@ def delete_direct_skill(name, dry_run=False, project=None):
             shutil.move(dest, skill_dir)
         raise
     print(f"\n✅ 已删除 {name}")
-    print(f"📦 已归档到 {dest}（后悔了搬回 ~/.claude/skills/ 即可）")
+    print(f"📦 已归档到 {dest}（后悔了可搬回原目录 {skill_dir}）")
     return True
 
 

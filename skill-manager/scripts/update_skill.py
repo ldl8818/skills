@@ -20,7 +20,7 @@
   本地独有文件（config.env、site-patterns/、descriptions_zh.json 等）一律保留
 - SKILL.md 更新后回注 github_url/github_hash/github_path 元数据，
   并保留本地「## User-Learned」定制段（skill-evolution-manager 维护的经验区）
-- 插件更新先定位「插件真身」：monorepo 仓库（如 openai/codex-plugin-cc、
+- 插件更新先定位插件目录：monorepo 仓库（如 openai/codex-plugin-cc、
   claude-plugins-official）插件本体在 plugins/<name>/ 或 external_plugins/<name>/
   子目录；结构验证通过才写 installed_plugins.json，失败保留旧版运行
 - frontmatter 声明 update_policy: frozen 的 skill 拒绝更新（绝版 / 深度定制）
@@ -49,10 +49,9 @@ else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 CLAUDE_DIR = os.path.expanduser("~/.claude")
-SKILLS_DIR = os.path.join(CLAUDE_DIR, "skills")
 INSTALLED_PLUGINS_JSON = os.path.join(CLAUDE_DIR, "plugins", "installed_plugins.json")
 KNOWN_MARKETPLACES_JSON = os.path.join(CLAUDE_DIR, "plugins", "known_marketplaces.json")
-BACKUP_ROOT = os.path.join(CLAUDE_DIR, "skills-archive", "_update_backups")
+BACKUP_ROOT = os.path.join(core.ARCHIVE_DIR, "update-backups")
 
 
 # ── frontmatter 轻量解析（免 PyYAML） ──────────────────────
@@ -286,8 +285,14 @@ def merge_skill_dir(src, dst, meta_fields):
 
 def update_direct_skill(skill_name, project=None):
     core.safe_component(skill_name, "skill 名")
-    root = os.path.join(os.path.abspath(project), ".claude", "skills") if project else SKILLS_DIR
-    skill_dir = os.path.realpath(os.path.join(root, skill_name))
+    resolved, error = core.resolve_direct_path(skill_name, project)
+    if error:
+        print(f"❌ {error}")
+        return False
+    if not resolved:
+        print(f"❌ {skill_name} 不存在")
+        return False
+    skill_dir = os.path.realpath(resolved)
     skill_md = os.path.join(skill_dir, "SKILL.md")
     if not os.path.exists(skill_md):
         print(f"❌ {skill_name} 不存在")
@@ -324,7 +329,7 @@ def update_direct_skill(skill_name, project=None):
     backup_dir = os.path.join(BACKUP_ROOT, f"{skill_name}.{ts}")
     os.makedirs(BACKUP_ROOT, exist_ok=True)
     shutil.copytree(skill_dir, backup_dir, symlinks=True)
-    print(f"📦 已整目录备份到 skills-archive/_update_backups/{os.path.basename(backup_dir)}")
+    print(f"📦 已整目录备份到 {backup_dir}")
 
     tmp = tempfile.mkdtemp(prefix="skillupd_")
     stage = tempfile.mkdtemp(prefix=f".{skill_name}.stage-", dir=os.path.dirname(skill_dir))
@@ -398,7 +403,7 @@ def is_valid_plugin_root(d):
 
 
 def locate_plugin_root(extract_root, plugin_name):
-    """在解压仓库里定位插件真身（monorepo 支持）。"""
+    """在解压仓库里定位插件目录（支持 monorepo）。"""
     candidates = [
         extract_root,
         os.path.join(extract_root, "plugins", plugin_name),
@@ -582,7 +587,7 @@ def update_all(dry_run=False):
     print(f"✅ 成功 {len(done)}：" + "、".join(done) if done else "✅ 成功 0")
     if failed:
         print(f"❌ 失败 {len(failed)}：" + "、".join(failed) +
-              "\n   （失败的都未改动本地，备份在 skills-archive/_update_backups/）")
+              f"\n   （失败的都未改动本地，备份在 {BACKUP_ROOT}/）")
     return not failed
 
 
