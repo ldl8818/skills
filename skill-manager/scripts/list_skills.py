@@ -19,6 +19,7 @@
     skill-manager」），改用 Claude Code 的会话记录（见 core.session_activity）。
 """
 import io
+import shutil
 import sys
 import os
 from datetime import datetime
@@ -31,8 +32,16 @@ if hasattr(sys.stdout, "reconfigure"):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-MAX_DESC = 40
+# 描述列宽自适应终端：窄终端保底 MIN_DESC（= 旧版固定列宽），宽终端最多放到 MAX_DESC。
+# 经由管道/Claude 转述时探测不到真实终端，取 fallback 160（宽终端为常态；
+# 真在窄 tty 里直跑时 get_terminal_size 能拿到真值，仍会收窄）。
+MIN_DESC = 40
+MAX_DESC = 64
 DEFAULT_EXPAND = 3  # --all 默认展开几个项目
+
+
+def term_width():
+    return shutil.get_terminal_size(fallback=(160, 24)).columns
 
 PLUGIN_SOURCES = ("plugin", "plugin-cmd", "codex-plugin")
 
@@ -71,12 +80,16 @@ def plugin_group_label(s):
 def print_table(skills):
     if not skills:
         return
-    rows = [(s.name, core.trim(s.desc, MAX_DESC), s.kind, s.origin, version_cell(s))
-            for s in skills]
+    rows = [(s.name, s.desc, s.kind, s.origin, version_cell(s)) for s in skills]
     w_n = max(core.dw("Skill"), max(core.dw(r[0]) for r in rows))
-    w_d = max(core.dw("描述"), max(core.dw(r[1]) for r in rows))
     w_k = max(core.dw("类型"), max(core.dw(r[2]) for r in rows))
     w_o = max(core.dw("来源"), max(core.dw(r[3]) for r in rows))
+    w_v = max(core.dw("版本"), max(core.dw(r[4]) for r in rows))
+    # 前导空格 1 + 4 个 " | " 分隔符 12 = 13；剩余宽度全给描述列，夹在保底和封顶之间
+    room = term_width() - (13 + w_n + w_k + w_o + w_v)
+    desc_cap = min(MAX_DESC, max(MIN_DESC, room))
+    rows = [(n, core.trim(d, desc_cap), k, o, v) for n, d, k, o, v in rows]
+    w_d = max(core.dw("描述"), max(core.dw(r[1]) for r in rows))
     print(f" {core.pad('Skill', w_n)} | {core.pad('描述', w_d)} | "
           f"{core.pad('类型', w_k)} | {core.pad('来源', w_o)} | 版本")
     print(f" {'-'*w_n}-+-{'-'*w_d}-+-{'-'*w_k}-+-{'-'*w_o}-+-{'-'*14}")

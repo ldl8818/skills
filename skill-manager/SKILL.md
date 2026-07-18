@@ -11,7 +11,7 @@ description: >
   list skills、check updates、enable/disable skill、skill doctor、bump version、trace source。
 license: MIT
 metadata:
-  version: "2.4.0"
+  version: "2.5.0"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
