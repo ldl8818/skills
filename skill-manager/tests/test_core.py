@@ -1,5 +1,7 @@
+import io
 import os
 import sys
+import tarfile
 import tempfile
 import unittest
 from unittest import mock
@@ -13,6 +15,17 @@ import update_skill
 
 
 class CoreContractTests(unittest.TestCase):
+    @staticmethod
+    def _tarball(members):
+        data = io.BytesIO()
+        with tarfile.open(fileobj=data, mode="w:gz") as tf:
+            for member, content in members:
+                if content is None:
+                    tf.addfile(member)
+                else:
+                    tf.addfile(member, io.BytesIO(content.encode("utf-8")))
+        return data.getvalue()
+
     def test_safe_component_rejects_traversal(self):
         for value in ("..", "../x", "a/b", "/tmp/x", "a\\b", ""):
             with self.subTest(value=value), self.assertRaises(ValueError):
@@ -158,6 +171,49 @@ class CoreContractTests(unittest.TestCase):
     def test_download_rejects_untrusted_ref(self):
         with tempfile.TemporaryDirectory() as root, self.assertRaises(ValueError):
             update_skill.download_repo("https://github.com/a/b", "$(touch bad)", root)
+
+    def test_download_materializes_safe_internal_symlink(self):
+        source = tarfile.TarInfo("repo/AGENTS.md")
+        source.size = len(b"skill instructions")
+        link = tarfile.TarInfo("repo/CLAUDE.md")
+        link.type = tarfile.SYMTYPE
+        link.linkname = "AGENTS.md"
+        payload = self._tarball([(source, "skill instructions"), (link, None)])
+
+        class Response(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                self.close()
+
+        with tempfile.TemporaryDirectory() as root, \
+                mock.patch.object(update_skill.urllib.request, "urlopen",
+                                  return_value=Response(payload)):
+            self.assertTrue(update_skill.download_repo(
+                "https://github.com/a/b", "a" * 40, root))
+            self.assertEqual(Path(root, "CLAUDE.md").read_text(encoding="utf-8"),
+                             "skill instructions")
+            self.assertFalse(Path(root, "CLAUDE.md").is_symlink())
+
+    def test_download_rejects_escape_symlink(self):
+        link = tarfile.TarInfo("repo/CLAUDE.md")
+        link.type = tarfile.SYMTYPE
+        link.linkname = "../../outside"
+        payload = self._tarball([(link, None)])
+
+        class Response(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                self.close()
+
+        with tempfile.TemporaryDirectory() as root, \
+                mock.patch.object(update_skill.urllib.request, "urlopen",
+                                  return_value=Response(payload)):
+            with self.assertRaises(ValueError):
+                update_skill.download_repo("https://github.com/a/b", "a" * 40, root)
 
     def test_find_skill_source_rejects_github_path_escape(self):
         with tempfile.TemporaryDirectory() as root, self.assertRaises(ValueError):

@@ -136,15 +136,20 @@ def download_repo(github_url, ref, dest_dir):
         shutil.copyfileobj(response, out)
     with tarfile.open(archive, "r:gz") as tf:
         members = tf.getmembers()
+        links = []
+        root = os.path.realpath(dest_dir)
         for member in members:
             stripped = member.name.split("/", 1)[1] if "/" in member.name else ""
             if not stripped:
                 continue
             target = os.path.realpath(os.path.join(dest_dir, stripped))
-            if os.path.commonpath((os.path.realpath(dest_dir), target)) != os.path.realpath(dest_dir):
+            if os.path.commonpath((root, target)) != root:
                 raise ValueError("上游归档包含路径逃逸")
-            if member.issym() or member.islnk() or not (member.isfile() or member.isdir()):
-                raise ValueError("上游归档包含不安全的链接或设备文件")
+            if member.issym() or member.islnk():
+                links.append((member, stripped))
+                continue
+            if not (member.isfile() or member.isdir()):
+                raise ValueError("上游归档包含不安全的设备文件")
             if member.isdir():
                 os.makedirs(target, exist_ok=True)
             else:
@@ -154,6 +159,19 @@ def download_repo(github_url, ref, dest_dir):
                     raise ValueError("上游归档中的普通文件无法读取")
                 with source, open(target, "wb") as out:
                     shutil.copyfileobj(source, out)
+        for member, stripped in links:
+            if member.issym():
+                linked = os.path.join(os.path.dirname(stripped), member.linkname)
+            else:
+                linked = member.linkname.split("/", 1)[1] if "/" in member.linkname else ""
+            linked_target = os.path.realpath(os.path.join(dest_dir, linked))
+            target = os.path.realpath(os.path.join(dest_dir, stripped))
+            if (not linked or os.path.commonpath((root, linked_target)) != root
+                    or not os.path.isfile(linked_target)):
+                raise ValueError("上游归档包含不安全的链接或设备文件")
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(linked_target, "rb") as source, open(target, "wb") as out:
+                shutil.copyfileobj(source, out)
     os.unlink(archive)
     return bool(os.listdir(dest_dir))
 
