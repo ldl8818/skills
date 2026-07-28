@@ -1,4 +1,11 @@
 # Changelog
+## 2.6.3 - 2026-07-18
+- `SKILL.md` metadata: shorten `zh_description` to fit the 64-column skill list. Documentation only.
+- This release and 2.6.2 originally changed only `SKILL.md`, leaving `self_improving/__init__.py`, `pyproject.toml` and this changelog at 2.6.1. The three lagging places were realigned later; the shipped behavior was never affected.
+
+## 2.6.2 - 2026-07-17
+- `SKILL.md` metadata: declare `source: local`. Documentation only.
+
 ## 2.6.1 - 2026-07-16
 - `doctor` no longer reports a false "Hook wiring" failure when run from a different Python interpreter than the one that installed the hooks (e.g. a project venv vs the Homebrew install). The check now matches the registered command's package path, config path, platform and event exactly while allowing any interpreter segment; stale or relocated hook commands still fail the check as before.
 
