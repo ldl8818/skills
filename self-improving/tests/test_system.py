@@ -15,11 +15,11 @@ import sys
 from self_improving import __version__
 from self_improving.config import default_config, load_config, resolved, write_config
 from self_improving.events import normalize
-from self_improving.hooks.common import dispatch
+from self_improving.hooks.common import MAX_CORRECTION_CHARS, dispatch
 from self_improving.installer import MARKER, hook_command, hook_is_installed, install_hooks, uninstall_hooks
 from self_improving.indexing import broken_local_links, sync_index
 from self_improving.security import contains_secret, sanitize
-from self_improving.review import decide, list_candidates
+from self_improving.review import candidate_entries, decide, list_candidates
 from self_improving.storage import active_corrections, append_verified_correction, initialize_memory, verified_corrections
 
 
@@ -184,6 +184,58 @@ class SystemTests(unittest.TestCase):
             dispatch("claude", "UserPromptSubmit", {"prompt": "＜task-notification＞全角变体，别忘了＜/task-notification＞"})
             dispatch("claude", "UserPromptSubmit", {"prompt": "<system-reminder>候选箱已有记录，记住审核</system-reminder>"})
             self.assertNotIn("UNTRUSTED_USER_CANDIDATE", inbox.read_text())
+
+    def test_slash_command_messages_are_not_captured_as_corrections(self) -> None:
+        inbox = self.memory / ".learnings/CORRECTIONS_INBOX.md"
+        with self.env():
+            dispatch("claude", "UserPromptSubmit", {"prompt": "<command-message>check</command-message>\n<command-name>/check</command-name>\n<command-args>这里不对，应该用 utf-8</command-args>"})
+            dispatch("claude", "UserPromptSubmit", {"prompt": "<command-args>记住这条</command-args>"})
+            self.assertNotIn("UNTRUSTED_USER_CANDIDATE", inbox.read_text())
+
+    def test_english_keywords_require_word_boundaries(self) -> None:
+        inbox = self.memory / ".learnings/CORRECTIONS_INBOX.md"
+        with self.env():
+            dispatch("codex", "UserPromptSubmit", {"prompt": "the flow still depends on the operator remembering it"})
+            self.assertNotIn("UNTRUSTED_USER_CANDIDATE", inbox.read_text())
+            dispatch("codex", "UserPromptSubmit", {"prompt": "please remember to read the file first"})
+            self.assertIn("remember to read", inbox.read_text())
+            # 中文紧贴英文关键词仍算纠错：要排除的是英文派生词，不是相邻的中文
+            dispatch("codex", "UserPromptSubmit", {"prompt": "请remember先读文件"})
+            self.assertIn("请remember先读文件", inbox.read_text())
+
+    def test_over_long_prompts_are_not_captured_as_corrections(self) -> None:
+        inbox = self.memory / ".learnings/CORRECTIONS_INBOX.md"
+        with self.env():
+            generated = "# Overview Generate suggestions for this project. " * 60
+            self.assertGreater(len(generated), MAX_CORRECTION_CHARS)
+            dispatch("codex", "UserPromptSubmit", {"prompt": generated + " remember the operator context"})
+            self.assertNotIn("UNTRUSTED_USER_CANDIDATE", inbox.read_text())
+            dispatch("codex", "UserPromptSubmit", {"prompt": "不对，应该先核验事实"})
+            self.assertIn("应该先核验事实", inbox.read_text())
+
+    def test_candidate_records_why_capture_fired(self) -> None:
+        with self.env():
+            long_tail = "补充说明。" * 200
+            dispatch("claude", "UserPromptSubmit", {"prompt": "先看这段说明：" + long_tail + "请remember先读文件"})
+            entries = candidate_entries(self.memory)
+            self.assertEqual(len(entries), 1)
+            self.assertIn("remember", entries[0]["matched"])
+            self.assertNotIn("remember", entries[0]["candidate"])
+            self.assertIn("命中：", list_candidates(self.memory)[0])
+
+    def test_legacy_inbox_rows_without_match_column_still_parse(self) -> None:
+        inbox = self.memory / ".learnings/CORRECTIONS_INBOX.md"
+        with self.env():
+            inbox.write_text(
+                "| Timestamp | Source | Candidate | Fingerprint | Status |\n|---|---|---|---|---|\n"
+                "| 2026-07-01 09:00 | codex-user-prompt | ⚠ UNTRUSTED_USER_CANDIDATE: 旧行没有命中列 | [fp:0123456789ab] | candidate |\n",
+                encoding="utf-8",
+            )
+            entries = candidate_entries(self.memory)
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0]["fingerprint"], "[fp:0123456789ab]")
+            self.assertEqual(entries[0]["matched"], "")
+            self.assertIn("旧行没有命中列", list_candidates(self.memory)[0])
 
     def test_keywords_inside_fenced_blocks_are_not_captured(self) -> None:
         inbox = self.memory / ".learnings/CORRECTIONS_INBOX.md"

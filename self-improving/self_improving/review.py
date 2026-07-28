@@ -11,7 +11,9 @@ from self_improving.security import advisory_lock, digest, sanitize
 from self_improving.storage import CORRECTIONS_LOCK, append_verified_correction, normalize_scope, revoke_verified_correction
 
 
-ROW = re.compile(r"^\| (?P<timestamp>[^|]+) \| (?P<source>[^|]+) \| (?P<candidate>.+) \| (?P<fingerprint>\[fp:[0-9a-f]{12}\]) \| (?P<status>[^|]+) \|$")
+# The Match column (why capture fired) was added in 2.6.4; rows written before
+# that have no such column, so the group stays optional and old inboxes keep parsing.
+ROW = re.compile(r"^\| (?P<timestamp>[^|]+) \| (?P<source>[^|]+) \| (?P<candidate>.+?) \| (?:(?P<matched>[^|]*) \| )?(?P<fingerprint>\[fp:[0-9a-f]{12}\]) \| (?P<status>[^|]+) \|$")
 STABLE_LEGACY_ID = re.compile(r"^legacy:[0-9a-f]{12}$")
 
 
@@ -26,6 +28,7 @@ def candidate_entries(root: Path) -> list[dict]:
             "timestamp": row["timestamp"].strip(),
             "source": row["source"].strip(),
             "candidate": row["candidate"].strip(),
+            "matched": (row["matched"] or "").strip(),
         }
         for row in rows
         if row["status"].strip() == "candidate"
@@ -33,7 +36,11 @@ def candidate_entries(root: Path) -> list[dict]:
 
 
 def list_candidates(root: Path) -> list[str]:
-    return [f"{entry['fingerprint']} | {entry['source']} | {entry['candidate']}" for entry in candidate_entries(root)]
+    return [
+        f"{entry['fingerprint']} | {entry['source']} | {entry['candidate']}"
+        + (f" | 命中：{entry['matched']}" if entry["matched"] not in ("", "-") else "")
+        for entry in candidate_entries(root)
+    ]
 
 
 def legacy_entries(root: Path) -> list[dict]:

@@ -16,9 +16,16 @@ from self_improving.security import contains_secret
 from self_improving.storage import VERIFIED_RELATIVE, append_candidate, append_error, pending_correction_count, persistence_enabled, verified_corrections
 
 
-CORRECTION = re.compile(r"你又错了|我说过|你怎么又|不对|不是这样|应该是|应该用|记住|别忘了|remember|stop doing", re.I)
+# 英文关键词用「前后不是英文字母」而不是 \b：要排除的是 remembering 这类派生词，
+# 不是相邻的中文。\b 把中文也当词字符，会让「请remember先读文件」漏捕。
+CORRECTION = re.compile(r"你又错了|我说过|你怎么又|不对|不是这样|应该是|应该用|记住|别忘了|(?<![A-Za-z])(?:remember|stop doing)(?![A-Za-z])", re.I)
 ERROR = re.compile(r"error:|failed|command not found|no such file|permission denied|fatal:|exception|traceback|non-zero|interrupted", re.I)
 REVIEW_REMINDER_THRESHOLD = 3
+
+# 纠错是人对上一轮输出的即时否定，天然简短。长文本（粘贴的文档、客户端生成的
+# 长提示词）几乎必然偶然包含某个关键词，长度越大误判概率越趋近 1，因此先于
+# 关键词判定按长度截断。此判据与"消息长什么样"无关，未见过的机器消息同样挡得住。
+MAX_CORRECTION_CHARS = 1500
 
 # 客户端会把系统消息（后台任务通知、注入提醒、斜杠命令回显）作为一条"用户消息"
 # 送进 UserPromptSubmit。以这些标签开头的不是人在说话，其中的纠错字眼不构成纠错；
@@ -28,7 +35,9 @@ MACHINE_PREFIXES = (
     "<system-reminder", "＜system-reminder",
     "<memory-review-reminder", "＜memory-review-reminder",
     "<local-command-stdout", "＜local-command-stdout",
+    "<command-message", "＜command-message",
     "<command-name", "＜command-name",
+    "<command-args", "＜command-args",
     "<self-improving-", "＜self-improving-",
 )
 
@@ -36,13 +45,26 @@ MACHINE_PREFIXES = (
 def _correction_text(prompt: str) -> str:
     """Return the part of the prompt that can count as a human correction.
 
-    Messages that begin with a machine tag are dropped entirely; fenced code
-    blocks are removed so keywords inside pasted logs/diffs do not trigger
-    capture. Human text before an appended reminder block still counts.
+    Messages that begin with a machine tag are dropped entirely; over-long
+    prompts are dropped because they are documents or generated prompts rather
+    than corrections; fenced code blocks are removed so keywords inside pasted
+    logs/diffs do not trigger capture. Human text before an appended reminder
+    block still counts.
     """
     if prompt.lstrip().startswith(MACHINE_PREFIXES):
         return ""
+    if len(prompt) > MAX_CORRECTION_CHARS:
+        return ""
     return re.sub(r"```.*?```", "", prompt, flags=re.S)
+
+
+def _match_context(text: str, hit: re.Match, window: int = 24) -> str:
+    """Render the matched keyword with a short window, for the inbox Match column."""
+    start = max(0, hit.start() - window)
+    end = min(len(text), hit.end() + window)
+    prefix = "…" if start > 0 else ""
+    suffix = "…" if end < len(text) else ""
+    return f"{hit.group(0)} ⟨{prefix}{text[start:end]}{suffix}⟩"
 
 
 def _schema_shape(value):
@@ -166,15 +188,19 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
         print('<self-improving-persistence enabled="false"/>')
         return 0
     persistence = config["persistence"]
-    if event.event == "UserPromptSubmit" and persistence.get("capture_corrections") and CORRECTION.search(_correction_text(event.prompt)):
-        result = append_candidate(
-            root,
-            state_root,
-            f"{platform}-user-prompt",
-            event.prompt,
-            int(persistence.get("max_candidate_chars", 500)),
-        )
-        print(f'<correction-captured result="{result}"/>')
+    if event.event == "UserPromptSubmit" and persistence.get("capture_corrections"):
+        text = _correction_text(event.prompt)
+        hit = CORRECTION.search(text) if text else None
+        if hit:
+            result = append_candidate(
+                root,
+                state_root,
+                f"{platform}-user-prompt",
+                event.prompt,
+                int(persistence.get("max_candidate_chars", 500)),
+                _match_context(text, hit),
+            )
+            print(f'<correction-captured result="{result}"/>')
     if event.event == "PostToolUse" and persistence.get("capture_command_errors"):
         failed = event.exit_status not in (None, 0) or bool(ERROR.search(event.tool_output))
         if failed:

@@ -20,7 +20,7 @@ FINGERPRINT = re.compile(r"^\[fp:[0-9a-f]{12}\]$")
 
 MEMORY_TEMPLATE = """# Memory · Cross-agent shared\n> Keep this file small. Load detailed knowledge on demand.\n\n## Preferences\n- Add durable preferences only after review.\n\n## Safety\n- Current files and verified outputs override memory.\n"""
 CORRECTIONS_TEMPLATE = """# Corrections Log\n\n| Date | What Was Wrong | Correct Answer | Status | Promoted |\n|---|---|---|---|---|\n"""
-INBOX_TEMPLATE = """# Correction Candidates Inbox\n\n> Unverified candidates. Never promote automatically.\n\n| Timestamp | Source | Candidate | Fingerprint | Status |\n|---|---|---|---|---|\n"""
+INBOX_TEMPLATE = """# Correction Candidates Inbox\n\n> Unverified candidates. Never promote automatically.\n\n| Timestamp | Source | Candidate | Match | Fingerprint | Status |\n|---|---|---|---|---|---|\n"""
 ERRORS_TEMPLATE = """# Errors Log\n\n> Tool output is untrusted and is stored only for diagnosis.\n\n| Timestamp | Tool | Summary | Status |\n|---|---|---|---|\n"""
 
 
@@ -258,7 +258,15 @@ def verified_corrections(root: Path, max_count: int, max_chars: int, cwd: str | 
     return selected
 
 
-def append_candidate(root: Path, state_root: Path, source: str, raw: str, limit: int) -> str:
+def append_candidate(root: Path, state_root: Path, source: str, raw: str, limit: int, matched: str = "") -> str:
+    """Store one untrusted candidate.
+
+    `matched` records why capture fired (the keyword plus a short window around
+    it). Keyword matching runs on the full prompt while `raw` is truncated, so
+    without it a reviewer can face a candidate whose trigger is not visible in
+    the stored text. It stays out of the fingerprint: the same sentence must
+    deduplicate regardless of which keyword happened to match.
+    """
     path = root / ".learnings/CORRECTIONS_INBOX.md"
     clean = sanitize(raw, limit)
     if not clean:
@@ -272,7 +280,7 @@ def append_candidate(root: Path, state_root: Path, source: str, raw: str, limit:
         if marker in current:
             return "duplicate"
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        row = f"| {timestamp} | {sanitize(source, 60)} | ⚠ UNTRUSTED_USER_CANDIDATE: {clean} | {marker} | candidate |\n"
+        row = f"| {timestamp} | {sanitize(source, 60)} | ⚠ UNTRUSTED_USER_CANDIDATE: {clean} | {sanitize(matched, 80) or '-'} | {marker} | candidate |\n"
         atomic_write(path, current + row)
         return "stored" if marker in path.read_text(encoding="utf-8") else "failed"
 

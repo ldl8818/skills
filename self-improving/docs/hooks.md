@@ -8,11 +8,28 @@ never copied into the public repository.
 
 At `UserPromptSubmit`, correction capture applies a pre-filter before keyword
 matching: a message that begins with a client-injected system tag (such as a
-task notification or an injected reminder) is not the user speaking and is
-never treated as a correction, and keywords that appear only inside fenced
+task notification, an injected reminder, or a slash-command echo like
+`<command-message>` / `<command-name>` / `<command-args>`) is not the user
+speaking and is never treated as a correction; a prompt longer than 1500
+characters is a document or a generated prompt rather than a correction and is
+dropped before keyword matching; and keywords that appear only inside fenced
 code blocks (pasted logs, diffs) do not trigger capture. Human text before an
 appended reminder block still counts. Exact same-day repeats were already
 deduplicated by fingerprint.
+
+The length rule is the one rule that does not depend on knowing what a machine
+message looks like, so client features that reuse the user-prompt channel are
+filtered without enumerating their tags. English keywords (`remember`,
+`stop doing`) do not match inside longer English words, so `remembering` in
+generated prose is not a correction; they still match next to Chinese text.
+
+Because keyword matching runs on the full prompt while the inbox stores a
+truncated copy, every captured row also records the matched keyword and a short
+window around it in the `Match` column, surfaced by `review list` and as
+`matched` in `review list --json`. That is what lets a reviewer tell a real
+correction from a stray keyword when the trigger falls outside the stored text.
+The match text is redacted and capped like any other stored content and is not
+part of the fingerprint.
 
 ## Claude Code
 The installer wires `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse` and `Stop` while preserving existing groups.
