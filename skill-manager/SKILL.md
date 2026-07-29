@@ -11,7 +11,7 @@ description: >
   list skills、check updates、enable/disable skill、skill doctor、bump version、trace source。
 license: MIT
 metadata:
-  version: "2.6.0"
+  version: "2.6.1"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
@@ -147,7 +147,8 @@ metadata:
 ## 安全设计
 
 - **删除是移走**：移进 `~/.skill-manager/archive/deleted/<名>.<时间戳>/`，后悔可搬回；
-  连带登记（指纹、中文描述、插件缓存/登记/开关）由脚本对称清理。
+  连带登记（指纹、中文描述、插件缓存/登记/开关）与**各 Agent 入口软链**由脚本对称清理，
+  不留断链；归档失败时目录与软链一并复原。
 - **更新前整目录备份**到 `~/.skill-manager/archive/update-backups/`；在 staging 中完成
   合并与验证后原子替换，本地独有文件与本地定制字段保留；失败不改在线目录。
 - **插件更新结构验证通过才写登记表**；失败保留旧版继续可用。

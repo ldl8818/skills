@@ -99,6 +99,43 @@ class CliSmokeTests(unittest.TestCase):
             self.assertIn(str(skill), result.stdout)
             self.assertTrue(skill.exists())
 
+    def _skill_with_entry_links(self, home):
+        """真身在共享目录，Claude / Codex 各挂一条入口软链。"""
+        skill = Path(home) / ".agents" / "skills" / "demo"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text(
+            "---\nname: demo\ndescription: demo\nmetadata:\n  source: local\n---\n",
+            encoding="utf-8")
+        links = []
+        for client in (".claude", ".codex"):
+            root = Path(home) / client / "skills"
+            root.mkdir(parents=True)
+            link = root / "demo"
+            link.symlink_to(skill)
+            links.append(link)
+        return skill, links
+
+    def test_delete_dry_run_lists_entry_links(self):
+        with tempfile.TemporaryDirectory() as home:
+            _, links = self._skill_with_entry_links(home)
+            result = self.run_cli("delete_skill.py", "demo", "--dry-run", home=home)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("入口软链", result.stdout)
+            for link in links:
+                self.assertIn(str(link), result.stdout)
+                self.assertTrue(link.is_symlink(), "dry-run 不得真的删链")
+
+    def test_delete_removes_entry_links_leaving_no_dangling(self):
+        """只删真身会在每个客户端入口留断链，doctor 会一直报，用户以为没删干净。"""
+        with tempfile.TemporaryDirectory() as home:
+            skill, links = self._skill_with_entry_links(home)
+            result = self.run_cli("delete_skill.py", "demo", home=home)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertFalse(skill.exists())
+            for link in links:
+                self.assertFalse(link.is_symlink(), f"入口软链残留：{link}")
+                self.assertFalse(link.exists())
+
     def test_plugin_delete_rejects_install_path_outside_cache(self):
         with tempfile.TemporaryDirectory() as home:
             plugin_dir = Path(home) / "important" / "version"

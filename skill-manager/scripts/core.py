@@ -1091,6 +1091,32 @@ def project_skill_roots(project_path):
     ]
 
 
+def entry_links_to(skill_dir, project=None):
+    """找出各 Agent 入口目录下指向 skill_dir 的软链 → [(客户端标签, 链接路径)]。
+
+    删除 skill 必须连它一起清：只删真身会在每个客户端入口留一条断链，
+    而断链既进不了 list（目标没了），又会被 doctor 的软链检查反复报出来，
+    用户看到的是「删干净了」和「还有问题」两个互相矛盾的结论。
+
+    必须在移动或删除真身**之前**调用：realpath 依赖目标存在，事后再找就找不到了。
+    """
+    target = os.path.realpath(skill_dir)
+    roots = project_skill_roots(os.path.abspath(project)) if project else global_skill_roots()
+    found = []
+    for label, root in roots:
+        if not os.path.isdir(root):
+            continue
+        try:
+            entries = os.listdir(root)
+        except OSError:
+            continue
+        for name in entries:
+            p = os.path.join(root, name)
+            if os.path.islink(p) and os.path.realpath(p) == target:
+                found.append((label, p))
+    return found
+
+
 def _direct_groups(roots):
     """按 realpath 合并软链接入口，避免把同一个 Skill 重复计数。"""
     groups = {}

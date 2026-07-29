@@ -163,6 +163,11 @@ update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有�
 - **PyYAML 依赖曾致系统 python3 崩**（2026-07-03 移除）：保持零第三方依赖。
 - **删除曾不清指纹和中文描述**：指纹拿裸名查 `global:` 前缀 key 永远查不中，
   doctor 第 3 项（死条目）一直在替它兜底——事后能查出，根子上不该留。
+- **删除曾不清各 Agent 入口软链**（2026-07-29，删 web-access 时暴露）：只删真身，
+  `~/.claude/skills/<名>` 与 `~/.codex/skills/<名>` 留下断链。症状很别扭——断链进不了
+  `list`（目标没了），却会被 doctor 的软链检查一直报，用户同时看到「已删除」和「还有问题」。
+  修复 = `core.entry_links_to()` 在**归档前**收集（realpath 依赖目标存在），归档成功后再删链；
+  归档失败回滚时连软链一起复原，否则真身还在却没了入口，比没删更糟。
 - **`github_path` 曾被写成一串 `../` 直通临时目录**（2026-07-29，Waza think）：
   `find_skill_source` 命中已登记的 `github_path` 时走 `core.contained_path`，
   它返回 realpath（macOS 上 `/var` → `/private/var`），拿它跟未解析的 `tmp`

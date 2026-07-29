@@ -67,8 +67,13 @@ def delete_direct_skill(name, dry_run=False, project=None):
     # 拿裸名去查表永远查不中，删了也清不掉——旧版就是这么漏的。
     fp_key = f"{os.path.abspath(project) if project else 'global'}:{name}"
 
+    # 必须趁真身还在时收集：realpath 依赖目标存在，归档之后就找不到了
+    links = core.entry_links_to(skill_dir, project)
+
     print(f"将删除 skill：{name}")
     print(f"   目录       {skill_dir}")
+    for label, path in links:
+        print(f"   入口软链   {label} → {path}")
     if fp_key in fps:
         print(f"   指纹记录   fingerprints.json → {fp_key}")
     if name in zh:
@@ -78,6 +83,13 @@ def delete_direct_skill(name, dry_run=False, project=None):
         return True
 
     dest = archive_dir(skill_dir, name)
+    # 归档成功后再删软链：此时它们已是断链。反过来先删链、归档再失败的话，
+    # 真身还在却没了入口，比什么都没做更糟。
+    for _, path in links:
+        try:
+            os.unlink(path)
+        except OSError as e:
+            print(f"⚠️  入口软链未能删除：{path}（{e}）")
     try:
         if fp_key in fps:
             del fps[fp_key]
@@ -89,8 +101,18 @@ def delete_direct_skill(name, dry_run=False, project=None):
         if os.path.exists(dest) and not os.path.exists(skill_dir):
             os.makedirs(os.path.dirname(skill_dir), exist_ok=True)
             shutil.move(dest, skill_dir)
+            # 目录搬回来了，入口也要一并复原，否则 skill 还在却没有客户端能看到它
+            for _, path in links:
+                if not os.path.lexists(path):
+                    try:
+                        os.symlink(skill_dir, path)
+                    except OSError:
+                        print(f"⚠️  入口软链未能复原：{path}，需手工重建")
         raise
     print(f"\n✅ 已删除 {name}")
+    if links:
+        print(f"🔗 已清理 {len(links)} 条入口软链："
+              + "、".join(label for label, _ in links))
     print(f"📦 已归档到 {dest}（后悔了可搬回原目录 {skill_dir}）")
     return True
 
