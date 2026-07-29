@@ -11,7 +11,7 @@ description: >
   list skills、check updates、enable/disable skill、skill doctor、bump version、trace source。
 license: MIT
 metadata:
-  version: "2.5.1"
+  version: "2.6.0"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
@@ -42,11 +42,23 @@ metadata:
 | 列出技能 | `list`（全局 + 当前项目）；`list <项目>`；`list --all [-n N]` 全景，展开最近活跃前 3 个、其余折叠 | `list_skills.py` |
 | 检查更新 | `check`（本地版本 vs 上游最新） | `scan_and_check.py` |
 | 溯源 | `trace <名字> [--repo <URL>] [--write]`；`trace --all --write` 批量 | `trace_source.py` |
-| 更新 | `update <名字> [--project <路径>]`；直装或 Claude 插件；无参 = 批量；`--dry-run` 只列不做 | `update_skill.py` |
+| 更新 | `update <名字> [--project <路径>] [--ref main\|release]`；直装或 Claude 插件；无参 = 批量；`--dry-run` 只列不做 | `update_skill.py` |
 | 启用 / 禁用 | `enable\|disable <名字> [--project <路径>]`；直装或 Claude 插件 | `toggle_skill.py` |
 | 升版本号 | `bump <名字> [patch\|minor\|major] [--project <路径>]` | `bump_skill.py` |
 | 体检 | `doctor [--fix]`（`--fix` 只做有依据的补录，绝不发明数据） | `doctor.py` |
 | 删除 | `delete <名字> [--project <路径>] [--dry-run]`；直装或 Claude 插件 | `delete_skill.py` |
+
+### 跟随通道：release 与 main
+
+默认跟上游最新发布 tag。上游把改进压在未发版提交里时，用 `update <名字> --ref main`
+改跟主分支；通道有粘性，之后无参 `update` 继续跟 main，`--ref release` 是退回发布版的唯一方式。
+跟 main 的 skill 版本号标成 `3.32.0+main`，明确自己领先发布版。
+
+`check` 对两种通道分别比对：跟 release 的比 tag，跟 main 的比 HEAD，都不会出现「更新完还报有新版」。
+跟 release 的 skill 若上游 main 另有未发版提交，单独列在 🌿 段落，**不计入待更新**——
+上游未发版是常态，让它天天亮黄灯只会让人学会无视整列灯。
+
+禁用状态的 skill（入口是 `SKILL.md.disabled`）同样可以更新，更新后保持禁用。
 
 Claude 插件写裸名即可，脚本会自动补全 `@市场名`。全部脚本零第三方依赖，
 `python3`（≥ 3.9）直接跑；check / trace / update 需要本机装有 `git`。

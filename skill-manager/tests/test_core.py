@@ -233,7 +233,7 @@ class CoreContractTests(unittest.TestCase):
                     "---\nname: demo\ndescription: new\n---\n", encoding="utf-8")
                 return True
 
-            def fail_merge(_src, stage, _fields):
+            def fail_merge(_src, stage, _fields, _md_name="SKILL.md"):
                 Path(stage, "SKILL.md").write_text("partial", encoding="utf-8")
                 raise OSError("simulated disk failure")
 
@@ -245,6 +245,125 @@ class CoreContractTests(unittest.TestCase):
                     mock.patch.object(update_skill, "merge_skill_dir", side_effect=fail_merge):
                 self.assertFalse(update_skill.update_direct_skill("demo"))
             self.assertEqual((live / "SKILL.md").read_text(encoding="utf-8"), original)
+
+
+class UpdateChannelTests(unittest.TestCase):
+    """跟随通道（release / main）与禁用态更新。"""
+
+    URL = "https://github.com/acme/demo"
+
+    def test_default_follows_release_tag(self):
+        with mock.patch.object(update_skill, "latest_release",
+                               return_value=("v2.0.0", "b" * 40)):
+            ref, sha, channel = update_skill.resolve_update_target(self.URL, {})
+        self.assertEqual((ref, channel), ("v2.0.0", ""))
+        self.assertEqual(sha, "b" * 40)
+
+    def test_ref_main_uses_head(self):
+        with mock.patch.object(update_skill, "get_remote_hash",
+                               return_value="c" * 40):
+            ref, sha, channel = update_skill.resolve_update_target(
+                self.URL, {}, "main")
+        self.assertEqual((ref, channel), ("main", "main"))
+        self.assertEqual(sha, "c" * 40)
+
+    def test_main_channel_is_sticky(self):
+        """装过 main 的 skill，无参 update 必须继续跟 main，不能悄悄退回 tag。"""
+        with mock.patch.object(update_skill, "get_remote_hash",
+                               return_value="d" * 40):
+            _, _, channel = update_skill.resolve_update_target(
+                self.URL, {"github_ref": "main"})
+        self.assertEqual(channel, "main")
+
+    def test_ref_release_leaves_main_channel(self):
+        with mock.patch.object(update_skill, "latest_release",
+                               return_value=("v2.0.0", "e" * 40)):
+            ref, _, channel = update_skill.resolve_update_target(
+                self.URL, {"github_ref": "main"}, "release")
+        self.assertEqual((ref, channel), ("v2.0.0", ""))
+
+    def test_unknown_ref_rejected(self):
+        with self.assertRaises(ValueError):
+            update_skill.resolve_update_target(self.URL, {}, "feature/x")
+
+    def _run_update(self, root, original, ref_arg=None, upstream_version=None):
+        """跑一次成功的直装更新，返回落盘后的 SKILL.md 文本。"""
+        live = Path(root) / "skills" / "demo"
+        live.mkdir(parents=True)
+        (live / "SKILL.md").write_text(original, encoding="utf-8")
+
+        def fake_download(_url, _ref, dest):
+            Path(dest, "SKILL.md").write_text(
+                "---\nname: demo\ndescription: new\n---\n", encoding="utf-8")
+            if upstream_version:
+                Path(dest, "VERSION").write_text(upstream_version,
+                                                 encoding="utf-8")
+            return True
+
+        with mock.patch.object(core, "resolve_direct_path",
+                               return_value=(str(live), None)), \
+                mock.patch.object(update_skill, "BACKUP_ROOT",
+                                  str(Path(root) / "backups")), \
+                mock.patch.object(update_skill, "latest_release",
+                                  return_value=("v1.0.0", "a" * 40)), \
+                mock.patch.object(update_skill, "get_remote_hash",
+                                  return_value="f" * 40), \
+                mock.patch.object(update_skill, "download_repo",
+                                  side_effect=fake_download), \
+                mock.patch.object(update_skill, "get_commit_date",
+                                  return_value="07-13"):
+            self.assertTrue(update_skill.update_direct_skill(
+                "demo", None, ref_arg))
+        return (live / "SKILL.md").read_text(encoding="utf-8")
+
+    BASE_MD = ("---\nname: demo\ndescription: old\nmetadata:\n"
+               "  github_url: \"https://github.com/a/b\"\n---\n")
+
+    def test_release_channel_writes_no_empty_ref_field(self):
+        """跟 release 的 skill 不该平白多一行 github_ref: ""，元数据只记真实状态。"""
+        with tempfile.TemporaryDirectory() as root:
+            out = self._run_update(root, self.BASE_MD)
+        self.assertNotIn("github_ref", out)
+
+    def test_main_channel_suffixes_upstream_version(self):
+        with tempfile.TemporaryDirectory() as root:
+            out = self._run_update(root, self.BASE_MD, "main",
+                                   upstream_version="3.32.0")
+        self.assertIn('github_ref: "main"', out)
+        self.assertIn('version: "3.32.0+main"', out)
+
+    def test_main_channel_without_upstream_version_invents_nothing(self):
+        """上游没 VERSION 文件时不得编出 version: main —— 那不是版本号。"""
+        with tempfile.TemporaryDirectory() as root:
+            out = self._run_update(root, self.BASE_MD, "main")
+        self.assertIn('github_ref: "main"', out)
+        self.assertNotIn("version:", out)
+
+    def test_ref_release_clears_existing_main_marker(self):
+        marked = self.BASE_MD.replace(
+            '  github_url: "https://github.com/a/b"\n',
+            '  github_url: "https://github.com/a/b"\n  github_ref: "main"\n')
+        with tempfile.TemporaryDirectory() as root:
+            out = self._run_update(root, marked, "release")
+        self.assertIn('github_ref: ""', out)
+
+    def test_disabled_skill_stays_disabled_after_merge(self):
+        """禁用的 skill 更新后不得多出一个 SKILL.md，否则等于被静默启用。"""
+        with tempfile.TemporaryDirectory() as td:
+            src, dst = Path(td, "src"), Path(td, "dst")
+            src.mkdir()
+            dst.mkdir()
+            Path(src, "SKILL.md").write_text(
+                "---\nname: demo\ndescription: up\n---\n", encoding="utf-8")
+            Path(dst, "SKILL.md.disabled").write_text(
+                "---\nname: demo\ndescription: old\n---\n", encoding="utf-8")
+
+            update_skill.merge_skill_dir(str(src), str(dst), {},
+                                         "SKILL.md.disabled")
+
+            self.assertFalse(Path(dst, "SKILL.md").exists())
+            self.assertIn("description: up",
+                          Path(dst, "SKILL.md.disabled").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

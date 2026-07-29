@@ -96,6 +96,29 @@ def latest_release(url):
     return "HEAD", get_remote_hash(url)
 
 
+def resolve_update_target(url, meta, ref_arg=None):
+    """决定这次更新拉哪个提交 → (显示用 ref, commit sha, 跟随通道)。
+
+    通道只有两种，对应 check 的两种比对口径，二者必须一致，否则更新完还报「有新版」：
+      ""      跟 release tag（默认）
+      "main"  跟主分支 HEAD（上游把改进压在未发版提交里时用）
+
+    通道有粘性：装过 main 的 skill，后续无参 update 继续跟 main。不粘的话，
+    一次 update 就把它悄悄退回 tag，用户以为还在跟 main，实际早掉队了。
+    显式 `--ref release` 是退回 tag 的唯一方式。
+    """
+    channel = (ref_arg or meta.get("github_ref") or "").strip()
+    if channel == "release":
+        channel = ""
+    if channel and channel != "main":
+        raise ValueError("--ref 只接受 main 或 release")
+    if channel == "main":
+        sha = get_remote_hash(url)
+        return ("main", sha, "main") if sha else (None, None, "main")
+    ref, sha = latest_release(url)
+    return ref, sha, ""
+
+
 def get_commit_date(github_url, sha):
     """取该 commit 的提交日期（MM-DD）。
 
@@ -273,10 +296,15 @@ def summarize_change(old_content, new_content):
     return lines
 
 
-def merge_skill_dir(src, dst, meta_fields):
-    """上游目录合并进本地：覆盖同名文件，保留本地独有文件。返回 (旧 SKILL.md, 新 SKILL.md)。"""
+def merge_skill_dir(src, dst, meta_fields, md_name="SKILL.md"):
+    """上游目录合并进本地：覆盖同名文件，保留本地独有文件。返回 (旧 SKILL.md, 新 SKILL.md)。
+
+    md_name 是本地入口文件的真实名字：禁用的 skill 叫 SKILL.md.disabled。
+    上游那份必须写回同一个名字，否则更新会顺手落一个 SKILL.md 下来，
+    把用户明确禁用的 skill 悄悄启用。
+    """
     old_md = ""
-    dst_md = os.path.join(dst, "SKILL.md")
+    dst_md = os.path.join(dst, md_name)
     if os.path.isfile(dst_md):
         with open(dst_md, encoding="utf-8") as f:
             old_md = f.read()
@@ -294,14 +322,15 @@ def merge_skill_dir(src, dst, meta_fields):
                 with open(s, encoding="utf-8") as f:
                     upstream = f.read()
                 new_md = merge_skill_md(upstream, old_md, meta_fields)
-                with open(t, "w", encoding="utf-8") as f:
+                with open(os.path.join(target_root, md_name), "w",
+                          encoding="utf-8") as f:
                     f.write(new_md)
             else:
                 shutil.copy2(s, t)
     return old_md, new_md
 
 
-def update_direct_skill(skill_name, project=None):
+def update_direct_skill(skill_name, project=None, ref_arg=None):
     core.safe_component(skill_name, "skill 名")
     resolved, error = core.resolve_direct_path(skill_name, project)
     if error:
@@ -311,10 +340,18 @@ def update_direct_skill(skill_name, project=None):
         print(f"❌ {skill_name} 不存在")
         return False
     skill_dir = os.path.realpath(resolved)
-    skill_md = os.path.join(skill_dir, "SKILL.md")
+    # 禁用的 skill 入口叫 SKILL.md.disabled。不认它的话，冷藏起来的 skill
+    # 就永远停在禁用那天的版本，想更新还得先启用一次——那正是用户要避开的中间态。
+    md_name = "SKILL.md"
+    skill_md = os.path.join(skill_dir, md_name)
+    if not os.path.exists(skill_md):
+        md_name = "SKILL.md.disabled"
+        skill_md = os.path.join(skill_dir, md_name)
     if not os.path.exists(skill_md):
         print(f"❌ {skill_name} 不存在")
         return False
+    if md_name.endswith(".disabled"):
+        print(f"💤 {skill_name} 当前是禁用状态，更新后仍保持禁用")
 
     with open(skill_md, encoding="utf-8") as f:
         content = f.read()
@@ -331,10 +368,18 @@ def update_direct_skill(skill_name, project=None):
         return False
 
     print(f"🔍 检查 {skill_name} 更新...")
-    target_ref, remote_hash = latest_release(github_url)
+    try:
+        target_ref, remote_hash, channel = resolve_update_target(
+            github_url, meta, ref_arg)
+    except ValueError as e:
+        print(f"❌ {e}")
+        return False
     if not remote_hash:
         print(f"❌ 无法连接到 {github_url}")
         return False
+    if channel == "main":
+        print("🌿 跟随上游主分支（未发版提交），后续 update 默认继续跟 main；"
+              "回到发布版用 --ref release")
 
     local_hash = meta.get("github_hash", "")
     if local_hash and (remote_hash.startswith(local_hash) or local_hash.startswith(remote_hash[:12])):
@@ -374,14 +419,31 @@ def update_direct_skill(skill_name, project=None):
                 upstream_version = vf.read().strip()
         if not upstream_version and core.SEMVER_TAG.match(target_ref):
             upstream_version = target_ref.lstrip("v")
+        if channel == "main":
+            # 主分支上 VERSION 文件通常还停在上一个 tag（作者发版时才 bump）。
+            # 照抄就成了「版本号说 3.32.0、内容是 3.32.0 之后的未发版提交」——
+            # 正是本文件反复防的那种撒谎。加 +main 让它自曝领先发布版。
+            fields["github_ref"] = "main"
+            # 上游没给版本号时不编一个："main" 不是版本号。留空让版本列回退到
+            # 「日期 · 短哈希」，那才说得清装的是哪一版；通道信息由 github_ref 承担。
+            if upstream_version:
+                upstream_version = f"{upstream_version}+main"
+        elif meta.get("github_ref"):
+            # 只有从 main 退回来时才写空值清标记。无条件写会给每个跟 release 的
+            # skill 平白留一行 github_ref: ""，元数据只记真实状态，不记默认值。
+            fields["github_ref"] = ""
         if upstream_version:
             fields["version"] = upstream_version
-        rel = os.path.relpath(src, tmp)
-        if rel != ".":
+        # 两边都要 realpath：find_skill_source 走 core.contained_path 时返回的是
+        # 解析过软链的路径（macOS 上 /var → /private/var），拿它跟未解析的 tmp
+        # 算相对路径，会得到一串 ../ 直通临时目录，并被当成 github_path 写进
+        # frontmatter —— 下次更新就再也找不到源目录了。
+        rel = os.path.relpath(os.path.realpath(src), os.path.realpath(tmp))
+        if rel != "." and not rel.startswith(".."):
             fields["github_path"] = rel
         shutil.rmtree(stage)
         shutil.copytree(skill_dir, stage, symlinks=True)
-        old_md, new_md = merge_skill_dir(src, stage, fields)
+        old_md, new_md = merge_skill_dir(src, stage, fields, md_name)
 
         missing = validate_skill_md(new_md)
         if missing:
@@ -543,14 +605,19 @@ def update_plugin(plugin_key):
 
 # ── 单个更新（名字解析走 core.resolve_target，update / delete 共用） ──
 
-def update_one(name, project=None):
+def update_one(name, project=None, ref_arg=None):
     if project:
-        return update_direct_skill(name, project)
+        return update_direct_skill(name, project, ref_arg)
     kind, key, err = core.resolve_target(name)
     if err:
         print(f"❌ {err}")
         return False
-    return update_plugin(key) if kind == "plugin" else update_direct_skill(key)
+    if kind == "plugin":
+        if ref_arg:
+            print("❌ --ref 只对直装 skill 有效：插件按 commit 装，本来就跟 HEAD")
+            return False
+        return update_plugin(key)
+    return update_direct_skill(key, None, ref_arg)
 
 
 # ── 批量更新：不给名字就把有新版的全更了 ───────────────────
@@ -622,14 +689,29 @@ if __name__ == "__main__":
             sys.exit(1)
         project = argv[i + 1]
         del argv[i:i + 2]
+    ref_arg = None
+    if "--ref" in argv:
+        i = argv.index("--ref")
+        if i + 1 >= len(argv):
+            print("❌ --ref 后面要跟 main 或 release")
+            sys.exit(1)
+        ref_arg = argv[i + 1]
+        del argv[i:i + 2]
     names = [a for a in argv if not a.startswith("-")]
     flags = {a for a in argv if a.startswith("-")}
 
     unknown = flags - {"--dry-run"}
     if unknown:
         print(f"❌ 不认识的参数: {'、'.join(sorted(unknown))}")
-        print("用法: python3 update_skill.py [名字] [--project <路径>] [--dry-run]")
+        print("用法: python3 update_skill.py [名字] [--project <路径>] "
+              "[--ref main|release] [--dry-run]")
         print("      不给名字 = 检查并更新所有有新版的")
+        print("      --ref main    = 跟上游主分支的未发版提交（通道有粘性）")
+        print("      --ref release = 退回最新发布 tag")
+        sys.exit(1)
+
+    if ref_arg and not names:
+        print("❌ --ref 要指定 skill 名：批量更新不整体切换跟随通道")
         sys.exit(1)
 
     if not names:
@@ -647,4 +729,4 @@ if __name__ == "__main__":
               f"（是否有新版以实际执行时的比对为准）")
         sys.exit(1 if err else 0)
 
-    sys.exit(0 if update_one(names[0], project) else 1)
+    sys.exit(0 if update_one(names[0], project, ref_arg) else 1)

@@ -13,6 +13,7 @@ import io
 import os
 import sys
 import json
+import threading
 import concurrent.futures
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +47,28 @@ def remote_latest(url, tags_ok=True):
     return ("HEAD", sha) if sha else (None, None)
 
 
+_AHEAD_CACHE = {}
+_AHEAD_LOCK = threading.Lock()
+
+
+def unreleased_ahead(url):
+    """上游主分支是否领先最新 tag → True / False / None（判不了）。
+
+    刻意不并进 status：它一旦算「有新版」，黄灯就永远消不掉（tag 没动，HEAD 天天变），
+    用户会学会无视整列灯。作者把改进压在未发版提交里是常态，值得知道，但不值得
+    每天亮一次待办。同仓库多个 skill 只查一次。
+    """
+    with _AHEAD_LOCK:
+        if url in _AHEAD_CACHE:
+            return _AHEAD_CACHE[url]
+    _, tag_sha = core.latest_tag(url)
+    head = core.remote_head(url) if tag_sha else None
+    result = None if not (tag_sha and head) else (not head.startswith(tag_sha[:12]))
+    with _AHEAD_LOCK:
+        _AHEAD_CACHE[url] = result
+    return result
+
+
 def marketplace_repo(marketplace):
     src = (core.read_json(core.KNOWN_MARKETPLACES_JSON, {})
            .get(marketplace, {}).get("source", {}))
@@ -63,15 +86,25 @@ def check_one(target):
                 "message": "已冻结（脱离上游，按本地版本号管）"}
     if not url:
         return {**base, "status": "local", "message": "本地 skill，无上游可比"}
-    # 插件是按 commit 装的（update 也走 HEAD），拿 tag 比会永远误报「有新版」
-    ref, rh = remote_latest(url, tags_ok=(kind != "plugin"))
+    # 插件是按 commit 装的（update 也走 HEAD），拿 tag 比会永远误报「有新版」。
+    # 跟 main 的 skill 同理：它的目标本来就是 HEAD，拿 tag 比会永远显示「落后」。
+    follows_main = extra.get("ref") == "main"
+    ref, rh = remote_latest(url, tags_ok=(kind != "plugin" and not follows_main))
     if not rh:
         return {**base, "status": "error", "message": f"连不上 {url}"}
+    if follows_main:
+        ref = "main"
     if not local_hash:
         return {**base, "remote": ref, "status": "unknown",
                 "message": "本地没记 commit，无法比对"}
     if rh.startswith(local_hash[:12]):
-        return {**base, "remote": ref, "status": "current", "message": f"已是最新（{ref}）"}
+        cur = {**base, "remote": ref, "status": "current",
+               "message": f"已是最新（{ref}）"}
+        # 跟 tag 的才提示：跟 main 的本来就在最前面，没有「未发版提交」这回事
+        if kind == "skill" and not follows_main and unreleased_ahead(url):
+            cur["ahead"] = True
+            cur["message"] = f"已是最新（{ref}）· 上游 main 另有未发版提交"
+        return cur
     return {**base, "remote": ref, "status": "outdated", "message": f"上游有新版 {ref}"}
 
 
@@ -85,7 +118,8 @@ def build_targets():
             targets.append((
                 "skill", s.name, s.github_url, s.github_hash,
                 {"local": s.version, "enabled": s.enabled,
-                 "frozen": s.source == "frozen"},
+                 "frozen": s.source == "frozen",
+                 "ref": s.get("github_ref", "")},
             ))
 
     # 插件的启用状态要从它旗下任一 skill 上取（插件本身不出现在 skill 列表里）
@@ -147,6 +181,13 @@ def main():
             print(f"   /skill-manager update {r['name']}{tail}")
     else:
         print("\n🎉 所有可追踪的 skill 都是最新")
+
+    ahead = [r for r in results if r.get("ahead")]
+    if ahead:
+        print(f"\n🌿 {len(ahead)} 个已装到最新发布版，但上游 main 还有未发版提交：")
+        for r in ahead:
+            print(f"   /skill-manager update {r['name']} --ref main")
+        print("   （不是待办：上游未发版是常态，只在需要那批改动时才跟）")
     print()
 
 

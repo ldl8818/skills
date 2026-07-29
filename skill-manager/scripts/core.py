@@ -145,7 +145,7 @@ SM_DATA_FILES = {"fingerprints.json", "projects.json",
 # 不是内容；不剥掉的话，打个标记就会平白多出一颗 dirty 星。
 MANAGED_FIELDS = ("version", "zh_description", "github_url",
                   "github_hash", "github_date", "github_path",
-                  "keep_local_description")
+                  "github_ref", "keep_local_description")
 
 
 # ── 基础 IO ──────────────────────────────────────────────
@@ -1041,6 +1041,7 @@ def _make_direct_skill(name, skill_dir, md_path, enabled, scope, scope_label,
         version=version, dirty=dirty, path=skill_dir,
         github_url=meta.get("github_url", ""), github_hash=github_hash,
         github_date=github_date, github_path=meta.get("github_path", ""),
+        github_ref=meta.get("github_ref", ""),
         update_policy=meta.get("update_policy", ""),
         plugin_key="", marketplace="", md_path=md_path,
     )
@@ -1186,6 +1187,7 @@ def collect_codex_system_skills(zh_map):
             scope="system", scope_label="Codex 内置", enabled=True,
             version=str(meta.get("version", "—")), dirty=False, path=path,
             github_url="", github_hash="", github_date="", github_path="",
+            github_ref="",
             update_policy="", plugin_key="", marketplace="", md_path=md_path,
         ))
     return out
@@ -1221,6 +1223,7 @@ def collect_plugins(zh_map, project_paths):
                 scope="plugin", scope_label=scope_label, enabled=enabled,
                 version=version, dirty=False, path=path,
                 github_url="", github_hash="", github_date="", github_path="",
+                github_ref="",
                 update_policy="", plugin_key=plugin_key, marketplace=marketplace,
                 md_path=md_path,
             )
@@ -1298,6 +1301,7 @@ def collect_codex_plugins(zh_map):
                 scope="plugin", scope_label="Codex 全局" if enabled else "—", enabled=enabled,
                 version=version, dirty=False, path=path,
                 github_url="", github_hash="", github_date="", github_path="",
+                github_ref="",
                 update_policy="", plugin_key=plugin_key, marketplace=marketplace,
                 md_path=md_path,
             ))
@@ -1333,6 +1337,7 @@ def collect_commands(zh_map):
             scope="global", scope_label="全局", enabled=True,
             version="—", dirty=False, path=fpath,
             github_url="", github_hash="", github_date="", github_path="",
+            github_ref="",
             update_policy="", plugin_key="", marketplace="", md_path=fpath,
         ))
     return out

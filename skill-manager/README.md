@@ -58,6 +58,8 @@ ln -s ~/.agents/skills/skill-manager ~/.claude/skills/skill-manager
 /skill-manager trace --all --write       # 批量溯源所有来源不明的
 /skill-manager update [名字] [--project <路径>] # 更新直装 Skill 或 Claude 插件；无名字 = 批量
 /skill-manager update --dry-run          # 只列出将要更新的，不动手
+/skill-manager update <名字> --ref main    # 改跟上游主分支的未发版提交（通道有粘性）
+/skill-manager update <名字> --ref release # 退回最新发布 tag
 /skill-manager enable  <名字>            # 启用直装 Skill 或 Claude 插件
 /skill-manager disable <名字>            # 禁用直装 Skill 或 Claude 插件
 /skill-manager bump <名字> [patch|minor|major] [--project <路径>] # 递增版本号

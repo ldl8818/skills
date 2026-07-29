@@ -78,6 +78,20 @@ update 合并保数据），且用户重装漏抄一个 `--exclude` 就会删掉
 update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有新版」）；
 插件按 commit 装，就拿 commit 比。
 
+### 跟随通道 github_ref（2.6.0）
+口径一致这条规则本身没变，只是从「一种口径」扩成「按通道分别一致」：
+`github_ref: main` 的 skill 目标是 HEAD，check 就拿 HEAD 比；空值仍比 tag。
+
+通道必须有粘性。不粘的话，跟了 main 的 skill 被一次无参 `update` 悄悄退回 tag，
+用户以为还在跟未发版改进，实际早掉队——这种沉默的回退比报错难发现得多。
+
+「上游 main 领先 tag」单列 `ahead` 字段、单独一段输出，**绝不并进 status**。
+并进去就是 `remote_latest` 那条注释警告的场景：tag 不动而 HEAD 天天变，黄灯永远消不掉，
+用户学会无视整列灯，真有新版时也看不见了。
+
+跟 main 时版本号加 `+main` 后缀：主分支的 VERSION 文件通常停在上一个 tag，
+照抄就成了「版本号说 3.32.0、内容是 3.32.0 之后的提交」，又一次撒谎。
+
 ### User-Learned 段与本地独有文件
 `update_skill.py` 合并更新时保留目标 skill 的 `## User-Learned Best Practices` 段
 （`USER_SECTION_RE`）和本地独有文件。改合并逻辑别弄丢。
@@ -149,3 +163,13 @@ update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有�
 - **PyYAML 依赖曾致系统 python3 崩**（2026-07-03 移除）：保持零第三方依赖。
 - **删除曾不清指纹和中文描述**：指纹拿裸名查 `global:` 前缀 key 永远查不中，
   doctor 第 3 项（死条目）一直在替它兜底——事后能查出，根子上不该留。
+- **`github_path` 曾被写成一串 `../` 直通临时目录**（2026-07-29，Waza think）：
+  `find_skill_source` 命中已登记的 `github_path` 时走 `core.contained_path`，
+  它返回 realpath（macOS 上 `/var` → `/private/var`），拿它跟未解析的 `tmp`
+  算 `relpath` 就得到逃逸路径，写进 frontmatter 后下次更新再也找不到源目录。
+  修复 = 两边都 realpath，且 `..` 开头一律不写。只在「skill 已有 github_path」
+  且「系统临时目录带软链」时触发，潜伏了很久。
+- **禁用的 skill 曾完全无法更新**（同日修复）：`update_direct_skill` 只找 `SKILL.md`，
+  禁用态入口是 `SKILL.md.disabled`，于是报「不存在」——冷藏 = 永远停在禁用那天的版本。
+  合并时必须把上游 SKILL.md 写回同一个文件名，否则会顺手落一个 `SKILL.md`，
+  把用户明确禁用的 skill 静默启用。
