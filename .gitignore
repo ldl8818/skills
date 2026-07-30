@@ -255,3 +255,6 @@ skill-manager/descriptions_zh.json
 
 # Skill evaluation workspaces contain local snapshots and generated reviews.
 self-improving-workspace/
+
+# lookup: 本机数据软链（目标是绝对路径，不进公开仓库）
+lookup/references/site-patterns

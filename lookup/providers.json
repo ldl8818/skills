@@ -1,0 +1,446 @@
+{
+  "version": 1,
+  "_doc": "lookup 的唯一候选表。执行器读这里决定调哪条命令；SKILL.md 里的速查表是它的人类可读摘要，改动一律先改本文件。failure_domain 相同的两个 provider 之间切换不是真降级——ego-lite-browser 域下所有 provider 会被 ego lite 崩溃、Profile 损坏或账号风控同时带走。",
+
+  "failure_domains": {
+    "_model": "失效域是分层的，不是一整块。L1 ego lite 进程 / L2 Profile 登录态与账号风控 / L3 OpenCLI daemon+扩展 / L4 OpenCLI 站点适配器逻辑。ego-browser 只依赖 L1+L2，是 OpenCLI 依赖的真子集——所以 L3、L4 故障时它是有效兜底，别因为『共享浏览器』就否掉它。只有 L1、L2 故障才是真没路。",
+    "ego-lite-browser": "L1+L2+L3+L4。经 OpenCLI 扩展走 ego lite",
+    "ego-browser-api": "L1+L2。经 ego-browser JS API 走 ego lite，绕开 OpenCLI 的 daemon、扩展与适配器",
+    "direct-http": "本机进程直连目标站，不经浏览器，绕开 L1~L4",
+    "sogou": "经搜狗微信搜索中转，搜狗故障即全域失效",
+    "remote-http": "第三方远端 API，受其配额与可用性约束"
+  },
+
+  "ego_browser_fallback": {
+    "_doc": "ego-browser 是通用兜底：凡是能在浏览器里打开的页面它都能读。不逐条列进 providers 数组以免膨胀。invocation=manual——执行器不自动调用（涉及 task space、用户接管、验证码，不是非交互命令），由 agent 判断失败层级后手写 JS 调用。",
+    "provider_id": "ego-browser",
+    "failure_domain": "ego-browser-api",
+    "invocation": "manual",
+
+    "covers": {
+      "verified": {
+        "ego-lite-browser 域的全部 action": "OpenCLI 的 L3/L4 故障它能救，因其依赖是 OpenCLI 的真子集"
+      },
+      "_selector_note": "上述选择器是 2026-07 的页面结构，平台改版会失效；失效时先 snapshotText() 重新找节点，再更新此处",
+      "verified_2026-07-29": {
+        "youtube/search": "实测通过：结果页内跑 JS 取 ytd-video-renderer 节点，5 条含标题/频道/播放量/URL",
+        "weixin/detail": "实测通过：#activity-name 取标题、#js_name 取作者、#js_content 取正文（3399 字完整）"
+      },
+      "plausible_untested": {
+        "web/fetch": "已列为独立 provider 之外的第三条路"
+      },
+      "known_failure": {
+        "youtube/transcript": "**实测失败**：页面能读出 captionTracks 含 baseUrl，但页面内 fetch 被广告拦截扩展拦住，Node 侧 serverFetch 返回空。两轮受阻已停止试错，不要再走这条路，yt-dlp 是唯一通道"
+      },
+      "not_applicable": {
+        "web/search/en": "Exa 是 API 不是页面",
+        "web/ai-news": "aihot 是 API 不是页面",
+        "local/history": "本机 SQLite，与浏览器抓取无关"
+      }
+    },
+
+    "use_when": ["L4 适配器返回空或结构异常", "L3 Extension not connected 或 daemon 无响应"],
+    "useless_when": ["L2 AUTH_REQUIRED 或账号风控", "L1 ego lite 进程未运行"],
+    "diagnose": "opencli doctor：报 Extension not connected 是 L3；能连但取数为空是 L4；平台报 AUTH_REQUIRED 是 L2"
+  },
+
+  "failure_classes": [
+    "auth_required",
+    "unsupported_action",
+    "invalid_output",
+    "rate_limited",
+    "network",
+    "unknown"
+  ],
+
+  "circuit_breaker": {
+    "consecutive_failures_to_open": 3,
+    "cooldown_minutes": 30,
+    "_note": "熔断只在该 action 存在其他 status=active 且 failure_domain 不同的候选时才降级；单候选 action 仅记录状态，不熔断——没有替代路径时熔断等于自断。auth_required 不计入熔断计数，它是登录态问题不是通道故障。"
+  },
+
+  "actions": {
+    "x/search": {
+      "desc": "搜 X 推文",
+      "providers": [
+        {
+          "id": "opencli-twitter-search",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "ego-lite-browser",
+          "auth": "browser-session",
+          "accepts": ["query", "limit", "freshness"],
+          "bin": "opencli",
+          "args": ["twitter", "search", "{query}", "-f", "yaml", "--limit", "{limit}", "--window", "background"],
+          "conditional_args": {
+            "freshness=latest": ["--product", "live"],
+            "freshness=top": ["--product", "top"]
+          },
+          "defaults": { "limit": 5, "freshness": "latest" },
+          "keep_fields": ["author", "text", "created_at", "url", "likes", "views"],
+          "validator": "list_nonempty+has_time_field",
+          "_verified": "2026-07-29 实测：freshness=latest 返回当天推文，top 返回两个月前热门"
+        }
+      ]
+    },
+
+    "x/article": {
+      "desc": "取 X 长文（Twitter Article）正文",
+      "providers": [
+        {
+          "id": "opencli-twitter-article",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "ego-lite-browser",
+          "auth": "browser-session",
+          "accepts": ["id"],
+          "bin": "opencli",
+          "args": ["twitter", "article", "{id}", "--window", "background"],
+          "validator": "text_nonempty"
+        }
+      ]
+    },
+
+    "x/thread": {
+      "desc": "取 X 整串推文",
+      "providers": [
+        {
+          "id": "opencli-twitter-thread",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "ego-lite-browser",
+          "auth": "browser-session",
+          "accepts": ["id"],
+          "bin": "opencli",
+          "args": ["twitter", "thread", "{id}", "-f", "yaml", "--window", "background"],
+          "validator": "list_nonempty"
+        }
+      ]
+    },
+
+    "youtube/search": {
+      "desc": "搜 YouTube 视频",
+      "providers": [
+        {
+          "id": "ytdlp-search",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "accepts": ["query", "limit"],
+          "bin": "yt-dlp",
+          "args": ["ytsearch{limit}:{query}", "--flat-playlist", "--print", "%(title)s\t%(channel)s\t%(duration_string)s\t%(url)s"],
+          "defaults": { "limit": 5 },
+          "validator": "list_nonempty",
+          "ignore_stderr_patterns": ["Error solving.*challenge", "Access to this API has been restricted"],
+          "_verified": "2026-07-29 实测通过；node challenge WARNING 不影响结果"
+        }
+      ]
+    },
+
+    "youtube/transcript": {
+      "desc": "取 YouTube 字幕正文",
+      "providers": [
+        {
+          "id": "ytdlp-subs",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "accepts": ["url", "lang"],
+          "bin": "yt-dlp",
+          "args": ["--write-auto-sub", "--sub-lang", "{lang}", "--skip-download", "--sub-format", "vtt", "-o", "{tmpdir}/%(id)s", "{url}"],
+          "defaults": { "lang": "en,zh-Hans" },
+          "post": "vtt_clean",
+          "cleanup": "trash_tmp",
+          "validator": "text_nonempty",
+          "empty_is_not_failure": "There are no subtitles for the requested languages",
+          "_verified": "2026-07-29 实测：vtt_clean 后 14807B → 1224B，省 92%"
+        }
+      ]
+    },
+
+    "xhs/search": {
+      "desc": "搜小红书笔记（只返回列表，正文要另取）",
+      "providers": [
+        {
+          "id": "opencli-xhs-search",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "ego-lite-browser",
+          "auth": "browser-session",
+          "accepts": ["query", "limit"],
+          "bin": "opencli",
+          "args": ["xiaohongshu", "search", "{query}", "-f", "yaml", "--limit", "{limit}", "--window", "background"],
+          "defaults": { "limit": 5 },
+          "keep_fields": ["title", "author", "likes", "published_at", "url"],
+          "validator": "list_nonempty+has_time_field",
+          "returns": "list_only"
+        }
+      ]
+    },
+
+    "xhs/detail": {
+      "desc": "取小红书笔记正文",
+      "providers": [
+        {
+          "id": "opencli-xhs-note",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "ego-lite-browser",
+          "auth": "browser-session",
+          "accepts": ["id"],
+          "bin": "opencli",
+          "args": ["xiaohongshu", "note", "{id}", "--window", "background"],
+          "validator": "text_nonempty"
+        }
+      ]
+    },
+
+    "xhs/comments": {
+      "desc": "取小红书笔记评论",
+      "providers": [
+        {
+          "id": "opencli-xhs-comments",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "ego-lite-browser",
+          "auth": "browser-session",
+          "accepts": ["id", "limit"],
+          "bin": "opencli",
+          "args": ["xiaohongshu", "comments", "{id}", "-f", "yaml", "--window", "background"],
+          "validator": "list_nonempty"
+        }
+      ]
+    },
+
+    "bilibili/search": {
+      "desc": "搜 B站视频",
+      "providers": [
+        {
+          "id": "bili-search",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "accepts": ["query", "limit"],
+          "bin": "bili",
+          "args": ["search", "{query}", "--type", "video", "-n", "{limit}"],
+          "defaults": { "limit": 5 },
+          "keep_fields": ["bvid", "title", "author", "play", "duration"],
+          "validator": "list_nonempty",
+          "_note": "免登录，失效域独立于 ego lite —— 这是六平台里唯一天然独立的搜索通道"
+        },
+        {
+          "id": "opencli-bilibili-search",
+          "status": "active",
+          "priority": 20,
+          "failure_domain": "ego-lite-browser",
+          "auth": "browser-session",
+          "accepts": ["query", "limit"],
+          "bin": "opencli",
+          "args": ["bilibili", "search", "{query}", "-f", "yaml", "--limit", "{limit}", "--window", "background"],
+          "validator": "list_nonempty",
+          "_note": "真降级：与 bili-search 失效域不同"
+        }
+      ]
+    },
+
+    "bilibili/transcript": {
+      "desc": "取 B站视频字幕",
+      "providers": [
+        {
+          "id": "opencli-bilibili-subtitle",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "ego-lite-browser",
+          "auth": "browser-session",
+          "accepts": ["id"],
+          "bin": "opencli",
+          "args": ["bilibili", "subtitle", "{id}", "--window", "background"],
+          "validator": "text_nonempty",
+          "_note": "不要用 yt-dlp 抓 B站"
+        }
+      ]
+    },
+
+    "weixin/search": {
+      "desc": "搜公众号文章（搜狗源）",
+      "providers": [
+        {
+          "id": "opencli-weixin-search",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "sogou",
+          "auth": "none",
+          "accepts": ["query", "limit"],
+          "bin": "opencli",
+          "args": ["weixin", "search", "{query}", "-f", "yaml", "--limit", "{limit}", "--window", "background"],
+          "defaults": { "limit": 5 },
+          "keep_fields": ["title", "summary", "publish_time", "url"],
+          "validator": "list_nonempty+has_time_field",
+          "returns": "list_only",
+          "_note": "URL 是搜狗跳转链，取正文前需确认能落到 mp.weixin.qq.com。搜狗挂了没有第二条路——公众号站内搜索目前是单点。"
+        }
+      ]
+    },
+
+    "weixin/detail": {
+      "desc": "取公众号文章正文",
+      "providers": [
+        {
+          "id": "read-fetch-sh",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "accepts": ["url"],
+          "bin": "bash",
+          "args": ["{HOME}/.agents/skills/read/scripts/fetch.sh", "{url}"],
+          "validator": "text_nonempty+not_nav_only",
+          "max_output_chars": 40000,
+          "_note": "fetch.sh 属 Waza read skill（当前禁用但脚本可直接调）。输出无上限，需在执行器侧截断。"
+        }
+      ]
+    },
+
+    "douyin/search": {
+      "desc": "搜抖音视频",
+      "providers": [
+        {
+          "id": "opencli-douyin-search",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "ego-lite-browser",
+          "auth": "browser-session",
+          "accepts": ["query", "limit"],
+          "bin": "opencli",
+          "args": ["douyin", "search", "{query}", "-f", "yaml", "--limit", "{limit}", "--window", "background"],
+          "defaults": { "limit": 5 },
+          "keep_fields": ["desc", "author", "url", "likes"],
+          "validator": "list_nonempty",
+          "freshness_provable": false,
+          "_note": "返回字段无任何时间信息。回答『最近/最新』时执行器必须打 FRESHNESS_UNPROVEN 标记，调用方据此声明无法证明时效。"
+        }
+      ]
+    },
+
+    "web/fetch": {
+      "desc": "取任意网页正文",
+      "providers": [
+        {
+          "id": "read-fetch-sh",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "accepts": ["url"],
+          "bin": "bash",
+          "args": ["{HOME}/.agents/skills/read/scripts/fetch.sh", "{url}"],
+          "validator": "text_nonempty+not_nav_only",
+          "max_output_chars": 40000
+        },
+        {
+          "id": "jina-reader",
+          "status": "active",
+          "priority": 20,
+          "failure_domain": "remote-http",
+          "auth": "none",
+          "accepts": ["url"],
+          "bin": "curl",
+          "args": ["-fsSL", "https://r.jina.ai/{url}"],
+          "validator": "text_nonempty+not_nav_only",
+          "max_output_chars": 40000,
+          "_note": "真降级：URL 会出本机，处理敏感链接时不要用"
+        }
+      ]
+    },
+
+    "web/search/en": {
+      "desc": "英文语义搜索",
+      "providers": [
+        {
+          "id": "exa-mcp",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "remote-http",
+          "auth": "none",
+          "accepts": ["query", "limit"],
+          "bin": "mcporter",
+          "args": ["call", "exa.web_search_exa(query: \"{query}\", numResults: {limit})"],
+          "defaults": { "limit": 3 },
+          "validator": "text_nonempty",
+          "_note": "返回带 highlights 的摘要，属省 token 第 1 层，不用再 fetch 原页"
+        }
+      ]
+    },
+
+    "web/search/zh": {
+      "desc": "中文全网搜索（主干）",
+      "providers": [
+        {
+          "id": "doubao-web-search",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "remote-http",
+          "auth": "key_in_mcporter_env",
+          "accepts": ["query", "limit", "freshness_days"],
+          "bin": "mcporter",
+          "args": ["call", "huashu-doubao-search.doubao_search(query: \"{query}\", count: {limit}, max_age_days: {freshness_days})"],
+          "defaults": { "limit": 5, "freshness_days": 30 },
+          "capabilities": ["web", "time_range", "toutiao_source", "token_count_per_result"],
+          "keep_fields": ["title", "url", "snippet", "published_at", "source"],
+          "validator": "list_nonempty+has_time_field",
+          "_note": "经 alchaincyf/huashu-doubao-search MCP（mcporter stdio）。Key 在 ~/.mcporter/mcporter.json 的 env 与 ~/.config/doubao-search.key（600），额度 500 次/月（global/custom 共用）。不查时效时省掉 max_age_days 参数。列表页看到的 Key 是截断显示文本，完整值在 [title] 属性——2026-07-29 因此踩过一次 invalid api key。",
+          "_verified": "2026-07-29 实测：max_age_days=7 过滤生效，返回今日头条千字正文、发布时间到秒、每条带 token 计数"
+        }
+      ]
+    },
+
+    "web/ai-news": {
+      "desc": "AI 圈资讯聚合",
+      "providers": [
+        {
+          "id": "aihot-api",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "remote-http",
+          "auth": "none",
+          "accepts": ["limit", "window"],
+          "bin": "curl",
+          "args": ["-fsSL", "https://aihot.virxact.com/api/v1/items?mode=selected&window={window}&limit={limit}"],
+          "defaults": { "limit": 10, "window": "24h" },
+          "keep_fields": ["score", "title", "source.name", "url"],
+          "validator": "list_nonempty",
+          "freshness_provable": false,
+          "_note": "已聚合 X、公众号、RSS 数百信源并 LLM 打分。问『AI 圈最近怎么样』直接调它，别自己去抓 X。条目不带发布时间字段——时效由 window 参数保证（服务端按窗口筛过），但单条无法证明具体时点。",
+          "_verified": "2026-07-30 实测：selected 模式返回打分条目（score+title+source）；日报接口 dailies/latest 结构是 report.{date,lead,sections[],flashes[]}，不是 daily.content，解析别猜字段"
+        }
+      ]
+    },
+
+    "local/history": {
+      "desc": "检索本机浏览器书签与历史",
+      "providers": [
+        {
+          "id": "find-url-mjs",
+          "status": "active",
+          "priority": 10,
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "accepts": ["query"],
+          "bin": "node",
+          "args": ["{SKILL_DIR}/scripts/find-url.mjs", "{query}"],
+          "validator": "list_nonempty",
+          "_note": "覆盖 ego lite / Chrome / Edge。公网搜不到的内部系统、后台、内网域名的唯一入口。"
+        }
+      ]
+    }
+  },
+
+  "interactive_only": {
+    "_doc": "ego-browser 的另一类用途：本来就该用它的场景（不是兜底）。需要登录扫码、验证码、多步表单、跨页面组合、无适配器的长尾站点。这类场景不进执行器——ego-browser 涉及 task space 与用户接管，硬塞进去会破坏其生命周期管理。作为 OpenCLI 故障兜底的用法见上方 ego_browser_fallback。",
+    "provider": "ego-browser",
+    "failure_domain": "ego-browser-api"
+  }
+}
