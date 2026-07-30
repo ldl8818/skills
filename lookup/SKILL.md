@@ -10,7 +10,7 @@ description: >
   search、fetch this url、read this page、what's the latest。
 license: MIT
 metadata:
-  version: "1.6.2"
+  version: "1.6.3"
   source: local
   zh_description: 联网查信息的唯一入口：分层选通道、校验有效性、省 token
 ---
@@ -60,7 +60,7 @@ metadata:
 
 ## 常用六平台
 
-用户日常只用这六个：**X、YouTube、小红书、B站、公众号、抖音**。以下命令 2026-07-29 全部实测通过，可直接抄，不要自己另发明用法。OpenCLI 系命令**一律加 `--window background`**。
+用户日常只用这六个：**X、YouTube、小红书、B站、公众号、抖音**。以下命令 2026-07-29 全部实测通过，可直接抄，不要自己另发明用法。OpenCLI 系命令保留 `--window background`：适配器命令的默认值本来就是 background，但默认值是 per-command 可声明的（`cmd.defaultWindowMode ?? 'background'`），显式写上防某个适配器单独声明 foreground。它只管抢不抢焦点，**消不掉窗口本身**，见下方「OpenCLI 的容器窗口」。
 
 **搜索命令拿回来的是列表，不是正文。**除 B站/公众号外，取正文都要拿列表里的 id 或 URL 再发一条命令。把搜索结果当正文交付是已经犯过的错。
 
@@ -90,6 +90,8 @@ X 首选 OpenCLI 而非 ego-browser：实测它返回的是六到八个字段的
 - **一个用户目标只开一个 task space。**后续追问、纠正、重试、验证都复用同一个，即使你以为任务已经结束。只有用户明确开启不相关的新目标才新建，且要说明为什么。按子步骤各建一个是错的。
 - **一个 heredoc 写完整件事。**ego 是 code base 不是 CLI base：它把能力包成 JS 函数让你组合，官方基准是复杂任务比 CLI 模式快 2.5 倍、工具调用次数远少。「先打开页面、看一眼、再取内容」拆成两轮，正是它设计上要消灭的循环。
 - **收尾必须调 `completeTaskSpace(id, { keep: false })`，且独占最后一个 heredoc。**实测（2026-07-29 对照实验）：**每个 agent space 底层就是一个独立浏览器窗口**，complete 会连窗口一起回收；不调则窗口永久残留，用户会在 Mission Control 里看到窗口越堆越多——已因此被用户指出过一次。只有用户明确要求留页面、或需要用户在该页面手动操作时才 `keep: true`。
+  这条只管 task space。用户看到的空白窗口还有另一个来源，且 complete 回收不到，见下方「OpenCLI 的容器窗口」——别把它误判成 task space 没收尾。
+- **禁止用 CDP 关别的 space 的 target。**在 task space 里调 `cdp('Target.closeTarget', …)` 关跨 space 的标签，实测**直接让 ego lite 主进程 SIGSEGV 崩溃**（2026-07-30，`EXC_BAD_ACCESS` at `0xefefefefefeff087`，use-after-free 特征），用户正在用的标签全部丢失。`cdp('Target.getTargets')` 只读可用，但**拿到 targetId 也不许去关**。关标签只用 `closeTab(id)`，且只关本 space 自己的。
 - **临时页随手关**（`closeTab(id)`），别攒到最后。搜索结果页、交叉验证页都算临时页。
 - **不要用 `open -a` 拉起浏览器**，交给 ego-browser 自己管生命周期。
 - **「user is controlling」是硬停止**，不是要绕开的障碍：用户主动收回了控制权，通常意味着当前做法有问题。只能问用户并等待，不得重试、不得 `takeOverTaskSpace` 自行夺回。
@@ -116,9 +118,28 @@ X 首选 OpenCLI 而非 ego-browser：实测它返回的是六到八个字段的
 - 返回账号 → 登录态在，问题出在命令用法或适配器，别去打扰用户
 - 返回未登录 → 才请用户在 ego lite 里扫码，然后重试**同一条**命令
 
-**OpenCLI 绕过 Space 机制**——它是标准 Chrome 扩展，用 tabs/windows API 开普通窗口，不受 ego 的 Space 隔离约束。所以**一律加 `--window background`**，否则每条命令都会在用户面前弹窗口。
+其 Browser Bridge 扩展装在 ego lite 的 Profile 3，通过 `ws://localhost:19825/ext` 连本地 daemon（不是 native messaging，所以装在哪个 Chromium 都能连）。**ego lite 没运行时扩展必然断连**；确认连通用下方「探活」，不要急着重装。
 
-其 Browser Bridge 扩展装在 ego lite 的 Profile 3，通过 `ws://localhost:19825/ext` 连本地 daemon（不是 native messaging，所以装在哪个 Chromium 都能连）。**ego lite 没运行时扩展必然断连**，`opencli doctor` 报 `Extension: not connected` 时先确认浏览器在不在跑，不要急着重装。
+## OpenCLI 的容器窗口（用户已投诉，2026-07-30 定案）
+
+**OpenCLI 绕过 Space 机制**——它是标准 Chrome 扩展，用 tabs/windows API 开普通窗口，不受 ego 的 Space 隔离约束。扩展按 role 维护两个「容器窗口」（`ownedContainers`，`chrome.windows.create` 建 1280x900 普通窗口），role 由命令的 surface 决定：
+
+| 容器 role | 谁触发 | 默认焦点 | 橙色「OpenCLI Browser」标签组 | 注册表丢失后 |
+|---|---|---|---|---|
+| `automation` | 适配器命令（六平台 search 等） | background | 无 | **无法再识别，下条命令新建 → 孤儿累积** |
+| `interactive` | `opencli browser ...`、`opencli doctor` | **foreground（抢焦点弹窗）** | 有 | 能按标签组标题全局找回，有限自愈 |
+
+**这些窗口关不掉，只能靠不触发。**扩展在 `releaseLease()` 里把最后一个标签导航回 `about:blank` 当可复用占位符，全文件没有一处 `chrome.windows.remove`；`opencli browser <sess> close`、`tab close` 实测都只释放 lease，窗口不动；占位标签在 `tab list` 里根本不出现。
+
+**探活用无窗口通道，不要用 `opencli doctor`。**doctor 硬编码 `surface: 'browser'` 且没有 `--window` 选项，每跑一次就在用户面前弹一个前台空白窗口并永久留下。改用下面这条，实测 `{"ok":true,"data":[]}` 且窗口数不变（走完 daemon → WebSocket → 扩展 → 回程，不解析 tab、不建 lease）：
+
+```bash
+curl -sS -H 'X-OpenCLI: 1' -H 'Content-Type: application/json' \
+  --data '{"id":"probe-'$RANDOM'","action":"cookies","session":"health-probe","surface":"browser","domain":"opencli-probe.invalid","timeout":10,"deadlineAt":'$(python3 -c 'import time;print(int(time.time()*1000)+15000)')'}' \
+  http://127.0.0.1:19825/command
+```
+
+`opencli profile list` 和 `opencli daemon status` 同样零窗口，但它们只读 daemon 记忆里的连接状态，不做端到端往返，只能用来看「daemon 起没起」。确需 doctor 的详细诊断时，前面加 `OPENCLI_WINDOW=background`（`sendCommandRaw` 读这个环境变量）压掉抢焦点——窗口仍会创建并留下。
 
 OpenCLI 的登录态判断比读页面文字准，别用「页面上有内容」推断已登录。
 
@@ -159,7 +180,7 @@ L4  OpenCLI 站点适配器逻辑        ← 只有 OpenCLI 依赖
 
 **所以 OpenCLI 失败时先判断层级**：L3/L4 症状就上 ego-browser，别放弃；L1/L2 症状才是真没路，去处理浏览器或登录态本身。
 
-`opencli doctor` 能直接区分：报 `Extension: not connected` 是 L3；能连上但取数为空是 L4；平台报 `AUTH_REQUIRED` 是 L2。
+怎么区分：上方「探活」那条 curl 返回非 `ok:true` 是 L3；探活通了但取数为空是 L4；平台报 `AUTH_REQUIRED` 是 L2。**别为了分层去跑 `opencli doctor`**——它会留下一个关不掉的空白窗口。
 
 ### 什么才算真正的独立失效域
 
