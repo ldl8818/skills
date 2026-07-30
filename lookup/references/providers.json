@@ -281,19 +281,49 @@
 
     "weixin/detail": {
       "desc": "取公众号文章正文",
+      "_doc": "search 返回的是搜狗跳转链，只有真实浏览器能走通；步骤见 references/weixin-article.md",
       "providers": [
         {
-          "id": "read-fetch-sh",
+          "id": "ego-browser-weixin-dom",
           "status": "active",
           "priority": 10,
+          "failure_domain": "ego-browser-api",
+          "auth": "none",
+          "accepts": ["sogou_url"],
+          "bin": "ego-browser",
+          "selectors": {
+            "title": "#activity-name",
+            "author": "#js_name",
+            "body": "#js_content"
+          },
+          "validator": "text_nonempty+not_nav_only",
+          "_note": "打开搜狗链等 JS 跳转落到 mp.weixin.qq.com 后取 DOM。选择器是 2026-07 页面结构，改版即失效。",
+          "_verified": "2026-07-30 实测：2555 字正文完整"
+        },
+        {
+          "id": "opencli-weixin-download",
+          "status": "active",
+          "priority": 20,
+          "failure_domain": "ego-lite-browser",
+          "auth": "none",
+          "accepts": ["mp_url"],
+          "bin": "opencli",
+          "args": ["weixin", "download", "--url", "{mp_url}", "--output", "{dir}", "--download-images", "false", "-f", "yaml", "--window", "background"],
+          "validator": "text_nonempty",
+          "_note": "产出带元数据的干净 Markdown，适合归档；但只认 mp.weixin.qq.com，喂搜狗链返回 invalid URL，所以仍需先用上一条拿真实地址。",
+          "_verified": "2026-07-30 实测：7197 字节 Markdown，含标题/公众号/发布时间/原文链接"
+        },
+        {
+          "id": "read-fetch-sh",
+          "status": "broken",
+          "priority": 90,
           "failure_domain": "direct-http",
           "auth": "none",
           "accepts": ["url"],
           "bin": "bash",
           "args": ["{HOME}/.agents/skills/read/scripts/fetch.sh", "{url}"],
           "validator": "text_nonempty+not_nav_only",
-          "max_output_chars": 40000,
-          "_note": "fetch.sh 属 Waza read skill（当前禁用但脚本可直接调）。输出无上限，需在执行器侧截断。"
+          "_note": "**不要用**。2026-07-30 实测：抓搜狗跳转链返回 status=ok，内容却是搜狗反爬验证码页（911 字节）——假成功。带浏览器 UA 的 curl 同样被 302 到 /antispider/。"
         }
       ]
     },

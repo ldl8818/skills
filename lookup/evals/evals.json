@@ -1,0 +1,75 @@
+{
+  "skill_name": "lookup",
+  "_doc": "每条 eval 针对一个「不读 SKILL.md 就一定会做错」的点，而不是泛泛测「能不能搜到东西」。expectations 里的每条都能从 transcript 里客观核验：看它发了哪条命令、有没有二次取正文、交付时怎么声明时效。",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我看看 X 上现在关于 claude code 的最新讨论，我想知道这两天大家在聊什么新功能",
+      "expected_output": "返回当天或近两天的推文内容，而不是热门排序下的旧推文；并且给出的是推文正文，不是搜索结果列表的标题摘要。",
+      "expectations": [
+        "调用 opencli twitter search 时带了 --product live（默认 --product top 会返回数月前的热门推文）",
+        "没有把 search 返回的列表当正文交付，而是对目标推文再发了一条 article 或 thread 命令",
+        "交付内容里的时间与用户问的『这两天』一致，或明确说明实际拿到的是哪个时间段"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "搜一下公众号里讲 Claude Code 记忆机制的文章，找到之后把正文内容整理给我",
+      "expected_output": "拿到公众号文章的完整正文（千字级），而不是搜狗的反爬验证码页或只有标题摘要。",
+      "expectations": [
+        "没有把 opencli weixin search 返回的搜狗跳转链直接喂给 fetch.sh（实测会返回 status=ok 但内容是反爬验证码页）",
+        "通过浏览器让搜狗链跳转到 mp.weixin.qq.com 之后才取正文",
+        "交付的正文长度与一篇公众号文章相称（千字级），且不含『返回首页』『VerifyCode』等反爬页特征词"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "抖音上最近有人在讨论 AI 编程工具吗？最近的说法是什么",
+      "expected_output": "给出抖音搜索结果，同时明确声明无法证明这些内容的发布时间。",
+      "expectations": [
+        "交付时明确说明抖音搜索结果不含任何时间字段、无法证明时效",
+        "没有把搜索结果默认当成『最近的』或凭播放量推断新旧",
+        "如果用户的时效需求是硬要求，主动建议换一个能证明发布时间的通道（如豆包搜索带 max_age_days）"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "看一下 elonmusk 最近发了什么推",
+      "expected_output": "返回该用户本人最近的推文。",
+      "expectations": [
+        "用了 opencli twitter tweets <用户名>，而不是 timeline（timeline 取的是登录账号自己的首页推荐流、不接用户名参数）",
+        "交付的推文作者确实是用户指定的那个账号，不是登录账号首页流里的混合内容"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "这个视频讲了什么 https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "expected_output": "基于字幕总结视频内容，且没有把原始 VTT 直接读进上下文。",
+      "expectations": [
+        "下载字幕后做了清洗（去时间码、去内联标签、去滚动重复）才读，没有直接读原始 .vtt",
+        "读完清理了 $HOME/tmp 下的 vtt 临时文件",
+        "把 yt-dlp 的 challenge / restricted API WARNING 当正常输出，没有为它关沙箱或去排查 YouTube 侧"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "我上周好像在公司那个内部后台看过一个数据报表页面，你帮我找一下那个地址",
+      "expected_output": "从本机浏览器书签与历史里检索出候选地址，而不是去公网搜索。",
+      "expectations": [
+        "用了 scripts/find-url.mjs 检索本机书签与历史",
+        "没有对内部系统去调用公网搜索通道（公网搜不到内网地址）",
+        "如果检索无结果，如实说明没找到，而不是猜一个地址"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "帮我确认一下现在 opencli 的浏览器扩展还连着没有，最近好几个命令都失败",
+      "expected_output": "用零窗口的探活通道确认连通性，并按分层判据给出结论。",
+      "expectations": [
+        "没有用 opencli doctor 探活（它会在用户面前弹一个关不掉的前台空白窗口）",
+        "用了 SKILL.md 里那条探活 curl，或直接跑 scripts/selftest.sh",
+        "结论里区分了故障层级（L3 daemon/扩展 vs L4 适配器 vs L2 登录态），而不是笼统说『连不上』"
+      ]
+    }
+  ]
+}

@@ -18,6 +18,15 @@ set -uo pipefail
 LIVE=0
 [[ "${1:-}" == "--live" ]] && LIVE=1
 
+# OpenCLI daemon 串行处理命令：两个 selftest 并发会互相挤掉彼此的超时窗口，
+# 探活和 whoami 全线报错，看起来像 L3 故障——实测过一次，全是假失败。
+# 与其让人照着假报告去排查，不如直接拦住。
+others=$(pgrep -f '[s]elftest\.sh' 2>/dev/null | grep -vx "$$" | tr '\n' ' ' || true)
+if [[ -n "${others// /}" ]]; then
+  printf '已有 selftest 在跑（PID: %s）。并发会因 daemon 排队产生假失败，等它结束再试。\n' "${others% }"
+  exit 2
+fi
+
 PASS=0 FAIL=0 SKIP=0
 
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; PASS=$((PASS+1)); }
@@ -42,11 +51,23 @@ else
   bad "fetch.sh 不在 $FETCH_SH —— read skill 可能已被删除，静态抓取通道失效"
 fi
 
+# 本 skill 自带的脚本：只验能否被调起，不执行实际动作
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for s in find-url.mjs match-site.mjs ego-spaces.mjs; do
+  if [[ -f "$SELF_DIR/$s" ]] && node --check "$SELF_DIR/$s" 2>/dev/null; then
+    ok "scripts/$s 可解析"
+  else
+    bad "scripts/$s 缺失或有语法错误"
+  fi
+done
+
 # ---------- 2. OpenCLI 端到端探活（零窗口） ----------
 # 用 cookies action 打一个不存在的域：走完 daemon → WebSocket → 扩展 → 回程，
 # 不解析 tab、不建 lease，所以不产生窗口。判据见 SKILL.md「探活」。
 head_ "OpenCLI 连通性（零窗口探活）"
 if command -v opencli >/dev/null 2>&1; then
+  # 三个超时是嵌套的，从内到外必须递增，否则外层先断、拿不到 daemon 的真实回复：
+  # 命令级 timeout 10s < daemon 截止 deadlineAt +15s < curl --max-time 20s
   deadline=$(python3 -c 'import time;print(int(time.time()*1000)+15000)')
   probe=$(curl -sS --max-time 20 \
     -H 'X-OpenCLI: 1' -H 'Content-Type: application/json' \

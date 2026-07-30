@@ -10,7 +10,7 @@ description: >
   search、fetch this url、read this page、what's the latest。
 license: MIT
 metadata:
-  version: "1.7.0"
+  version: "1.8.0"
   source: local
   zh_description: 联网查信息的唯一入口：分层选通道、校验有效性、省 token
 ---
@@ -52,7 +52,8 @@ metadata:
 
 | 目标 | 通道 |
 |---|---|
-| 公众号、博客、文档、新闻 | `bash ~/.agents/skills/read/scripts/fetch.sh <url>` |
+| 博客、文档、新闻 | `bash ~/.agents/skills/read/scripts/fetch.sh <url>` |
+| 公众号文章 | 搜狗跳转链，`fetch.sh` 拿不到，见 `references/weixin-article.md` |
 | 六大常用平台 | 见下方「常用六平台」 |
 | 需要交互、登录、自由探索的长尾站点 | ego-browser |
 
@@ -70,7 +71,7 @@ metadata:
 | **YouTube** | `yt-dlp "ytsearch5:<词>" --flat-playlist --print "%(title)s \| %(channel)s \| %(duration_string)s \| %(url)s"` | 字幕见 `references/youtube-subtitles.md` |
 | **小红书** | `opencli xiaohongshu search "<词>" -f yaml --limit N --window background` | **`opencli xiaohongshu note <note-id>`**；评论 `opencli xiaohongshu comments <note-id>` |
 | **B站** | `bili search "<词>" --type video -n 5`（免登录，最省） | 字幕 `opencli bilibili subtitle <BV号>` |
-| **公众号** | `opencli weixin search "<词>" -f yaml --limit N --window background` | `bash ~/.agents/skills/read/scripts/fetch.sh <url>` |
+| **公众号** | `opencli weixin search "<词>" -f yaml --limit N --window background` | 搜狗跳转链只有浏览器能走通，见 `references/weixin-article.md` |
 | **抖音** | `opencli douyin search "<词>" -f yaml --limit N --window background` | 搜索结果**没有发布时间**，见下方「时效性」 |
 
 `opencli twitter timeline` 取的是**登录账号自己的首页推荐流**，不接用户名参数；要看指定某人发了什么用 `opencli twitter tweets <用户名>`。别把 timeline 当「某人时间线」用。
@@ -83,7 +84,7 @@ metadata:
 
 **抖音搜索结果没有任何时间字段**（只有 desc、author、url、plays、likes、comments、shares）。用它回答「最近抖音上怎么说」时，**必须说明无法证明时效**，不要默认它是新的。
 
-公众号走搜狗源，返回的 `publish_time` 可信；但 URL 是搜狗跳转链，`fetch.sh` 取正文前先确认能跳到 mp.weixin.qq.com。
+公众号走搜狗源，返回的 `publish_time` 可信；但 URL 是搜狗跳转链，**`fetch.sh` 抓它只会拿回搜狗的反爬验证码页并报 `status=ok`**（2026-07-30 实测），取正文必须过浏览器，见 `references/weixin-article.md` 。
 
 X 首选 OpenCLI 而非 ego-browser：实测它返回的是六到八个字段的结构化记录，而浏览器整页快照要拉回大量导航与侧栏。ego-browser 只在 OpenCLI 失效时退化使用。
 
@@ -93,6 +94,7 @@ X 首选 OpenCLI 而非 ego-browser：实测它返回的是六到八个字段的
 - **一个 heredoc 写完整件事。**ego 是 code base 不是 CLI base：它把能力包成 JS 函数让你组合，官方基准是复杂任务比 CLI 模式快 2.5 倍、工具调用次数远少。「先打开页面、看一眼、再取内容」拆成两轮，正是它设计上要消灭的循环。
 - **收尾必须调 `completeTaskSpace(id, { keep: false })`，且独占最后一个 heredoc。**实测（2026-07-29 对照实验）：**每个 agent space 底层就是一个独立浏览器窗口**，complete 会连窗口一起回收；不调则窗口永久残留，用户会在 Mission Control 里看到窗口越堆越多。只有用户明确要求留页面、或需要用户在该页面手动操作时才 `keep: true`。
   这条只管 task space。用户看到的空白窗口还有另一个来源，且 complete 回收不到，见下方「OpenCLI 的容器窗口」——别把它误判成 task space 没收尾。
+  **忘了收尾会被 Stop hook 拦下来**：装了自动收尾机制后，本会话用过 ego-browser 且仍有 agent 持有的 space 时，Stop 会阻断并把清单塞回来让你处理（close / keep / 声明属并行会话）。有意留着的用 `node scripts/ego-spaces.mjs keep <id> --note "<理由>"` 标记，两层机制都会跳过。机制与安装见 `references/ego-space-hooks.md` 。
 - **禁止用 CDP 关别的 space 的 target。**在 task space 里调 `cdp('Target.closeTarget', …)` 关跨 space 的标签，实测**直接让 ego lite 主进程 SIGSEGV 崩溃**（2026-07-30，`EXC_BAD_ACCESS` at `0xefefefefefeff087`，use-after-free 特征），用户正在用的标签全部丢失。`cdp('Target.getTargets')` 只读可用，但**拿到 targetId 也不许去关**。关标签只用 `closeTab(id)`，且只关本 space 自己的。
 - **临时页随手关**（`closeTab(id)`），别攒到最后。搜索结果页、交叉验证页都算临时页。
 - **不要用 `open -a` 拉起浏览器**，交给 ego-browser 自己管生命周期。
@@ -178,7 +180,9 @@ bash scripts/selftest.sh --live   # 额外发一条最小真实查询；会留�
 |---|---|
 | `references/failure-domains.md` | OpenCLI 失败要判层级、评估某条通道值不值得加、想知道哪些 action 是单点 |
 | `references/opencli-windows.md` | 用户抱怨又多了空白窗口、或你想找办法关掉它们 |
+| `references/ego-space-hooks.md` | Stop 被 task space 收尾拦下、要标记有意保留、或要装这套 hook |
 | `references/youtube-subtitles.md` | 真要下 YouTube 字幕时 |
+| `references/weixin-article.md` | 取公众号文章正文时（搜狗跳转链的处理办法） |
 | `references/providers.json` | 算失效域集中度、增删通道时同步台账（无执行器，不参与运行时路由） |
 
 ## 站点经验
