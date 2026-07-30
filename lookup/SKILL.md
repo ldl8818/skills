@@ -10,7 +10,7 @@ description: >
   search、fetch this url、read this page、what's the latest。
 license: MIT
 metadata:
-  version: "1.6.3"
+  version: "1.7.0"
   source: local
   zh_description: 联网查信息的唯一入口：分层选通道、校验有效性、省 token
 ---
@@ -52,32 +52,34 @@ metadata:
 
 | 目标 | 通道 |
 |---|---|
-| 公众号、博客、文档、新闻 | `bash <read-skill>/scripts/fetch.sh <url>` |
+| 公众号、博客、文档、新闻 | `bash ~/.agents/skills/read/scripts/fetch.sh <url>` |
 | 六大常用平台 | 见下方「常用六平台」 |
 | 需要交互、登录、自由探索的长尾站点 | ego-browser |
 
-浏览器一律用 **ego-lite**。完整 API 见 `~/.agents/skills/ego-browser/SKILL.md`，下面只列最容易违反的纪律。
+浏览器一律用 **ego lite**。本文的术语分工：**ego lite** 指浏览器本体（进程、Profile、窗口），**ego-browser** 指驱动它的 skill 与 JS API（完整 API 见 `~/.agents/skills/ego-browser/SKILL.md`）。下面只列最容易违反的纪律。
 
 ## 常用六平台
 
 用户日常只用这六个：**X、YouTube、小红书、B站、公众号、抖音**。以下命令 2026-07-29 全部实测通过，可直接抄，不要自己另发明用法。OpenCLI 系命令保留 `--window background`：适配器命令的默认值本来就是 background，但默认值是 per-command 可声明的（`cmd.defaultWindowMode ?? 'background'`），显式写上防某个适配器单独声明 foreground。它只管抢不抢焦点，**消不掉窗口本身**，见下方「OpenCLI 的容器窗口」。
 
-**搜索命令拿回来的是列表，不是正文。**除 B站/公众号外，取正文都要拿列表里的 id 或 URL 再发一条命令。把搜索结果当正文交付是已经犯过的错。
+**搜索命令拿回来的是列表，不是正文。**六个平台无例外，都要从列表里取 id 或 URL 再发第二条命令才有正文——B站和公众号只是第二步换了工具（`opencli bilibili` / `fetch.sh`），不是不用发。把搜索结果当正文交付是真实踩过的坑。
 
 | 平台 | 搜索（拿列表） | 取正文（拿到 id/URL 后） |
 |---|---|---|
-| **X** | `opencli twitter search "<词>" --product live -f yaml --limit N --window background` | 长文 `opencli twitter article <tweet-id>`；整串 `thread <tweet-id>`；某人时间线 `timeline <用户名>` |
-| **YouTube** | `yt-dlp "ytsearch5:<词>" --flat-playlist --print "%(title)s \| %(channel)s \| %(duration_string)s \| %(url)s"` | 字幕见下方「YouTube 字幕」 |
-| **小红书** | `opencli xiaohongshu search "<词>" -f yaml --limit N --window background` | **`opencli xiaohongshu note <note-id>`**；评论 `comments <note-id>` |
+| **X** | `opencli twitter search "<词>" --product live -f yaml --limit N --window background` | 长文 `opencli twitter article <tweet-id>`；整串 `opencli twitter thread <tweet-id>`；某人推文 `opencli twitter tweets <用户名>` |
+| **YouTube** | `yt-dlp "ytsearch5:<词>" --flat-playlist --print "%(title)s \| %(channel)s \| %(duration_string)s \| %(url)s"` | 字幕见 `references/youtube-subtitles.md` |
+| **小红书** | `opencli xiaohongshu search "<词>" -f yaml --limit N --window background` | **`opencli xiaohongshu note <note-id>`**；评论 `opencli xiaohongshu comments <note-id>` |
 | **B站** | `bili search "<词>" --type video -n 5`（免登录，最省） | 字幕 `opencli bilibili subtitle <BV号>` |
 | **公众号** | `opencli weixin search "<词>" -f yaml --limit N --window background` | `bash ~/.agents/skills/read/scripts/fetch.sh <url>` |
 | **抖音** | `opencli douyin search "<词>" -f yaml --limit N --window background` | 搜索结果**没有发布时间**，见下方「时效性」 |
+
+`opencli twitter timeline` 取的是**登录账号自己的首页推荐流**，不接用户名参数；要看指定某人发了什么用 `opencli twitter tweets <用户名>`。别把 timeline 当「某人时间线」用。
 
 ### 时效性：默认排序不是按时间
 
 **X 的 `search` 默认 `--product top`（热门），不是最新。**实测同一个词：默认返回 7月2日、7月22日、**5月24日**的推文；加 `--product live` 返回的全是当天几分钟前的。
 
-**用户问「最新」「最近」「今天」时，漏掉 `--product live` 等于交付错误信息。**这条已经犯过，写死在上面的命令里了，不要图省事删掉它。
+**用户问「最新」「最近」「今天」时，漏掉 `--product live` 等于交付错误信息。**`--product live` 已经写死在上面的命令里，不要图省事删掉。
 
 **抖音搜索结果没有任何时间字段**（只有 desc、author、url、plays、likes、comments、shares）。用它回答「最近抖音上怎么说」时，**必须说明无法证明时效**，不要默认它是新的。
 
@@ -85,11 +87,11 @@ metadata:
 
 X 首选 OpenCLI 而非 ego-browser：实测它返回的是六到八个字段的结构化记录，而浏览器整页快照要拉回大量导航与侧栏。ego-browser 只在 OpenCLI 失效时退化使用。
 
-## ego-browser 纪律（违反过，逐条记账）
+## ego-browser 纪律
 
 - **一个用户目标只开一个 task space。**后续追问、纠正、重试、验证都复用同一个，即使你以为任务已经结束。只有用户明确开启不相关的新目标才新建，且要说明为什么。按子步骤各建一个是错的。
 - **一个 heredoc 写完整件事。**ego 是 code base 不是 CLI base：它把能力包成 JS 函数让你组合，官方基准是复杂任务比 CLI 模式快 2.5 倍、工具调用次数远少。「先打开页面、看一眼、再取内容」拆成两轮，正是它设计上要消灭的循环。
-- **收尾必须调 `completeTaskSpace(id, { keep: false })`，且独占最后一个 heredoc。**实测（2026-07-29 对照实验）：**每个 agent space 底层就是一个独立浏览器窗口**，complete 会连窗口一起回收；不调则窗口永久残留，用户会在 Mission Control 里看到窗口越堆越多——已因此被用户指出过一次。只有用户明确要求留页面、或需要用户在该页面手动操作时才 `keep: true`。
+- **收尾必须调 `completeTaskSpace(id, { keep: false })`，且独占最后一个 heredoc。**实测（2026-07-29 对照实验）：**每个 agent space 底层就是一个独立浏览器窗口**，complete 会连窗口一起回收；不调则窗口永久残留，用户会在 Mission Control 里看到窗口越堆越多。只有用户明确要求留页面、或需要用户在该页面手动操作时才 `keep: true`。
   这条只管 task space。用户看到的空白窗口还有另一个来源，且 complete 回收不到，见下方「OpenCLI 的容器窗口」——别把它误判成 task space 没收尾。
 - **禁止用 CDP 关别的 space 的 target。**在 task space 里调 `cdp('Target.closeTarget', …)` 关跨 space 的标签，实测**直接让 ego lite 主进程 SIGSEGV 崩溃**（2026-07-30，`EXC_BAD_ACCESS` at `0xefefefefefeff087`，use-after-free 特征），用户正在用的标签全部丢失。`cdp('Target.getTargets')` 只读可用，但**拿到 targetId 也不许去关**。关标签只用 `closeTab(id)`，且只关本 space 自己的。
 - **临时页随手关**（`closeTab(id)`），别攒到最后。搜索结果页、交叉验证页都算临时页。
@@ -117,21 +119,15 @@ X 首选 OpenCLI 而非 ego-browser：实测它返回的是六到八个字段的
 
 - 返回账号 → 登录态在，问题出在命令用法或适配器，别去打扰用户
 - 返回未登录 → 才请用户在 ego lite 里扫码，然后重试**同一条**命令
+- 返回 `error: unknown command 'whoami'` → 该适配器没有账号体系（公众号走搜狗源就是这样），别把它当未登录去叫用户扫码
 
 其 Browser Bridge 扩展装在 ego lite 的 Profile 3，通过 `ws://localhost:19825/ext` 连本地 daemon（不是 native messaging，所以装在哪个 Chromium 都能连）。**ego lite 没运行时扩展必然断连**；确认连通用下方「探活」，不要急着重装。
 
-## OpenCLI 的容器窗口（用户已投诉，2026-07-30 定案）
+## OpenCLI 的容器窗口
 
-**OpenCLI 绕过 Space 机制**——它是标准 Chrome 扩展，用 tabs/windows API 开普通窗口，不受 ego 的 Space 隔离约束。扩展按 role 维护两个「容器窗口」（`ownedContainers`，`chrome.windows.create` 建 1280x900 普通窗口），role 由命令的 surface 决定：
+**OpenCLI 的命令会开普通 Chrome 窗口，而且关不掉，只能靠不触发。**它绕过 ego 的 Space 机制，`completeTaskSpace()` 回收不到——别把它留下的空白窗口误判成 task space 没收尾。`--window background` 只管抢不抢焦点，消不掉窗口本身。机制细节与 role 分工见 `references/opencli-windows.md` 。
 
-| 容器 role | 谁触发 | 默认焦点 | 橙色「OpenCLI Browser」标签组 | 注册表丢失后 |
-|---|---|---|---|---|
-| `automation` | 适配器命令（六平台 search 等） | background | 无 | **无法再识别，下条命令新建 → 孤儿累积** |
-| `interactive` | `opencli browser ...`、`opencli doctor` | **foreground（抢焦点弹窗）** | 有 | 能按标签组标题全局找回，有限自愈 |
-
-**这些窗口关不掉，只能靠不触发。**扩展在 `releaseLease()` 里把最后一个标签导航回 `about:blank` 当可复用占位符，全文件没有一处 `chrome.windows.remove`；`opencli browser <sess> close`、`tab close` 实测都只释放 lease，窗口不动；占位标签在 `tab list` 里根本不出现。
-
-**探活用无窗口通道，不要用 `opencli doctor`。**doctor 硬编码 `surface: 'browser'` 且没有 `--window` 选项，每跑一次就在用户面前弹一个前台空白窗口并永久留下。改用下面这条，实测 `{"ok":true,"data":[]}` 且窗口数不变（走完 daemon → WebSocket → 扩展 → 回程，不解析 tab、不建 lease）：
+**探活用无窗口通道，不要用 `opencli doctor`。**doctor 每跑一次就在用户面前弹一个前台空白窗口并永久留下。改用下面这条，实测 `{"ok":true,"data":[]}` 且窗口数不变（走完 daemon → WebSocket → 扩展 → 回程，不解析 tab、不建 lease）：
 
 ```bash
 curl -sS -H 'X-OpenCLI: 1' -H 'Content-Type: application/json' \
@@ -139,81 +135,18 @@ curl -sS -H 'X-OpenCLI: 1' -H 'Content-Type: application/json' \
   http://127.0.0.1:19825/command
 ```
 
-`opencli profile list` 和 `opencli daemon status` 同样零窗口，但它们只读 daemon 记忆里的连接状态，不做端到端往返，只能用来看「daemon 起没起」。确需 doctor 的详细诊断时，前面加 `OPENCLI_WINDOW=background`（`sendCommandRaw` 读这个环境变量）压掉抢焦点——窗口仍会创建并留下。
-
 OpenCLI 的登录态判断比读页面文字准，别用「页面上有内容」推断已登录。
 
-## 候选表与健康账本
+## OpenCLI 失败了，先判断层级再决定换不换
 
-`providers.json` 是路由的**唯一权威定义**：18 个 action 的命令模板、字段裁剪、失效域、校验器都在里面。上面的六平台速查表是它的人类可读摘要——**改动一律先改 `providers.json`**，否则两处必然漂移。
+OpenCLI 要过四层依赖，ego-browser 只过前两层——**ego-browser 的依赖是 OpenCLI 依赖的真子集**。所以：
 
-### 失效域集中度（把候选表结构化后算出来的）
+- **L3/L4 症状 → 上 ego-browser，别放弃。**探活 curl 返回非 `ok:true` 是 L3（daemon/扩展）；探活通了但取数为空、字段缺失、结构变了是 L4（适配器）。这两层最容易坏，也恰好是 ego-browser 不依赖的。
+- **L1/L2 症状 → 真没路，别浪费一轮。**ego lite 进程没起或崩了是 L1；`AUTH_REQUIRED`、账号被风控是 L2，换 ego-browser 一样没登录。去处理浏览器或登录态本身。
 
-| 事实 | 数字 |
-|---|---|
-| 有真降级（≥2 个不同失效域）的 action | **2 / 18（11%）** |
-| 单点压在 `ego-lite-browser` 上的 action | **8 个** |
+**别为了分层去跑 `opencli doctor`**——它会留下一个关不掉的空白窗口，用上面那条探活 curl。
 
-那 8 个是：X 的 search / article / thread、小红书的 search / detail / comments、抖音 search、B站 subtitle。
-
-**ego lite 一挂，X、小红书、抖音三个平台全部瘫痪，B站只剩搜索。**
-
-### 但 ego-browser 仍然是有效兜底
-
-失效域不是一整块，OpenCLI 要过四层，ego-browser 只过两层：
-
-```
-L1  ego lite 浏览器进程          ← 两者共享
-L2  Profile 登录态 / 账号风控     ← 两者共享
-L3  OpenCLI daemon + 扩展         ← 只有 OpenCLI 依赖
-L4  OpenCLI 站点适配器逻辑        ← 只有 OpenCLI 依赖
-```
-
-**ego-browser 的依赖是 OpenCLI 的真子集**，所以 L3、L4 故障时它照样能取——而这两层恰恰最容易坏（适配器跟不上平台改版、扩展断连、daemon 没起）。
-
-| OpenCLI 失败形态 | ego-browser 能救 |
-|---|---|
-| 返回空、字段缺失、结构变了（L4） | ✅ 直接读页面 |
-| `Extension: not connected`、daemon 无响应（L3） | ✅ 不走那条通道 |
-| `AUTH_REQUIRED`、账号被风控（L2） | ❌ 换它也一样没登录 |
-| ego lite 进程没起或崩了（L1） | ❌ 它也要这个浏览器 |
-
-**所以 OpenCLI 失败时先判断层级**：L3/L4 症状就上 ego-browser，别放弃；L1/L2 症状才是真没路，去处理浏览器或登录态本身。
-
-怎么区分：上方「探活」那条 curl 返回非 `ok:true` 是 L3；探活通了但取数为空是 L4；平台报 `AUTH_REQUIRED` 是 L2。**别为了分层去跑 `opencli doctor`**——它会留下一个关不掉的空白窗口。
-
-### 什么才算真正的独立失效域
-
-判据是**不经 ego lite、不共享登录态**（即绕开 L1+L2），不是「换了个工具名」。目前只有两处：B站搜索（`bili` 直连 ⇄ OpenCLI）、任意网页（`fetch.sh` 本机 ⇄ Jina Reader 远端）。
-
-X、小红书、抖音在 L1/L2 层仍是单点，这是客观缺口——需要的是自己管 cookie、不走 ego lite 的独立实现。
-
-### 健康账本
-
-`~/.agents/data/lookup-health.json`，与 site-patterns 同级、在 skill 目录之外，增删 skill 不影响积累。
-
-**只记运行状态，不记查询词、正文、账号。**条目 key 是 `<action>::<provider_id>::<执行环境>`：
-
-```json
-{
-  "x/search::opencli-twitter-search::darwin-local": {
-    "last_success": "2026-07-29T16:44:00Z",
-    "last_failure": null,
-    "last_failure_class": null,
-    "consecutive_failures": 0,
-    "cooldown_until": null
-  }
-}
-```
-
-带执行环境是因为**同一条命令在不同环境下结果不同**：OpenCLI 在 Codex 的只读沙箱里必然 `BROWSER_CONNECT` 失败，在这个会话里却正常。不区分环境就会把某个 shell 的失败写成全机事实。
-
-账本的作用是**跨会话故障记忆和熔断，不是日常提速**：
-
-- 静态 `priority` 仍是主序，账本只在连续失败 3 次后开熔断、冷却 30 分钟
-- **只有存在其他 active 且失效域不同的候选时才熔断**——单候选动作熔断等于自断退路，只记状态
-- `auth_required` **不计入**熔断计数，它是登录态问题不是通道故障
-- 不做「最近成功优先」全量重排：排第一的被调用最多、成功时间自然最新，备用的因没被调用而越来越旧，那衡量的是使用频率不是可靠性
+哪些 action 是单点、什么才算真正的独立失效域、`references/providers.json` 台账怎么用，见 `references/failure-domains.md` 。一句话预警：**ego lite 一挂，X、小红书、抖音三个平台全部瘫痪，B站只剩搜索。**
 
 ## 内容有效性校验（强制）
 
@@ -227,6 +160,26 @@ X、小红书、抖音在 L1/L2 层仍是单点，这是客观缺口——需要
 - 内容与请求的 URL 主题明显无关
 
 判定失败时明说「哪条通道、失败形态是什么」，不要把垃圾当结果交出去。
+
+## 通道还活着吗
+
+怀疑某条通道过时或环境坏了，别逐条手试，跑自检：
+
+```bash
+bash scripts/selftest.sh          # 零副作用：命令存在性 + 探活 + 登录态 + 子命令是否还在
+bash scripts/selftest.sh --live   # 额外发一条最小真实查询；会留容器窗口、耗额度，仅排查用
+```
+
+默认模式不发任何平台请求，可以随时跑。失败项按 `references/failure-domains.md` 的分层判据处理。
+
+## 参考文件（按需读，别预先全读）
+
+| 文件 | 什么时候读 |
+|---|---|
+| `references/failure-domains.md` | OpenCLI 失败要判层级、评估某条通道值不值得加、想知道哪些 action 是单点 |
+| `references/opencli-windows.md` | 用户抱怨又多了空白窗口、或你想找办法关掉它们 |
+| `references/youtube-subtitles.md` | 真要下 YouTube 字幕时 |
+| `references/providers.json` | 算失效域集中度、增删通道时同步台账（无执行器，不参与运行时路由） |
 
 ## 站点经验
 
@@ -242,7 +195,7 @@ node scripts/match-site.mjs "<用户输入或目标域名>"
 
 **aihot（AI 资讯聚合）** — 匿名只读，无需 Key。它已聚合 X、微信公众号、RSS、官方博客数百个信源并由 LLM 打分精选，问「AI 圈最近怎么样」直接调它，不要自己去抓 X。
 
-**优先不等于取代**，以下场景仍去源头：深挖具体话题（它只有摘要级 → 豆包）；看特定人的推文（编辑筛选不保证覆盖 → `twitter timeline`）；分钟级突发（它有采集打分周期 → X `--product live`）；非 AI 领域（它只做 AI 资讯）。正确用法是**「aihot 发现 → 原文核实」两段式**：它是单一编辑管道（作者的信源清单 + 打分口味），条目也不带发布时间字段，引用具体事实或时间点前必须回它给的原文 URL 核对。
+**优先不等于取代**，以下场景仍去源头：深挖具体话题（它只有摘要级 → 豆包）；看特定人的推文（编辑筛选不保证覆盖 → `opencli twitter tweets <用户名>`）；分钟级突发（它有采集打分周期 → X `--product live`）；非 AI 领域（它只做 AI 资讯）。正确用法是**「aihot 发现 → 原文核实」两段式**：它是单一编辑管道（作者的信源清单 + 打分口味），条目也不带发布时间字段，引用具体事实或时间点前必须回它给的原文 URL 核对。
 
 ```bash
 curl -fsSL "https://aihot.virxact.com/api/v1/items?mode=selected&window=24h&limit=10"
@@ -256,38 +209,16 @@ curl -fsSL "https://aihot.virxact.com/api/v1/selected/snapshot"  # 全量快照�
 
 Agent-Reach 是**选型与体检层**，不是包装层——它负责「哪条路现在能走」，读取仍由上游工具直接完成。本文负责「什么情况下走哪条、拿回来的东西算不算数」，两者不重复。
 
-它的 skill 已禁用（`description` 写 "MUST USE ... anything on the internet"，与本文正面抢触发词；且其 standing rules 要求每次播报后端、收尾推销更新，纯噪音）。命令参考仍可直接读 `~/.agents/skills/agent-reach/references/*.md`。
+它的 skill 已禁用（description 与本文正面抢触发词）。命令参考仍可直接读 `~/.agents/skills/agent-reach/references/*.md`。
 
-**运维注意**：每次跑 `agent-reach install` 或 `update` 都会重建两份实体 skill 并撤销禁用。跑完必须补这两步：
+**运维注意**：每次跑 `agent-reach install` 或 `update` 都会重建两份实体 skill 并撤销禁用，跑完必须复原，否则它又开始抢触发词：
 
 ```bash
 trash ~/.claude/skills/agent-reach && ln -s ../../.agents/skills/agent-reach ~/.claude/skills/agent-reach
 # 再用 skill-manager 禁用：/skill-manager disable agent-reach
 ```
 
-`skill-manager doctor` 把它报成「来源未登记」是**预期状态，不要去 trace 补录**：它的 SKILL.md 由 `agent-reach` 自己生成和覆盖，补进去的元数据下次 install 就没了。它的版本跟 `agent-reach --version` 走。
-
-### YouTube 字幕
-
-```bash
-# 1) 下载
-yt-dlp --write-auto-sub --sub-lang "en,zh-Hans" --skip-download --sub-format vtt -o "$HOME/tmp/%(id)s" "<URL>"
-
-# 2) 清洗后再读，别直接读 .vtt
-sed -e '/-->/d' -e '/^WEBVTT/d' -e '/^Kind:/d' -e '/^Language:/d' -e 's/<[^>]*>//g' \
-    "$HOME/tmp/<id>.en.vtt" | awk 'NF' | awk '!seen[$0]++'
-
-# 3) 读完删掉，别留在 ~/tmp
-trash "$HOME/tmp/<id>".*.vtt
-```
-
-**第 2 步不是可选的。**自动字幕带内联时间码和滚动重复（`We're<00:00:19.039><c> no</c>` 这种），实测 14807 字节清洗后只剩 1224 字节，**省 92%**。直接读原始 VTT 是在烧上下文。
-
-`Error solving N challenge requests using "node" provider` / `Access to this API has been restricted` 这两条 WARNING **每次都会出现，且不影响字幕**——沙箱开、关两种情况实测都照常拿到中英文 VTT。它只影响需要签名求解的视频流格式，纯下字幕用不到。**不要为它关沙箱，也不要去查 YouTube 侧**，那是白费一轮。
-
-视频没字幕时输出 `There are no subtitles for the requested languages`，是正常结果不是故障（首次实测撞上的是 YouTube 史上第一条视频，它本来就没字幕，别据此判定通道不通）。
-
-B站字幕仍走 `opencli bilibili subtitle`，**不要用 yt-dlp 抓 B站**。
+`skill-manager doctor` 把它报成「来源未登记」是**预期状态，不要去 trace 补录**——它的 SKILL.md 由 `agent-reach` 自己生成和覆盖，补进去的元数据下次 install 就没了。版本跟 `agent-reach --version` 走。
 
 ### Exa 语义搜索
 
@@ -323,6 +254,6 @@ mcporter call 'huashu-doubao-search.doubao_search(query: "<词>", count: 5, max_
 ## 依赖
 
 - `fetch.sh` 属于 Waza `read` skill（`~/.agents/skills/read/scripts/`）。该 skill 当前处于禁用状态，但脚本文件仍在、可直接调用。若 `read` 被删除，此路径失效，需改用其他静态抓取方式。
-- `ego-browser` 命令由 ego lite app 提供。
+- `ego-browser` 命令由 ego lite 提供。
 - `agent-reach`、`yt-dlp`、`bili` 装在 uv tool 隔离环境（`uv tool list` 可查，`uv tool uninstall <名>` 卸载），可执行文件在 `~/.local/bin/`。
 - `mcporter` 是 Homebrew 装的，Agent-Reach 只往它的 home scope 加了一条 Exa server，没有重装。

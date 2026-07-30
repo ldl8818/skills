@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_doc": "lookup 的唯一候选表。执行器读这里决定调哪条命令；SKILL.md 里的速查表是它的人类可读摘要，改动一律先改本文件。failure_domain 相同的两个 provider 之间切换不是真降级——ego-lite-browser 域下所有 provider 会被 ego lite 崩溃、Profile 损坏或账号风控同时带走。",
+  "_doc": "lookup 的候选台账，没有执行器——没有任何脚本读本文件，路由决策由读 SKILL.md 的 Agent 直接做。本文件的用途是统计与评估：算失效域集中度、判断新通道补的是哪一层、记录哪些 provider 同域。运行时唯一入口是 SKILL.md 的六平台速查表，改命令先改那里；本文件在增删通道或调整失效域归属时同步。failure_domain 相同的两个 provider 之间切换不是真降级——ego-lite-browser 域下所有 provider 会被 ego lite 崩溃、Profile 损坏或账号风控同时带走。详见 references/failure-domains.md。",
 
   "failure_domains": {
     "_model": "失效域是分层的，不是一整块。L1 ego lite 进程 / L2 Profile 登录态与账号风控 / L3 OpenCLI daemon+扩展 / L4 OpenCLI 站点适配器逻辑。ego-browser 只依赖 L1+L2，是 OpenCLI 依赖的真子集——所以 L3、L4 故障时它是有效兜底，别因为『共享浏览器』就否掉它。只有 L1、L2 故障才是真没路。",
@@ -52,12 +52,6 @@
     "network",
     "unknown"
   ],
-
-  "circuit_breaker": {
-    "consecutive_failures_to_open": 3,
-    "cooldown_minutes": 30,
-    "_note": "熔断只在该 action 存在其他 status=active 且 failure_domain 不同的候选时才降级；单候选 action 仅记录状态，不熔断——没有替代路径时熔断等于自断。auth_required 不计入熔断计数，它是登录态问题不是通道故障。"
-  },
 
   "actions": {
     "x/search": {

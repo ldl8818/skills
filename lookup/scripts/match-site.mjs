@@ -11,12 +11,21 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PATTERNS_DIR = path.join(ROOT, 'references', 'site-patterns');
 const query = (process.argv[2] || '').trim();
 
-if (!query || !fs.existsSync(PATTERNS_DIR)) {
+// 空输出会让调用方分不清「没有站点经验」和「脚本坏了」，所以每条退路都明确说明自己。
+if (!query) {
+  console.log('用法：node match-site.mjs "<用户输入或目标域名>"');
+  process.exit(0);
+}
+if (!fs.existsSync(PATTERNS_DIR)) {
+  console.log(`站点经验目录不存在：${PATTERNS_DIR}（软链可能断了，检查 ~/.agents/data/site-patterns）`);
   process.exit(0);
 }
 
+let matched = 0;
 for (const entry of fs.readdirSync(PATTERNS_DIR, { withFileTypes: true })) {
   if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+  // README.md 是这个目录的模板说明，不是某个域名的经验；含「readme」的查询不该吐出模板正文。
+  if (entry.name.toLowerCase() === 'readme.md') continue;
 
   const domain = entry.name.replace(/\.md$/, '');
   const raw = fs.readFileSync(path.join(PATTERNS_DIR, entry.name), 'utf8');
@@ -43,4 +52,9 @@ for (const entry of fs.readdirSync(PATTERNS_DIR, { withFileTypes: true })) {
 
   process.stdout.write(`--- 站点经验: ${domain} ---\n`);
   process.stdout.write(body.trimEnd() + '\n\n');
+  matched += 1;
+}
+
+if (matched === 0) {
+  console.log(`没有匹配的站点经验（已检索 ${PATTERNS_DIR}）——按常规通道选路，验证过的模式记得写回。`);
 }
