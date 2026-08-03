@@ -20,7 +20,7 @@ L4  OpenCLI 站点适配器逻辑        ← 只有 OpenCLI 依赖
 | `AUTH_REQUIRED`、账号被风控（L2） | ❌ 换它也一样没登录 |
 | ego lite 进程没起或崩了（L1） | ❌ 它也要这个浏览器 |
 
-分层判据（这几行也在 SKILL.md，此处保留是为了本文自足）：探活 curl 返回非 `ok:true` 是 L3；探活通了但取数为空是 L4；平台报 `AUTH_REQUIRED` 是 L2。别为了分层去跑 `opencli doctor`——它会留下一个关不掉的空白窗口，见 `opencli-windows.md` 。
+分层判据（这几行也在 SKILL.md，此处保留是为了本文自足）：探活 curl 返回非 `ok:true` 是 L3；探活通了但取数为空是 L4；平台报 `AUTH_REQUIRED` 是 L2。登录态用 `opencli auth status --site <site> --timeout 8 -f json` 有界检查。别为了分层去跑 `opencli doctor`——它会留下一个关不掉的空白窗口，见 `opencli-windows.md` 。
 
 ## 什么才算真正的独立失效域
 
@@ -35,21 +35,25 @@ L4  OpenCLI 站点适配器逻辑        ← 只有 OpenCLI 依赖
 
 | 事实 | 数字 |
 |---|---|
-| 有真降级（≥2 个不同失效域）的 action | **2 / 18（11%）** |
-| 单点压在 `ego-lite-browser` 上的 action | **8 个** |
+| 有真降级（≥2 个不同失效域）的 action | **2 / 19（11%）** |
+| 单点压在 `ego-lite-browser` 上的 action | **10 个** |
 
-那 8 个是：X 的 search / article / thread、小红书的 search / detail / comments、抖音 search、B站 subtitle。
+那 10 个是：X 的 search / article / thread / tweets、小红书的 search / detail / comments、Douyin search、B站 subtitle、公众号 search。公众号 search 还叠加搜狗上游失效域。
 
-**ego lite 一挂，X、小红书、抖音三个平台全部瘫痪，B站只剩搜索。**
+**ego lite 一挂，X、小红书、Douyin、公众号四个平台全部瘫痪，B站只剩搜索。**
 
-X、小红书、抖音在 L1/L2 层是客观单点，补它需要的是自己管 cookie、不走 ego lite 的独立实现——换个 OpenCLI 子命令或换 ego-browser 都不算补。
+X、小红书、Douyin、公众号在 L1/L2 层是客观单点，补它需要的是不走 ego lite 的独立实现——换个 OpenCLI 子命令或换 ego-browser 都不算补。
 
-正因为存在这 8 个单点，**通道连续失败不等于该弃用它**：只有当同一 action 还有另一条失效域不同的候选时，绕开才有意义；单候选 action 上放弃等于自断退路，此时该做的是报告失败形态、请用户处理 L1/L2，而不是找替代。`AUTH_REQUIRED` 更是不该计入通道故障——它是登录态问题，见 SKILL.md 的 whoami 核实流程。
+正因为存在这 10 个单点，**通道连续失败不等于该弃用它**：只有当同一 action 还有另一条失效域不同的候选时，绕开才有意义；单候选 action 上放弃等于自断退路，此时该做的是报告失败形态、请用户处理 L1/L2，而不是找替代。`AUTH_REQUIRED` 更不该计入通道故障——它是登录态问题。
 
 ## providers.json 是什么
 
-`references/providers.json` 记录 18 个 action 的命令模板、字段裁剪、失效域归属和校验器，上面那两个统计数字由它算出。
+`references/providers.json` 记录 19 个 action 的跨工具优先级、必要合约、字段裁剪、失效域归属和校验器，上面两个统计数字由它算出。
 
-**它没有执行器。**没有任何脚本读它，路由决策由读 SKILL.md 的 Agent 直接做。它的用途是台账：算集中度、评估新通道补的是哪一层、记录哪些 provider 同域。
+它不是执行器：运行时路由由 Agent 决定，OpenCLI 命令事实来自 `opencli list -f json`。`scripts/selftest.sh` 只读取其中 `type: opencli` 的必要合约，检查当前注册表是否仍存在对应命令、是否仍为只读、必要参数和输出字段是否还在。
 
-因此维护规则是：**SKILL.md 的六平台速查表是运行时唯一入口，改命令先改 SKILL.md**；providers.json 在增删通道、调整失效域归属时同步，不必为命令措辞的微调而更新。这与早先「改动一律先改 providers.json」的写法相反——那个顺序假设存在执行器，而执行器从未存在，结果只是让两份内容都没人维护。
+维护规则：
+
+1. OpenCLI 升级后先跑 selftest；命令签名变化由实时注册表暴露，不手改一份完整镜像。
+2. 只有跨工具优先级、必要参数、必要字段、校验器或失效域变化时才改 providers.json。
+3. 用户可见的选路和失败行为变化时，同步 `SKILL.md`、匹配的 routing reference 与 README。

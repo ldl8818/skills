@@ -1,6 +1,6 @@
 # OpenCLI 的容器窗口为什么关不掉
 
-SKILL.md 只留结论和探活命令。本文是机制细节，用户抱怨「又多了空白窗口」、或你想找个办法关掉它们时读——**结论是关不掉，别再找了，只能靠不触发。**
+SKILL.md 只留结论和自检入口。本文是机制细节，用户抱怨「又多了空白窗口」、或你想找个办法关掉它们时读——**结论是关不掉，别再找了，只能靠不触发。**
 
 ## 它绕过了 Space 机制
 
@@ -27,4 +27,4 @@ OpenCLI 是标准 Chrome 扩展，用 tabs/windows API 开普通窗口，不受 
 
 确实需要 doctor 的详细诊断时，前面加 `OPENCLI_WINDOW=background`（`sendCommandRaw` 读这个环境变量）压掉抢焦点——但窗口仍会创建并留下，这只是让它不打断用户。
 
-零窗口的替代见 SKILL.md 的探活 curl。另外 `opencli profile list` 和 `opencli daemon status` 也零窗口，但它们只读 daemon 记忆里的连接状态、不做端到端往返，只能用来看「daemon 起没起」。
+零窗口的 L3 替代是 `scripts/selftest.sh` 里的 cookies 探针。另外 `opencli profile list` 和 `opencli daemon status` 也零窗口，但它们只读 daemon 记忆里的连接状态、不做端到端往返，只能用来看「daemon 起没起」。`opencli auth status` 有逐站超时和 quickCheck，但仍可能创建或复用 automation 容器，不能冒充零窗口探活。

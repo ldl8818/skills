@@ -36,7 +36,7 @@ EOF
 
 ## 要落盘归档时走这条
 
-`opencli weixin download` 产出带元数据的干净 Markdown（实测 7197 字节，含标题、公众号名、发布时间、原文链接），适合存进知识库。代价是多一轮命令，且**必须先用上面的办法拿到真实 `mp.weixin.qq.com` 地址**。
+仅当用户明确要求归档时使用 `opencli weixin download`。它会在本地创建文件，产出带元数据的干净 Markdown（实测 7197 字节，含标题、公众号名、发布时间、原文链接）；且**必须先用上面的办法拿到真实 `mp.weixin.qq.com` 地址**。
 
 ```bash
 opencli weixin download --url '<mp.weixin.qq.com 真实地址>' \
