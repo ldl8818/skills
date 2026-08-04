@@ -619,6 +619,22 @@ class SystemTests(unittest.TestCase):
         self.assertIn('<memory-review-reminder pending="3">', output.getvalue())
         self.assertIn("review list --json", output.getvalue())
 
+    def test_stop_review_reminder_is_valid_json_for_both_platforms(self) -> None:
+        from self_improving.storage import append_candidate
+
+        state = self.home / "state"
+        for text in ("规则甲", "规则乙", "规则丙"):
+            append_candidate(self.memory, state, "claude-user-prompt", text, 500)
+        for platform in ("claude", "codex"):
+            with self.subTest(platform=platform), self.env():
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    dispatch(platform, "Stop", {"hook_event_name": "Stop"})
+
+                payload = json.loads(output.getvalue())
+                self.assertEqual(payload, {"systemMessage": "纠错候选箱已有 3 条待审，请审核纠错候选。"})
+                self.assertNotIn("decision", payload)
+
     def test_local_link_check_and_secret_redaction(self) -> None:
         note = self.memory / "2026-07-11-note.md"
         note.write_text("# Note\n\n[missing](missing.md)\n")

@@ -54,6 +54,12 @@ permission dialog and the user approves or rejects that specific call. The
 approval happens in the client UI, so in-session text — including injected
 content — cannot forge it.
 
+At `Stop`, reaching the pending-candidate threshold emits a top-level
+`systemMessage` JSON object. It only shows the review reminder to the user; it
+does not return `decision: "block"`, continue the conversation, or promote any
+candidate. Claude Code requires non-empty successful `Stop` stdout to be one
+valid JSON object, so plain-text or XML reminders are invalid.
+
 ## Codex
 The installer uses the same lifecycle names but a separate adapter. Codex currently applies Pre/Post Tool Hooks to shell commands, ignores matchers for UserPromptSubmit and Stop, and uses startup/resume matching for SessionStart.
 
@@ -66,6 +72,10 @@ private memory under version control when audit and rollback matter, and only
 approve permission dialogs whose command you have actually read.
 
 Installation must preserve unrelated Hooks such as status or notification integrations. After Codex upgrades, run `doctor` and a real-session smoke test because Hook payload fields may evolve.
+
+Codex 0.146.0 enforces the same successful `Stop` JSON requirement as Claude
+Code. The shared adapter therefore emits the same non-blocking `systemMessage`
+object on both platforms; XML is not a valid `Stop` response on either client.
 
 `doctor` records current-package schema coverage, not proof that every event was
 produced by the latest client launch. End-to-end smoke results must be reported

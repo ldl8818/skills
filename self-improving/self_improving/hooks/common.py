@@ -182,7 +182,8 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
     if event.event == "Stop":
         pending = pending_correction_count(root)
         if pending >= REVIEW_REMINDER_THRESHOLD:
-            print(f'<memory-review-reminder pending="{pending}">请审核纠错候选。</memory-review-reminder>')
+            message = f"纠错候选箱已有 {pending} 条待审，请审核纠错候选。"
+            print(json.dumps({"systemMessage": message}, ensure_ascii=False))
         return 0
     if not persistence_enabled(config):
         print('<self-improving-persistence enabled="false"/>')

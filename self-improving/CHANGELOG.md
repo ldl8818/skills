@@ -1,4 +1,7 @@
 # Changelog
+## 2.6.5 - 2026-08-04
+- Claude Code and Codex `Stop` reminders now emit the shared `systemMessage` JSON object instead of an XML tag. When pending correction candidates reach the review threshold, neither client reports `invalid stop hook JSON output`; the reminder remains non-blocking and never promotes candidates automatically.
+
 ## 2.6.4 - 2026-07-28
 - Correction capture no longer treats generated or quoted long text as a human correction. Three real capture defects found in a review of the candidate inbox are fixed: the English keywords `remember` and `stop doing` no longer match inside longer English words (`remembering` in a generated prompt matched before), while still matching when adjacent to Chinese text; prompts longer than 1500 characters are never corrections, because a correction is a short immediate reply and any long document eventually contains a keyword by chance; and messages beginning with the slash-command tags `<command-message>` / `<command-name>` / `<command-args>` (fullwidth variants included) are recognized as client-injected, so typing `/some-command 这里不对` no longer files the whole command into the inbox.
 - The length rule is deliberately independent of what a machine message looks like, so client features that reuse the user-prompt channel are filtered without enumerating their tags. Codex ambient suggestions (`~/.codex/ambient-suggestions/`) were the observed source of four such candidates.

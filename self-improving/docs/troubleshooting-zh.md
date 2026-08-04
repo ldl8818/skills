@@ -1,9 +1,8 @@
 # 中文排错手册
 
+> V1.5.0 · 2026-08-04 · 适用于 self-improving 2.6.5，补充两端 Stop Hook 非法 JSON 报错与修复。
 > V1.4.0 · 2026-07-28 · 适用于 self-improving 2.6.4，补充斜杠命令与超长提示词不捕获，新增「候选看不出为什么被捕获」。
 > V1.3.0 · 2026-07-13 · 适用于 self-improving 2.6.0，补充捕获前置过滤的两种「没进候选箱」情形。
-> V1.2.0 · 2026-07-12 · 适用于 self-improving 2.5.0，更新 Agent 代跑批准的弹框说明。
-> V1.1.0 · 2026-07-12 · 适用于 self-improving 2.2.1，增加旧流水导入排错。
 
 先进入下载目录，再执行体检：
 
@@ -86,6 +85,17 @@ python3 -m self_improving persistence enable
 这是一项真实性提醒，不是 Hook 接线失败。它表示当前 self-improving 版本尚未在最近 30 天记录到全部五类真实事件。新开会话、发送消息、执行一次成功和失败的 Shell 命令、结束会话后会逐步补齐。
 
 只有“对应 Agent Hook”为 `❌` 才代表配置接线失败。
+
+## Claude 或 Codex 显示 `invalid stop hook JSON output`
+
+这是 2.6.4 及更早版本的待审提醒输出格式错误：候选达到 3 条后，`Stop` Hook 输出 XML，当前 Claude Code 与 Codex 都要求非空输出是合法 JSON。更新到 2.6.5 或更高版本，再运行：
+
+```bash
+python3 -m self_improving upgrade
+python3 -m self_improving doctor
+```
+
+不要通过删除整个 `Stop` Hook 处理；配置中可能还有其他工具的收尾 Hook。
 
 ## 我不想让某条已批准纠错继续生效
 
