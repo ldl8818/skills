@@ -398,11 +398,12 @@ def strip_managed_fields(text, extra=()):
     return "\n".join(kept)
 
 
-def fingerprint(skill_dir, extra_strip=()):
+def fingerprint(skill_dir, extra_strip=(), entry_name="SKILL.md"):
     """整目录内容哈希。任一文件内容变化 → 指纹变化（忽略噪声与自管元数据）。
 
     extra_strip 传给 strip_managed_fields —— 比对本地与上游时，用本地的声明
     统一两边的口径（见 strip_managed_fields 的 extra 说明）。
+    entry_name 只用于把旧版禁用入口指纹迁移到统一口径。
     """
     is_self = os.path.basename(os.path.realpath(skill_dir)) == "skill-manager"
     h = hashlib.sha256()
@@ -415,6 +416,9 @@ def fingerprint(skill_dir, extra_strip=()):
                 continue
             fp = os.path.join(root, fn)
             rel = os.path.relpath(fp, skill_dir)
+            if fn in ("SKILL.md", "SKILL.md.disabled"):
+                # 启停只改变入口文件名，不是 skill 内容变化。
+                rel = os.path.join(os.path.dirname(rel), entry_name)
             h.update(rel.encode("utf-8"))
             h.update(b"\0")
             try:
@@ -1026,7 +1030,13 @@ def _make_direct_skill(name, skill_dir, md_path, enabled, scope, scope_label,
     rec = fps.get(key)
     dirty = False
     if rec is None or rec.get("hash") != cur_hash:
-        if rec is not None and rec.get("ident") == ident and not self_mutating:
+        legacy_disabled_hash = fingerprint(
+            skill_dir, entry_name="SKILL.md.disabled")
+        if rec is not None and rec.get("hash") == legacy_disabled_hash:
+            fps[key] = {"hash": cur_hash, "ident": ident,
+                        "updated": date.today().isoformat()}
+            touched.append(key)
+        elif rec is not None and rec.get("ident") == ident and not self_mutating:
             dirty = True  # 内容动了、身份没动 = 改了没记账
         else:
             fps[key] = {"hash": cur_hash, "ident": ident,

@@ -1,3 +1,4 @@
+import hashlib
 import io
 import os
 import sys
@@ -76,6 +77,44 @@ class CoreContractTests(unittest.TestCase):
             text = Path(path).read_text(encoding="utf-8")
             self.assertNotIn("\nversion:", text)
             self.assertIn("metadata:\n  version: \"1.0.1\"", text)
+
+    def test_fingerprint_ignores_enabled_state(self):
+        with tempfile.TemporaryDirectory() as root:
+            enabled = Path(root) / "SKILL.md"
+            enabled.write_text(
+                "---\nname: demo\ndescription: demo\nmetadata:\n  version: \"1.0.0\"\n---\n",
+                encoding="utf-8")
+            enabled_hash = core.fingerprint(root)
+
+            enabled.rename(Path(root) / "SKILL.md.disabled")
+
+            self.assertEqual(enabled_hash, core.fingerprint(root))
+
+    def test_legacy_disabled_fingerprint_migrates_without_dirty(self):
+        with tempfile.TemporaryDirectory() as root:
+            skill = Path(root) / "demo"
+            skill.mkdir()
+            entry = skill / "SKILL.md.disabled"
+            entry.write_text(
+                "---\nname: demo\ndescription: demo\nmetadata:\n"
+                "  version: \"1.0.0\"\n  source: local\n---\n",
+                encoding="utf-8")
+
+            legacy = hashlib.sha256()
+            legacy.update(b"SKILL.md.disabled\0")
+            legacy.update(core.strip_managed_fields(
+                entry.read_text(encoding="utf-8")).encode("utf-8"))
+            key = "global:demo"
+            fps = {key: {"hash": legacy.hexdigest()[:16], "ident": "1.0.0"}}
+            touched = []
+
+            with mock.patch.object(
+                    core, "global_skill_roots", return_value=[("共享", root)]):
+                skills = core.collect_global_direct({}, fps, touched, {})
+
+            self.assertFalse(skills[0].dirty)
+            self.assertEqual(fps[key]["hash"], core.fingerprint(skill))
+            self.assertIn(key, touched)
 
     def test_codex_plugin_parser_does_not_leak_into_other_toml_tables(self):
         with tempfile.TemporaryDirectory() as root:
