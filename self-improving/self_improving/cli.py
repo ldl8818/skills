@@ -17,7 +17,15 @@ from self_improving.installer import install_hooks, install_skill_links, uninsta
 from self_improving.indexing import sync_index
 from self_improving.migration import discover_legacy, write_manifest
 from self_improving.paths import PACKAGE_ROOT, default_config_path, expand_path
-from self_improving.review import candidate_entries, decide, import_legacy, list_candidates, list_legacy, revoke
+from self_improving.review import (
+    candidate_entries,
+    decide,
+    import_legacy,
+    legacy_entries,
+    list_candidates,
+    list_legacy,
+    revoke,
+)
 from self_improving.storage import initialize_memory, validate_delete_target
 
 
@@ -84,6 +92,16 @@ def command_persistence(args: argparse.Namespace) -> int:
     return 0
 
 
+def _interactive_review_fields(label: str, record_id: str) -> tuple[str, str]:
+    print(f"{label}：{record_id}")
+    try:
+        correct = input("正确规则：")
+        scope = input("作用范围（global 或 project:/绝对路径）：")
+    except EOFError as exc:
+        raise ValueError("interactive review requires answers from a terminal") from exc
+    return correct, scope
+
+
 def command_review(args: argparse.Namespace) -> int:
     config = resolved(load_config())
     root = Path(config["memory_root"])
@@ -101,6 +119,18 @@ def command_review(args: argparse.Namespace) -> int:
         return 0
     if args.review_action == "revoke":
         print(revoke(root, state_root, args.fingerprint))
+        return 0
+    if args.review_action == "approve-interactive":
+        if not any(entry["fingerprint"] == args.fingerprint for entry in candidate_entries(root)):
+            raise ValueError("candidate not found or already handled")
+        correct, scope = _interactive_review_fields("正在审核候选", args.fingerprint)
+        print(decide(root, state_root, args.fingerprint, "approve", correct, scope))
+        return 0
+    if args.review_action == "import-legacy-interactive":
+        if not any(entry["legacy_id"] == args.legacy_id for entry in legacy_entries(root)):
+            raise ValueError("legacy row not found; refresh review legacy-list")
+        correct, scope = _interactive_review_fields("正在导入旧记录", args.legacy_id)
+        print(import_legacy(root, state_root, args.legacy_id, correct, scope))
         return 0
     if args.review_action == "import-legacy":
         print(import_legacy(root, state_root, args.legacy_id, args.correct, args.scope))
@@ -225,10 +255,14 @@ def build_parser() -> argparse.ArgumentParser:
             action.add_argument("--scope", required=True, help="global or project:/absolute/path")
     revoke_action = review_sub.add_parser("revoke")
     revoke_action.add_argument("--fingerprint", required=True)
+    interactive_approve = review_sub.add_parser("approve-interactive")
+    interactive_approve.add_argument("--fingerprint", required=True)
     legacy_action = review_sub.add_parser("import-legacy")
     legacy_action.add_argument("--legacy-id", required=True, help="stable id returned by review legacy-list")
     legacy_action.add_argument("--correct", required=True)
     legacy_action.add_argument("--scope", required=True, help="global or project:/absolute/path")
+    interactive_legacy = review_sub.add_parser("import-legacy-interactive")
+    interactive_legacy.add_argument("--legacy-id", required=True, help="stable id returned by review legacy-list")
     review.set_defaults(func=command_review)
 
     migrate = sub.add_parser("migrate")

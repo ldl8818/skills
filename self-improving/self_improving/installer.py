@@ -16,6 +16,7 @@ from self_improving.paths import PACKAGE_ROOT, atomic_write_json, default_config
 
 
 MARKER = "self-improving-hook"
+HOOK_TIMEOUT_SECONDS = 10
 LEGACY_HOOK_NAMES = (
     "activator.sh",
     "error-detector-with-gc.sh",
@@ -74,7 +75,7 @@ def _backup(path: Path, state_root: Path) -> Path | None:
 
 def _groups(platform: str) -> dict[str, list[dict[str, Any]]]:
     matchers = {
-        "PreToolUse": "Write|Edit|Bash" if platform == "claude" else "Bash",
+        "PreToolUse": "Write|Edit|Bash" if platform == "claude" else "Bash|apply_patch",
         "PostToolUse": "Bash",
         "SessionStart": None if platform == "claude" else "startup|resume",
         "UserPromptSubmit": None,
@@ -83,7 +84,13 @@ def _groups(platform: str) -> dict[str, list[dict[str, Any]]]:
     result: dict[str, list[dict[str, Any]]] = {}
     for event, matcher in matchers.items():
         group: dict[str, Any] = {
-            "hooks": [{"type": "command", "command": hook_command(platform, event)}]
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": hook_command(platform, event),
+                    "timeout": HOOK_TIMEOUT_SECONDS,
+                }
+            ]
         }
         if matcher:
             group["matcher"] = matcher
@@ -164,13 +171,19 @@ def hook_is_installed(config: dict[str, Any], platform: str) -> bool:
     hooks = payload.get("hooks", {})
     if not isinstance(hooks, dict):
         return False
+    expected = _groups(platform)
     return all(
         any(
-            isinstance(hook, dict) and hook_command_matches(str(hook.get("command", "")), platform, event)
+            isinstance(group, dict)
+            and group.get("matcher") == expected[event][0].get("matcher")
+            and isinstance(hook, dict)
+            and hook.get("type") == "command"
+            and hook.get("timeout") == HOOK_TIMEOUT_SECONDS
+            and hook_command_matches(str(hook.get("command", "")), platform, event)
             for group in hooks.get(event, []) if isinstance(group, dict)
             for hook in group.get("hooks", []) if isinstance(group.get("hooks", []), list)
         )
-        for event in _groups(platform)
+        for event in expected
     ) and (platform != "codex" or codex_hooks_enabled(config))
 
 

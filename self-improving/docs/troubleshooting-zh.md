@@ -1,5 +1,6 @@
 # 中文排错手册
 
+> V1.6.0 · 2026-08-31 · 适用于 self-improving 2.6.6，补充 Codex 硬拒绝、普通终端审核与短超时。
 > V1.5.0 · 2026-08-04 · 适用于 self-improving 2.6.5，补充两端 Stop Hook 非法 JSON 报错与修复。
 > V1.4.0 · 2026-07-28 · 适用于 self-improving 2.6.4，补充斜杠命令与超长提示词不捕获，新增「候选看不出为什么被捕获」。
 > V1.3.0 · 2026-07-13 · 适用于 self-improving 2.6.0，补充捕获前置过滤的两种「没进候选箱」情形。
@@ -68,7 +69,7 @@ python3 -m self_improving persistence enable
 
 ## 批准后仍没有生效
 
-1. `review approve` 应输出 `imported`，并且命令必须带 `--scope global` 或 `--scope 'project:/绝对路径'`。
+1. `review approve-interactive --fingerprint ...` 应先验证并显示当前指纹，再询问正确规则和作用范围；输入 `global` 或 `project:/绝对路径` 后应输出 `imported`。多条候选必须逐条运行，不串联交互命令。
 2. `doctor` 的“学习闭环”应显示“机器可验证”与“当前可注入”均大于 0。
 3. 检查配置：
 
@@ -105,11 +106,13 @@ python3 -m self_improving doctor
 python3 -m self_improving review revoke --fingerprint '[fp:12ab34cd56ef]'
 ```
 
-看到 `revoked` 后，新会话不再注入该规则，审计记录仍保留。Agent 代跑批准或撤销命令时，客户端会弹出权限确认框（Claude Code 2.3.0 起、Codex 0.144+ 2.5.0 起），核对命令内容后再点允许；你也可以自己在普通终端执行，效果相同。
+看到 `revoked` 后，新会话不再注入该规则，审计记录仍保留。Claude Code 可让 Agent 代跑，再在客户端权限框确认；Codex 必须把精确命令复制到普通终端执行，Agent 工具中的撤销命令会被守门拒绝。
 
-## Agent 写记忆文件时弹出权限确认框
+## Claude 弹权限框，Codex 却直接拒绝写记忆
 
-这是守门机制在工作：任何对核心记忆、纠错库或审批账本的写入都需要你当场批准。看清弹框里的命令内容——是你刚同意的操作就点允许，莫名其妙的写入就点拒绝。太旧的 Codex 版本不解析这套确认协议，守门不生效，请升级 Codex。
+这是有意的平台差异。Claude Code 支持 Hook 请求单次批准，因此会弹权限框；Codex 当前不支持 `permissionDecision: "ask"`，使用它反而会把 Hook 标成失败并继续调用，所以 2.6.6 起对核心记忆、纠错库、审批账本以及相关审核命令统一返回 `deny`。看到拒绝提示时，复制 Agent 给出的 `approve-interactive` 或 `import-legacy-interactive` 命令到普通终端，再按提示输入规则正文和作用范围；不要把正文拼进 Shell 命令。Codex 的 `Bash` 与 `apply_patch` 都在守门范围内。
+
+五类自我进化 Hook 的执行上限是 10 秒。若仍看到接近 600 秒的卡顿，先运行 `python3 -m self_improving upgrade` 重新接线，再用 `doctor` 检查 Hook；600 秒是 Codex 在未配置超时时的默认值，不是本系统的期望配置。
 
 若要整体暂停已批准纠错注入，把配置中的 `include_verified_corrections` 改为 `false`。历史数据会保留。
 
@@ -136,4 +139,4 @@ python3 -m self_improving uninstall --keep-data
 
 `review import-legacy` 只接受 `review legacy-list` 返回的稳定 `legacy:...` 编号。它由旧行原文生成，不会因其他行插入而漂移；如果该行内容被修改，必须重新运行 `legacy-list`。`superseded`、`obsolete`、`rejected` 都不允许复活。
 
-导入时的 `--correct` 不是复制事故全文，而是重新写成一句仍然适用的现行规则。项目规则必须用 `project:/绝对路径`，且该目录需要真实存在。
+运行 `review import-legacy-interactive --legacy-id ...` 后，正确规则不是复制事故全文，而是重新写成一句仍然适用的现行规则。项目范围必须输入 `project:/绝对路径`，且该目录需要真实存在。

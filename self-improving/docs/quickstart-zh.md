@@ -1,5 +1,6 @@
 # 五分钟从零开始
 
+> V1.3.0 · 2026-08-31 · 适用于 self-improving 2.6.6，区分 Claude 弹框批准与 Codex 普通终端审核。
 > V1.2.1 · 2026-07-13 · 适用于 self-improving 2.5.1，术语澄清：「2.2 审核命令」改为「`review approve` 审核命令」。
 > V1.2.0 · 2026-07-12 · 适用于 self-improving 2.5.0，补充预审一键批准流程。
 > V1.1.0 · 2026-07-12 · 适用于 self-improving 2.2.1，补充旧流水按范围显式导入。
@@ -72,9 +73,12 @@ Hook 应输出类似：
 
 ## 6. 审核并批准
 
-最省事的方式（2.4.0 起）：候选攒到 3 条时，新会话开场 Agent 会主动提议预审——它读取候选、逐条提炼成规则草稿并给出批准/拒绝建议，你在对话里说"同意"后，它代跑批准命令，客户端弹出一次权限确认框（Claude Code 与 Codex 0.144+ 一致），你核对命令内容后点允许即完成。不想等提醒，也可以随时对 Agent 说"审核一下纠错候选"。
+候选攒到 3 条时，新会话开场 Agent 会主动提议预审——它读取候选、逐条提炼成规则草稿并给出批准/拒绝建议。不想等提醒，也可以随时对 Agent 说"审核一下纠错候选"。
 
-下面是手工终端流程（备用，效果相同）。回到终端，在 `self-improving` 目录运行：
+- Claude Code：你在对话里说"同意"后，Agent 代跑批准命令，客户端弹出一次权限确认框；核对命令内容后点允许即完成。
+- Codex：你在对话里说"同意"后，Agent 给出一条只含候选指纹的交互命令，但不会代跑；把它复制到普通终端，再按提示输入规则正文和作用范围。Codex 的 Hook 不支持单次询问，Agent 工具里的权威写入会被直接拒绝。
+
+下面是普通终端流程：Codex 必须使用，Claude Code 可作为备用。先回到终端，在 `self-improving` 目录运行：
 
 ```bash
 python3 -m self_improving review list
@@ -83,19 +87,19 @@ python3 -m self_improving review list
 复制输出开头的指纹，例如 `[fp:12ab34cd56ef]`，然后运行：
 
 ```bash
-python3 -m self_improving review approve \
-  --fingerprint '[fp:12ab34cd56ef]' \
-  --correct '先读取当前文件，再根据实际内容判断。' \
-  --scope global
+python3 -m self_improving review approve-interactive \
+  --fingerprint '[fp:12ab34cd56ef]'
 ```
 
-看到 `imported` 表示批准完成。`--correct` 后面的内容才是未来会话采用的规则；请写完整、准确、适用范围清楚的句子，不要直接复制含糊的抱怨。
+终端随后询问：
 
-`--scope global` 表示所有项目都适用。只适用于一个项目时必须写绝对路径，例如：
-
-```bash
---scope 'project:/path/to/某项目'
+```text
+正在审核候选：[fp:12ab34cd56ef]
+正确规则：先读取当前文件，再根据实际内容判断。
+作用范围（global 或 project:/绝对路径）：global
 ```
+
+先核对终端显示的指纹与本次要审核的候选一致；每次只运行一条交互审核命令，不要用 `&&` 串联。看到 `imported` 表示批准完成。规则正文与作用范围通过程序输入，不进入 Shell 命令，因此即使包含引号或 `$()` 也只会作为文字保存。请写完整、准确、适用范围清楚的句子，不要直接复制含糊的抱怨。`global` 表示所有项目都适用；只适用于一个项目时输入 `project:/绝对路径`。
 
 跨 Agent 只表示 Claude Code 与 Codex 共享同一条经验，不等于所有项目都该收到这条经验。
 
@@ -186,10 +190,8 @@ python3 -m self_improving uninstall --keep-data
 仍然有效、但尚未进入现行记忆的规则，应先缩成一句当前可执行规则，再明确选择范围：
 
 ```bash
-python3 -m self_improving review import-legacy \
-  --legacy-id 'legacy:12ab34cd56ef' \
-  --correct '工具要求原文展示时，完整原文必须进入最终回复。' \
-  --scope global
+python3 -m self_improving review import-legacy-interactive \
+  --legacy-id 'legacy:12ab34cd56ef'
 ```
 
-先运行 `python3 -m self_improving review legacy-list` 取得由旧行原文生成的稳定 `legacy:...` 编号；它不会因其他行插入而漂移。导入命令会返回 `[fp:...]` 指纹。它和普通批准一样受预算、项目范围和撤销机制管理。系统故意不提供“把全部 active 一键启用”，因为旧流水没有可靠范围，批量全局注入会把单个项目的特定经验带到所有无关任务里。
+先运行 `python3 -m self_improving review legacy-list` 取得由旧行原文生成的稳定 `legacy:...` 编号；它不会因其他行插入而漂移。运行交互命令后，程序会先验证并显示当前旧记录 ID，再提示输入重新提炼的现行规则和作用范围；同样每次只处理一条。导入命令会返回 `[fp:...]` 指纹。它和普通批准一样受预算、项目范围和撤销机制管理。系统故意不提供“把全部 active 一键启用”，因为旧流水没有可靠范围，批量全局注入会把单个项目的特定经验带到所有无关任务里。

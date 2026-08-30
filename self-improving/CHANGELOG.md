@@ -1,4 +1,10 @@
 # Changelog
+## 2.6.6 - 2026-08-31
+- Codex authority-write protection now returns the supported `PreToolUse` `deny` decision. Codex parses but does not support `ask`; an `ask` result marks the Hook failed and continues the tool call, so protected review commands must now be copied to and run in a regular terminal. The injected review reminder gives the same platform-specific instruction. Claude Code keeps its one-time `ask` permission dialog.
+- Codex protection now matches `apply_patch` as well as `Bash` and checks patch target paths for the three authority files. Managed Hooks on both platforms now use a 10-second timeout instead of inheriting Codex's 600-second default. Existing third-party Hooks remain preserved during install and upgrade.
+- `doctor` now verifies each managed Hook's matcher, command type and timeout as well as its command path, so an older `Bash`-only or no-timeout Codex installation is reported as stale instead of receiving a false healthy result.
+- Add `review approve-interactive` and `review import-legacy-interactive` for Codex's manual-terminal path. Copied commands contain only a validated fingerprint or legacy ID; the CLI validates and displays that ID before reading the distilled rule and scope. Interactive approvals run one at a time, so answers cannot drift onto another record; quotes, semicolons, command substitutions and other candidate-derived text never enter Shell syntax.
+
 ## 2.6.5 - 2026-08-04
 - Claude Code and Codex `Stop` reminders now emit the shared `systemMessage` JSON object instead of an XML tag. When pending correction candidates reach the review threshold, neither client reports `invalid stop hook JSON output`; the reminder remains non-blocking and never promotes candidates automatically.
 

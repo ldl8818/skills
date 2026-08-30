@@ -16,11 +16,17 @@ from self_improving import __version__
 from self_improving.config import default_config, load_config, resolved, write_config
 from self_improving.events import normalize
 from self_improving.hooks.common import MAX_CORRECTION_CHARS, dispatch
-from self_improving.installer import MARKER, hook_command, hook_is_installed, install_hooks, uninstall_hooks
+from self_improving.installer import MARKER, hook_is_installed, install_hooks, uninstall_hooks
 from self_improving.indexing import broken_local_links, sync_index
 from self_improving.security import contains_secret, sanitize
 from self_improving.review import candidate_entries, decide, list_candidates
-from self_improving.storage import active_corrections, append_verified_correction, initialize_memory, verified_corrections
+from self_improving.storage import (
+    active_corrections,
+    append_verified_correction,
+    initialize_memory,
+    load_verified_records,
+    verified_corrections,
+)
 
 
 class SystemTests(unittest.TestCase):
@@ -116,6 +122,29 @@ class SystemTests(unittest.TestCase):
         self.assertIn(MARKER, self.claude.read_text())
         self.assertIn(MARKER, self.codex.read_text())
         self.assertIn("hooks = true", self.codex_config.read_text())
+
+    def test_installed_hooks_use_short_timeout_and_codex_guards_apply_patch(self) -> None:
+        with self.env():
+            install_hooks(self.config, "claude")
+            install_hooks(self.config, "codex")
+        for path in (self.claude, self.codex):
+            payload = json.loads(path.read_text())
+            managed = [
+                (event, group, hook)
+                for event, groups in payload["hooks"].items()
+                for group in groups
+                for hook in group.get("hooks", [])
+                if MARKER in str(hook.get("command", ""))
+            ]
+            self.assertEqual(len(managed), 5)
+            self.assertTrue(all(hook.get("timeout") == 10 for _, _, hook in managed))
+        codex_payload = json.loads(self.codex.read_text())
+        codex_pre_tool_group = next(
+            group
+            for group in codex_payload["hooks"]["PreToolUse"]
+            if any(MARKER in str(hook.get("command", "")) for hook in group.get("hooks", []))
+        )
+        self.assertEqual(codex_pre_tool_group["matcher"], "Bash|apply_patch")
 
     def test_mixed_group_preserves_third_party_hook(self) -> None:
         self.claude.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [
@@ -292,6 +321,60 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(output.getvalue().strip(), "rejected")
         self.assertEqual(active_corrections(self.memory), [])
 
+    def test_interactive_approval_keeps_rule_text_out_of_shell_syntax(self) -> None:
+        from self_improving.cli import main
+
+        marker = self.home / "must-not-exist"
+        malicious_rule = f"保留原文'; touch {marker}; echo $HOME && $(id); #"
+        with self.env():
+            dispatch("codex", "UserPromptSubmit", {"prompt": "不对，这条候选需要安全交互审核"})
+            fingerprint = list_candidates(self.memory)[0].split(" | ", 1)[0]
+            output = io.StringIO()
+            with patch("builtins.input", side_effect=[malicious_rule, "global"]), redirect_stdout(output):
+                result = main(["review", "approve-interactive", "--fingerprint", fingerprint])
+        self.assertEqual(result, 0)
+        self.assertEqual(output.getvalue().strip(), f"正在审核候选：{fingerprint}\nimported")
+        self.assertFalse(marker.exists())
+        approved = active_corrections(self.memory)
+        self.assertEqual(len(approved), 1)
+        self.assertIn("touch", approved[0])
+        self.assertIn("$(id)", approved[0])
+
+    def test_interactive_approval_identifies_each_candidate_before_input(self) -> None:
+        from self_improving.cli import main
+
+        with self.env():
+            dispatch("codex", "UserPromptSubmit", {"prompt": "不对，候选甲需要单独审核"})
+            dispatch("codex", "UserPromptSubmit", {"prompt": "不对，候选乙需要单独审核"})
+            fingerprints = [row.split(" | ", 1)[0] for row in list_candidates(self.memory)]
+            output = io.StringIO()
+            for fingerprint, answer in zip(fingerprints, ("规则甲", "规则乙"), strict=True):
+                with patch("builtins.input", side_effect=[answer, "global"]), redirect_stdout(output):
+                    self.assertEqual(
+                        main(["review", "approve-interactive", "--fingerprint", fingerprint]),
+                        0,
+                    )
+
+        text = output.getvalue()
+        for fingerprint in fingerprints:
+            self.assertIn(f"正在审核候选：{fingerprint}", text)
+        approved, malformed = load_verified_records(self.memory)
+        self.assertEqual(malformed, 0)
+        self.assertEqual(
+            {row["source_id"]: row["answer"] for row in approved},
+            {f"candidate:{fingerprints[0]}": "规则甲", f"candidate:{fingerprints[1]}": "规则乙"},
+        )
+
+    def test_interactive_review_validates_target_before_reading_input(self) -> None:
+        from self_improving.cli import main
+
+        with self.env(), patch("builtins.input") as interactive_input:
+            self.assertEqual(
+                main(["review", "approve-interactive", "--fingerprint", "[fp:0123456789ab]"]),
+                1,
+            )
+        interactive_input.assert_not_called()
+
     def test_verified_correction_can_be_revoked(self) -> None:
         from self_improving.cli import main
         from self_improving.storage import VERIFIED_RELATIVE
@@ -325,14 +408,15 @@ class SystemTests(unittest.TestCase):
             legacy_id = listed.getvalue().split(" | ", 1)[0]
             self.assertRegex(legacy_id, r"^legacy:[0-9a-f]{12}$")
             output = io.StringIO()
-            with redirect_stdout(output):
-                result = main([
-                    "review", "import-legacy", "--legacy-id", legacy_id,
-                    "--correct", "工具要求原文展示时，完整原文必须进入最终回复。", "--scope", "global",
-                ])
+            with patch(
+                "builtins.input",
+                side_effect=["工具要求原文展示时，完整原文必须进入最终回复。", "global"],
+            ), redirect_stdout(output):
+                result = main(["review", "import-legacy-interactive", "--legacy-id", legacy_id])
             fingerprint = output.getvalue().strip()
             self.assertEqual(result, 0)
-            self.assertRegex(fingerprint, r"^\[fp:[0-9a-f]{12}\]$")
+            self.assertRegex(fingerprint, rf"^正在导入旧记录：{legacy_id}\n\[fp:[0-9a-f]{{12}}\]$")
+            fingerprint = fingerprint.splitlines()[-1]
             self.assertEqual(active_corrections(self.memory), ["工具要求原文展示时，完整原文必须进入最终回复。"])
             conflicting = main([
                 "review", "import-legacy", "--legacy-id", legacy_id,
@@ -490,7 +574,7 @@ class SystemTests(unittest.TestCase):
         self.assertFalse(learning.passed)
         self.assertIn("全部超过字符预算", learning.detail)
 
-    def test_authority_write_is_blocked(self) -> None:
+    def test_authority_write_guard_is_platform_specific(self) -> None:
         # Claude 端：权威写入不硬拦，改为输出 ask 决策交用户当场批准。
         with self.env():
             output = io.StringIO()
@@ -530,7 +614,7 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(claude_read_only, 0)
         self.assertEqual(output.getvalue(), "")
 
-        # Codex（0.144+）解析同一套 ask 协议：守门命中同样弹框请用户批准。
+        # Codex 不支持 ask；命中后必须 deny，批准命令改由用户在普通终端执行。
         def codex_decision(payload: dict) -> tuple[int, str]:
             with self.env():
                 output = io.StringIO()
@@ -540,13 +624,15 @@ class SystemTests(unittest.TestCase):
 
         for command in (
             "python3 -m self_improving review approve --fingerprint x --correct y --scope global",
+            "python3 -m self_improving review approve-interactive --fingerprint '[fp:0123456789ab]'",
+            "python3 -m self_improving review import-legacy-interactive --legacy-id legacy:0123456789ab",
             "python3 -c 'from self_improving.review import decide'",
         ):
             code, text = codex_decision({"tool_name": "Bash", "tool_input": {"command": command}})
             self.assertEqual(code, 0)
-            self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "ask")
+            self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "deny")
 
-        for command, expects_ask in (
+        for command, expects_deny in (
             ("printf hacked >> memory.md", True),
             (f"cat {self.memory / 'memory.md'}", False),
             ("grep -n 边界 memory.md 2>/dev/null", False),
@@ -555,8 +641,29 @@ class SystemTests(unittest.TestCase):
         ):
             code, text = codex_decision({"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": command}})
             self.assertEqual(code, 0)
-            if expects_ask:
-                self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "ask")
+            if expects_deny:
+                self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "deny")
+            else:
+                self.assertEqual(text, "")
+
+        for command, expects_deny in (
+            ("*** Begin Patch\n*** Update File: memory.md\n@@\n-old\n+new\n*** End Patch", True),
+            (
+                "*** Begin Patch\n*** Update File: .self-improving/verified-corrections.jsonl\n@@\n-old\n+new\n*** End Patch",
+                True,
+            ),
+            (
+                "*** Begin Patch\n*** Update File: notes.md\n*** Move to: memory.md\n@@\n-old\n+new\n*** End Patch",
+                True,
+            ),
+            ("*** Begin Patch\n*** Update File: notes.md\n@@\n-old\n+new\n*** End Patch", False),
+        ):
+            code, text = codex_decision(
+                {"cwd": str(self.memory), "tool_name": "apply_patch", "tool_input": {"command": command}}
+            )
+            self.assertEqual(code, 0)
+            if expects_deny:
+                self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "deny")
             else:
                 self.assertEqual(text, "")
 
@@ -577,12 +684,42 @@ class SystemTests(unittest.TestCase):
     def test_hook_installed_by_other_interpreter_is_reported_as_installed(self) -> None:
         # 安装与体检可能由不同 Python 运行；只要包路径/配置/平台/事件一致就算已接线
         with self.env():
-            groups = {}
-            for event in ("SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"):
-                command = hook_command("claude", event).replace(shlex.quote(sys.executable), "/other/python3.99")
-                groups[event] = [{"hooks": [{"type": "command", "command": command}]}]
-            self.claude.write_text(json.dumps({"hooks": groups}))
+            install_hooks(self.config, "claude")
+            payload = json.loads(self.claude.read_text())
+            for groups in payload["hooks"].values():
+                for group in groups:
+                    for hook in group.get("hooks", []):
+                        if MARKER in str(hook.get("command", "")):
+                            hook["command"] = hook["command"].replace(
+                                shlex.quote(sys.executable), "/other/python3.99"
+                            )
+            self.claude.write_text(json.dumps(payload))
             self.assertTrue(hook_is_installed(self.config, "claude"))
+
+    def test_hook_without_current_timeout_is_not_reported_as_installed(self) -> None:
+        with self.env():
+            install_hooks(self.config, "codex")
+            payload = json.loads(self.codex.read_text())
+            for groups in payload["hooks"].values():
+                for group in groups:
+                    for hook in group.get("hooks", []):
+                        if MARKER in str(hook.get("command", "")):
+                            hook.pop("timeout")
+            self.codex.write_text(json.dumps(payload))
+            self.assertFalse(hook_is_installed(self.config, "codex"))
+
+    def test_codex_bash_only_guard_is_not_reported_as_installed(self) -> None:
+        with self.env():
+            install_hooks(self.config, "codex")
+            payload = json.loads(self.codex.read_text())
+            managed_pre_tool_group = next(
+                group
+                for group in payload["hooks"]["PreToolUse"]
+                if any(MARKER in str(hook.get("command", "")) for hook in group.get("hooks", []))
+            )
+            managed_pre_tool_group["matcher"] = "Bash"
+            self.codex.write_text(json.dumps(payload))
+            self.assertFalse(hook_is_installed(self.config, "codex"))
 
     def test_session_start_injects_validated_memory_and_records_schema(self) -> None:
         with self.env():
@@ -612,12 +749,20 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(len(entries), 3)
         self.assertTrue(all(entry["fingerprint"].startswith("[fp:") for entry in entries))
         self.assertIn("规则甲", entries[0]["candidate"])
-        with self.env():
-            output = io.StringIO()
-            with redirect_stdout(output):
-                dispatch("claude", "SessionStart", {"hook_event_name": "SessionStart"})
-        self.assertIn('<memory-review-reminder pending="3">', output.getvalue())
-        self.assertIn("review list --json", output.getvalue())
+        for platform in ("claude", "codex"):
+            with self.env():
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    dispatch(platform, "SessionStart", {"hook_event_name": "SessionStart"})
+            reminder = output.getvalue()
+            self.assertIn('<memory-review-reminder pending="3">', reminder)
+            self.assertIn("review list --json", reminder)
+            if platform == "claude":
+                self.assertIn("由客户端弹框确认", reminder)
+                self.assertNotIn("普通终端", reminder)
+            else:
+                self.assertIn("普通终端", reminder)
+                self.assertIn("不要在 Codex Agent 工具中执行", reminder)
 
     def test_stop_review_reminder_is_valid_json_for_both_platforms(self) -> None:
         from self_improving.storage import append_candidate

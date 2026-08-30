@@ -32,7 +32,7 @@ The match text is redacted and capped like any other stored content and is not
 part of the fingerprint.
 
 ## Claude Code
-The installer wires `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse` and `Stop` while preserving existing groups.
+The installer wires `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse` and `Stop` while preserving existing groups. Every managed command Hook has a 10-second timeout.
 
 At `SessionStart`, the common Hook validates the line and character budgets and
 injects the small `memory.md` core. It then reads only approvals written by the
@@ -61,15 +61,13 @@ candidate. Claude Code requires non-empty successful `Stop` stdout to be one
 valid JSON object, so plain-text or XML reminders are invalid.
 
 ## Codex
-The installer uses the same lifecycle names but a separate adapter. Codex currently applies Pre/Post Tool Hooks to shell commands, ignores matchers for UserPromptSubmit and Stop, and uses startup/resume matching for SessionStart.
+The installer uses the same lifecycle names but a separate adapter. It matches both `Bash` and `apply_patch` for `PreToolUse`, `Bash` for `PostToolUse`, ignores matchers for UserPromptSubmit and Stop, and uses startup/resume matching for SessionStart. Every managed command Hook has a 10-second timeout instead of inheriting Codex's 600-second default.
 
-`PreToolUse` guards direct writes and common relative, absolute and `$HOME`
-shell writes to the configured `memory.md`, `corrections.md` and verified JSONL store, as well as approval/rejection commands invoked through an Agent shell. Since 2.5.0 the guard emits the same `ask` permission decision as on Claude Code — codex-cli 0.144.1 verifiably parses the identical `hookSpecificOutput` protocol, so the user approves or rejects the specific call in the Codex permission dialog. Codex versions too old to parse hook decisions do not enforce the guard; upgrade Codex. Because arbitrary shell syntax
-cannot be parsed safely with string matching, this is an accidental-write guard,
+`PreToolUse` guards common relative, absolute and `$HOME` Shell writes to the configured `memory.md`, `corrections.md` and verified JSONL store, approval/rejection commands invoked through an Agent shell, and `apply_patch` edits whose target path is one of those authority files. Codex currently parses but does not support `permissionDecision: "ask"`; it reports the Hook as failed and continues the tool call. The adapter therefore returns `deny`. For an approval, the Agent gives the user one fingerprint-only `review approve-interactive` command at a time to run in a regular terminal outside the Agent tool loop; the CLI validates and displays that fingerprint before reading the distilled rule and scope from interactive input. Candidate-derived text never becomes Shell syntax, and interactive approvals are not chained. Rejection and revocation commands contain only validated fingerprints, and legacy imports use `review import-legacy-interactive` with a validated legacy ID. Because arbitrary shell syntax
+cannot be parsed safely with string matching, and specialized tools may bypass the default Hook path, this is an accidental-write guard,
 not a complete sandbox or access-control mechanism. Code running as the same OS
 user can deliberately call internal Python APIs or obfuscate a write. Keep
-private memory under version control when audit and rollback matter, and only
-approve permission dialogs whose command you have actually read.
+private memory under version control when audit and rollback matter.
 
 Installation must preserve unrelated Hooks such as status or notification integrations. After Codex upgrades, run `doctor` and a real-session smoke test because Hook payload fields may evolve.
 
@@ -77,6 +75,8 @@ Codex 0.146.0 enforces the same successful `Stop` JSON requirement as Claude
 Code. The shared adapter therefore emits the same non-blocking `systemMessage`
 object on both platforms; XML is not a valid `Stop` response on either client.
 
-`doctor` records current-package schema coverage, not proof that every event was
-produced by the latest client launch. End-to-end smoke results must be reported
-separately from fixture replay.
+`doctor` checks each managed Hook's command path, command type, matcher and
+timeout before reporting the wiring as healthy. Its separate current-package
+schema coverage is not proof that every event was produced by the latest client
+launch or that a client supports a particular permission decision. End-to-end
+smoke results must be reported separately from fixture replay.

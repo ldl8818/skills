@@ -104,8 +104,30 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
             pass
     if not command:
         return False
+    if event.tool_name == "apply_patch":
+        patch_paths = re.findall(
+            r"^\*\*\* (?:Add|Update|Delete) File: (.+?)\s*$|^\*\*\* Move to: (.+?)\s*$",
+            command,
+            flags=re.MULTILINE,
+        )
+        for source_path, move_path in patch_paths:
+            candidate = Path(source_path or move_path).expanduser()
+            if not candidate.is_absolute():
+                if not event.cwd:
+                    continue
+                candidate = Path(event.cwd) / candidate
+            try:
+                if candidate.resolve() in authorities:
+                    return True
+            except OSError:
+                continue
+        return False
     expanded = command.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
-    if re.search(r"(?:self_improving|self-improving)\s+review\s+(?:approve|reject|revoke|import-legacy)\b", expanded):
+    if re.search(
+        r"(?:self_improving|self-improving)\s+review\s+"
+        r"(?:approve(?:-interactive)?|reject|revoke|import-legacy(?:-interactive)?)\b",
+        expanded,
+    ):
         return True
     internal_authority_api = any(name in expanded for name in ("self_improving.review", "self_improving.storage", "append_verified_correction"))
     if ("corrections.md" in expanded or "verified-corrections.jsonl" in expanded or internal_authority_api) and re.search(r"\b(?:python\d*|node|ruby|perl)\b", expanded):
@@ -128,14 +150,18 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
     state_root = Path(config["state_root"])
     _record_schema(state_root, platform, event.event, payload)
     if _dangerous_authority_write(event, root):
-        # Claude Code 与 Codex（0.144 实证）解析同一套 PreToolUse ask 决策：弹出权限框由用户当场批准，
-        # 批准动作发生在客户端 UI，会话内文本（含注入内容）无法伪造。
-        # 不解析决策输出的更旧 Codex 版本守门不生效，需升级 Codex。
+        permission_decision = "deny" if platform == "codex" else "ask"
+        reason = (
+            "Codex 不支持通过 Hook 请求单次批准；本次权威记忆写入已拒绝。"
+            "请复制准确的审核命令到普通终端执行。"
+            if platform == "codex"
+            else "本次调用将写入核心记忆或已验证纠错（权威文件），需要你亲自批准。"
+        )
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
-                "permissionDecision": "ask",
-                "permissionDecisionReason": "本次调用将写入核心记忆或已验证纠错（权威文件），需要你亲自批准。",
+                "permissionDecision": permission_decision,
+                "permissionDecisionReason": reason,
             }
         }, ensure_ascii=False))
         return 0
@@ -170,12 +196,20 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
                 print("</verified-corrections>")
         pending = pending_correction_count(root)
         if pending >= REVIEW_REMINDER_THRESHOLD:
+            review_action = (
+                "逐条提炼规则草稿并给出批准/拒绝建议与作用范围；经用户明确同意后，"
+                "批准项只给出 review approve-interactive --fingerprint 命令，拒绝项给出 review reject 命令，"
+                "交给用户复制到普通终端执行；规则正文和作用范围由交互提示读取，不得放进 Shell 命令。"
+                "不要在 Codex Agent 工具中执行。"
+                if platform == "codex"
+                else "逐条提炼规则草稿并给出批准/拒绝建议与作用范围；经用户明确同意后再执行 "
+                "review approve/reject（多条可用 && 串联成一条命令），由客户端弹框确认。"
+            )
             print(
                 f'<memory-review-reminder pending="{pending}">'
                 f"纠错候选箱已有 {pending} 条待审。请在合适时机向用户提议预审："
                 "运行 python3 -m self_improving review list --json 读取候选，"
-                "逐条提炼规则草稿并给出批准/拒绝建议与作用范围，经用户明确同意后再执行 review approve/reject"
-                "（多条可用 && 串联成一条命令）。未经用户同意禁止批准。"
+                f"{review_action}未经用户同意禁止批准。"
                 "</memory-review-reminder>"
             )
         return 0
