@@ -1,8 +1,8 @@
 # lookup
 
-> The single entry point for all network lookups. Skill content is in Chinese.
+> The general entry point for public-web lookup and content retrieval. Skill content is in Chinese.
 
-联网查信息的唯一入口：搜索、抓网页正文、读第三方平台内容、检索本机浏览历史。lookup 负责选路、只读边界和结果验收；OpenCLI、Agent-Reach、平台 CLI、API 与浏览器负责提供能力。
+一般联网检索入口：搜索、抓网页正文、读第三方平台内容、检索本机书签与浏览历史。lookup 负责选路、只读边界和结果验收；专用产品文档或连接器优先，研究综合走 `learn`，需要点击、输入等交互时走浏览器 Skill。
 
 它解决的不是「怎么调某个抓取工具」，而是**在有限的上下文窗口里，怎么用最少的 token 拿回够用且真实的信息**：
 
