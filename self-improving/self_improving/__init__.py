@@ -1,3 +1,3 @@
 """Configurable cross-agent self-improving memory system."""
 
-__version__ = "2.6.6"
+__version__ = "3.0.0"

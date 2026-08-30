@@ -21,9 +21,12 @@ from self_improving.review import (
     candidate_entries,
     decide,
     import_legacy,
+    lifecycle_entries,
     legacy_entries,
     list_candidates,
     list_legacy,
+    list_lifecycle,
+    promote,
     revoke,
 )
 from self_improving.storage import initialize_memory, validate_delete_target
@@ -92,14 +95,30 @@ def command_persistence(args: argparse.Namespace) -> int:
     return 0
 
 
-def _interactive_review_fields(label: str, record_id: str) -> tuple[str, str]:
+def _interactive_review_fields(label: str, record_id: str) -> tuple[str, str, str, str, int, int]:
     print(f"{label}：{record_id}")
     try:
         correct = input("正确规则：")
-        scope = input("作用范围（global 或 project:/绝对路径）：")
+        scope = input("作用范围（global、repo:/仓库绝对路径或 project:/绝对路径）：")
+        promotion_target = input("正式归位目标（如 global-rules、project-rules 或 skill-docs）：")
+        priority = input("优先级（normal/critical，默认 normal）：").strip() or "normal"
+        review_after = input("多少天后复核（默认 30）：").strip() or "30"
+        expires_after = input("多少天后停止注入（默认 90）：").strip() or "90"
     except EOFError as exc:
         raise ValueError("interactive review requires answers from a terminal") from exc
-    return correct, scope
+    try:
+        return correct, scope, promotion_target, priority, int(review_after), int(expires_after)
+    except ValueError as exc:
+        raise ValueError("review and expiry days must be integers") from exc
+
+
+def _review_options(args: argparse.Namespace) -> dict[str, object]:
+    return {
+        "priority": args.priority,
+        "promotion_target": args.promotion_target,
+        "review_after_days": args.review_after_days,
+        "expires_after_days": args.expires_after_days,
+    }
 
 
 def command_review(args: argparse.Namespace) -> int:
@@ -117,25 +136,44 @@ def command_review(args: argparse.Namespace) -> int:
         rows = list_legacy(root)
         print("\n".join(rows) if rows else "没有可迁移的 active/promoted 旧流水。")
         return 0
+    if args.review_action == "lifecycle-list":
+        if args.json:
+            print(json.dumps(lifecycle_entries(root), ensure_ascii=False, indent=2))
+            return 0
+        rows = list_lifecycle(root)
+        print("\n".join(rows) if rows else "没有活动的 v2 纠错。")
+        return 0
     if args.review_action == "revoke":
         print(revoke(root, state_root, args.fingerprint))
+        return 0
+    if args.review_action == "promote":
+        print(promote(root, state_root, args.fingerprint))
         return 0
     if args.review_action == "approve-interactive":
         if not any(entry["fingerprint"] == args.fingerprint for entry in candidate_entries(root)):
             raise ValueError("candidate not found or already handled")
-        correct, scope = _interactive_review_fields("正在审核候选", args.fingerprint)
-        print(decide(root, state_root, args.fingerprint, "approve", correct, scope))
+        correct, scope, target, priority, review_days, expiry_days = _interactive_review_fields("正在审核候选", args.fingerprint)
+        print(decide(
+            root, state_root, args.fingerprint, "approve", correct, scope,
+            priority=priority, promotion_target=target,
+            review_after_days=review_days, expires_after_days=expiry_days,
+        ))
         return 0
     if args.review_action == "import-legacy-interactive":
         if not any(entry["legacy_id"] == args.legacy_id for entry in legacy_entries(root)):
             raise ValueError("legacy row not found; refresh review legacy-list")
-        correct, scope = _interactive_review_fields("正在导入旧记录", args.legacy_id)
-        print(import_legacy(root, state_root, args.legacy_id, correct, scope))
+        correct, scope, target, priority, review_days, expiry_days = _interactive_review_fields("正在导入旧记录", args.legacy_id)
+        print(import_legacy(
+            root, state_root, args.legacy_id, correct, scope,
+            priority=priority, promotion_target=target,
+            review_after_days=review_days, expires_after_days=expiry_days,
+        ))
         return 0
     if args.review_action == "import-legacy":
-        print(import_legacy(root, state_root, args.legacy_id, args.correct, args.scope))
+        print(import_legacy(root, state_root, args.legacy_id, args.correct, args.scope, **_review_options(args)))
         return 0
-    print(decide(root, state_root, args.fingerprint, args.review_action, getattr(args, "correct", "") or "", getattr(args, "scope", "") or ""))
+    options = _review_options(args) if args.review_action == "approve" else {}
+    print(decide(root, state_root, args.fingerprint, args.review_action, getattr(args, "correct", "") or "", getattr(args, "scope", "") or "", **options))
     return 0
 
 
@@ -156,7 +194,7 @@ def command_migrate(args: argparse.Namespace) -> int:
         return 1
     config = default_config(discovery["memory_root"])
     config["persistence"]["capture_corrections"] = True
-    config["persistence"]["capture_command_errors"] = True
+    config["persistence"]["capture_command_errors"] = False
     for platform, settings in config["agents"].items():
         key = "settings_file" if platform == "claude" else "hooks_file"
         settings["enabled"] = expand_path(settings[key]).exists()
@@ -247,20 +285,32 @@ def build_parser() -> argparse.ArgumentParser:
     list_action = review_sub.add_parser("list")
     list_action.add_argument("--json", action="store_true", help="machine-readable output for agent pre-review")
     review_sub.add_parser("legacy-list")
+    lifecycle_list = review_sub.add_parser("lifecycle-list")
+    lifecycle_list.add_argument("--json", action="store_true")
     for name in ("approve", "reject"):
         action = review_sub.add_parser(name)
         action.add_argument("--fingerprint", required=True)
         if name == "approve":
             action.add_argument("--correct", required=True)
-            action.add_argument("--scope", required=True, help="global or project:/absolute/path")
+            action.add_argument("--scope", required=True, help="global, repo:/absolute/path, or project:/absolute/path")
+            action.add_argument("--priority", choices=("normal", "critical"), default="normal")
+            action.add_argument("--promotion-target", required=True)
+            action.add_argument("--review-after-days", type=int, default=30)
+            action.add_argument("--expires-after-days", type=int, default=90)
     revoke_action = review_sub.add_parser("revoke")
     revoke_action.add_argument("--fingerprint", required=True)
+    promote_action = review_sub.add_parser("promote")
+    promote_action.add_argument("--fingerprint", required=True)
     interactive_approve = review_sub.add_parser("approve-interactive")
     interactive_approve.add_argument("--fingerprint", required=True)
     legacy_action = review_sub.add_parser("import-legacy")
     legacy_action.add_argument("--legacy-id", required=True, help="stable id returned by review legacy-list")
     legacy_action.add_argument("--correct", required=True)
-    legacy_action.add_argument("--scope", required=True, help="global or project:/absolute/path")
+    legacy_action.add_argument("--scope", required=True, help="global, repo:/absolute/path, or project:/absolute/path")
+    legacy_action.add_argument("--priority", choices=("normal", "critical"), default="normal")
+    legacy_action.add_argument("--promotion-target", required=True)
+    legacy_action.add_argument("--review-after-days", type=int, default=30)
+    legacy_action.add_argument("--expires-after-days", type=int, default=90)
     interactive_legacy = review_sub.add_parser("import-legacy-interactive")
     interactive_legacy.add_argument("--legacy-id", required=True, help="stable id returned by review legacy-list")
     review.set_defaults(func=command_review)

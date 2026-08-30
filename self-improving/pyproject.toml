@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "self-improving-memory"
-version = "2.6.6"
+version = "3.0.0"
 description = "Configurable cross-agent memory and correction workflow for Claude Code and Codex"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
 
 [project.scripts]
 self-improving = "self_improving.cli:main"

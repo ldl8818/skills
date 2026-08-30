@@ -34,18 +34,19 @@ part of the fingerprint.
 ## Claude Code
 The installer wires `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse` and `Stop` while preserving existing groups. Every managed command Hook has a 10-second timeout.
 
-At `SessionStart`, the common Hook validates the line and character budgets and
-injects the small `memory.md` core. It then reads only approvals written by the
-`review approve` command, filters them by the current project/global scope, applies
-the configured count and character budgets, and emits them in a separate
-`<verified-corrections>` block. Raw candidate and error files are never read as
-instructions. If any approval-ledger event is malformed, verified-correction
-injection fails closed for that session and `doctor` reports a hard failure.
-When pending candidates reach the reminder threshold (3), `SessionStart` also
-injects a review reminder that points the agent at the pre-review flow
-(`review list --json`, draft rules and recommendations, then user-confirmed
-batch approval). The reminder is guidance only; raw candidates are never
-injected.
+At `SessionStart`, the common Hook leaves free-form `memory.md` out unless explicitly enabled, then
+selects only current v2 approvals by priority, lifecycle and global/repository/
+project scope. All dynamic sections share one estimated-token ceiling and
+eligible answers are emitted in `<verified-corrections>`. A compact receipt
+reports budget omissions, expired or due records, ignored v1 rows and malformed
+events. Raw candidates and errors are never read as instructions. Malformed
+approval data fails closed for that session and is also reported by `doctor`.
+In the default `resume_mode=skip`, a hashed session receipt stores only the digest
+of context actually emitted. An unchanged resume is silent; changed context is
+emitted once with an explicit invalidation marker, and an empty replacement emits a
+clear marker so revoked or promoted rules do not survive in the resumed conversation.
+A missing session ID stays silent on
+resume because there is no safe identity against which to compare it.
 
 At `PreToolUse`, writes to the authority files (`memory.md`, `corrections.md`,
 the verified JSONL ledger) and shell-invoked approval commands emit an `ask`
@@ -57,13 +58,21 @@ content — cannot forge it.
 At `Stop`, reaching the pending-candidate threshold emits a top-level
 `systemMessage` JSON object. It only shows the review reminder to the user; it
 does not return `decision: "block"`, continue the conversation, or promote any
-candidate. Claude Code requires non-empty successful `Stop` stdout to be one
+candidate. The reminder is throttled to once per configured interval rather
+than repeated at every stop or injected at session start. Claude Code requires non-empty successful `Stop` stdout to be one
 valid JSON object, so plain-text or XML reminders are invalid.
 
-## Codex
-The installer uses the same lifecycle names but a separate adapter. It matches both `Bash` and `apply_patch` for `PreToolUse`, `Bash` for `PostToolUse`, ignores matchers for UserPromptSubmit and Stop, and uses startup/resume matching for SessionStart. Every managed command Hook has a 10-second timeout instead of inheriting Codex's 600-second default.
+At `PostToolUse`, error capture relies only on structured failure state such as
+a non-zero exit code or client error flag. Words like `error` or `failed` inside
+successful output are ordinary text and do not create error records. If a
+client version exposes only an opaque response string, the adapter deliberately
+skips error capture on that client instead of guessing from prose; `doctor`
+reports that degraded contract when command-error capture is enabled.
 
-`PreToolUse` guards common relative, absolute and `$HOME` Shell writes to the configured `memory.md`, `corrections.md` and verified JSONL store, approval/rejection commands invoked through an Agent shell, and `apply_patch` edits whose target path is one of those authority files. Codex currently parses but does not support `permissionDecision: "ask"`; it reports the Hook as failed and continues the tool call. The adapter therefore returns `deny`. For an approval, the Agent gives the user one fingerprint-only `review approve-interactive` command at a time to run in a regular terminal outside the Agent tool loop; the CLI validates and displays that fingerprint before reading the distilled rule and scope from interactive input. Candidate-derived text never becomes Shell syntax, and interactive approvals are not chained. Rejection and revocation commands contain only validated fingerprints, and legacy imports use `review import-legacy-interactive` with a validated legacy ID. Because arbitrary shell syntax
+## Codex
+The installer uses the same lifecycle names but a separate adapter. It matches both `Bash` and `apply_patch` for `PreToolUse`, `Bash` for `PostToolUse`, ignores matchers for UserPromptSubmit and Stop, and always observes `startup|resume` for `SessionStart`; the common Hook then suppresses only an unchanged resume. Every managed command Hook has a 10-second timeout instead of inheriting Codex's 600-second default.
+
+`PreToolUse` guards common relative, absolute and `$HOME` Shell writes to the configured `memory.md`, `corrections.md` and verified JSONL store, mutating review commands invoked through an Agent shell, and `apply_patch` edits whose target path is one of those authority files. Shell tokenization joins adjacent quoted fragments before matching, so spelling `re''view ap''prove` cannot bypass the guard. Codex currently parses but does not support `permissionDecision: "ask"`; it reports the Hook as failed and continues the tool call. The adapter therefore returns `deny`. For an approval, the Agent gives the user one fingerprint-only `review approve-interactive` command at a time to run in a regular terminal outside the Agent tool loop; the CLI validates and displays that fingerprint before reading the distilled rule, scope, promotion target and lifecycle from interactive input. Candidate-derived text never becomes Shell syntax, and interactive approvals are not chained. Rejection, promotion and revocation commands contain only validated fingerprints, and legacy imports use `review import-legacy-interactive` with a validated legacy ID. Exact read-only `-h` and `--help` invocations remain available through the guard. Because arbitrary shell syntax
 cannot be parsed safely with string matching, and specialized tools may bypass the default Hook path, this is an accidental-write guard,
 not a complete sandbox or access-control mechanism. Code running as the same OS
 user can deliberately call internal Python APIs or obfuscate a write. Keep

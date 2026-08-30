@@ -5,12 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 import re
 from urllib.parse import unquote
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from self_improving.paths import atomic_write
 
 
 VOLATILE_PARTS = {".learnings"}
+AUDIT_ONLY_FILES = {"corrections.md"}
+ARCHIVE_PARTS = {"archive", "归档"}
 LINK = re.compile(r"(?<!!)\[[^]]*]\(([^)]+)\)")
+BACKTICK_PATH = re.compile(r"`([^`]+\.md(?:#[^`]*)?)`")
+EXPIRY = re.compile(r"至\s*(20\d{2}-\d{2}-\d{2})")
 
 
 def _title(path: Path) -> str:
@@ -57,7 +63,7 @@ def render_index(root: Path) -> str:
     return (
         "# Memory Index\n\n"
         "> 本文件由 `python3 -m self_improving sync` 生成；禁止手工修改表格。\n"
-        "> `memory.md` 每会话加载，其他文件按任务需要读取。\n\n"
+        "> `memory.md` 仅在配置开启核心注入时加载，其他文件按任务需要读取。\n\n"
         "| 类别 | 文件 | 标题 | 行数 |\n"
         "|---|---|---|---:|\n"
         + "\n".join(rows)
@@ -81,7 +87,10 @@ def broken_local_links(root: Path) -> list[str]:
     for source in root.rglob("*.md"):
         relative = source.relative_to(root)
         # 自动捕获的候选/日志（.learnings/）不是文档，其中的不可信文本不做断链检查。
-        if any(part in VOLATILE_PARTS for part in relative.parts):
+        if (
+            any(part in VOLATILE_PARTS or part in ARCHIVE_PARTS for part in relative.parts)
+            or relative.name in AUDIT_ONLY_FILES
+        ):
             continue
         text = source.read_text(encoding="utf-8")
         for raw in LINK.findall(text):
@@ -96,3 +105,53 @@ def broken_local_links(root: Path) -> list[str]:
             if not destination.exists():
                 broken.append(f"{source.relative_to(root)} -> {target}")
     return sorted(set(broken))
+
+
+def broken_local_references(root: Path) -> list[str]:
+    """Check backticked Markdown paths that ordinary link validation cannot see."""
+    broken: list[str] = []
+    for source in root.rglob("*.md"):
+        relative = source.relative_to(root)
+        if (
+            any(part in VOLATILE_PARTS or part in ARCHIVE_PARTS for part in relative.parts)
+            or relative.name in AUDIT_ONLY_FILES
+        ):
+            continue
+        text = source.read_text(encoding="utf-8")
+        for raw in BACKTICK_PATH.findall(text):
+            target = raw.split("#", 1)[0]
+            if target.startswith(("http://", "https://")):
+                continue
+            if not (
+                target.startswith(("~/", "$HOME/", "./", "../", "/"))
+                or "/" in target
+            ):
+                # A bare `name.md` is often a label or example rather than a
+                # resolvable path. Only references with an explicit root or
+                # directory component have a deterministic base to validate.
+                continue
+            if target.startswith("~/"):
+                destination = Path(target).expanduser()
+            elif target.startswith("$HOME/"):
+                destination = Path.home() / target.removeprefix("$HOME/")
+            elif Path(target).is_absolute():
+                destination = Path(target)
+            else:
+                destination = source.parent / target
+            if not destination.exists():
+                broken.append(f"{relative.as_posix()} -> {target}")
+    return sorted(set(broken))
+
+
+def expired_notices(root: Path, *, today: date | None = None) -> list[str]:
+    """Find explicit until-dates in the always-on core; archives are intentionally ignored."""
+    core = root / "memory.md"
+    if not core.exists():
+        return []
+    current = today or datetime.now(ZoneInfo("Asia/Shanghai")).date()
+    expired = {
+        value
+        for value in EXPIRY.findall(core.read_text(encoding="utf-8"))
+        if date.fromisoformat(value) < current
+    }
+    return [f"memory.md -> {value}" for value in sorted(expired)]

@@ -1,5 +1,8 @@
 # 五分钟从零开始
 
+> V2.2.0 · 2026-08-31 · 适用于 self-improving 3.0.0：恢复会话在规则变化时发送完整替换，撤销或归位最后一条规则时清空旧注入。
+> V2.1.0 · 2026-08-31 · 适用于 self-improving 3.0.0：恢复会话只跳过未变化内容，补齐生命周期查看与正式归位。
+> V2.0.0 · 2026-08-31 · 适用于 self-improving 3.0.0：默认只注入有生命周期的 v2 纠错，恢复会话跳过重复上下文。
 > V1.3.0 · 2026-08-31 · 适用于 self-improving 2.6.6，区分 Claude 弹框批准与 Codex 普通终端审核。
 > V1.2.1 · 2026-07-13 · 适用于 self-improving 2.5.1，术语澄清：「2.2 审核命令」改为「`review approve` 审核命令」。
 > V1.2.0 · 2026-07-12 · 适用于 self-improving 2.5.0，补充预审一键批准流程。
@@ -48,10 +51,10 @@ python3 -m self_improving init \
 
 ## 4. 打开一个全新会话
 
-完全退出并重新打开已启用的 Claude Code 或 Codex 会话。启动时，Hook 会读取：
+完全退出并重新打开已启用的 Claude Code 或 Codex 会话。启动时，Hook 默认只读取：
 
-- `memory.md`：精简的长期核心记忆。
-- `.self-improving/verified-corrections.jsonl`：只读取 `review approve` 审核命令写入、且范围适用于当前目录的正确答案；`corrections.md` 只是人类审计流水。
+- `.self-improving/verified-corrections.jsonl`：只读取 v2 审核命令写入、范围适用、仍在有效期内的正确答案；`corrections.md` 只是人类审计流水。
+- `memory.md` 和其他知识文档保留给按需读取，不再默认塞进每个会话；恢复旧会话会比较该会话上次收到的内容，没变化就静默，变化时废止旧注入并发送完整新集合；撤销或归位最后一条规则会发送一次清空信号。
 
 第一次安装还没有已批准纠错，因此第二部分为空是正常现象。
 
@@ -73,7 +76,7 @@ Hook 应输出类似：
 
 ## 6. 审核并批准
 
-候选攒到 3 条时，新会话开场 Agent 会主动提议预审——它读取候选、逐条提炼成规则草稿并给出批准/拒绝建议。不想等提醒，也可以随时对 Agent 说"审核一下纠错候选"。
+候选攒到 3 条时，结束对话会按冷却时间提醒审核；也可以随时对 Agent 说“审核一下纠错候选”。提醒不再占用每个新会话的开场上下文。
 
 - Claude Code：你在对话里说"同意"后，Agent 代跑批准命令，客户端弹出一次权限确认框；核对命令内容后点允许即完成。
 - Codex：你在对话里说"同意"后，Agent 给出一条只含候选指纹的交互命令，但不会代跑；把它复制到普通终端，再按提示输入规则正文和作用范围。Codex 的 Hook 不支持单次询问，Agent 工具里的权威写入会被直接拒绝。
@@ -96,10 +99,14 @@ python3 -m self_improving review approve-interactive \
 ```text
 正在审核候选：[fp:12ab34cd56ef]
 正确规则：先读取当前文件，再根据实际内容判断。
-作用范围（global 或 project:/绝对路径）：global
+作用范围（global、repo:/仓库绝对路径或 project:/绝对路径）：global
+正式归位目标（如 global-rules、project-rules 或 skill-docs）：global-rules
+优先级（normal/critical，默认 normal）：
+多少天后复核（默认 30）：
+多少天后停止注入（默认 90）：
 ```
 
-先核对终端显示的指纹与本次要审核的候选一致；每次只运行一条交互审核命令，不要用 `&&` 串联。看到 `imported` 表示批准完成。规则正文与作用范围通过程序输入，不进入 Shell 命令，因此即使包含引号或 `$()` 也只会作为文字保存。请写完整、准确、适用范围清楚的句子，不要直接复制含糊的抱怨。`global` 表示所有项目都适用；只适用于一个项目时输入 `project:/绝对路径`。
+先核对终端显示的指纹与本次候选一致；每次只运行一条交互审核命令，不要用 `&&` 串联。规则正文等字段通过程序输入，不进入 Shell 命令。`global` 表示所有项目；`repo:/绝对路径` 覆盖同一 Git 仓库及其 worktree；`project:/绝对路径` 只覆盖一个目录树。归位目标说明这条临时纠错最终应写进哪份正式规则；到期后停止注入，避免永久占用上下文。
 
 跨 Agent 只表示 Claude Code 与 Codex 共享同一条经验，不等于所有项目都该收到这条经验。
 
@@ -118,7 +125,7 @@ python3 -m self_improving sync
 python3 -m self_improving doctor
 ```
 
-“学习闭环”应显示至少“机器可验证 1 条；当前目录适用 1 条；当前可注入 1 条”。然后再次在适用目录新开 Claude Code 或 Codex 会话。`SessionStart` 会产生：
+“学习闭环”应显示至少“机器可验证 1 条；全作用域活动上界 1 条；预算内可选 1 条”。然后在适用目录新开会话。继续恢复原会话且内容不变时不会重复注入；如果恢复前规则集合变化，恢复时会发送一次完整替换。`SessionStart` 会产生：
 
 ```text
 <verified-corrections>
@@ -127,18 +134,33 @@ python3 -m self_improving doctor
 </verified-corrections>
 ```
 
-到这里才算从“保存了一条记录”走到了“两个 Agent 下次都会采用”。
+到这里才算从“保存记录”走到了“两个 Agent 在有效期内采用”。用下面的命令查看复核期、失效期和归位目标：
 
-## 8. 日常只记住四条命令
+```bash
+python3 -m self_improving review lifecycle-list
+```
+
+稳定后，把规则写进提示的全局规则、项目规则或 Skill 并完成验证，再运行：
+
+```bash
+python3 -m self_improving review promote \
+  --fingerprint '[fp:12ab34cd56ef]'
+```
+
+看到 `promoted:...` 后，这条临时纠错停止注入，审计历史仍保留。规则错误或不再适用、但没有归位时，使用 `review revoke`。
+
+## 8. 日常只记住五条命令
 
 ```bash
 python3 -m self_improving review list
+python3 -m self_improving review lifecycle-list
 python3 -m self_improving doctor
 python3 -m self_improving sync
 python3 -m self_improving upgrade
 ```
 
 - `review list`：看待审核纠错。
+- `review lifecycle-list`：看正在注入、待复核和已失效的临时纠错。
 - `doctor`：检查接线和学习闭环。
 - `sync`：刷新 Obsidian 或普通记忆目录的知识索引。
 - `upgrade`：更新版本后补齐配置并重新接线。
@@ -161,7 +183,7 @@ python3 -m self_improving persistence disable
 python3 -m self_improving persistence enable
 ```
 
-关闭持久化只是不再写新候选，不影响读取已有核心记忆和已批准纠错。
+关闭持久化只是不再写新候选，不影响读取已有的有效纠错；Hook 保持静默，不额外写一条“已关闭”消息进上下文。
 
 ## 10. 更新和卸载
 
@@ -185,7 +207,7 @@ python3 -m self_improving uninstall --keep-data
 
 ## 11. 旧版纠错流水怎么办
 
-旧 `corrections.md` 是事故与晋升历史，不要整表自动启用：已经晋升的规则通常已在核心或领域文档中，再导入只会重复；被替代、废弃的规则更不能复活。
+旧 `corrections.md` 和 v1 JSONL 批准记录是事故与晋升历史，不要整表自动启用：已经晋升的规则通常已在核心或领域文档中，再导入只会重复；被替代、废弃的规则更不能复活。
 
 仍然有效、但尚未进入现行记忆的规则，应先缩成一句当前可执行规则，再明确选择范围：
 
@@ -194,4 +216,4 @@ python3 -m self_improving review import-legacy-interactive \
   --legacy-id 'legacy:12ab34cd56ef'
 ```
 
-先运行 `python3 -m self_improving review legacy-list` 取得由旧行原文生成的稳定 `legacy:...` 编号；它不会因其他行插入而漂移。运行交互命令后，程序会先验证并显示当前旧记录 ID，再提示输入重新提炼的现行规则和作用范围；同样每次只处理一条。导入命令会返回 `[fp:...]` 指纹。它和普通批准一样受预算、项目范围和撤销机制管理。系统故意不提供“把全部 active 一键启用”，因为旧流水没有可靠范围，批量全局注入会把单个项目的特定经验带到所有无关任务里。
+先运行 `python3 -m self_improving review legacy-list` 取得稳定的 `legacy:...` 编号；列表同时覆盖合格的旧 Markdown 行和活动 v1 JSONL 批准。Markdown 编号由原文生成，不会因其他行插入而漂移。运行交互命令后，程序会先验证并显示当前旧记录 ID，再提示输入重新提炼的现行规则和作用范围；同样每次只处理一条。导入命令会返回 `[fp:...]` 指纹。v1 记录成功替换为 v2 后会追加撤销事件，不会继续出现在旧记录列表。它和普通批准一样受预算、项目范围和生命周期管理。系统故意不提供“把全部 active 一键启用”，因为旧流水没有可靠范围，批量全局注入会把单个项目的特定经验带到所有无关任务里。

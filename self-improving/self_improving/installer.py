@@ -73,7 +73,7 @@ def _backup(path: Path, state_root: Path) -> Path | None:
     return backup
 
 
-def _groups(platform: str) -> dict[str, list[dict[str, Any]]]:
+def _groups(platform: str, config: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     matchers = {
         "PreToolUse": "Write|Edit|Bash" if platform == "claude" else "Bash|apply_patch",
         "PostToolUse": "Bash",
@@ -139,7 +139,7 @@ def install_hooks(config: dict[str, Any], platform: str) -> tuple[Path, Path | N
     hooks = payload.setdefault("hooks", {})
     if not isinstance(hooks, dict):
         raise ValueError(f"hooks must be an object: {path}")
-    for event, groups in _groups(platform).items():
+    for event, groups in _groups(platform, config).items():
         hooks[event] = _without_managed(hooks.get(event)) + groups
     atomic_write_json(path, payload)
     return path, backup
@@ -171,7 +171,7 @@ def hook_is_installed(config: dict[str, Any], platform: str) -> bool:
     hooks = payload.get("hooks", {})
     if not isinstance(hooks, dict):
         return False
-    expected = _groups(platform)
+    expected = _groups(platform, config)
     return all(
         any(
             isinstance(group, dict)
