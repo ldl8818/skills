@@ -28,7 +28,8 @@ else:
 
 def find_skill(name, project=None):
     wanted = os.path.abspath(project) if project else "global"
-    for s in core.collect_all(all_projects=True):
+    skills = core.collect_all(projects=[wanted]) if project else core.collect_all(all_projects=True)
+    for s in skills:
         if s.name == name and s.scope == wanted and s.source in ("github", "local", "frozen"):
             return s
     return None

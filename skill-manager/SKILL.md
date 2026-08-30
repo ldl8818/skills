@@ -1,17 +1,9 @@
 ---
 name: skill-manager
-description: >
-  Skill 生命周期管理器。列出、检查更新、更新、启用/禁用、定版本号、自检、删除已安装的 skill。
-  覆盖 Claude Code、OpenAI Codex、Grok、Gemini CLI、Google Antigravity 的
-  共享全局、客户端全局、项目级 Skill 目录、Claude 插件生命周期和 Codex 插件状态盘点，
-  同时只读盘点 Codex 内置 Skill；按真实路径去重，并区分「已安装、已启用、本会话已生效」。
-  触发词：列出技能、列出所有技能、我有哪些技能、查看 skill、skill 列表、
-  检查更新、有没有新版本、更新 skill、启用 skill、禁用 skill、删除 skill、
-  skill 体检、skill 自检、升版本号、这个 skill 哪来的、溯源、
-  list skills、check updates、enable/disable skill、skill doctor、bump version、trace source。
+description: 管理已安装 Skill：列出与溯源、检查更新、启停、删除、定版本和自检，并区分已安装、已启用与本会话生效。仅在用户明确提到 Skill 生命周期时使用；创建或优化 Skill 内容走 skill-creator，插件连接走 plugin-management。
 license: MIT
 metadata:
-  version: "2.6.3"
+  version: "2.6.5"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
