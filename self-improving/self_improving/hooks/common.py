@@ -5,23 +5,34 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import re
+import shlex
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from self_improving import __version__
 from self_improving.config import load_config, resolved
 from self_improving.events import normalize
 from self_improving.paths import atomic_write_json
-from self_improving.security import contains_secret
-from self_improving.storage import VERIFIED_RELATIVE, append_candidate, append_error, pending_correction_count, persistence_enabled, verified_corrections
+from self_improving.security import advisory_lock, contains_secret, digest
+from self_improving.storage import (
+    RECEIPT_RESERVE_TOKENS,
+    SESSION_UPDATE_RESERVE_TOKENS,
+    VERIFIED_RELATIVE,
+    VERIFIED_WRAPPER_TOKENS,
+    append_candidate,
+    append_error,
+    correction_selection,
+    estimate_tokens,
+    pending_correction_count,
+    persistence_enabled,
+    render_verified_corrections,
+)
 
 
 # 英文关键词用「前后不是英文字母」而不是 \b：要排除的是 remembering 这类派生词，
 # 不是相邻的中文。\b 把中文也当词字符，会让「请remember先读文件」漏捕。
 CORRECTION = re.compile(r"你又错了|我说过|你怎么又|不对|不是这样|应该是|应该用|记住|别忘了|(?<![A-Za-z])(?:remember|stop doing)(?![A-Za-z])", re.I)
-ERROR = re.compile(r"error:|failed|command not found|no such file|permission denied|fatal:|exception|traceback|non-zero|interrupted", re.I)
 REVIEW_REMINDER_THRESHOLD = 3
-
 # 纠错是人对上一轮输出的即时否定，天然简短。长文本（粘贴的文档、客户端生成的
 # 长提示词）几乎必然偶然包含某个关键词，长度越大误判概率越趋近 1，因此先于
 # 关键词判定按长度截断。此判据与"消息长什么样"无关，未见过的机器消息同样挡得住。
@@ -84,7 +95,127 @@ def _record_schema(state_root: Path, platform: str, event: str, payload: dict) -
         "observed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "shape": _schema_shape(payload),
     }
+    try:
+        previous = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        previous = {}
+    if (
+        previous.get("package_version") == __version__
+        and previous.get("shape") == shape["shape"]
+        and str(previous.get("observed_at", ""))[:10] == shape["observed_at"][:10]
+    ):
+        return
     atomic_write_json(path, shape)
+
+
+def _review_reminder_due(state_root: Path, platform: str, interval_hours: int) -> bool:
+    path = state_root / "review-reminders" / f"{platform}.json"
+    with advisory_lock(state_root / "locks" / f"review-reminder-{platform}.lock"):
+        now = datetime.now(timezone.utc)
+        try:
+            previous = json.loads(path.read_text(encoding="utf-8"))
+            sent_at = datetime.fromisoformat(previous["sent_at"])
+            if sent_at.tzinfo is not None and now - sent_at < timedelta(hours=interval_hours):
+                return False
+        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+            pass
+        atomic_write_json(path, {"sent_at": now.isoformat(timespec="seconds")})
+        return True
+
+
+def _receipt_value(value: int | str) -> int | str:
+    return "999+" if isinstance(value, int) and value > 999 else value
+
+
+def _valid_core_memory(path: Path, max_chars: int) -> tuple[str, str]:
+    if not path.exists():
+        return "", "missing"
+    memory = path.read_text(encoding="utf-8")
+    lines = memory.splitlines()
+    valid_title = lines and lines[0].startswith(("# Memory ·", "# Memory "))
+    if not 5 <= len(lines) <= 50 or len(memory) > max_chars or not valid_title or contains_secret(memory):
+        return "", "invalid"
+    return memory.rstrip(), "ok"
+
+
+MUTATING_REVIEW_ACTIONS = {
+    "approve",
+    "approve-interactive",
+    "reject",
+    "revoke",
+    "promote",
+    "import-legacy",
+    "import-legacy-interactive",
+}
+
+
+def _shell_tokens(command: str) -> list[str]:
+    """Tokenize like a POSIX shell so adjacent quoted fragments cannot hide words."""
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        return list(lexer)
+    except ValueError:
+        return []
+
+
+def _review_invocations(tokens: list[str]) -> list[tuple[int, str]]:
+    invocations: list[tuple[int, str]] = []
+    for index, token in enumerate(tokens):
+        normalized = Path(token).name.replace("_", "-")
+        if normalized != "self-improving" or index + 2 >= len(tokens):
+            continue
+        if tokens[index + 1] == "review" and tokens[index + 2] in MUTATING_REVIEW_ACTIONS:
+            invocations.append((index, tokens[index + 2]))
+    return invocations
+
+
+def _is_review_help(tokens: list[str]) -> bool:
+    """Allow only one standalone, exact, read-only help invocation."""
+    invocations = _review_invocations(tokens)
+    if len(invocations) != 1:
+        return False
+    index, _ = invocations[0]
+    prefix_ok = index == 0 or (
+        index == 2
+        and Path(tokens[0]).name.startswith("python")
+        and tokens[1] == "-m"
+    )
+    return prefix_ok and tokens[index + 3 :] in (["-h"], ["--help"])
+
+
+def _session_context_output(
+    state_root: Path,
+    platform: str,
+    session_id: str,
+    source: str,
+    resume_mode: str,
+    rendered: str,
+) -> str:
+    """Return a full replacement on changed resumes, or nothing when unchanged."""
+    if not session_id:
+        return rendered if source != "resume" else ""
+    session_key = digest(session_id)[:24]
+    path = state_root / "session-context" / platform / f"{session_key}.json"
+    current_digest = digest(rendered)
+    with advisory_lock(state_root / "locks" / f"session-context-{platform}-{session_key}.lock"):
+        try:
+            previous = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError):
+            previous = {}
+        previous_digest = previous.get("digest")
+        if source == "resume" and resume_mode != "always" and previous_digest == current_digest:
+            return ""
+        atomic_write_json(path, {
+            "digest": current_digest,
+            "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        })
+    if source == "resume" and previous_digest and previous_digest != current_digest:
+        if rendered:
+            return "<self-improving-prior-injection-invalidated/>\n" + rendered
+        return "<self-improving-prior-injection-cleared/>"
+    return rendered
 
 
 def _dangerous_authority_write(event, memory_root: Path) -> bool:
@@ -123,16 +254,25 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
                 continue
         return False
     expanded = command.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
-    if re.search(
-        r"(?:self_improving|self-improving)\s+review\s+"
-        r"(?:approve(?:-interactive)?|reject|revoke|import-legacy(?:-interactive)?)\b",
-        expanded,
-    ):
+    tokens = _shell_tokens(expanded)
+    if _review_invocations(tokens) and not _is_review_help(tokens):
         return True
-    internal_authority_api = any(name in expanded for name in ("self_improving.review", "self_improving.storage", "append_verified_correction"))
-    if ("corrections.md" in expanded or "verified-corrections.jsonl" in expanded or internal_authority_api) and re.search(r"\b(?:python\d*|node|ruby|perl)\b", expanded):
+    internal_authority_api = any(
+        any(name in token for name in ("self_improving.review", "self_improving.storage", "append_verified_correction"))
+        for token in tokens
+    )
+    interpreter = any(Path(token).name.startswith("python") or token in {"node", "ruby", "perl"} for token in tokens)
+    if ("corrections.md" in expanded or "verified-corrections.jsonl" in expanded or internal_authority_api) and interpreter:
         return True
-    write_signal = bool(re.search(r">{1,2}(?!\s*(?:/dev/null\b|&\d))|\b(?:tee|rm|mv|cp|truncate)\b|\b(?:sed|perl)\s+-i", expanded))
+    write_signal = (
+        any(token in {"tee", "rm", "mv", "cp", "truncate"} for token in tokens)
+        or any(
+            token in {">", ">>"}
+            and (index + 1 >= len(tokens) or tokens[index + 1] != "/dev/null")
+            for index, token in enumerate(tokens)
+        )
+        or any(token in {"sed", "perl"} and index + 1 < len(tokens) and tokens[index + 1] == "-i" for index, token in enumerate(tokens))
+    )
     if not write_signal:
         return False
     if any(str(authority) in expanded for authority in authorities):
@@ -166,61 +306,70 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
         }, ensure_ascii=False))
         return 0
     if event.event == "SessionStart":
-        memory_path = root / "memory.md"
-        if not memory_path.exists():
-            print(f"<memory-source-warning>共享记忆不存在：{memory_path}</memory-source-warning>")
-            return 0
-        memory = memory_path.read_text(encoding="utf-8")
-        lines = memory.splitlines()
-        valid_title = lines and lines[0].startswith(("# Memory ·", "# Memory "))
         injection = config.get("injection", {})
-        core_limit = int(injection.get("max_core_chars", 8000))
-        if not 5 <= len(lines) <= 50 or len(memory) > core_limit or not valid_title or contains_secret(memory):
-            print(f"<memory-source-warning>共享记忆结构异常或疑似含敏感信息：{memory_path}</memory-source-warning>")
+        total_budget = int(injection.get("max_total_tokens", 1200))
+        if total_budget <= 0:
             return 0
-        print("<self-improving-memory>")
-        print(memory.rstrip())
-        print("</self-improving-memory>")
+        remaining = max(
+            0,
+            total_budget - RECEIPT_RESERVE_TOKENS - SESSION_UPDATE_RESERVE_TOKENS,
+        )
+        sections: list[str] = []
+        receipt: dict[str, int | str] = {}
+        if injection.get("include_core_memory", False):
+            memory, core_status = _valid_core_memory(
+                root / "memory.md", int(injection.get("max_core_chars", 8000))
+            )
+            if core_status != "ok":
+                receipt["core"] = core_status
+            else:
+                rendered = f"<self-improving-memory>\n{memory}\n</self-improving-memory>"
+                cost = estimate_tokens(rendered)
+                if cost <= remaining:
+                    sections.append(rendered)
+                    remaining -= cost
+                else:
+                    receipt["core"] = "budget_omitted"
         if injection.get("include_verified_corrections", True):
-            corrections = verified_corrections(
+            selection = correction_selection(
                 root,
                 int(injection.get("max_verified_corrections", 20)),
                 int(injection.get("max_verified_chars", 4000)),
+                max(0, remaining - VERIFIED_WRAPPER_TOKENS),
                 event.cwd,
+                min_version=int(injection.get("min_verified_version", 2)),
             )
-            if corrections:
-                print("<verified-corrections>")
-                print("以下内容已经人工审核；当前文件和可验证证据与其冲突时，以当前证据为准。")
-                for answer in corrections:
-                    print(f"- {answer}")
-                print("</verified-corrections>")
-        pending = pending_correction_count(root)
-        if pending >= REVIEW_REMINDER_THRESHOLD:
-            review_action = (
-                "逐条提炼规则草稿并给出批准/拒绝建议与作用范围；经用户明确同意后，"
-                "批准项只给出 review approve-interactive --fingerprint 命令，拒绝项给出 review reject 命令，"
-                "交给用户复制到普通终端执行；规则正文和作用范围由交互提示读取，不得放进 Shell 命令。"
-                "不要在 Codex Agent 工具中执行。"
-                if platform == "codex"
-                else "逐条提炼规则草稿并给出批准/拒绝建议与作用范围；经用户明确同意后再执行 "
-                "review approve/reject（多条可用 && 串联成一条命令），由客户端弹框确认。"
-            )
-            print(
-                f'<memory-review-reminder pending="{pending}">'
-                f"纠错候选箱已有 {pending} 条待审。请在合适时机向用户提议预审："
-                "运行 python3 -m self_improving review list --json 读取候选，"
-                f"{review_action}未经用户同意禁止批准。"
-                "</memory-review-reminder>"
-            )
+            if selection.answers:
+                sections.append(render_verified_corrections(selection.answers))
+            for key in ("omitted", "expired", "due", "legacy_ignored", "malformed"):
+                value = getattr(selection, key)
+                if value:
+                    receipt[key] = _receipt_value(value)
+        if receipt:
+            attrs = " ".join(f'{key}="{value}"' for key, value in receipt.items())
+            sections.append(f"<self-improving-receipt {attrs}/>")
+        rendered = "\n".join(sections)
+        output = _session_context_output(
+            state_root,
+            platform,
+            event.session_id,
+            event.source,
+            str(injection.get("resume_mode", "skip")),
+            rendered,
+        )
+        if output and estimate_tokens(output) <= total_budget:
+            print(output)
         return 0
     if event.event == "Stop":
+        if not persistence_enabled(config):
+            return 0
         pending = pending_correction_count(root)
-        if pending >= REVIEW_REMINDER_THRESHOLD:
+        interval = int(config.get("injection", {}).get("review_reminder_interval_hours", 24))
+        if pending >= REVIEW_REMINDER_THRESHOLD and _review_reminder_due(state_root, platform, interval):
             message = f"纠错候选箱已有 {pending} 条待审，请审核纠错候选。"
             print(json.dumps({"systemMessage": message}, ensure_ascii=False))
         return 0
     if not persistence_enabled(config):
-        print('<self-improving-persistence enabled="false"/>')
         return 0
     persistence = config["persistence"]
     if event.event == "UserPromptSubmit" and persistence.get("capture_corrections"):
@@ -237,10 +386,15 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
             )
             print(f'<correction-captured result="{result}"/>')
     if event.event == "PostToolUse" and persistence.get("capture_command_errors"):
-        failed = event.exit_status not in (None, 0) or bool(ERROR.search(event.tool_output))
-        if failed:
+        if event.failed:
             detail = event.tool_output or f"command exited with status {event.exit_status}"
-            result = append_error(root, state_root, event.tool_name or "shell", detail)
+            result = append_error(
+                root,
+                state_root,
+                event.tool_name or "shell",
+                detail,
+                max_entries=int(persistence.get("max_error_entries", 200)),
+            )
             print(f'<error-captured result="{result}"/>')
     return 0
 

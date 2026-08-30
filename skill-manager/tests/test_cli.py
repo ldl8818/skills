@@ -87,6 +87,23 @@ class CliSmokeTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertTrue((skill / "SKILL.md.disabled").exists())
 
+    def test_project_bump_targets_explicit_unregistered_project(self):
+        """--project 必须操作传入检出，不能退回已登记主仓或报找不到。"""
+        with tempfile.TemporaryDirectory() as home:
+            project = Path(home) / "unregistered-worktree"
+            skill = project / ".agents" / "skills" / "demo"
+            skill.mkdir(parents=True)
+            skill_md = skill / "SKILL.md"
+            skill_md.write_text(
+                "---\nname: demo\ndescription: demo\nmetadata:\n"
+                "  version: \"1.0.0\"\n  source: local\n---\n",
+                encoding="utf-8",
+            )
+            result = self.run_cli(
+                "bump_skill.py", "demo", "--project", str(project), home=home)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('version: "1.0.1"', skill_md.read_text(encoding="utf-8"))
+
     def test_global_agents_skill_can_be_resolved_for_delete_dry_run(self):
         with tempfile.TemporaryDirectory() as home:
             skill = Path(home) / ".agents" / "skills" / "demo"

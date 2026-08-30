@@ -14,10 +14,23 @@ SCHEMA_VERSION = 1
 
 
 INJECTION_DEFAULTS = {
+    "include_core_memory": False,
     "include_verified_corrections": True,
+    "resume_mode": "skip",
+    "max_total_tokens": 1200,
+    "min_verified_version": 2,
+    "review_reminder_interval_hours": 24,
     "max_core_chars": 8000,
     "max_verified_corrections": 20,
     "max_verified_chars": 4000,
+}
+
+PERSISTENCE_DEFAULTS = {
+    "enabled": True,
+    "capture_corrections": False,
+    "capture_command_errors": False,
+    "max_candidate_chars": 500,
+    "max_error_entries": 200,
 }
 
 
@@ -39,12 +52,7 @@ def default_config(memory_root: str | None = None) -> dict[str, Any]:
                 "config_file": "~/.codex/config.toml",
             },
         },
-        "persistence": {
-            "enabled": True,
-            "capture_corrections": False,
-            "capture_command_errors": False,
-            "max_candidate_chars": 500,
-        },
+        "persistence": deepcopy(PERSISTENCE_DEFAULTS),
         "injection": deepcopy(INJECTION_DEFAULTS),
     }
 
@@ -62,17 +70,37 @@ def validate_config(config: dict[str, Any]) -> None:
     injection = config.get("injection", INJECTION_DEFAULTS)
     if not isinstance(injection, dict):
         raise ValueError("injection must be an object")
-    enabled = injection.get("include_verified_corrections", True)
-    if not isinstance(enabled, bool):
-        raise ValueError("injection.include_verified_corrections must be a boolean")
-    for key, maximum in (("max_core_chars", 50000), ("max_verified_corrections", 200), ("max_verified_chars", 20000)):
+    for key in ("include_core_memory", "include_verified_corrections"):
+        if not isinstance(injection.get(key, INJECTION_DEFAULTS[key]), bool):
+            raise ValueError(f"injection.{key} must be a boolean")
+    if injection.get("resume_mode", INJECTION_DEFAULTS["resume_mode"]) not in {"skip", "always"}:
+        raise ValueError("injection.resume_mode must be skip or always")
+    for key, minimum, maximum in (
+        ("max_total_tokens", 0, 20000),
+        ("min_verified_version", 1, 2),
+        ("review_reminder_interval_hours", 0, 24 * 30),
+        ("max_core_chars", 0, 50000),
+        ("max_verified_corrections", 0, 200),
+        ("max_verified_chars", 0, 20000),
+    ):
         value = injection.get(key, INJECTION_DEFAULTS[key])
+        if not isinstance(value, int) or isinstance(value, bool) or not minimum <= value <= maximum:
+            raise ValueError(f"injection.{key} must be an integer between {minimum} and {maximum}")
+    persistence = config["persistence"]
+    for key in ("enabled", "capture_corrections", "capture_command_errors"):
+        if not isinstance(persistence.get(key, PERSISTENCE_DEFAULTS[key]), bool):
+            raise ValueError(f"persistence.{key} must be a boolean")
+    for key, maximum in (("max_candidate_chars", 5000), ("max_error_entries", 5000)):
+        value = persistence.get(key, PERSISTENCE_DEFAULTS[key])
         if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= maximum:
-            raise ValueError(f"injection.{key} must be an integer between 0 and {maximum}")
+            raise ValueError(f"persistence.{key} must be an integer between 0 and {maximum}")
 
 
 def with_defaults(config: dict[str, Any]) -> dict[str, Any]:
     result = deepcopy(config)
+    persistence = result.setdefault("persistence", {})
+    for key, value in PERSISTENCE_DEFAULTS.items():
+        persistence.setdefault(key, value)
     injection = result.setdefault("injection", {})
     for key, value in INJECTION_DEFAULTS.items():
         injection.setdefault(key, value)

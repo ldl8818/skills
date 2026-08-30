@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 import re
 
 from self_improving.paths import atomic_write
 from self_improving.security import advisory_lock, digest, sanitize
-from self_improving.storage import CORRECTIONS_LOCK, append_verified_correction, normalize_scope, revoke_verified_correction
+from self_improving.storage import (
+    CORRECTIONS_LOCK,
+    append_verified_correction,
+    load_verified_records,
+    normalize_scope,
+    promote_verified_correction,
+    revoke_verified_correction,
+)
 
 
 # The Match column (why capture fired) was added in 2.6.4; rows written before
@@ -43,7 +50,7 @@ def list_candidates(root: Path) -> list[str]:
     ]
 
 
-def legacy_entries(root: Path) -> list[dict]:
+def _markdown_legacy_entries(root: Path) -> list[dict]:
     path = root / "corrections.md"
     if not path.exists():
         return []
@@ -63,6 +70,7 @@ def legacy_entries(root: Path) -> list[dict]:
             continue
         entries.append({
             "legacy_id": f"legacy:{digest(raw)[:12]}",
+            "origin": "markdown",
             "line_number": line_number,
             "date": date_text,
             "status": parts[1],
@@ -71,10 +79,72 @@ def legacy_entries(root: Path) -> list[dict]:
     return entries
 
 
+def _verified_v1_legacy_entries(root: Path) -> list[dict]:
+    records, malformed = load_verified_records(root)
+    if malformed:
+        raise ValueError("verified correction ledger is malformed")
+    entries: list[dict] = []
+    for record in records:
+        if record["version"] != 1:
+            continue
+        fingerprint = record["fingerprint"]
+        entries.append({
+            "legacy_id": f"legacy:{digest(f'verified-v1|{fingerprint}')[:12]}",
+            "origin": "verified-v1",
+            "fingerprint": fingerprint,
+            "line_number": None,
+            "date": record["_approved_utc"].date().isoformat(),
+            "status": "approved-v1",
+            "preview": sanitize(record["answer"], 180),
+        })
+    return entries
+
+
+def legacy_entries(root: Path) -> list[dict]:
+    return _markdown_legacy_entries(root) + _verified_v1_legacy_entries(root)
+
+
 def list_legacy(root: Path) -> list[str]:
+    rows = []
+    for entry in legacy_entries(root):
+        location = f"L{entry['line_number']}" if entry["origin"] == "markdown" else "verified-v1.jsonl"
+        rows.append(
+            f"{entry['legacy_id']} | {location} | {entry['status']} | {entry['date']} | {entry['preview']}"
+        )
+    return rows
+
+
+def lifecycle_entries(root: Path, *, now: datetime | None = None) -> list[dict]:
+    records, malformed = load_verified_records(root)
+    if malformed:
+        raise ValueError("verified correction ledger is malformed")
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    rows: list[dict] = []
+    for record in records:
+        if record["version"] != 2:
+            continue
+        review_at = record["_review_utc"]
+        expires_at = record["_expires_utc"]
+        status = "expired" if expires_at <= current else "due" if review_at <= current else "active"
+        rows.append({
+            "fingerprint": record["fingerprint"],
+            "status": status,
+            "priority": record["priority"],
+            "scope": record["scope"],
+            "review_at": review_at.isoformat(timespec="seconds"),
+            "expires_at": expires_at.isoformat(timespec="seconds"),
+            "promotion_target": record["promotion_target"],
+            "answer": record["answer"],
+        })
+    return rows
+
+
+def list_lifecycle(root: Path) -> list[str]:
     return [
-        f"{entry['legacy_id']} | L{entry['line_number']} | {entry['status']} | {entry['date']} | {entry['preview']}"
-        for entry in legacy_entries(root)
+        f"{entry['fingerprint']} | {entry['status']} | {entry['priority']} | {entry['scope']} | "
+        f"复核 {entry['review_at']} | 失效 {entry['expires_at']} | 归位 {entry['promotion_target']} | "
+        f"{sanitize(entry['answer'], 180)}"
+        for entry in lifecycle_entries(root)
     ]
 
 
@@ -87,7 +157,19 @@ def _validated_answer(correct: str) -> str:
     return answer
 
 
-def decide(root: Path, state_root: Path, fingerprint: str, action: str, correct: str = "", scope: str = "") -> str:
+def decide(
+    root: Path,
+    state_root: Path,
+    fingerprint: str,
+    action: str,
+    correct: str = "",
+    scope: str = "",
+    *,
+    priority: str = "normal",
+    promotion_target: str = "temporary",
+    review_after_days: int = 30,
+    expires_after_days: int = 90,
+) -> str:
     inbox = root / ".learnings/CORRECTIONS_INBOX.md"
     with advisory_lock(state_root / CORRECTIONS_LOCK):
         text = inbox.read_text(encoding="utf-8")
@@ -99,8 +181,18 @@ def decide(root: Path, state_root: Path, fingerprint: str, action: str, correct:
         new = old.rsplit("| candidate |", 1)[0] + f"| {status} |"
         if action == "approve":
             answer = _validated_answer(correct)
-            scope = normalize_scope(scope)
-            append_verified_correction(root, fingerprint, answer, scope, f"candidate:{fingerprint}")
+            scope = normalize_scope(scope, allow_resolved_repo=False)
+            append_verified_correction(
+                root,
+                fingerprint,
+                answer,
+                scope,
+                f"candidate:{fingerprint}",
+                priority=priority,
+                promotion_target=promotion_target,
+                review_after_days=review_after_days,
+                expires_after_days=expires_after_days,
+            )
         try:
             atomic_write(inbox, text.replace(old, new, 1))
         except OSError as exc:
@@ -117,17 +209,47 @@ def revoke(root: Path, state_root: Path, fingerprint: str) -> str:
     return "revoked"
 
 
-def import_legacy(root: Path, state_root: Path, legacy_id: str, correct: str, scope: str) -> str:
+def promote(root: Path, state_root: Path, fingerprint: str) -> str:
+    with advisory_lock(state_root / CORRECTIONS_LOCK):
+        target = promote_verified_correction(root, fingerprint)
+    return f"promoted:{target}"
+
+
+def import_legacy(
+    root: Path,
+    state_root: Path,
+    legacy_id: str,
+    correct: str,
+    scope: str,
+    *,
+    priority: str = "normal",
+    promotion_target: str = "temporary",
+    review_after_days: int = 30,
+    expires_after_days: int = 90,
+) -> str:
     source = sanitize(legacy_id, 80)
     answer = _validated_answer(correct)
     if not source:
         raise ValueError("legacy id is required")
     if not STABLE_LEGACY_ID.fullmatch(source):
         raise ValueError("legacy id must come from review legacy-list")
-    scope = normalize_scope(scope)
+    scope = normalize_scope(scope, allow_resolved_repo=False)
     fingerprint = f"[fp:{digest(f'verified|{source}')[:12]}]"
     with advisory_lock(state_root / CORRECTIONS_LOCK):
-        if not any(entry["legacy_id"] == source for entry in legacy_entries(root)):
+        selected = next((entry for entry in legacy_entries(root) if entry["legacy_id"] == source), None)
+        if selected is None:
             raise ValueError("legacy row not found; refresh review legacy-list")
-        append_verified_correction(root, fingerprint, answer, scope, source)
+        append_verified_correction(
+            root,
+            fingerprint,
+            answer,
+            scope,
+            source,
+            priority=priority,
+            promotion_target=promotion_target,
+            review_after_days=review_after_days,
+            expires_after_days=expires_after_days,
+        )
+        if selected["origin"] == "verified-v1":
+            revoke_verified_correction(root, selected["fingerprint"])
     return fingerprint

@@ -5,24 +5,27 @@ import io
 import os
 from pathlib import Path
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 import unittest
 from unittest.mock import patch
 from contextlib import redirect_stdout
 import shlex
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 
 from self_improving import __version__
 from self_improving.config import default_config, load_config, resolved, write_config
 from self_improving.events import normalize
-from self_improving.hooks.common import MAX_CORRECTION_CHARS, dispatch
+from self_improving.hooks.common import MAX_CORRECTION_CHARS, _review_reminder_due, dispatch
 from self_improving.installer import MARKER, hook_is_installed, install_hooks, uninstall_hooks
-from self_improving.indexing import broken_local_links, sync_index
+from self_improving.indexing import broken_local_links, broken_local_references, expired_notices, sync_index
 from self_improving.security import contains_secret, sanitize
 from self_improving.review import candidate_entries, decide, list_candidates
 from self_improving.storage import (
     active_corrections,
     append_verified_correction,
+    correction_selection,
     initialize_memory,
     load_verified_records,
     verified_corrections,
@@ -60,7 +63,14 @@ class SystemTests(unittest.TestCase):
         self.temp.cleanup()
 
     def env(self):
-        return patch.dict(os.environ, {"SELF_IMPROVING_CONFIG": str(self.config_path)}, clear=False)
+        return patch.dict(
+            os.environ,
+            {
+                "HOME": str(self.home),
+                "SELF_IMPROVING_CONFIG": str(self.config_path),
+            },
+            clear=False,
+        )
 
     def test_cli_help_version_and_invalid_exit_codes(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -96,6 +106,23 @@ class SystemTests(unittest.TestCase):
         self.assertTrue(loaded["injection"]["include_verified_corrections"])
         self.assertEqual(loaded["injection"]["max_verified_corrections"], 20)
 
+    def test_cost_safe_injection_defaults(self) -> None:
+        injection = default_config()["injection"]
+        self.assertFalse(injection["include_core_memory"])
+        self.assertEqual(injection["resume_mode"], "skip")
+        self.assertEqual(injection["max_total_tokens"], 1200)
+        self.assertEqual(injection["min_verified_version"], 2)
+        self.assertEqual(injection["review_reminder_interval_hours"], 24)
+
+        from self_improving.storage import estimate_tokens
+
+        self.assertGreaterEqual(estimate_tokens("😀" * 10), 10)
+
+    def test_verified_version_zero_is_rejected(self) -> None:
+        self.config["injection"]["min_verified_version"] = 0
+        with self.env(), self.assertRaises(ValueError):
+            write_config(self.config)
+
     def test_config_template_matches_runtime_defaults(self) -> None:
         template = json.loads((Path(__file__).resolve().parents[1] / "templates/config.json").read_text())
         self.assertEqual(template, default_config())
@@ -112,6 +139,47 @@ class SystemTests(unittest.TestCase):
         codex_post = normalize("codex", "PostToolUse", json.loads((fixtures / "codex-post-tool.json").read_text()))
         self.assertIn("command failed", claude_post.tool_output)
         self.assertEqual(codex_post.tool_output, "command failed")
+
+        session = normalize("codex", "SessionStart", {
+            "session_id": "session-a",
+            "source": "resume",
+            "hook_event_name": "SessionStart",
+        })
+        self.assertEqual(session.source, "resume")
+
+    def test_error_capture_uses_structured_failure_not_output_keywords(self) -> None:
+        self.config["persistence"]["capture_command_errors"] = True
+        errors = self.memory / ".learnings/ERRORS.md"
+        before = errors.read_text()
+        with self.env():
+            write_config(self.config)
+            dispatch("codex", "PostToolUse", {
+                "tool_name": "Bash",
+                "tool_response": {"exit_code": 0, "output": "documentation mentions error: and failed"},
+            })
+        self.assertEqual(errors.read_text(), before)
+
+        with self.env():
+            dispatch("codex", "PostToolUse", {
+                "tool_name": "Bash",
+                "tool_response": {"exit_code": 2, "stderr": "actual failure"},
+            })
+        self.assertIn("actual failure", errors.read_text())
+
+    def test_error_log_cap_and_disabled_persistence_are_silent(self) -> None:
+        self.config["persistence"]["capture_command_errors"] = True
+        self.config["persistence"]["max_error_entries"] = 1
+        with self.env():
+            write_config(self.config)
+            dispatch("codex", "PostToolUse", {"tool_name": "Bash", "tool_response": {"exit_code": 1, "stderr": "failure one"}})
+            dispatch("codex", "PostToolUse", {"tool_name": "Bash", "tool_response": {"exit_code": 2, "stderr": "failure two"}})
+            output = io.StringIO()
+            with patch.dict(os.environ, {"SELF_IMPROVING_PERSIST": "0"}), redirect_stdout(output):
+                dispatch("codex", "UserPromptSubmit", {"prompt": "不对，禁用时不要写入"})
+        rows = [line for line in (self.memory / ".learnings/ERRORS.md").read_text().splitlines() if line.startswith("| 20")]
+        self.assertEqual(len(rows), 1)
+        self.assertIn("failure two", rows[0])
+        self.assertEqual(output.getvalue(), "")
 
     def test_install_preserves_third_party_hooks(self) -> None:
         with self.env():
@@ -330,7 +398,7 @@ class SystemTests(unittest.TestCase):
             dispatch("codex", "UserPromptSubmit", {"prompt": "不对，这条候选需要安全交互审核"})
             fingerprint = list_candidates(self.memory)[0].split(" | ", 1)[0]
             output = io.StringIO()
-            with patch("builtins.input", side_effect=[malicious_rule, "global"]), redirect_stdout(output):
+            with patch("builtins.input", side_effect=[malicious_rule, "global", "global-rules", "", "", ""]), redirect_stdout(output):
                 result = main(["review", "approve-interactive", "--fingerprint", fingerprint])
         self.assertEqual(result, 0)
         self.assertEqual(output.getvalue().strip(), f"正在审核候选：{fingerprint}\nimported")
@@ -349,7 +417,7 @@ class SystemTests(unittest.TestCase):
             fingerprints = [row.split(" | ", 1)[0] for row in list_candidates(self.memory)]
             output = io.StringIO()
             for fingerprint, answer in zip(fingerprints, ("规则甲", "规则乙"), strict=True):
-                with patch("builtins.input", side_effect=[answer, "global"]), redirect_stdout(output):
+                with patch("builtins.input", side_effect=[answer, "global", "global-rules", "", "", ""]), redirect_stdout(output):
                     self.assertEqual(
                         main(["review", "approve-interactive", "--fingerprint", fingerprint]),
                         0,
@@ -392,6 +460,32 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(len(events), 2)
         self.assertIn('"event":"revoke"', events[-1])
 
+    def test_lifecycle_list_and_promote_stop_future_injection(self) -> None:
+        from self_improving.cli import main
+
+        fingerprint = "[fp:565656565656]"
+        append_verified_correction(
+            self.memory,
+            fingerprint,
+            "已经归位的规则",
+            "global",
+            promotion_target="global-rules",
+        )
+        with self.env():
+            listed = io.StringIO()
+            with redirect_stdout(listed):
+                self.assertEqual(main(["review", "lifecycle-list", "--json"]), 0)
+            rows = json.loads(listed.getvalue())
+            self.assertEqual(rows[0]["fingerprint"], fingerprint)
+            self.assertEqual(rows[0]["status"], "active")
+            self.assertEqual(rows[0]["promotion_target"], "global-rules")
+
+            promoted = io.StringIO()
+            with redirect_stdout(promoted):
+                self.assertEqual(main(["review", "promote", "--fingerprint", fingerprint]), 0)
+        self.assertEqual(promoted.getvalue().strip(), "promoted:global-rules")
+        self.assertEqual(active_corrections(self.memory), [])
+
     def test_legacy_rule_requires_explicit_answer_and_scope_then_can_be_revoked(self) -> None:
         from self_improving.cli import main
 
@@ -410,7 +504,7 @@ class SystemTests(unittest.TestCase):
             output = io.StringIO()
             with patch(
                 "builtins.input",
-                side_effect=["工具要求原文展示时，完整原文必须进入最终回复。", "global"],
+                side_effect=["工具要求原文展示时，完整原文必须进入最终回复。", "global", "global-rules", "", "", ""],
             ), redirect_stdout(output):
                 result = main(["review", "import-legacy-interactive", "--legacy-id", legacy_id])
             fingerprint = output.getvalue().strip()
@@ -420,7 +514,7 @@ class SystemTests(unittest.TestCase):
             self.assertEqual(active_corrections(self.memory), ["工具要求原文展示时，完整原文必须进入最终回复。"])
             conflicting = main([
                 "review", "import-legacy", "--legacy-id", legacy_id,
-                "--correct", "另一条规则", "--scope", "global",
+                "--correct", "另一条规则", "--scope", "global", "--promotion-target", "global-rules",
             ])
             self.assertEqual(conflicting, 1)
             project = self.home / "legacy-project"
@@ -428,7 +522,7 @@ class SystemTests(unittest.TestCase):
             scope_conflict = main([
                 "review", "import-legacy", "--legacy-id", legacy_id,
                 "--correct", "工具要求原文展示时，完整原文必须进入最终回复。",
-                "--scope", f"project:{project}",
+                "--scope", f"project:{project}", "--promotion-target", "project-rules",
             ])
             self.assertEqual(scope_conflict, 1)
             revoke_output = io.StringIO()
@@ -445,6 +539,7 @@ class SystemTests(unittest.TestCase):
                 reimport_result = main([
                     "review", "import-legacy", "--legacy-id", legacy_id,
                     "--correct", "调整后的规则", "--scope", "global",
+                    "--promotion-target", "global-rules",
                 ])
         self.assertEqual(reimport_result, 0)
         self.assertEqual(reimported.getvalue().strip(), fingerprint)
@@ -469,6 +564,43 @@ class SystemTests(unittest.TestCase):
         after = list_legacy(self.memory)
         self.assertEqual(len(after), 1)
         self.assertEqual(after[0].split(" | ", 1)[0], stable_id)
+
+    def test_verified_v1_jsonl_can_migrate_to_v2_once(self) -> None:
+        from self_improving.cli import main
+        from self_improving.storage import VERIFIED_RELATIVE
+
+        legacy_fingerprint = "[fp:676767676767]"
+        path = self.memory / VERIFIED_RELATIVE
+        path.write_text(json.dumps({
+            "version": 1,
+            "event": "approve",
+            "event_at": "2026-01-01T00:00:00+00:00",
+            "fingerprint": legacy_fingerprint,
+            "answer": "旧版账本规则",
+            "scope": "global",
+            "source_id": "candidate:[fp:676767676767]",
+        }, ensure_ascii=False) + "\n")
+        with self.env():
+            listed = io.StringIO()
+            with redirect_stdout(listed):
+                self.assertEqual(main(["review", "legacy-list"]), 0)
+            legacy_line = next(line for line in listed.getvalue().splitlines() if "verified-v1.jsonl" in line)
+            legacy_id = legacy_line.split(" | ", 1)[0]
+            imported = io.StringIO()
+            with redirect_stdout(imported):
+                self.assertEqual(main([
+                    "review", "import-legacy", "--legacy-id", legacy_id,
+                    "--correct", "新版生命周期规则", "--scope", "global",
+                    "--promotion-target", "global-rules",
+                ]), 0)
+            listed_again = io.StringIO()
+            with redirect_stdout(listed_again):
+                self.assertEqual(main(["review", "legacy-list"]), 0)
+        records, malformed = load_verified_records(self.memory)
+        self.assertEqual(malformed, 0)
+        self.assertEqual([record["version"] for record in records], [2])
+        self.assertEqual(active_corrections(self.memory, min_version=2), ["新版生命周期规则"])
+        self.assertNotIn(legacy_id, listed_again.getvalue())
 
     def test_append_only_ledger_failure_does_not_change_effective_state(self) -> None:
         from self_improving.storage import revoke_verified_correction
@@ -500,6 +632,55 @@ class SystemTests(unittest.TestCase):
                 dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart"})
         self.assertNotIn("verified-corrections", output.getvalue())
 
+    def test_idempotent_approval_requires_same_lifecycle(self) -> None:
+        fingerprint = "[fp:787878787878]"
+        append_verified_correction(
+            self.memory,
+            fingerprint,
+            "生命周期必须一致",
+            "global",
+            review_after_days=30,
+            expires_after_days=90,
+        )
+        with self.assertRaises(ValueError):
+            append_verified_correction(
+                self.memory,
+                fingerprint,
+                "生命周期必须一致",
+                "global",
+                review_after_days=60,
+                expires_after_days=120,
+            )
+
+    def test_v2_priority_lifecycle_and_budget_receipt(self) -> None:
+        append_verified_correction(self.memory, "[fp:101010101010]", "普通规则", "global")
+        append_verified_correction(
+            self.memory, "[fp:202020202020]", "关键规则", "global", priority="critical"
+        )
+        selected = correction_selection(
+            self.memory, 1, 100, 100, min_version=2,
+            now=datetime.now(timezone.utc),
+        )
+        self.assertEqual(selected.answers, ("关键规则",))
+        self.assertEqual(selected.omitted, 1)
+
+        future = correction_selection(
+            self.memory, 10, 100, 100,
+            min_version=2,
+            now=datetime.now(timezone.utc) + timedelta(days=91),
+        )
+        self.assertEqual(future.answers, ())
+        self.assertEqual(future.expired, 2)
+
+        self.config["injection"]["max_verified_corrections"] = 1
+        with self.env():
+            write_config(self.config)
+            output = io.StringIO()
+            with redirect_stdout(output):
+                dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart"})
+        self.assertIn("关键规则", output.getvalue())
+        self.assertIn('omitted="1"', output.getvalue())
+
     def test_project_scope_only_applies_inside_that_project(self) -> None:
         project = self.home / "project-a"
         project.mkdir()
@@ -516,18 +697,55 @@ class SystemTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_scope(f"project:{self.home / 'missing'}")
 
+    def test_repo_scope_applies_to_linked_worktree(self) -> None:
+        from self_improving.storage import normalize_scope
+
+        repository = self.home / "repository"
+        worktree = self.home / "linked-worktree"
+        subprocess.run(["git", "init", "-q", "-b", "main", str(repository)], check=True)
+        subprocess.run(["git", "-C", str(repository), "config", "user.email", "test@example.com"], check=True)
+        subprocess.run(["git", "-C", str(repository), "config", "user.name", "Test"], check=True)
+        repository.joinpath("tracked.txt").write_text("tracked")
+        subprocess.run(["git", "-C", str(repository), "add", "tracked.txt"], check=True)
+        subprocess.run(["git", "-C", str(repository), "commit", "-qm", "initial"], check=True)
+        subprocess.run(["git", "-C", str(repository), "worktree", "add", "-qb", "feature/test", str(worktree)], check=True)
+
+        scope = normalize_scope(f"repo:{repository}")
+        self.assertRegex(scope, r"^repo:[0-9a-f]{16}$")
+        append_verified_correction(self.memory, "[fp:555555555555]", "同仓库适用", scope)
+        self.assertEqual(active_corrections(self.memory, str(worktree)), ["同仓库适用"])
+
+        for index in range(199):
+            append_verified_correction(
+                self.memory,
+                f"[fp:{index:012x}]",
+                f"同仓规则 {index}",
+                scope,
+            )
+        with patch("self_improving.storage.subprocess.run", wraps=subprocess.run) as git_run:
+            self.assertEqual(len(active_corrections(self.memory, str(worktree))), 200)
+        self.assertLessEqual(git_run.call_count, 3)
+
+    def test_review_rejects_internal_repo_identity_as_user_input(self) -> None:
+        from self_improving.storage import normalize_scope
+
+        with self.assertRaises(ValueError):
+            normalize_scope("repo:0123456789abcdef", allow_resolved_repo=False)
+
     def test_legacy_markdown_active_rows_are_not_silently_injected(self) -> None:
         corrections = self.memory / "corrections.md"
         corrections.write_text(corrections.read_text() + "| 2026-07-12 | old | 历史规则 | active | manual |\n")
         self.assertEqual(active_corrections(self.memory), [])
 
     def test_core_memory_character_budget_is_enforced(self) -> None:
+        self.config["injection"]["include_core_memory"] = True
         self.memory.joinpath("memory.md").write_text("# Memory · Test\n" + "\n".join(["## A", "- " + "字" * 9000, "## B", "- end"]))
         with self.env():
+            write_config(self.config)
             output = io.StringIO()
             with redirect_stdout(output):
                 dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart"})
-        self.assertIn("memory-source-warning", output.getvalue())
+        self.assertIn('core="invalid"', output.getvalue())
         self.assertNotIn("<self-improving-memory>", output.getvalue())
 
     def test_verified_ledger_rejects_bad_time_and_sorts_by_instant(self) -> None:
@@ -573,6 +791,39 @@ class SystemTests(unittest.TestCase):
             learning = next(check for check in run_checks() if check.name == "学习闭环")
         self.assertFalse(learning.passed)
         self.assertIn("全部超过字符预算", learning.detail)
+
+    def test_doctor_and_runtime_share_total_token_budget(self) -> None:
+        from self_improving.doctor import run_checks
+        from self_improving.storage import RECEIPT_RESERVE_TOKENS, VERIFIED_WRAPPER_TOKENS
+
+        append_verified_correction(self.memory, "[fp:898989898989]", "预算边界规则", "global")
+        self.config["injection"]["max_total_tokens"] = RECEIPT_RESERVE_TOKENS + VERIFIED_WRAPPER_TOKENS
+        with self.env():
+            write_config(self.config)
+            learning = next(check for check in run_checks() if check.name == "学习闭环")
+            output = io.StringIO()
+            with redirect_stdout(output):
+                dispatch("codex", "SessionStart", {"source": "startup", "session_id": "budget"})
+        self.assertFalse(learning.passed)
+        self.assertNotIn("预算边界规则", output.getvalue())
+
+    def test_doctor_rejects_core_memory_that_runtime_omits_for_total_budget(self) -> None:
+        from self_improving.doctor import run_checks
+        from self_improving.storage import RECEIPT_RESERVE_TOKENS, SESSION_UPDATE_RESERVE_TOKENS
+
+        self.config["injection"]["include_core_memory"] = True
+        self.config["injection"]["max_total_tokens"] = (
+            RECEIPT_RESERVE_TOKENS + SESSION_UPDATE_RESERVE_TOKENS + 1
+        )
+        with self.env():
+            write_config(self.config)
+            core_budget = next(check for check in run_checks() if check.name == "核心记忆预算")
+            output = io.StringIO()
+            with redirect_stdout(output):
+                dispatch("codex", "SessionStart", {"source": "startup", "session_id": "core-budget"})
+        self.assertFalse(core_budget.passed)
+        self.assertIn("可用 1 token", core_budget.detail)
+        self.assertIn('core="budget_omitted"', output.getvalue())
 
     def test_authority_write_guard_is_platform_specific(self) -> None:
         # Claude 端：权威写入不硬拦，改为输出 ask 决策交用户当场批准。
@@ -624,13 +875,32 @@ class SystemTests(unittest.TestCase):
 
         for command in (
             "python3 -m self_improving review approve --fingerprint x --correct y --scope global",
+            "python3 -m self_improving re''view ap''prove --fingerprint x --correct y --scope global",
             "python3 -m self_improving review approve-interactive --fingerprint '[fp:0123456789ab]'",
             "python3 -m self_improving review import-legacy-interactive --legacy-id legacy:0123456789ab",
+            "self-improving review promote --fingerprint '[fp:0123456789ab]'",
             "python3 -c 'from self_improving.review import decide'",
         ):
             code, text = codex_decision({"tool_name": "Bash", "tool_input": {"command": command}})
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "deny")
+
+        for command in (
+            "python3 -m self_improving review approve --help",
+            "/opt/homebrew/bin/python3.14 -m self_improving review import-legacy-interactive -h",
+            "self-improving review revoke --help",
+        ):
+            code, text = codex_decision({"tool_name": "Bash", "tool_input": {"command": command}})
+            self.assertEqual(code, 0)
+            self.assertEqual(text, "")
+
+        # 帮助参数不能成为拼接危险命令的绕过条件。
+        code, text = codex_decision({
+            "tool_name": "Bash",
+            "tool_input": {"command": "python3 -m self_improving review approve --help; echo hacked"},
+        })
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "deny")
 
         for command, expects_deny in (
             ("printf hacked >> memory.md", True),
@@ -708,6 +978,17 @@ class SystemTests(unittest.TestCase):
             self.codex.write_text(json.dumps(payload))
             self.assertFalse(hook_is_installed(self.config, "codex"))
 
+    def test_codex_session_matcher_always_observes_resume(self) -> None:
+        with self.env():
+            install_hooks(self.config, "codex")
+            payload = json.loads(self.codex.read_text())
+            self.assertEqual(payload["hooks"]["SessionStart"][-1]["matcher"], "startup|resume")
+            self.config["injection"]["resume_mode"] = "always"
+            write_config(self.config)
+            install_hooks(self.config, "codex")
+            payload = json.loads(self.codex.read_text())
+            self.assertEqual(payload["hooks"]["SessionStart"][-1]["matcher"], "startup|resume")
+
     def test_codex_bash_only_guard_is_not_reported_as_installed(self) -> None:
         with self.env():
             install_hooks(self.config, "codex")
@@ -722,12 +1003,97 @@ class SystemTests(unittest.TestCase):
             self.assertFalse(hook_is_installed(self.config, "codex"))
 
     def test_session_start_injects_validated_memory_and_records_schema(self) -> None:
+        self.config["injection"]["include_core_memory"] = True
         with self.env():
+            write_config(self.config)
             result = dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart", "cwd": "/example"})
         self.assertEqual(result, 0)
         schema = self.home / "state/hook-schemas/codex-SessionStart.json"
         self.assertTrue(schema.exists())
         self.assertIn('"cwd": "str"', schema.read_text())
+
+    def test_resume_skips_unchanged_dynamic_context(self) -> None:
+        self.config["injection"]["include_core_memory"] = True
+        with self.env():
+            write_config(self.config)
+            startup = io.StringIO()
+            with redirect_stdout(startup):
+                dispatch("codex", "SessionStart", {
+                    "hook_event_name": "SessionStart",
+                    "source": "startup",
+                    "session_id": "session-a",
+                })
+            unchanged = io.StringIO()
+            with redirect_stdout(unchanged):
+                dispatch("codex", "SessionStart", {
+                    "hook_event_name": "SessionStart",
+                    "source": "resume",
+                    "session_id": "session-a",
+                })
+            append_verified_correction(self.memory, "[fp:abababababab]", "恢复后新增规则", "global")
+            changed = io.StringIO()
+            with redirect_stdout(changed):
+                dispatch("codex", "SessionStart", {
+                    "hook_event_name": "SessionStart",
+                    "source": "resume",
+                    "session_id": "session-a",
+                })
+            repeated = io.StringIO()
+            with redirect_stdout(repeated):
+                dispatch("codex", "SessionStart", {
+                    "hook_event_name": "SessionStart",
+                    "source": "resume",
+                    "session_id": "session-a",
+                })
+        self.assertIn("self-improving-memory", startup.getvalue())
+        self.assertEqual(unchanged.getvalue(), "")
+        self.assertIn("恢复后新增规则", changed.getvalue())
+        self.assertIn("self-improving-prior-injection-invalidated", changed.getvalue())
+        self.assertEqual(repeated.getvalue(), "")
+
+    def test_resume_clears_revoked_or_promoted_injection(self) -> None:
+        from self_improving.storage import promote_verified_correction, revoke_verified_correction
+
+        for action in ("revoke", "promote"):
+            with self.subTest(action=action):
+                fingerprint = "[fp:cdcdcdcdcdcd]" if action == "revoke" else "[fp:efefefefefef]"
+                append_verified_correction(
+                    self.memory,
+                    fingerprint,
+                    f"{action} 后必须清除",
+                    "global",
+                    promotion_target="global-rules",
+                )
+                session_id = f"session-{action}"
+                with self.env():
+                    startup = io.StringIO()
+                    with redirect_stdout(startup):
+                        dispatch("codex", "SessionStart", {
+                            "source": "startup",
+                            "session_id": session_id,
+                        })
+                    if action == "revoke":
+                        self.assertTrue(revoke_verified_correction(self.memory, fingerprint))
+                    else:
+                        self.assertEqual(promote_verified_correction(self.memory, fingerprint), "global-rules")
+                    resumed = io.StringIO()
+                    with redirect_stdout(resumed):
+                        dispatch("codex", "SessionStart", {
+                            "source": "resume",
+                            "session_id": session_id,
+                        })
+                    repeated = io.StringIO()
+                    with redirect_stdout(repeated):
+                        dispatch("codex", "SessionStart", {
+                            "source": "resume",
+                            "session_id": session_id,
+                        })
+                self.assertIn(f"{action} 后必须清除", startup.getvalue())
+                self.assertEqual(
+                    resumed.getvalue().strip(),
+                    "<self-improving-prior-injection-cleared/>",
+                )
+                self.assertEqual(repeated.getvalue(), "")
 
     def test_index_is_stable_when_candidate_log_changes(self) -> None:
         ok, path = sync_index(self.memory)
@@ -749,20 +1115,11 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(len(entries), 3)
         self.assertTrue(all(entry["fingerprint"].startswith("[fp:") for entry in entries))
         self.assertIn("规则甲", entries[0]["candidate"])
-        for platform in ("claude", "codex"):
-            with self.env():
-                output = io.StringIO()
-                with redirect_stdout(output):
-                    dispatch(platform, "SessionStart", {"hook_event_name": "SessionStart"})
-            reminder = output.getvalue()
-            self.assertIn('<memory-review-reminder pending="3">', reminder)
-            self.assertIn("review list --json", reminder)
-            if platform == "claude":
-                self.assertIn("由客户端弹框确认", reminder)
-                self.assertNotIn("普通终端", reminder)
-            else:
-                self.assertIn("普通终端", reminder)
-                self.assertIn("不要在 Codex Agent 工具中执行", reminder)
+        with self.env():
+            output = io.StringIO()
+            with redirect_stdout(output):
+                dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart"})
+        self.assertNotIn("memory-review-reminder", output.getvalue())
 
     def test_stop_review_reminder_is_valid_json_for_both_platforms(self) -> None:
         from self_improving.storage import append_candidate
@@ -780,6 +1137,60 @@ class SystemTests(unittest.TestCase):
                 self.assertEqual(payload, {"systemMessage": "纠错候选箱已有 3 条待审，请审核纠错候选。"})
                 self.assertNotIn("decision", payload)
 
+                repeated = io.StringIO()
+                with redirect_stdout(repeated):
+                    dispatch(platform, "Stop", {"hook_event_name": "Stop"})
+                self.assertEqual(repeated.getvalue(), "")
+
+    def test_stop_reminder_is_silent_when_persistence_is_disabled(self) -> None:
+        from self_improving.storage import append_candidate
+
+        state = self.home / "state"
+        for text in ("规则甲", "规则乙", "规则丙"):
+            append_candidate(self.memory, state, "claude-user-prompt", text, 500)
+        with self.env(), patch.dict(os.environ, {"SELF_IMPROVING_PERSIST": "0"}):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                dispatch("codex", "Stop", {"hook_event_name": "Stop"})
+        self.assertEqual(output.getvalue(), "")
+        self.assertFalse((state / "review-reminders/codex.json").exists())
+
+    def test_stop_reminder_throttle_is_atomic(self) -> None:
+        state = self.home / "state"
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = list(executor.map(
+                lambda _: _review_reminder_due(state, "codex", 24),
+                range(24),
+            ))
+        self.assertEqual(results.count(True), 1)
+
+    def test_session_output_never_exceeds_total_token_budget(self) -> None:
+        append_verified_correction(
+            self.memory,
+            "[fp:121212121212]",
+            "😀" * 300 + "关键规则",
+            "global",
+            priority="critical",
+        )
+        self.config["injection"]["max_total_tokens"] = 80
+        self.config["injection"]["max_verified_chars"] = 1000
+        with self.env():
+            write_config(self.config)
+            output = io.StringIO()
+            with redirect_stdout(output):
+                dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart"})
+        from self_improving.storage import estimate_tokens
+
+        self.assertLessEqual(estimate_tokens(output.getvalue()), 80)
+
+        self.config["injection"]["max_total_tokens"] = 0
+        with self.env():
+            write_config(self.config)
+            zero = io.StringIO()
+            with redirect_stdout(zero):
+                dispatch("codex", "SessionStart", {"hook_event_name": "SessionStart"})
+        self.assertEqual(zero.getvalue(), "")
+
     def test_local_link_check_and_secret_redaction(self) -> None:
         note = self.memory / "2026-07-11-note.md"
         note.write_text("# Note\n\n[missing](missing.md)\n")
@@ -789,6 +1200,58 @@ class SystemTests(unittest.TestCase):
         secret = "api_key=abcdefghijklmnopqrstuvwxyz"
         self.assertTrue(contains_secret(secret))
         self.assertNotIn("abcdefghijklmnopqrstuvwxyz", sanitize(secret))
+
+        corrections = self.memory / "corrections.md"
+        corrections.write_text(corrections.read_text() + "| 2026-01-01 | old | `不存在/*.md` | active | |\n")
+        archive = self.memory / "归档/old.md"
+        archive.parent.mkdir()
+        archive.write_text("# Old\n\n[missing](missing.md) and `also-missing.md`\n")
+        self.assertEqual(broken_local_links(self.memory), ["2026-07-11-note.md -> missing.md"])
+        self.assertEqual(broken_local_references(self.memory), [])
+
+        core = self.memory / "memory.md"
+        core.write_text(core.read_text() + "\n裸文件名示例：`README.md`。\n")
+        self.assertEqual(broken_local_references(self.memory), [])
+
+    def test_doctor_reports_unstructured_error_capture_contract(self) -> None:
+        from self_improving.doctor import run_checks
+
+        self.config["persistence"]["capture_command_errors"] = True
+        schema = self.home / "state/hook-schemas/codex-PostToolUse.json"
+        schema.parent.mkdir(parents=True)
+        schema.write_text(json.dumps({
+            "package_version": __version__,
+            "observed_at": datetime.now(timezone.utc).isoformat(),
+            "shape": {"tool_response": "str"},
+        }))
+        with self.env():
+            write_config(self.config)
+            check = next(item for item in run_checks() if item.name == "codex 错误捕获契约")
+        self.assertFalse(check.passed)
+        self.assertIn("不会从输出文字猜失败", check.detail)
+
+        claude_schema = self.home / "state/hook-schemas/claude-PostToolUse.json"
+        claude_schema.write_text(json.dumps({
+            "package_version": __version__,
+            "observed_at": datetime.now(timezone.utc).isoformat(),
+            "shape": {"tool_response": {"interrupted": "bool", "stderr": "str", "stdout": "str"}},
+        }))
+        with self.env():
+            claude_check = next(item for item in run_checks() if item.name == "claude 错误捕获契约")
+        self.assertFalse(claude_check.passed)
+        self.assertIn("不会从输出文字猜失败", claude_check.detail)
+
+    def test_doctor_helpers_find_backtick_paths_and_expired_notices(self) -> None:
+        core = self.memory / "memory.md"
+        core.write_text(
+            "# Memory · Test\n"
+            "> 详情见 `领域知识/不存在.md`。\n\n"
+            "## 临时\n"
+            "- **观察期（至 2020-01-01）**：过期后删除。\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(broken_local_references(self.memory), ["memory.md -> 领域知识/不存在.md"])
+        self.assertEqual(expired_notices(self.memory), ["memory.md -> 2020-01-01"])
 
     def test_only_enabled_agent_gets_skill_link(self) -> None:
         from self_improving.installer import install_skill_links
@@ -864,7 +1327,7 @@ class SystemTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(hook_run.returncode, 0, hook_run.stdout + hook_run.stderr)
-        self.assertIn("self-improving-memory", hook_run.stdout)
+        self.assertEqual(hook_run.stdout, "")
 
         for command in (("upgrade",), ("sync",), ("doctor",)):
             result = subprocess.run(
@@ -959,6 +1422,8 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(migrated.returncode, 0, migrated.stdout + migrated.stderr)
         self.assertTrue((memory / "memory.md").exists())
         manifests = list((fresh / ".local/state/self-improving/migrations").glob("legacy-*.json"))
+        installed_config = json.loads((fresh / ".config/self-improving/config.json").read_text())
+        self.assertFalse(installed_config["persistence"]["capture_command_errors"])
         self.assertEqual(len(manifests), 1)
         self.assertIn(MARKER, (fresh / ".claude/settings.json").read_text())
         migrated_config = json.loads((fresh / ".config/self-improving/config.json").read_text())
