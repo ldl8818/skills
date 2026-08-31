@@ -89,13 +89,13 @@ bash scripts/opencli-health.sh
 
 只有退出 `0` 且 `state=ready` 才进入 adapter。退出 `69`／`75`／`78`，或任一 adapter 返回 `BROWSER_CONNECT` 后，本任务不再尝试其他 OpenCLI provider，直接按失效域切换真实 fallback；下一独立任务重新探活，不把短暂故障写成长期缓存。`active`／`conditional` 只表示 provider 已登记，不是运行时健康证明。
 
-browser-backed 命令统一经 `node scripts/opencli-run.mjs ...` 执行；直接调用 OpenCLI `1.8.6`～`1.8.8` 可能在异步动作完成前退出 `0`，空 stdout 仍必须判失败，不能当成空结果。
+browser-backed 命令统一经 `node scripts/opencli-run.mjs ...` 执行；runner 和门禁都固定到已绑定的 `ego-lite` Profile。直接调用 OpenCLI `1.8.6`～`1.8.8` 可能在异步动作完成前退出 `0`，空 stdout 仍必须判失败，不能当成空结果。
 
 其余失败按结构化错误和失效层级处理：
 
 - `auth_required`：L2，核对 `node scripts/opencli-run.mjs auth status --site <site> --timeout 8 -f json`；不换同登录态浏览器。
 - daemon 休眠：门禁按需启动，不单凭 `127.0.0.1:19825` 未监听判故障。
-- daemon 无法启动、ego lite 扩展未连接或 Profile 未选择：L3，按门禁 JSON 的 `state` 和 `next` 处理；可用时改走 ego-browser。
+- daemon 无法启动、ego lite 扩展未连接，或 `ego-lite` Profile 未绑定／断连／错配：L3，按门禁 JSON 的 `state` 和 `next` 处理；可用时改走 ego-browser。
 - 命令存在但字段缺失、空结果、解析异常：L4；本任务立即熔断 OpenCLI 并改用 ego-browser，不自动重试。只有用户明确要求排障时才另行使用 trace。
 - 命令不存在：不猜旧命令；回注册表找同目标的只读动作，找不到就换工具。
 

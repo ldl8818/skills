@@ -5,7 +5,10 @@
 
 set -uo pipefail
 
-STATUS_URL="http://127.0.0.1:19825/status"
+STATUS_URL_BASE="http://127.0.0.1:19825/status"
+STATUS_URL=""
+PROFILE_ALIAS="ego-lite"
+PROFILE_CONTEXT_ID=""
 TOTAL_BUDGET_MS=4200
 START_BUDGET_MS=3200
 STOP_TOTAL_BUDGET_MS=750
@@ -36,15 +39,37 @@ fixed_error() {
   exit "$exit_code"
 }
 
-for dependency in opencli curl jq node python3; do
+if ! command -v python3 >/dev/null 2>&1; then
+  fixed_error "dependency_missing" "install_python3" 78
+fi
+
+now_ms() {
+  python3 -c 'import time; print(int(time.monotonic() * 1000))'
+}
+
+start_ms=$(now_ms)
+
+for dependency in opencli curl jq node; do
   if ! command -v "$dependency" >/dev/null 2>&1; then
     fixed_error "dependency_missing" "install_$dependency" 78
   fi
 done
 
-now_ms() {
-  python3 -c 'import time; print(int(time.monotonic() * 1000))'
+resolve_ego_lite_profile() {
+  local config_dir="${OPENCLI_CONFIG_DIR:-${HOME:-}/.opencli}"
+  local config_file="$config_dir/browser-profiles.json"
+  local encoded_context
+  [[ -r "$config_file" ]] || return 1
+  PROFILE_CONTEXT_ID=$(jq -er --arg alias "$PROFILE_ALIAS" \
+    '.aliases[$alias] | select(type == "string" and length > 0)' "$config_file" 2>/dev/null) || return 1
+  [[ "$PROFILE_CONTEXT_ID" != *$'\n'* ]] || return 1
+  encoded_context=$(jq -nr --arg value "$PROFILE_CONTEXT_ID" '$value | @uri') || return 1
+  STATUS_URL="${STATUS_URL_BASE}?contextId=${encoded_context}"
 }
+
+if ! resolve_ego_lite_profile; then
+  fixed_error "profile_unbound" "bind_ego_lite_profile" 78
+fi
 
 elapsed_ms() {
   local current
@@ -70,6 +95,11 @@ read_status() {
   curl --silent --show-error --connect-timeout "$timeout_seconds" --max-time "$timeout_seconds" \
     -H 'X-OpenCLI: 1' \
     "$STATUS_URL" 2>/dev/null
+}
+
+status_is_ready() {
+  jq -e --arg context_id "$PROFILE_CONTEXT_ID" \
+    '.extensionConnected == true and .contextId == $context_id' >/dev/null 2>&1 <<<"$1"
 }
 
 process_is_done() {
@@ -274,7 +304,7 @@ restore_started_daemon() {
 }
 
 handle_signal() {
-  trap - HUP INT TERM
+  trap '' HUP INT TERM
   overall_deadline_ms=$(( $(now_ms) + STOP_TOTAL_BUDGET_MS ))
   restore_started_daemon
   release_start_lock
@@ -288,7 +318,6 @@ defer_signal() {
 trap release_start_lock EXIT
 trap handle_signal HUP INT TERM
 
-start_ms=$(now_ms)
 start_deadline_ms=$((start_ms + START_BUDGET_MS))
 overall_deadline_ms=$((start_ms + TOTAL_BUDGET_MS))
 if ! prepare_runtime_dir; then
@@ -307,9 +336,13 @@ if [[ "$status_result" -eq 0 ]] && [[ -n "$status_json" ]] && jq -e 'type == "ob
     emit false "profile_disconnected" "running" "disconnected" "select_connected_ego_lite_profile" "$status_json"
     exit 78
   fi
-  if jq -e '.extensionConnected == true' >/dev/null 2>&1 <<<"$status_json"; then
+  if status_is_ready "$status_json"; then
     emit true "ready" "running" "connected" "use_opencli" "$status_json"
     exit 0
+  fi
+  if jq -e '.extensionConnected == true' >/dev/null 2>&1 <<<"$status_json"; then
+    emit false "profile_mismatch" "running" "connected" "rebind_ego_lite_profile" "$status_json"
+    exit 78
   fi
   emit false "extension_disconnected" "running" "disconnected" "start_or_enable_opencli_extension_in_ego_lite" "$status_json"
   exit 69
@@ -349,9 +382,13 @@ if [[ "$status_result" -eq 0 ]] && [[ -n "$status_json" ]] && jq -e 'type == "ob
     emit false "profile_disconnected" "running" "disconnected" "select_connected_ego_lite_profile" "$status_json"
     exit 78
   fi
-  if jq -e '.extensionConnected == true' >/dev/null 2>&1 <<<"$status_json"; then
+  if status_is_ready "$status_json"; then
     emit true "ready" "running" "connected" "use_opencli" "$status_json"
     exit 0
+  fi
+  if jq -e '.extensionConnected == true' >/dev/null 2>&1 <<<"$status_json"; then
+    emit false "profile_mismatch" "running" "connected" "rebind_ego_lite_profile" "$status_json"
+    exit 78
   fi
   emit false "extension_disconnected" "running" "disconnected" "start_or_enable_opencli_extension_in_ego_lite" "$status_json"
   exit 69
@@ -392,14 +429,16 @@ while :; do
       emit false "profile_required" "$restored_daemon_state" "connected" "select_ego_lite_profile" "$status_json"
       exit 78
     fi
-    if jq -e '.profileDisconnected == true' >/dev/null 2>&1 <<<"$status_json"; then
-      restore_started_daemon "$status_json"
-      emit false "profile_disconnected" "$restored_daemon_state" "disconnected" "select_connected_ego_lite_profile" "$status_json"
-      exit 78
-    fi
-    if jq -e '.extensionConnected == true' >/dev/null 2>&1 <<<"$status_json"; then
+    # 本次刚启动的 daemon 可能先监听端口、随后才等到 ego lite 扩展重连；
+    # 预算内保留断连状态继续轮询，既有 daemon 的稳定断连仍在上方立即失败。
+    if status_is_ready "$status_json"; then
       emit true "ready" "running" "connected" "use_opencli" "$status_json"
       exit 0
+    fi
+    if jq -e '.extensionConnected == true' >/dev/null 2>&1 <<<"$status_json"; then
+      restore_started_daemon "$status_json"
+      emit false "profile_mismatch" "$restored_daemon_state" "connected" "rebind_ego_lite_profile" "$status_json"
+      exit 78
     fi
   fi
 
@@ -414,6 +453,10 @@ done
 
 restore_started_daemon "$last_status"
 if [[ -n "$last_status" ]]; then
+  if jq -e '.profileDisconnected == true' >/dev/null 2>&1 <<<"$last_status"; then
+    emit false "profile_disconnected" "$restored_daemon_state" "disconnected" "select_connected_ego_lite_profile" "$last_status"
+    exit 78
+  fi
   emit false "extension_disconnected" "$restored_daemon_state" "disconnected" "start_or_enable_opencli_extension_in_ego_lite" "$last_status"
   exit 69
 fi

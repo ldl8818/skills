@@ -68,7 +68,11 @@ assert_json() {
 
 make_health_fakes() {
   local fake_bin="$1"
+  local fake_config_dir="${fake_bin%/bin}/opencli-config"
   mkdir -p "$fake_bin"
+  mkdir -p "$fake_config_dir"
+  printf '%s\n' '{"version":1,"aliases":{"ego-lite":"ego"},"defaultContextId":"ego"}' \
+    > "$fake_config_dir/browser-profiles.json"
 
   printf '%s\n' \
     '#!/usr/bin/env bash' \
@@ -134,15 +138,25 @@ make_health_fakes() {
     'kill -0 "$status_pid" 2>/dev/null || exit 7' \
     'case "$FAKE_STATUS_MODE" in' \
     '  ready)' \
-    '    printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":true,"extensionVersion":"1.0.23","profileRequired":false,"profileDisconnected":false,"profiles":[{"contextId":"ego"}]}\n'\'' "$status_pid"' \
+    '    printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":true,"extensionVersion":"1.0.23","contextId":"ego","profileRequired":false,"profileDisconnected":false,"profiles":[{"contextId":"ego"}]}\n'\'' "$status_pid"' \
     '    ;;' \
     '  start-ready)' \
     '    [[ -f "$FAKE_STATE_DIR/restarted" ]] || exit 7' \
-    '    printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":true,"extensionVersion":"1.0.23","profileRequired":false,"profileDisconnected":false,"profiles":[{"contextId":"ego"}]}\n'\'' "$status_pid"' \
+    '    printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":true,"extensionVersion":"1.0.23","contextId":"ego","profileRequired":false,"profileDisconnected":false,"profiles":[{"contextId":"ego"}]}\n'\'' "$status_pid"' \
     '    ;;' \
     '  start-delayed-ready)' \
     '    [[ -f "$FAKE_STATE_DIR/status-ready" ]] || exit 7' \
-    '    printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":true,"extensionVersion":"1.0.23","profileRequired":false,"profileDisconnected":false,"profiles":[{"contextId":"ego"}]}\n'\'' "$status_pid"' \
+    '    printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":true,"extensionVersion":"1.0.23","contextId":"ego","profileRequired":false,"profileDisconnected":false,"profiles":[{"contextId":"ego"}]}\n'\'' "$status_pid"' \
+    '    ;;' \
+    '  start-profile-reconnect)' \
+    '    [[ -f "$FAKE_STATE_DIR/restarted" ]] || exit 7' \
+    '    count_file="$FAKE_STATE_DIR/reconnect-count"' \
+    '    count=0; [[ ! -f "$count_file" ]] || count=$(<"$count_file"); count=$((count + 1)); printf "%s" "$count" > "$count_file"' \
+    '    if [[ "$count" -eq 1 ]]; then' \
+    '      printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":false,"contextId":"ego","profileRequired":false,"profileDisconnected":true,"profiles":[]}\n'\'' "$status_pid"' \
+    '    else' \
+    '      printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":true,"extensionVersion":"1.0.23","contextId":"ego","profileRequired":false,"profileDisconnected":false,"profiles":[{"contextId":"ego"}]}\n'\'' "$status_pid"' \
+    '    fi' \
     '    ;;' \
     '  running-disconnected)' \
     '    printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":false,"profileRequired":false,"profileDisconnected":false,"profiles":[]}\n'\'' "$status_pid"' \
@@ -164,6 +178,13 @@ make_health_fakes() {
     '    ;;' \
     '  profile-disconnected)' \
     '    printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":false,"profileRequired":false,"profileDisconnected":true,"profiles":[]}\n'\'' "$status_pid"' \
+    '    ;;' \
+    '  wrong-profile-online)' \
+    '    if [[ "$*" == *"contextId=ego"* ]]; then' \
+    '      printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":false,"contextId":"ego","profileRequired":false,"profileDisconnected":true,"profiles":[{"contextId":"chrome","extensionConnected":true}]}\n'\'' "$status_pid"' \
+    '    else' \
+    '      printf '\''{"ok":true,"pid":%s,"daemonVersion":"1.8.6","extensionConnected":true,"contextId":"chrome","profileRequired":false,"profileDisconnected":false,"profiles":[{"contextId":"chrome","extensionConnected":true}]}\n'\'' "$status_pid"' \
+    '    fi' \
     '    ;;' \
     '  blocked-second-probe)' \
     '    count_file="$FAKE_STATE_DIR/status-count"' \
@@ -197,7 +218,7 @@ prepare_health_fixture() {
   local state_dir="$TEST_ROOT/state-$mode"
   local fake_bin="$state_dir/bin"
   mkdir -p "$state_dir"
-  rm -f "$state_dir/restarted" "$state_dir/stopped" "$state_dir/spawned-pid" "$state_dir/lifecycle-active" "$state_dir/time-count" "$state_dir/status-count"
+  rm -f "$state_dir/restarted" "$state_dir/stopped" "$state_dir/spawned-pid" "$state_dir/lifecycle-active" "$state_dir/time-count" "$state_dir/status-count" "$state_dir/reconnect-count"
   : > "$state_dir/opencli.log"
   make_health_fakes "$fake_bin"
   if [[ "${FAKE_REAL_TIME:-0}" -eq 1 ]]; then
@@ -226,12 +247,13 @@ run_health() {
   FAKE_START_BEFORE_SLEEP="${FAKE_START_BEFORE_SLEEP:-0}" \
   FAKE_STOP_SLEEP="${FAKE_STOP_SLEEP:-0}" \
   FAKE_STOP_FAIL="${FAKE_STOP_FAIL:-0}" \
-    FAKE_DAEMON_PID="${FAKE_DAEMON_PID:-}" \
-    FAKE_REPLACEMENT_PID="${FAKE_REPLACEMENT_PID:-}" \
-    FAKE_FIRST_REPLACEMENT="${FAKE_FIRST_REPLACEMENT:-0}" \
-    HOME="${FAKE_HOME:-$HOME}" \
-    PATH="$fake_bin:$PATH" \
-    bash "$HEALTH_SCRIPT"
+  FAKE_DAEMON_PID="${FAKE_DAEMON_PID:-}" \
+  FAKE_REPLACEMENT_PID="${FAKE_REPLACEMENT_PID:-}" \
+  FAKE_FIRST_REPLACEMENT="${FAKE_FIRST_REPLACEMENT:-0}" \
+  OPENCLI_CONFIG_DIR="$state_dir/opencli-config" \
+  HOME="${FAKE_HOME:-$state_dir/home}" \
+  PATH="$fake_bin:$PATH" \
+  bash "$HEALTH_SCRIPT"
   health_status=$?
   [[ ! -r "$state_dir/spawned-pid" ]] || spawned_pid=$(<"$state_dir/spawned-pid")
   stop_fake_daemon "$state_dir/spawned-pid" || true
@@ -258,6 +280,16 @@ test_start_then_ready() {
   assert_json "冷启动 daemon 后桥接成功" "$output" '.ok == true and .state == "ready" and .started_daemon == true and .restored_daemon == false'
 }
 
+test_cold_start_waits_for_profile_reconnect() {
+  local output status
+  set +e
+  output=$(run_health start-profile-reconnect)
+  status=$?
+  set -e
+  [[ "$status" -eq 0 ]] || { bad "冷启动暂态断连后未继续等待：status=${status} output=${output}"; return; }
+  assert_json "冷启动预算内等待 ego lite Profile 重连" "$output" '.ok == true and .state == "ready" and .started_daemon == true'
+}
+
 test_daemon_does_not_inherit_start_lock() {
   local state_dir="$TEST_ROOT/state-lock-inheritance"
   local fake_bin="$state_dir/bin"
@@ -270,7 +302,7 @@ test_daemon_does_not_inherit_start_lock() {
 
   set +e
   output=$(FAKE_STATE_DIR="$state_dir" FAKE_REAL_PYTHON="$(command -v python3)" \
-    FAKE_STATUS_MODE=start-ready HOME="$fake_home" PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT")
+    FAKE_STATUS_MODE=start-ready OPENCLI_CONFIG_DIR="$state_dir/opencli-config" HOME="$fake_home" PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT")
   status=$?
   set -e
   [[ "$status" -eq 0 ]] || { bad "冷启动后无法检查锁继承：status=${status} output=${output}"; return; }
@@ -322,7 +354,7 @@ test_daemon_start_failure() {
   set +e
   output=$(FAKE_STATE_DIR="$state_dir" FAKE_REAL_PYTHON="$(command -v python3)" \
     FAKE_STATUS_MODE=unreachable FAKE_START_FAIL=1 HOME="$state_dir/home" \
-    PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT")
+    OPENCLI_CONFIG_DIR="$state_dir/opencli-config" PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT")
   status=$?
   set -e
   [[ "$status" -eq 69 ]] || { bad "daemon 启动失败时退出 69"; return; }
@@ -337,7 +369,7 @@ test_invalid_status_does_not_claim_existing_daemon() {
   : > "$state_dir/opencli.log"
   make_health_fakes "$fake_bin"
   set +e
-  output=$(FAKE_STATE_DIR="$state_dir" FAKE_STATUS_MODE=invalid-status PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT")
+  output=$(FAKE_STATE_DIR="$state_dir" FAKE_STATUS_MODE=invalid-status OPENCLI_CONFIG_DIR="$state_dir/opencli-config" PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT")
   status=$?
   set -e
   [[ "$status" -eq 75 ]] || { bad "既有端口返回坏状态时退出 75"; return; }
@@ -378,12 +410,12 @@ test_concurrent_cold_start_has_single_owner() {
 
   set +e
   FAKE_STATE_DIR="$state_dir" FAKE_REAL_PYTHON="$(command -v python3)" FAKE_TIME_STATE_DIR="$state_dir/time-one" \
-    FAKE_STATUS_MODE=start-ready FAKE_RESTART_SLEEP=0.5 FAKE_DAEMON_PID="$$" HOME="$state_dir/home" \
-    PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT" > "$state_dir/output-one.json" &
+    FAKE_STATUS_MODE=start-ready FAKE_RESTART_SLEEP=0.2 FAKE_DAEMON_PID="$$" HOME="$state_dir/home" \
+    OPENCLI_CONFIG_DIR="$state_dir/opencli-config" PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT" > "$state_dir/output-one.json" &
   pid_one=$!
   FAKE_STATE_DIR="$state_dir" FAKE_REAL_PYTHON="$(command -v python3)" FAKE_TIME_STATE_DIR="$state_dir/time-two" \
-    FAKE_STATUS_MODE=start-ready FAKE_RESTART_SLEEP=0.5 FAKE_DAEMON_PID="$$" HOME="$state_dir/home" \
-    PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT" > "$state_dir/output-two.json" &
+    FAKE_STATUS_MODE=start-ready FAKE_RESTART_SLEEP=0.2 FAKE_DAEMON_PID="$$" HOME="$state_dir/home" \
+    OPENCLI_CONFIG_DIR="$state_dir/opencli-config" PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT" > "$state_dir/output-two.json" &
   pid_two=$!
   wait "$pid_one"
   status_one=$?
@@ -457,7 +489,7 @@ test_start_lock_releases_after_sigkill() {
 
   FAKE_STATE_DIR="$state_dir" FAKE_REAL_PYTHON="$(command -v python3)" \
     FAKE_STATUS_MODE=start-ready FAKE_RESTART_SLEEP=6 FAKE_IGNORE_TERM=1 \
-    HOME="$fake_home" PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT" > "$state_dir/killed-output.json" &
+    OPENCLI_CONFIG_DIR="$state_dir/opencli-config" HOME="$fake_home" PATH="$fake_bin:$PATH" bash "$HEALTH_SCRIPT" > "$state_dir/killed-output.json" &
   health_pid=$!
   for _ in $(seq 1 200); do
     [[ -r "$state_dir/spawned-pid" ]] && break
@@ -498,7 +530,7 @@ test_child_process_cannot_extend_start_lock() {
 
   FAKE_STATE_DIR="$state_dir" FAKE_REAL_PYTHON="$(command -v python3)" \
     FAKE_STATUS_MODE=blocked-second-probe HOME="$fake_home" PATH="$fake_bin:$PATH" \
-    bash "$HEALTH_SCRIPT" > "$state_dir/killed-during-probe.json" &
+    OPENCLI_CONFIG_DIR="$state_dir/opencli-config" bash "$HEALTH_SCRIPT" > "$state_dir/killed-during-probe.json" &
   health_pid=$!
   for _ in $(seq 1 200); do
     [[ -e "$state_dir/probe-blocked" ]] && break
@@ -588,7 +620,7 @@ test_signal_waits_for_detached_daemon_and_restores() {
     FAKE_STATUS_MODE=start-delayed-ready FAKE_DAEMON_PID="$$" \
     FAKE_START_BEFORE_SLEEP=1 FAKE_RESTART_SLEEP=6 FAKE_IGNORE_TERM=1 \
     HOME="$state_dir/home" PATH="$fake_bin:$PATH" \
-    bash "$HEALTH_SCRIPT" > "$state_dir/output.json" &
+    OPENCLI_CONFIG_DIR="$state_dir/opencli-config" bash "$HEALTH_SCRIPT" > "$state_dir/output.json" &
   health_pid=$!
 
   for _ in $(seq 1 300); do
@@ -608,6 +640,8 @@ test_signal_waits_for_detached_daemon_and_restores() {
   sleep 0.05
   wall_start=$(python3 -c 'import time; print(int(time.monotonic() * 1000))')
   kill -TERM "$health_pid"
+  sleep 0.05
+  kill -TERM "$health_pid" 2>/dev/null || true
   set +e
   wait "$health_pid"
   status=$?
@@ -629,9 +663,19 @@ PY
   if [[ "$status" -eq 130 ]] && [[ "$stop_count" -eq 1 ]] \
     && ! kill -0 "$spawned_pid" 2>/dev/null && [[ "$wall_elapsed" -lt 3500 ]] \
     && [[ "$lock_status" -eq 0 ]]; then
-    ok "信号后等待 detached daemon 可见并只恢复本次实例"
+    ok "连续信号后仍等待 detached daemon 可见并只恢复本次实例"
   else
     bad "信号恢复竞态未关闭：status=${status} stop=${stop_count} wall=${wall_elapsed}"
+  fi
+}
+
+test_signal_handler_blocks_reentry_during_restore() {
+  local handler
+  handler=$(sed -n '/^handle_signal()/,/^}/p' "$HEALTH_SCRIPT")
+  if grep -F "trap '' HUP INT TERM" >/dev/null <<<"$handler"; then
+    ok "信号恢复期间忽略重入信号"
+  else
+    bad "信号恢复期间仍可能被第二个信号打断"
   fi
 }
 
@@ -697,6 +741,35 @@ test_profile_disconnected_is_config_error() {
   set -e
   [[ "$status" -eq 78 ]] || { bad "指定 Profile 断连时退出 78"; return; }
   assert_json "指定 Profile 断连给准确状态" "$output" '.ok == false and .state == "profile_disconnected" and .extension == "disconnected"'
+}
+
+test_ego_lite_profile_must_be_bound() {
+  local state_dir="$TEST_ROOT/state-ready"
+  local output status
+  prepare_health_fixture ready
+  rm -f -- "$state_dir/opencli-config/browser-profiles.json"
+  set +e
+  output=$(FAKE_HEALTH_PREPARED=1 run_health ready)
+  status=$?
+  set -e
+  if [[ "$status" -eq 78 ]]; then
+    assert_json "未绑定 ego-lite Profile 时关闭失败" "$output" '.ok == false and .state == "profile_unbound"'
+  else
+    bad "未绑定 ego-lite Profile 仍通过门禁：status=${status} output=${output}"
+  fi
+}
+
+test_other_profile_online_does_not_pass_ego_lite_gate() {
+  local output status
+  set +e
+  output=$(run_health wrong-profile-online)
+  status=$?
+  set -e
+  if [[ "$status" -eq 78 ]]; then
+    assert_json "只有其他 Profile 在线时拒绝冒充 ego lite" "$output" '.ok == false and .state == "profile_disconnected"'
+  else
+    bad "其他 Profile 在线时错误放行：status=${status} output=${output}"
+  fi
 }
 
 test_registry_stderr_does_not_pollute_json() {
@@ -812,6 +885,7 @@ test_async_runner_waits_for_browser_action() {
     'export class Command {' \
     '  parseAsync() {' \
     '    if (process.env.FAKE_NEVER === "1") return { then() {} }' \
+    '    if (process.env.FAKE_DELAY_MS) return new Promise(resolve => setTimeout(() => { process.stdout.write("delayed-result\n"); resolve() }, Number(process.env.FAKE_DELAY_MS)))' \
     '    return { then(resolve) { process.stdout.write("async-result\n"); resolve() } }' \
     '  }' \
     '  parse() { this.parseAsync(); return this }' \
@@ -819,6 +893,7 @@ test_async_runner_waits_for_browser_action() {
   printf '%s\n' \
     '#!/usr/bin/env node' \
     'import { Command } from "commander"' \
+    'if (process.env.FAKE_PRINT_PROFILE === "1") process.stdout.write(`profile=${process.env.OPENCLI_PROFILE}\n`)' \
     'new Command().parse()' > "$package_dir/build/runtime/cli/main.mjs"
   chmod +x "$package_dir/build/runtime/cli/main.mjs"
   ln -s "$package_dir/build/runtime/cli/main.mjs" "$fake_bin/opencli"
@@ -838,18 +913,36 @@ test_async_runner_waits_for_browser_action() {
   fi
 }
 
-test_async_runner_has_hard_timeout() {
+test_async_runner_forces_ego_lite_profile() {
+  local fixture_dir="$TEST_ROOT/async-runner-fixture"
+  local fake_bin="$fixture_dir/bin"
+  local output status rejected rejected_status
+  set +e
+  output=$(FAKE_PRINT_PROFILE=1 PATH="$fake_bin:$PATH" node "$RUN_SCRIPT")
+  status=$?
+  rejected=$(PATH="$fake_bin:$PATH" node "$RUN_SCRIPT" --profile chrome 2>&1)
+  rejected_status=$?
+  set -e
+  if [[ "$status" -eq 0 ]] && [[ "$output" == *"profile=ego-lite"* ]] \
+    && [[ "$rejected_status" -eq 78 ]] && [[ "$rejected" == *"OPENCLI_PROFILE_REJECTED"* ]]; then
+    ok "runner 强制使用 ego-lite 并拒绝其他 Profile"
+  else
+    bad "runner Profile 边界异常：status=${status}/${rejected_status} output=${output} rejected=${rejected}"
+  fi
+}
+
+test_async_runner_does_not_cut_off_dispatched_action() {
   local fixture_dir="$TEST_ROOT/async-runner-fixture"
   local fake_bin="$fixture_dir/bin"
   local output status
   set +e
-  output=$(FAKE_NEVER=1 OPENCLI_RUN_HARD_TIMEOUT_MS=50 PATH="$fake_bin:$PATH" node "$RUN_SCRIPT" 2>&1)
+  output=$(FAKE_DELAY_MS=100 OPENCLI_RUN_HARD_TIMEOUT_MS=50 PATH="$fake_bin:$PATH" node "$RUN_SCRIPT" 2>&1)
   status=$?
   set -e
-  if [[ "$status" -eq 75 ]] && [[ "$output" == *"OPENCLI_RUN_TIMEOUT"* ]]; then
-    ok "异步兼容入口有独立硬超时"
+  if [[ "$status" -eq 0 ]] && [[ "$output" == "delayed-result" ]]; then
+    ok "runner 不会提前截断已派发的 OpenCLI 动作"
   else
-    bad "异步兼容入口硬超时异常：status=${status} output=${output}"
+    bad "runner 提前截断或丢失异步结果：status=${status} output=${output}"
   fi
 }
 
@@ -884,16 +977,43 @@ test_async_runner_times_out_during_entry_import() {
   fi
   output=$(<"$output_file")
   set -e
-  if [[ "$status" -eq 75 ]] && [[ "$output" == *"OPENCLI_RUN_TIMEOUT"* ]]; then
+  if [[ "$status" -eq 75 ]] && [[ "$output" == *"OPENCLI_RUN_IMPORT_TIMEOUT"* ]]; then
     ok "异步兼容入口的硬超时覆盖顶层动态加载"
   else
     bad "顶层动态加载硬超时异常：status=${status} output=${output}"
   fi
 }
 
+test_auth_batch_requires_explicit_sites() {
+  local rejected rejected_status prefixed prefixed_status
+  local root_sep root_sep_status auth_sep auth_sep_status refresh_sep refresh_sep_status
+  set +e
+  rejected=$(node "$RUN_SCRIPT" auth status --timeout 8 2>&1)
+  rejected_status=$?
+  prefixed=$(node "$RUN_SCRIPT" --profile ego-lite auth status --timeout 8 2>&1)
+  prefixed_status=$?
+  root_sep=$(node "$RUN_SCRIPT" --profile ego-lite -- auth status --timeout 8 2>&1)
+  root_sep_status=$?
+  auth_sep=$(node "$RUN_SCRIPT" --profile ego-lite auth -- status --timeout 8 2>&1)
+  auth_sep_status=$?
+  refresh_sep=$(node "$RUN_SCRIPT" auth -- refresh --timeout 8 2>&1)
+  refresh_sep_status=$?
+  set -e
+  if [[ "$rejected_status" -eq 78 ]] && [[ "$rejected" == *"OPENCLI_AUTH_SITE_REQUIRED"* ]] \
+    && [[ "$prefixed_status" -eq 78 ]] && [[ "$prefixed" == *"OPENCLI_AUTH_SITE_REQUIRED"* ]] \
+    && [[ "$root_sep_status" -eq 78 ]] && [[ "$root_sep" == *"OPENCLI_AUTH_SITE_REQUIRED"* ]] \
+    && [[ "$auth_sep_status" -eq 78 ]] && [[ "$auth_sep" == *"OPENCLI_AUTH_SITE_REQUIRED"* ]] \
+    && [[ "$refresh_sep_status" -eq 78 ]] && [[ "$refresh_sep" == *"OPENCLI_AUTH_SITE_REQUIRED"* ]]; then
+    ok "runner 要求 auth 批量检查显式限定站点，且全局参数与两层 -- 不能绕过"
+  else
+    bad "auth 批量范围未关闭：plain=${rejected_status}/${rejected} prefixed=${prefixed_status}/${prefixed} root_sep=${root_sep_status}/${root_sep} auth_sep=${auth_sep_status}/${auth_sep} refresh_sep=${refresh_sep_status}/${refresh_sep}"
+  fi
+}
+
 printf 'OpenCLI health 回归\n'
 test_ready_without_restart
 test_start_then_ready
+test_cold_start_waits_for_profile_reconnect
 test_daemon_does_not_inherit_start_lock
 test_running_disconnected_fails_fast
 test_started_daemon_is_restored_on_failure
@@ -908,15 +1028,20 @@ test_child_process_cannot_extend_start_lock
 test_restart_timeout_recognizes_daemon_that_started
 test_term_ignored_escalates_to_exact_pid_kill
 test_signal_waits_for_detached_daemon_and_restores
+test_signal_handler_blocks_reentry_during_restore
 test_first_visible_daemon_is_not_misclaimed
 test_restore_does_not_stop_replacement_daemon
 test_profile_required_is_config_error
 test_profile_disconnected_is_config_error
+test_ego_lite_profile_must_be_bound
+test_other_profile_online_does_not_pass_ego_lite_gate
 test_registry_stderr_does_not_pollute_json
 test_selftest_kernel_lock_blocks_parallel_run
 test_async_runner_waits_for_browser_action
-test_async_runner_has_hard_timeout
+test_async_runner_forces_ego_lite_profile
+test_async_runner_does_not_cut_off_dispatched_action
 test_async_runner_times_out_during_entry_import
+test_auth_batch_requires_explicit_sites
 
 leaked_fake_daemons=0
 while IFS= read -r pid_file; do

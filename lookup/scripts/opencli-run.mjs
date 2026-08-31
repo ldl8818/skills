@@ -41,15 +41,50 @@ async function findOwningPackage(entry) {
   throw new Error('Cannot locate the package.json which declares the resolved opencli executable')
 }
 
-const upstreamSeconds = Number(process.env.OPENCLI_BROWSER_COMMAND_TIMEOUT || 30)
+function optionValue(argv, name) {
+  let value
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index]
+    if (arg === name) value = argv[index + 1]
+    else if (arg.startsWith(`${name}=`)) value = arg.slice(name.length + 1)
+  }
+  return value
+}
+
+const commandArgs = process.argv.slice(2)
+const requestedProfile = optionValue(commandArgs, '--profile')
+if (requestedProfile !== undefined && requestedProfile !== 'ego-lite') {
+  console.error('OPENCLI_PROFILE_REJECTED: lookup only permits the ego-lite profile')
+  process.exit(78)
+}
+process.env.OPENCLI_PROFILE = 'ego-lite'
+
+const dispatchArgs = commandArgs.filter((arg, index) => (
+  arg !== '--profile'
+  && !arg.startsWith('--profile=')
+  && commandArgs[index - 1] !== '--profile'
+))
+let commandIndex = dispatchArgs[0] === '--' ? 1 : 0
+const rootCommand = dispatchArgs[commandIndex]
+commandIndex += 1
+if (rootCommand === 'auth' && dispatchArgs[commandIndex] === '--') commandIndex += 1
+const isAuthBatch = rootCommand === 'auth' && ['status', 'refresh'].includes(dispatchArgs[commandIndex])
+if (isAuthBatch) {
+  const rawSites = optionValue(commandArgs, '--site')
+  const sites = [...new Set((rawSites || '').split(',').map(site => site.trim()).filter(Boolean))]
+  if (sites.length === 0) {
+    console.error('OPENCLI_AUTH_SITE_REQUIRED: lookup auth checks require an explicit --site list')
+    process.exit(78)
+  }
+}
 const configuredMs = Number(process.env.OPENCLI_RUN_HARD_TIMEOUT_MS)
-const timeoutMs = Number.isFinite(configuredMs) && configuredMs > 0
+const importTimeoutMs = Number.isFinite(configuredMs) && configuredMs > 0
   ? configuredMs
-  : (Number.isFinite(upstreamSeconds) && upstreamSeconds > 0 ? upstreamSeconds + 2 : 32) * 1000
-const timer = setTimeout(() => {
-  console.error(`OPENCLI_RUN_TIMEOUT: operation exceeded ${timeoutMs}ms`)
+  : 15000
+const importTimer = setTimeout(() => {
+  console.error(`OPENCLI_RUN_IMPORT_TIMEOUT: OpenCLI entry did not dispatch within ${importTimeoutMs}ms`)
   process.exit(75)
-}, timeoutMs)
+}, importTimeoutMs)
 
 try {
   const entry = await findExecutable('opencli')
@@ -69,6 +104,7 @@ try {
   // await the same Commander action from this process. Remove after upstream
   // switches runCli() to parseAsync() and the regression below stays green.
   Command.prototype.parse = function parseAndRetain(argv, options) {
+    clearTimeout(importTimer)
     pendingParse = parseAsync.call(this, argv, options)
     return this
   }
@@ -79,5 +115,5 @@ try {
     await pendingParse
   }
 } finally {
-  clearTimeout(timer)
+  clearTimeout(importTimer)
 }

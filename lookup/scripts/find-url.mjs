@@ -115,15 +115,82 @@ function searchBookmarks(profileDir, profileName, browserLabel, keywords) {
 
 // --- 历史检索（SQLite 运行时锁定，需 copy 到 tmp） ------------------------
 const WEBKIT_EPOCH_DIFF_US = 11644473600000000n;  // 1601→1970 微秒差
+const activeHistoryCopies = new Set();
+
+function cleanupActiveHistoryCopies() {
+  for (const file of activeHistoryCopies) {
+    try { fs.unlinkSync(file); } catch {}
+    activeHistoryCopies.delete(file);
+  }
+}
+
+process.once('exit', cleanupActiveHistoryCopies);
+for (const [signal, exitCode] of [['SIGHUP', 129], ['SIGINT', 130], ['SIGTERM', 143]]) {
+  process.once(signal, () => {
+    cleanupActiveHistoryCopies();
+    process.exit(exitCode);
+  });
+}
+
+function cleanupOrphanedHistoryCopies(runtimeDir) {
+  for (const name of fs.readdirSync(runtimeDir)) {
+    const match = /^browser-history-(\d+)-\d+-[a-z0-9]+\.sqlite$/.exec(name);
+    if (!match) continue;
+    let ownerAlive = true;
+    try { process.kill(Number(match[1]), 0); } catch (error) { ownerAlive = error?.code !== 'ESRCH'; }
+    if (!ownerAlive) {
+      try { fs.unlinkSync(path.join(runtimeDir, name)); } catch {}
+    }
+  }
+}
+
+function ensurePrivateRuntimeDir() {
+  const tmpRoot = path.join(os.homedir(), 'tmp');
+  const runtimeDir = path.join(tmpRoot, 'lookup-runtime');
+  for (const dir of [tmpRoot, runtimeDir]) {
+    if (fs.existsSync(dir) && fs.lstatSync(dir).isSymbolicLink()) {
+      die(`拒绝使用软链临时目录: ${dir}`);
+    }
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const stat = fs.statSync(dir);
+    if (!stat.isDirectory() || (typeof process.getuid === 'function' && stat.uid !== process.getuid())) {
+      die(`临时目录不属于当前用户: ${dir}`);
+    }
+  }
+  fs.chmodSync(runtimeDir, 0o700);
+  cleanupOrphanedHistoryCopies(runtimeDir);
+  return runtimeDir;
+}
+
+function copyPrivateFile(src, dest) {
+  const noFollow = fs.constants.O_NOFOLLOW || 0;
+  const srcFd = fs.openSync(src, fs.constants.O_RDONLY);
+  let destFd;
+  try {
+    destFd = fs.openSync(dest, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | noFollow, 0o600);
+    const buffer = Buffer.allocUnsafe(1024 * 1024);
+    let bytesRead;
+    while ((bytesRead = fs.readSync(srcFd, buffer, 0, buffer.length, null)) > 0) {
+      let offset = 0;
+      while (offset < bytesRead) {
+        offset += fs.writeSync(destFd, buffer, offset, bytesRead - offset);
+      }
+    }
+    fs.fchmodSync(destFd, 0o600);
+  } finally {
+    if (destFd !== undefined) fs.closeSync(destFd);
+    fs.closeSync(srcFd);
+  }
+}
 
 function searchHistory(profileDir, profileName, browserLabel, keywords, since, limit, sort) {
   const src = path.join(profileDir, 'History');
   if (!fs.existsSync(src)) return [];
-  const tmpDir = path.join(os.homedir(), 'tmp');
-  fs.mkdirSync(tmpDir, { recursive: true, mode: 0o700 });
+  const tmpDir = ensurePrivateRuntimeDir();
   const tmp = path.join(tmpDir, `browser-history-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.sqlite`);
+  activeHistoryCopies.add(tmp);
   try {
-    fs.copyFileSync(src, tmp);
+    copyPrivateFile(src, tmp);
     const conds = ['last_visit_time > 0'];
     for (const kw of keywords) {
       const esc = kw.toLowerCase().replace(/'/g, "''");
@@ -153,6 +220,7 @@ function searchHistory(profileDir, profileName, browserLabel, keywords, since, l
     return [];
   } finally {
     try { fs.unlinkSync(tmp); } catch {}
+    activeHistoryCopies.delete(tmp);
   }
 }
 

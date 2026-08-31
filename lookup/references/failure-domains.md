@@ -20,7 +20,7 @@ L4  OpenCLI 站点适配器逻辑        ← 只有 OpenCLI 依赖
 | `AUTH_REQUIRED`、账号被风控（L2） | ❌ 换它也一样没登录 |
 | ego lite 进程没起或崩了（L1） | ❌ 它也要这个浏览器 |
 
-分层判据：`scripts/opencli-health.sh` 区分休眠后成功启动、daemon 启动失败、扩展断连和多 Profile 未选择；门禁 ready 后取数为空是 L4；平台报 `AUTH_REQUIRED` 是 L2。门禁只读 daemon `/status`，不发平台请求。登录态只在需要时用 `node scripts/opencli-run.mjs auth status --site <site> --timeout 8 -f json` 有界检查。别为了分层去跑 `opencli doctor`——它会留下一个关不掉的空白窗口，见 `opencli-windows.md` 。
+分层判据：`scripts/opencli-health.sh` 只检查已绑定的 `ego-lite` Profile，并区分休眠后成功启动、daemon 启动失败、扩展断连、Profile 未绑定／断连／错配；门禁 ready 后取数为空是 L4；平台报 `AUTH_REQUIRED` 是 L2。门禁只读 daemon `/status`，不发平台请求。登录态只在需要时用 `node scripts/opencli-run.mjs auth status --site <site> --timeout 8 -f json` 有界检查。别为了分层去跑 `opencli doctor`——它会留下一个关不掉的空白窗口，见 `opencli-windows.md` 。
 
 同一用户任务只付一次 L3/L4 失败成本：门禁退出 `69`／`75`／`78`，或 adapter 首次出现 `BROWSER_CONNECT`、空结果、字段缺失、解析异常后，立即熔断剩余 OpenCLI provider；下一独立任务重新探活，不写磁盘故障缓存。若门禁自行启动 daemon 但最终未 ready，它只停止本次启动的 daemon；原本已运行的 daemon 保持不动。
 

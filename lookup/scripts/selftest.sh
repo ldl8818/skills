@@ -317,7 +317,7 @@ elif [[ "$L3_OK" -eq 1 ]] && [[ "$PROVIDERS_OK" -eq 1 ]] && command -v jq >/dev/
   else
     auth_stderr=$(mktemp "$TEMP_ROOT/lookup-selftest-auth.XXXXXX")
     TEMP_FILES+=("$auth_stderr")
-    auth_output=$(OPENCLI_RUN_HARD_TIMEOUT_MS=36000 node "$SELF_DIR/opencli-run.mjs" auth status --site "$auth_sites" --timeout 8 --concurrency 1 -f json 2>"$auth_stderr")
+    auth_output=$(node "$SELF_DIR/opencli-run.mjs" auth status --site "$auth_sites" --timeout 8 --concurrency 1 -f json 2>"$auth_stderr")
     auth_status=$?
     if [[ "$auth_status" -eq 0 ]] && jq -e 'type == "array"' >/dev/null 2>&1 <<<"$auth_output"; then
       actual_auth=$(jq 'length' <<<"$auth_output")

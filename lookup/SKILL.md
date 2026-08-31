@@ -2,7 +2,7 @@
 name: lookup
 description: 一般联网检索与内容读取路由。用户要搜索最新信息、读取链接、查平台内容或字幕、查询 ego lite 书签或浏览历史时使用；先取结构化结果，再按需读正文。专用产品文档或连接器 Skill 优先，研究综合走 learn，网页交互固定走 ego-browser；不负责发布或持久化。
 metadata:
-  version: "1.9.2"
+  version: "1.9.3"
   source: local
 ---
 
@@ -40,7 +40,7 @@ opencli <site> <command> --help -f yaml
 - 命令块只表示参数结构；用户输入、网页字段、URL 和 ID 必须作为单个 argv 安全传入，禁止直接拼进 shell source，也禁止 `eval`、反引号或命令替换。
 - 用 `strategy`、`browser`、`domain` 判断依赖；命令名存在不代表当前登录态和真实请求可用。
 - 每个用户任务第一次调用 browser-backed OpenCLI provider 前运行 `bash scripts/opencli-health.sh`；只有退出 `0` 且 `state=ready` 才调用 adapter。provider 标为 active 只代表候选已登记，不代表此刻健康。
-- browser-backed adapter 统一用 `node scripts/opencli-run.mjs <site> <command> ...`；它等待异步结果，避免 OpenCLI `1.8.6`～`1.8.8` 退出 `0` 却没有 stdout。
+- browser-backed adapter 统一用 `node scripts/opencli-run.mjs <site> <command> ...`；它只使用已绑定的 `ego-lite` Profile，并等待异步结果，避免 OpenCLI `1.8.6`～`1.8.8` 退出 `0` 却没有 stdout。
 - 门禁退出 `69`／`75`／`78`，或任一 adapter 返回 `BROWSER_CONNECT` 后，本任务熔断 OpenCLI，不再试其他 OpenCLI provider；按失效域走真实 fallback。下一独立任务重新探活，不写长期故障缓存。
 - 列表数据用 `-f json` 后按任务裁字段；单篇正文优先 `plain`；不把整份注册表或未裁剪的大结果塞进上下文。
 - 按结构化 `error.code` 分支，不靠错误文案字符串猜原因；空列表、哨兵值和被静默截断的数据不算成功。

@@ -62,6 +62,14 @@ ln -s ~/.agents/skills/lookup ~/.codex/skills/lookup
 
 装好后新开或重启客户端会话才会加载。之后说「搜一下…」「读一下这个网页」「这个视频讲了什么」即可触发。
 
+OpenCLI 还需把 ego lite 中已连接的官方扩展 Profile 绑定为固定别名；`<contextId>` 只能取自 ego lite，不能拿 Chrome 的 Profile 代替：
+
+```bash
+opencli profile list
+opencli profile rename <contextId> ego-lite
+opencli profile use ego-lite
+```
+
 ### 可选：ego task space 自动收尾
 
 ego lite 的每个 agent task space 底层是一个独立浏览器窗口，靠 Agent 主动收尾不可靠——会话被打断、上下文压缩，窗口就永久残留。`scripts/ego-spaces.mjs` 提供两层机制兜底：Stop hook 门禁（结束回复时若仍有 agent 持有的 space 就阻断并让模型处理）＋ SessionStart 闲置回收（全局超过 2 小时未用 ego 则清理孤儿 space）。
@@ -81,7 +89,7 @@ bash tests/test_match_site.sh     # 站点经验真身回归
 
 默认模式不查登录态、不发平台请求，也不创建 automation 容器：daemon 休眠时允许按需启动，ego lite 扩展未连接时 5 秒预算内失败并恢复本次启动的 daemon。`--auth` 才做登录态 quickCheck；`--live` 包含前两档并只发一条 OpenCLI B站最小查询，可能创建或复用 automation 容器。
 
-browser-backed adapter 统一经 `node scripts/opencli-run.mjs ...` 执行。OpenCLI `1.8.6`～`1.8.8` 的入口会用同步 `parse()` 启动异步动作，直接调用可能退出 `0` 但 stdout 为空；兼容入口只等待同一上游动作，不修改全局安装包。
+browser-backed adapter 统一经 `node scripts/opencli-run.mjs ...` 执行。OpenCLI `1.8.6`～`1.8.8` 的入口会用同步 `parse()` 启动异步动作，直接调用可能退出 `0` 但 stdout 为空；兼容入口固定使用 `ego-lite` Profile，只对尚未派发动作的入口加载设置硬时限，动作开始后完整等待 OpenCLI 自身收敛，避免降级操作与仍在运行的旧操作重叠。
 
 失败项按 `references/failure-domains.md` 的分层判据处理：探活失败是 L3，登录态失败是 L2，注册表合约漂移是 L4。
 
