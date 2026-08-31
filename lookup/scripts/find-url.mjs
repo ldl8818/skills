@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// find-url - 从本地 Chromium 系浏览器（ego lite / Chrome / Edge）书签/历史中检索 URL
+// find-url - 从本地 ego lite 书签/历史中检索 URL
 // 用于定位公网搜索覆盖不到的目标（组织内部系统、SSO 后台、内网域名等）。
 //
 // 用法：
@@ -7,7 +7,7 @@
 //
 //   <关键词>             空格分词、多词 AND，匹配 title + url；可省略
 //   --only <source>      限定数据源（bookmarks / history），默认两者都查
-//   --browser <id>       限定浏览器（ego / chrome / edge），默认遍历所有已安装的
+//   --browser ego        兼容旧调用；其他浏览器一律拒绝
 //   --limit N            条数上限，默认 20；0 = 不限
 //   --since <window>     时间窗（仅作用于历史）。1d / 7h / 30m 或 YYYY-MM-DD
 //   --sort recent|visits 历史排序：按最近访问 / 按访问次数，默认 recent
@@ -61,28 +61,14 @@ function parseSince(s) {
 function die(msg) { console.error(msg); process.exit(1); }
 function printUsage() { console.error(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 21).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); }
 
-// --- 浏览器用户数据目录（跨平台 + 多浏览器） -----------------------------
-// 加新浏览器：只改这里
+// --- ego lite 用户数据目录 ------------------------------------------------
 function knownBrowserDataDirs() {
   const home = os.homedir();
-  const localAppData = process.env.LOCALAPPDATA || '';
   switch (os.platform()) {
     case 'darwin':
       return [
-        // ego lite 是 Chromium 系，数据布局与 Chrome 一致（Local State + Default/Bookmarks + Default/History）
+        // ego lite 使用 Chromium 数据布局（Local State + Default/Bookmarks + Default/History）。
         { id: 'ego',    label: 'ego lite', dir: path.join(home, 'Library/Application Support/Citro Labs/ego lite') },
-        { id: 'chrome', label: 'Chrome', dir: path.join(home, 'Library/Application Support/Google/Chrome') },
-        { id: 'edge',   label: 'Edge',   dir: path.join(home, 'Library/Application Support/Microsoft Edge') },
-      ];
-    case 'linux':
-      return [
-        { id: 'chrome', label: 'Chrome', dir: path.join(home, '.config/google-chrome') },
-        { id: 'edge',   label: 'Edge',   dir: path.join(home, '.config/microsoft-edge') },
-      ];
-    case 'win32':
-      return [
-        { id: 'chrome', label: 'Chrome', dir: path.join(localAppData, 'Google/Chrome/User Data') },
-        { id: 'edge',   label: 'Edge',   dir: path.join(localAppData, 'Microsoft/Edge/User Data') },
       ];
     default:
       return [];
@@ -133,7 +119,9 @@ const WEBKIT_EPOCH_DIFF_US = 11644473600000000n;  // 1601→1970 微秒差
 function searchHistory(profileDir, profileName, browserLabel, keywords, since, limit, sort) {
   const src = path.join(profileDir, 'History');
   if (!fs.existsSync(src)) return [];
-  const tmp = path.join(os.tmpdir(), `browser-history-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.sqlite`);
+  const tmpDir = path.join(os.homedir(), 'tmp');
+  fs.mkdirSync(tmpDir, { recursive: true, mode: 0o700 });
+  const tmp = path.join(tmpDir, `browser-history-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.sqlite`);
   try {
     fs.copyFileSync(src, tmp);
     const conds = ['last_visit_time > 0'];
@@ -203,6 +191,7 @@ function printHistory(items, showBrowser, showProfile, sortLabel) {
 
 // --- main ---------------------------------------------------------------
 const args = parseArgs(process.argv.slice(2));
+if (args.browser && args.browser !== 'ego') die('本 Skill 固定只读 ego lite，不读取 Chrome 或 Edge 数据');
 
 let browsers = knownBrowserDataDirs().filter(b => fs.existsSync(b.dir));
 if (args.browser) {
@@ -213,7 +202,7 @@ if (args.browser) {
   }
   browsers = filtered;
 }
-if (!browsers.length) die('未找到任何浏览器（ego lite / Chrome / Edge）的用户数据目录');
+if (!browsers.length) die('未找到 ego lite 用户数据目录');
 
 const doBookmarks = args.only !== 'history';
 const doHistory   = args.only !== 'bookmarks';

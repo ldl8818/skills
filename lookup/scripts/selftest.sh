@@ -1,33 +1,29 @@
 #!/usr/bin/env bash
-# lookup 通道自检：验证本地依赖、OpenCLI 桥接、注册表合约和登录态。
+# lookup 通道自检：验证本地依赖、OpenCLI 桥接与注册表合约。
 #
-# 默认模式不发平台搜索/正文请求。L3 cookies 探活不建 lease；auth status
-# 使用 quickCheck、单并发和每站超时，但首次仍可能创建或复用 automation 容器。
+# 默认模式不查登录态，也不发平台搜索/正文请求。--auth 才使用有界
+# quickCheck；--live 包含 --auth，并额外发一条最小真实查询。
 #
 # 用法：
 #   bash scripts/selftest.sh
+#   bash scripts/selftest.sh --auth
 #   bash scripts/selftest.sh --live
 #
 # --live 会发真实查询、消耗额度并可能留下容器窗口，只在明确排障时使用。
 
 set -uo pipefail
 
+AUTH=0
 LIVE=0
 case "${1:-}" in
   "") ;;
-  --live) LIVE=1 ;;
+  --auth) AUTH=1 ;;
+  --live) AUTH=1; LIVE=1 ;;
   *)
-    printf '用法：bash scripts/selftest.sh [--live]\n'
+    printf '用法：bash scripts/selftest.sh [--auth|--live]\n'
     exit 2
     ;;
 esac
-
-# OpenCLI daemon 串行处理浏览器命令；并发自检会制造假超时。
-others=$(pgrep -f '[s]elftest\.sh' 2>/dev/null | grep -vx "$$" | tr '\n' ' ' || true)
-if [[ -n "${others// /}" ]]; then
-  printf '已有 selftest 在跑（PID: %s）。等它结束再试。\n' "${others% }"
-  exit 2
-fi
 
 PASS=0
 FAIL=0
@@ -41,10 +37,93 @@ head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SELF_DIR/.." && pwd)"
 PROVIDERS_JSON="$SKILL_DIR/references/providers.json"
+# Bash 3.2 在 set -u 下展开真正的空数组会报 unbound variable；保留空哨兵。
+TEMP_FILES=("")
+TEMP_ROOT="${HOME:-}/tmp/lookup-runtime"
+SELFTEST_LOCK_FILE="$TEMP_ROOT/lookup-selftest.v2.flock"
+SELFTEST_LOCK_OWNED=0
+SELFTEST_LOCK_HOLDER="$SELF_DIR/flock-holder.py"
+SELFTEST_LOCK_HOLDER_PID=""
+SELFTEST_LOCK_STATUS_FILE=""
+
+prepare_runtime_dir() {
+  [[ -n "${HOME:-}" ]] && [[ "$HOME" == /* ]] || return 1
+  [[ ! -L "$HOME/tmp" ]] || return 1
+  mkdir -p "$HOME/tmp" 2>/dev/null || return 1
+  [[ -d "$HOME/tmp" ]] && [[ -O "$HOME/tmp" ]] || return 1
+  [[ ! -L "$TEMP_ROOT" ]] || return 1
+  mkdir -p "$TEMP_ROOT" 2>/dev/null || return 1
+  chmod 700 "$TEMP_ROOT" 2>/dev/null || return 1
+  [[ -d "$TEMP_ROOT" ]] && [[ -O "$TEMP_ROOT" ]] && [[ -w "$TEMP_ROOT" ]]
+}
+
+if ! prepare_runtime_dir; then
+  printf '临时目录不可用：%s\n' "$TEMP_ROOT"
+  exit 78
+fi
+
+acquire_selftest_lock() {
+  local lock_status
+  local attempt
+  command -v python3 >/dev/null 2>&1 || return 78
+  [[ -r "$SELFTEST_LOCK_HOLDER" ]] || return 78
+  SELFTEST_LOCK_STATUS_FILE=$(mktemp "$TEMP_ROOT/lookup-selftest-lock.XXXXXX") || return 78
+  TEMP_FILES+=("$SELFTEST_LOCK_STATUS_FILE")
+  python3 "$SELFTEST_LOCK_HOLDER" "$SELFTEST_LOCK_FILE" "$SELFTEST_LOCK_STATUS_FILE" 0 "$$" &
+  SELFTEST_LOCK_HOLDER_PID=$!
+  for attempt in $(seq 1 100); do
+    [[ -s "$SELFTEST_LOCK_STATUS_FILE" ]] && break
+    kill -0 "$SELFTEST_LOCK_HOLDER_PID" 2>/dev/null || break
+    sleep 0.01
+  done
+  if [[ -s "$SELFTEST_LOCK_STATUS_FILE" ]]; then
+    lock_status=$(<"$SELFTEST_LOCK_STATUS_FILE")
+  else
+    lock_status=78
+  fi
+  if [[ "$lock_status" -eq 75 ]]; then
+    kill -TERM "$SELFTEST_LOCK_HOLDER_PID" 2>/dev/null || true
+    wait "$SELFTEST_LOCK_HOLDER_PID" 2>/dev/null || true
+    SELFTEST_LOCK_HOLDER_PID=""
+    printf '已有 selftest 在跑。等它结束再试。\n'
+    return 2
+  fi
+  if [[ "$lock_status" -ne 0 ]] || ! kill -0 "$SELFTEST_LOCK_HOLDER_PID" 2>/dev/null; then
+    kill -TERM "$SELFTEST_LOCK_HOLDER_PID" 2>/dev/null || true
+    wait "$SELFTEST_LOCK_HOLDER_PID" 2>/dev/null || true
+    SELFTEST_LOCK_HOLDER_PID=""
+    return 78
+  fi
+  SELFTEST_LOCK_OWNED=1
+  return 0
+}
+
+cleanup_temp_files() {
+  local temp_file
+  for temp_file in "${TEMP_FILES[@]}"; do
+    [[ -n "$temp_file" ]] || continue
+    case "$temp_file" in
+      "$TEMP_ROOT"/lookup-selftest-*)
+        [[ ! -e "$temp_file" ]] || rm -f -- "$temp_file"
+        ;;
+    esac
+  done
+  if [[ "$SELFTEST_LOCK_HOLDER_PID" =~ ^[0-9]+$ ]]; then
+    kill -TERM "$SELFTEST_LOCK_HOLDER_PID" 2>/dev/null || true
+    wait "$SELFTEST_LOCK_HOLDER_PID" 2>/dev/null || true
+  fi
+  SELFTEST_LOCK_HOLDER_PID=""
+  SELFTEST_LOCK_OWNED=0
+}
+trap cleanup_temp_files EXIT
+
+acquire_selftest_lock
+lock_status=$?
+[[ "$lock_status" -eq 0 ]] || exit "$lock_status"
 
 # ---------- 1. 本地依赖 ----------
 head_ "命令可用性"
-for cmd in jq python3; do
+for cmd in curl jq python3; do
   if command -v "$cmd" >/dev/null 2>&1; then
     ok "${cmd}（selftest 依赖）"
   else
@@ -103,7 +182,7 @@ else
   bad "fetch.sh 不在 $FETCH_SH —— 静态抓取通道失效"
 fi
 
-for script in find-url.mjs match-site.mjs ego-spaces.mjs; do
+for script in find-url.mjs match-site.mjs ego-spaces.mjs opencli-run.mjs; do
   if [[ -f "$SELF_DIR/$script" ]] && node --check "$SELF_DIR/$script" 2>/dev/null; then
     ok "scripts/$script 可解析"
   else
@@ -111,32 +190,39 @@ for script in find-url.mjs match-site.mjs ego-spaces.mjs; do
   fi
 done
 
-# ---------- 2. OpenCLI L3 端到端探活 ----------
-head_ "OpenCLI 连通性（零窗口 L3 探活）"
+runner_version=$(node "$SELF_DIR/opencli-run.mjs" --version 2>&1)
+runner_status=$?
+if [[ "$runner_status" -eq 0 ]] && [[ "$runner_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  ok "OpenCLI 兼容入口可执行（${runner_version}）"
+else
+  bad "OpenCLI 兼容入口运行失败：${runner_version:0:160}"
+fi
+
+# ---------- 2. OpenCLI L3 健康门禁 ----------
+head_ "OpenCLI 连通性（零业务请求健康门禁）"
 L3_OK=0
-if command -v opencli >/dev/null 2>&1 && command -v curl >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-  deadline=$(python3 -c 'import time;print(int(time.time()*1000)+15000)')
-  probe=$(curl -sS --max-time 20 \
-    -H 'X-OpenCLI: 1' -H 'Content-Type: application/json' \
-    --data "{\"id\":\"selftest-$$\",\"action\":\"cookies\",\"session\":\"health-probe\",\"surface\":\"browser\",\"domain\":\"opencli-probe.invalid\",\"timeout\":10,\"deadlineAt\":$deadline}" \
-    http://127.0.0.1:19825/command 2>&1)
-  if [[ "$probe" == *'"ok":true'* ]]; then
-    ok "daemon + 扩展连通（L3 正常）"
+if [[ -x "$SELF_DIR/opencli-health.sh" ]] && command -v jq >/dev/null 2>&1; then
+  health_output=$(bash "$SELF_DIR/opencli-health.sh")
+  health_status=$?
+  if [[ "$health_status" -eq 0 ]] && jq -e '.ok == true and .state == "ready"' >/dev/null 2>&1 <<<"$health_output"; then
+    ok "daemon + ego lite 扩展连通（L3 正常）"
     L3_OK=1
   else
-    bad "探活未返回 ok:true —— L3 故障，OpenCLI adapter 不可用"
-    printf '      返回：%s\n' "${probe:0:160}"
+    state=$(jq -r '.state // "invalid_health_output"' <<<"$health_output" 2>/dev/null || printf 'invalid_health_output')
+    next=$(jq -r '.next // "check_opencli_health"' <<<"$health_output" 2>/dev/null || printf 'check_opencli_health')
+    bad "OpenCLI 门禁未就绪：${state}；下一步：${next}"
   fi
 else
-  skip "opencli、curl 或 python3 缺失，跳过 L3 探活"
+  bad "scripts/opencli-health.sh 缺失、不可执行或 jq 不可用"
 fi
 
 # ---------- 3. OpenCLI 实时注册表与策略合约 ----------
 head_ "OpenCLI 注册表合约"
 REGISTRY_JSON=""
 if command -v opencli >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-  REGISTRY_JSON=$(opencli list -f json 2>&1)
-  if jq -e '(type == "array") and (length > 0)' >/dev/null 2>&1 <<<"$REGISTRY_JSON"; then
+  registry_stderr=$(mktemp "$TEMP_ROOT/lookup-selftest-registry.XXXXXX")
+  TEMP_FILES+=("$registry_stderr")
+  if REGISTRY_JSON=$(opencli list -f json 2>"$registry_stderr") && jq -e '(type == "array") and (length > 0)' >/dev/null 2>&1 <<<"$REGISTRY_JSON"; then
     registry_count=$(jq 'length' <<<"$REGISTRY_JSON")
     ok "opencli list 返回 $registry_count 条结构化命令"
   else
@@ -144,6 +230,7 @@ if command -v opencli >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
     printf '      返回：%s\n' "${REGISTRY_JSON:0:160}"
     REGISTRY_JSON=""
   fi
+  unlink "$registry_stderr"
 else
   skip "opencli 或 jq 缺失，跳过注册表合约"
 fi
@@ -192,46 +279,53 @@ if [[ -n "$REGISTRY_JSON" ]] && [[ "$PROVIDERS_OK" -eq 1 ]]; then
   if [[ "$expected_contracts" -gt 0 ]] && [[ "$checked_contracts" -eq "$expected_contracts" ]]; then
     ok "实际检查 $checked_contracts 条 OpenCLI 合约，与策略台账一致"
   else
-    bad "OpenCLI 合约检查数异常：应检查 $expected_contracts，实际 $checked_contracts"
+    bad "OpenCLI 合约检查数异常：应检查 ${expected_contracts}，实际 ${checked_contracts}"
   fi
 
   expected_sites=$(jq '[.actions[] | .providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional")) | .command | split("/")[0]] | unique | length' "$PROVIDERS_JSON")
   checked_sites=0
+  verified_sites=0
   while IFS= read -r site; do
     checked_sites=$((checked_sites + 1))
-    if verify_output=$(opencli verify "$site" 2>&1); then
+    if verify_output=$(node "$SELF_DIR/opencli-run.mjs" verify "$site" 2>&1); then
       ok "opencli verify $site"
+      verified_sites=$((verified_sites + 1))
     else
       skip "opencli verify $site 的站点级检查失败，不覆盖上方精确只读合约：${verify_output:0:120}"
     fi
   done < <(jq -r '[.actions[] | .providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional")) | .command | split("/")[0]] | unique[]' "$PROVIDERS_JSON")
 
   if [[ "$expected_sites" -gt 0 ]] && [[ "$checked_sites" -eq "$expected_sites" ]]; then
-    ok "实际 verify $checked_sites 个站点，与策略台账一致"
+    ok "已逐项发起 $checked_sites 个站点 verify，其中 $verified_sites 个成功"
   else
-    bad "OpenCLI 站点 verify 数异常：应检查 $expected_sites，实际 $checked_sites"
+    bad "OpenCLI 站点 verify 数异常：应检查 ${expected_sites}，实际 ${checked_sites}"
   fi
 else
   skip "注册表或策略台账不可用，跳过合约验证"
 fi
 
-# ---------- 4. 有界登录态检查 ----------
+# ---------- 4. --auth 有界登录态检查 ----------
 head_ "平台登录态（有界 quickCheck）"
-if [[ "$L3_OK" -eq 1 ]] && [[ "$PROVIDERS_OK" -eq 1 ]] && command -v jq >/dev/null 2>&1; then
+if [[ "$AUTH" -ne 1 ]]; then
+  skip "未加 --auth，跳过登录态检查"
+elif [[ "$L3_OK" -eq 1 ]] && [[ "$PROVIDERS_OK" -eq 1 ]] && command -v jq >/dev/null 2>&1; then
   expected_auth_set=$(jq -c '[.actions[] | .providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional") and .auth == "browser-session") | .command | split("/")[0]] | unique | sort' "$PROVIDERS_JSON")
   auth_sites=$(jq -r 'join(",")' <<<"$expected_auth_set")
   expected_auth=$(jq 'length' <<<"$expected_auth_set")
   if [[ "$expected_auth" -eq 0 ]]; then
     skip "策略台账没有需要浏览器登录态的 OpenCLI 站点"
   else
-    auth_output=$(opencli auth status --site "$auth_sites" --timeout 8 --concurrency 1 -f json 2>&1)
-    if jq -e 'type == "array"' >/dev/null 2>&1 <<<"$auth_output"; then
+    auth_stderr=$(mktemp "$TEMP_ROOT/lookup-selftest-auth.XXXXXX")
+    TEMP_FILES+=("$auth_stderr")
+    auth_output=$(OPENCLI_RUN_HARD_TIMEOUT_MS=36000 node "$SELF_DIR/opencli-run.mjs" auth status --site "$auth_sites" --timeout 8 --concurrency 1 -f json 2>"$auth_stderr")
+    auth_status=$?
+    if [[ "$auth_status" -eq 0 ]] && jq -e 'type == "array"' >/dev/null 2>&1 <<<"$auth_output"; then
       actual_auth=$(jq 'length' <<<"$auth_output")
       actual_auth_set=$(jq -c '[.[].site] | unique | sort' <<<"$auth_output")
       if [[ "$actual_auth" -eq "$expected_auth" ]] && [[ "$actual_auth_set" == "$expected_auth_set" ]]; then
         ok "auth status 完整覆盖 $actual_auth 个目标站点"
       else
-        bad "auth status 站点集合不符：期望 $expected_auth_set，实际 $actual_auth_set"
+        bad "auth status 站点集合不符：期望 ${expected_auth_set}，实际 ${actual_auth_set}"
       fi
 
       while IFS= read -r row; do
@@ -249,6 +343,7 @@ if [[ "$L3_OK" -eq 1 ]] && [[ "$PROVIDERS_OK" -eq 1 ]] && command -v jq >/dev/nu
       bad "opencli auth status 未返回 JSON 数组"
       printf '      返回：%s\n' "${auth_output:0:160}"
     fi
+    unlink "$auth_stderr"
   fi
 else
   skip "L3 不通、策略台账无效或 jq 缺失，跳过登录态检查"
@@ -256,19 +351,19 @@ fi
 
 # ---------- 5. --live 真实最小查询 ----------
 if [[ "$LIVE" -eq 1 ]]; then
-  head_ "真实查询（会留下窗口并消耗额度）"
+  head_ "真实查询（可能留下 automation 容器）"
   probe_word="ai"
-  LIVE_TMP_FILES=()
+  export OPENCLI_BROWSER_COMMAND_TIMEOUT=15
 
-  cleanup_live_tmp() {
-    local tmp_file
-    for tmp_file in "${LIVE_TMP_FILES[@]}"; do
-      case "$tmp_file" in
-        "$HOME"/tmp/lookup-selftest.*.err) rm -f -- "$tmp_file" ;;
-      esac
-    done
+  valid_live_output() {
+    local validator="$1"
+    local out="$2"
+    case "$validator" in
+      json-list) jq -e '(type == "array") and (length > 0)' >/dev/null 2>&1 <<<"$out" ;;
+      text) [[ -n "${out//[[:space:]]/}" ]] ;;
+      *) return 2 ;;
+    esac
   }
-  trap cleanup_live_tmp EXIT
 
   run_live() {
     local label="$1"
@@ -278,32 +373,18 @@ if [[ "$LIVE" -eq 1 ]]; then
     local stderr
     shift 2
 
-    stderr_file=$(mktemp "$HOME/tmp/lookup-selftest.XXXXXX.err") || {
+    stderr_file=$(mktemp "$TEMP_ROOT/lookup-selftest-live.XXXXXX") || {
       bad "$label 无法创建 stderr 临时文件"
       return
     }
-    LIVE_TMP_FILES+=("$stderr_file")
+    TEMP_FILES+=("$stderr_file")
 
     if out=$("$@" 2>"$stderr_file"); then
-      case "$validator" in
-        json-list)
-          if jq -e '(type == "array") and (length > 0)' >/dev/null 2>&1 <<<"$out"; then
-            ok "$label 返回非空 JSON 列表"
-          else
-            bad "$label 退出 0，但没有返回非空 JSON 列表：${out:0:120}"
-          fi
-          ;;
-        text)
-          if [[ -n "${out//[[:space:]]/}" ]]; then
-            ok "$label 返回 $(wc -c <<<"$out" | tr -d ' ') 字节有效 stdout"
-          else
-            bad "$label 退出 0，但 stdout 为空"
-          fi
-          ;;
-        *)
-          bad "$label 使用未知校验器：$validator"
-          ;;
-      esac
+      if valid_live_output "$validator" "$out"; then
+        ok "$label 返回有效内容"
+      else
+        bad "$label 退出 0，但内容无效：${out:0:120}"
+      fi
     else
       stderr=$(<"$stderr_file")
       bad "$label 查询失败：${stderr:0:120}"
@@ -311,12 +392,7 @@ if [[ "$LIVE" -eq 1 ]]; then
     rm -f -- "$stderr_file"
   }
 
-  run_live "X search" json-list env OPENCLI_BROWSER_COMMAND_TIMEOUT=30 opencli twitter search "$probe_word" --product live -f json --limit 1 --window background
-  run_live "小红书 search" json-list env OPENCLI_BROWSER_COMMAND_TIMEOUT=30 opencli xiaohongshu search "$probe_word" -f json --limit 1 --window background
-  run_live "公众号 search" json-list env OPENCLI_BROWSER_COMMAND_TIMEOUT=30 opencli weixin search "$probe_word" -f json --limit 1 --window background
-  run_live "Douyin search" json-list env OPENCLI_BROWSER_COMMAND_TIMEOUT=30 opencli douyin search "$probe_word" -f json --limit 1 --window background
-  run_live "B站 search" text bili search "$probe_word" --type video -n 1
-  run_live "YouTube search" text yt-dlp --socket-timeout 10 "ytsearch1:$probe_word" --flat-playlist --print "%(title)s"
+  run_live "OpenCLI B站 search" json-list node "$SELF_DIR/opencli-run.mjs" bilibili search "$probe_word" --type video -f json --limit 1 --window background --site-session ephemeral --keep-tab false
 else
   head_ "真实查询"
   skip "未加 --live，跳过平台业务请求"

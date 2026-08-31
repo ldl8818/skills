@@ -1,6 +1,6 @@
 # 公众号取正文
 
-`opencli weixin search` 返回的是**搜狗跳转链**（`weixin.sogou.com/link?url=...`），不是文章地址。这条链只有真实浏览器能走通，所以取正文必须过一次 ego lite。
+`node scripts/opencli-run.mjs weixin search` 返回的是**搜狗跳转链**（`weixin.sogou.com/link?url=...`），不是文章地址。这条链只有真实浏览器能走通，所以取正文必须过一次 ego lite。
 
 2026-07-30 实测的三条死路，别再试：
 
@@ -8,7 +8,7 @@
 |---|---|
 | `fetch.sh <搜狗链>` | **返回 `status=ok`，内容却是搜狗反爬验证码页**（911 字节，「此验证码用于确认这些请求是您的正常行为」）——典型的假成功 |
 | `curl` 直连或带浏览器 UA + Referer | 302 到 `weixin.sogou.com/antispider/` |
-| `opencli weixin download --url <搜狗链>` | `status: invalid URL`，它只认 `mp.weixin.qq.com` |
+| `node scripts/opencli-run.mjs weixin download --url <搜狗链>` | `status: invalid URL`，它只认 `mp.weixin.qq.com` |
 
 ## 默认走这条：一个 heredoc 打开并读回正文
 
@@ -36,10 +36,10 @@ EOF
 
 ## 要落盘归档时走这条
 
-仅当用户明确要求归档时使用 `opencli weixin download`。它会在本地创建文件，产出带元数据的干净 Markdown（实测 7197 字节，含标题、公众号名、发布时间、原文链接）；且**必须先用上面的办法拿到真实 `mp.weixin.qq.com` 地址**。
+仅当用户明确要求归档时使用 `node scripts/opencli-run.mjs weixin download`。它会在本地创建文件，产出带元数据的干净 Markdown（实测 7197 字节，含标题、公众号名、发布时间、原文链接）；且**必须先用上面的办法拿到真实 `mp.weixin.qq.com` 地址**。
 
 ```bash
-opencli weixin download --url '<mp.weixin.qq.com 真实地址>' \
+node scripts/opencli-run.mjs weixin download --url '<mp.weixin.qq.com 真实地址>' \
   --output <目录> --download-images false -f yaml --window background
 ```
 

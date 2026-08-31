@@ -26,7 +26,7 @@
    opencli <site> <command> --help -f yaml
    ```
 
-3. adapter 存在且正好覆盖目标时先用 adapter；不存在所需动作时直接换其他 CLI、API 或 ego-browser，不空试。
+3. adapter 存在且正好覆盖目标时，先按本节门禁确认当前 bridge；不存在所需动作时直接换其他 CLI、API 或 ego-browser，不空试。
 4. 列表输出用 JSON 并裁字段；正文命令可用 `plain`。搜索列表不能直接当正文。
 5. 命中 `AUTH_REQUIRED` 是 L2，不切 ego-browser；结构变化、空结果和适配器异常才是 L4。
 
@@ -41,29 +41,29 @@ OpenCLI 注册表是命令签名的事实源；`references/providers.json` 只�
 | X | `twitter/search` | `twitter/article`、`twitter/thread`、`twitter/tweets` | 最新搜索显式传 `--product live`；看某人用 `tweets`，不用 `timeline` |
 | YouTube | `yt-dlp ytsearch` | `yt-dlp` 字幕 | 直连失效域独立于 ego lite；字幕读 `youtube-subtitles.md` |
 | 小红书 | `xiaohongshu/search` | `xiaohongshu/note`、`xiaohongshu/comments` | 从搜索结果取完整 URL／ID，再读正文 |
-| B站 | `bili search` | `bilibili/subtitle` | 搜索优先免登录 `bili`；不要用 yt-dlp 抓 B站 |
+| B站 | `bili search` | `bilibili/subtitle` | 普通搜索优先免登录 `bili`；时效是硬要求时直接用 ego-browser 选择「最新发布」；不要用 yt-dlp 抓 B站 |
 | 公众号 | `weixin/search` | ego-browser 跳转后取 DOM | 搜索返回搜狗跳转链，正文读 `weixin-article.md`；归档另走显式落盘流程 |
 | Douyin | `douyin/search` | 以搜索结果可见内容为限 | 结果没有发布时间，不能证明「最近」 |
 
 常用命令示例：
 
 ```bash
-opencli twitter search "<词>" --product live -f json --limit 5 --window background
-opencli twitter article <tweet-id> -f plain --window background
-opencli twitter thread <tweet-id> -f json --window background
-opencli twitter tweets <用户名> -f json --limit 20 --window background
+node scripts/opencli-run.mjs twitter search "<词>" --product live -f json --limit 5 --window background
+node scripts/opencli-run.mjs twitter article <tweet-id> -f plain --window background
+node scripts/opencli-run.mjs twitter thread <tweet-id> -f json --window background
+node scripts/opencli-run.mjs twitter tweets <用户名> -f json --limit 20 --window background
 
 yt-dlp "ytsearch5:<词>" --flat-playlist --print "%(title)s\t%(channel)s\t%(duration_string)s\t%(url)s"
 
-opencli xiaohongshu search "<词>" -f json --limit 5 --window background
-opencli xiaohongshu note <完整URL或ID> -f plain --window background
-opencli xiaohongshu comments <note-id> -f json --window background
+node scripts/opencli-run.mjs xiaohongshu search "<词>" -f json --limit 5 --window background
+node scripts/opencli-run.mjs xiaohongshu note <完整URL或ID> -f plain --window background
+node scripts/opencli-run.mjs xiaohongshu comments <note-id> -f json --window background
 
 bili search "<词>" --type video -n 5
-opencli bilibili subtitle <BV号> -f json --window background
+node scripts/opencli-run.mjs bilibili subtitle <BV号> -f json --window background
 
-opencli weixin search "<词>" -f json --limit 5 --window background
-opencli douyin search "<词>" -f json --limit 5 --window background
+node scripts/opencli-run.mjs weixin search "<词>" -f json --limit 5 --window background
+node scripts/opencli-run.mjs douyin search "<词>" -f json --limit 5 --window background
 ```
 
 `--window background` 只控制焦点，不保证不创建 automation 容器窗口。不要把它描述成无窗口模式。
@@ -73,6 +73,7 @@ opencli douyin search "<词>" -f json --limit 5 --window background
 ## 时效与正文
 
 - X `search` 默认热门排序；用户问最新时必须用 `--product live`。
+- B站的 `bili search` 与 `bilibili/search` 都没有发布时间字段或最新排序参数，不能证明结果时效；用户明确要「最新／最近」时直接用 ego-browser 在搜索页选择「最新发布」，并核对页面可见时间。页面仍无时间时如实说明不能证明，不拿相关性列表冒充最新。
 - Douyin 结果没有时间字段；交付时明确写「无法证明发布时间」，不能按播放量猜新旧。
 - 小红书当前搜索字段包含 `published_at`，仍要检查实际值是否存在，不能只看 schema。
 - 公众号搜索的 `publish_time` 可用于初筛；搜狗跳转链本身不是正文。
@@ -80,11 +81,22 @@ opencli douyin search "<词>" -f json --limit 5 --window background
 
 ## OpenCLI 失败处理
 
-先按结构化错误和失效层级处理：
+每个用户任务第一次准备调用 browser-backed OpenCLI provider 前运行：
 
-- `auth_required`：L2，核对 `opencli auth status --site <site> --timeout 8 -f json`；不换同登录态浏览器。
-- daemon／extension 失败：L3，改用 ego-browser。
-- 命令存在但字段缺失、空结果、解析异常：L4；重试一次并加 `--trace retain-on-failure`，仍失败改用 ego-browser。
+```bash
+bash scripts/opencli-health.sh
+```
+
+只有退出 `0` 且 `state=ready` 才进入 adapter。退出 `69`／`75`／`78`，或任一 adapter 返回 `BROWSER_CONNECT` 后，本任务不再尝试其他 OpenCLI provider，直接按失效域切换真实 fallback；下一独立任务重新探活，不把短暂故障写成长期缓存。`active`／`conditional` 只表示 provider 已登记，不是运行时健康证明。
+
+browser-backed 命令统一经 `node scripts/opencli-run.mjs ...` 执行；直接调用 OpenCLI `1.8.6`～`1.8.8` 可能在异步动作完成前退出 `0`，空 stdout 仍必须判失败，不能当成空结果。
+
+其余失败按结构化错误和失效层级处理：
+
+- `auth_required`：L2，核对 `node scripts/opencli-run.mjs auth status --site <site> --timeout 8 -f json`；不换同登录态浏览器。
+- daemon 休眠：门禁按需启动，不单凭 `127.0.0.1:19825` 未监听判故障。
+- daemon 无法启动、ego lite 扩展未连接或 Profile 未选择：L3，按门禁 JSON 的 `state` 和 `next` 处理；可用时改走 ego-browser。
+- 命令存在但字段缺失、空结果、解析异常：L4；本任务立即熔断 OpenCLI 并改用 ego-browser，不自动重试。只有用户明确要求排障时才另行使用 trace。
 - 命令不存在：不猜旧命令；回注册表找同目标的只读动作，找不到就换工具。
 
 不要用 `opencli verify --smoke` 证明真实平台可用；当前发布包的 smoke 依赖环境测试目录，不能替代实际请求。`convention-audit` 面向 adapter 开发，不作为日常路由门禁。

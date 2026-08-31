@@ -21,7 +21,7 @@
 | AI 圈动态 | aihot | 先发现，再回原文核实 |
 | 英文搜索兜底 | WebSearch | Exa 无结果或不可用时 |
 | 已知博客、文档、新闻 | `fetch.sh` | 静态抓取首选 |
-| 自己访问过的页面 | `find-url.mjs` | 查 ego lite、Chrome、Edge 书签与历史 |
+| 自己访问过的页面 | `find-url.mjs` | 只查 ego lite 书签与历史 |
 | 动态、登录、交互网页 | ego-browser | 长尾站点最后使用 |
 
 ## 结构化结果优先
@@ -90,7 +90,7 @@ curl -fsSL "https://r.jina.ai/<url>"
 公网搜不到的内部后台、内网域名和自己访问过的页面，先查本机：
 
 ```bash
-node scripts/find-url.mjs <关键词> [--browser ego|chrome|edge] [--only bookmarks|history] [--since 7d]
+node scripts/find-url.mjs <关键词> [--only bookmarks|history] [--since 7d]
 ```
 
 已知 URL 或域名开工前匹配站点经验：

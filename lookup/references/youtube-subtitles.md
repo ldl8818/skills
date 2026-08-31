@@ -1,6 +1,6 @@
 # YouTube 字幕
 
-要「这个视频讲了什么」时走这条。B站字幕不走这里，用 `opencli bilibili subtitle <BV号>`——**不要用 yt-dlp 抓 B站**。
+要「这个视频讲了什么」时走这条。B站字幕不走这里，用 `node scripts/opencli-run.mjs bilibili subtitle <BV号>`——**不要用 yt-dlp 抓 B站**。
 
 ## 三步
 

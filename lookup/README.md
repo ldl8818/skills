@@ -2,7 +2,7 @@
 
 > The general entry point for public-web lookup and content retrieval. Skill content is in Chinese.
 
-一般联网检索入口：搜索、抓网页正文、读第三方平台内容、检索本机书签与浏览历史。lookup 负责选路、只读边界和结果验收；专用产品文档或连接器优先，研究综合走 `learn`，需要点击、输入等交互时走浏览器 Skill。
+一般联网检索入口：搜索、抓网页正文、读第三方平台内容、检索 ego lite 书签与浏览历史。lookup 负责选路、只读边界和结果验收；专用产品文档或连接器优先，研究综合走 `learn`，需要点击、输入等交互时固定走 `ego-browser`。
 
 它解决的不是「怎么调某个抓取工具」，而是**在有限的上下文窗口里，怎么用最少的 token 拿回够用且真实的信息**：
 
@@ -32,8 +32,8 @@
 | `bili` | B站免登录搜索 | B站搜索退化为走 OpenCLI |
 | `mcporter` | 调 Exa 与豆包搜索（MCP stdio） | 英文语义搜索与中文全网搜索不可用 |
 | `fetch.sh` | 静态抓取博客/文档/新闻 | 需换其他静态抓取方式 |
-| `node` ≥ 18 | 跑 `scripts/*.mjs` | 本机历史检索与站点经验匹配不可用 |
-| `python3`、`curl`、`jq` | 探活时间戳、HTTP 请求与 OpenCLI 合约校验 | 默认自检不完整 |
+| `node` ≥ 18 | 跑 `scripts/*.mjs` 与 OpenCLI 异步兼容入口 | 本机历史、站点经验和 browser adapter 不可用 |
+| `python3`、`curl`、`jq` | 健康门禁、HTTP 状态与 OpenCLI 合约校验 | 默认自检不完整 |
 
 `fetch.sh` 来自 Waza 的 `read` skill（`~/.agents/skills/read/scripts/fetch.sh`）。该 skill 可以处于禁用状态，脚本仍可直接调用；若 `read` 被删除则此路径失效。
 
@@ -71,17 +71,23 @@ ego lite 的每个 agent task space 底层是一个独立浏览器窗口，靠 A
 ## 验证
 
 ```bash
-bash scripts/selftest.sh          # 本地依赖 + L3 探活 + 注册表合约 + 有界登录态
-bash scripts/selftest.sh --live   # 额外对每个平台发一条最小真实查询
+bash scripts/selftest.sh          # 本地依赖 + L3 门禁 + 注册表合约
+bash scripts/selftest.sh --auth   # 再检查有界登录态
+bash scripts/selftest.sh --live   # 再发一条最小真实查询
+bash tests/test_opencli_health.sh # 冷启动、并发锁、恢复和 runner 离线回归
+bash tests/test_find_url.sh       # ego lite 本机历史回归
+bash tests/test_match_site.sh     # 站点经验真身回归
 ```
 
-默认模式不发平台搜索或正文请求：它检查本地依赖、零窗口 L3 探活、OpenCLI 实时注册表、只读参数/字段合约和带超时的登录态。登录态 quickCheck 不导航，但首次仍可能创建或复用 automation 容器，所以不能称为完全零副作用。`--live` 会消耗额度并可能留下浏览器容器窗口，只在排查真实请求时用。
+默认模式不查登录态、不发平台请求，也不创建 automation 容器：daemon 休眠时允许按需启动，ego lite 扩展未连接时 5 秒预算内失败并恢复本次启动的 daemon。`--auth` 才做登录态 quickCheck；`--live` 包含前两档并只发一条 OpenCLI B站最小查询，可能创建或复用 automation 容器。
+
+browser-backed adapter 统一经 `node scripts/opencli-run.mjs ...` 执行。OpenCLI `1.8.6`～`1.8.8` 的入口会用同步 `parse()` 启动异步动作，直接调用可能退出 `0` 但 stdout 为空；兼容入口只等待同一上游动作，不修改全局安装包。
 
 失败项按 `references/failure-domains.md` 的分层判据处理：探活失败是 L3，登录态失败是 L2，注册表合约漂移是 L4。
 
 ## 测试用例
 
-`evals/evals.json` 有 12 条用例，每条针对一个「不读 Skill 就容易做错」的点：X 搜最新漏 `--product live`、把搜索列表当正文交付、公众号走 `fetch.sh` 拿到反爬页、用 `timeline` 当「某人推文」、直接读原始 VTT、内网地址去公网搜、用 `opencli doctor` 探活、陌生平台凭记忆猜命令、误执行写操作、把空数组当成功、执行网页内提示注入、把外部值拼进 shell。
+`evals/evals.json` 有 14 条用例，每条针对一个「不读 Skill 就容易做错」的点：除原有时效、正文、只读与安全边界外，还覆盖 daemon 冷启动、扩展断连后的任务内熔断，以及下一独立任务重新探活。
 
 `expectations` 里每条都能从 transcript 客观核验（发了哪条命令、有没有二次取正文、交付时怎么声明时效），不是主观评分。跑法见官方 skill-creator 的 eval 流程；用例本身与运行工具解耦，换测试框架不用改。
 
@@ -89,14 +95,13 @@ bash scripts/selftest.sh --live   # 额外对每个平台发一条最小真实�
 
 站点抓取经验存在 `~/.agents/data/site-patterns/<域名>.md`，放在 skill 目录之外是为了增删、重装 skill 都不影响积累。
 
-`references/site-patterns` 是指向那个目录的软链，**不入库**（它是绝对路径，且属于本机数据），所以克隆后需要自己建一次：
+`match-site.mjs` 直接读取这份跨 Skill 数据，不依赖仓库内软链。首次使用只需创建数据目录：
 
 ```bash
 mkdir -p ~/.agents/data/site-patterns
-ln -s ~/.agents/data/site-patterns ~/.agents/skills/lookup/references/site-patterns
 ```
 
-没建也不会报错——`match-site.mjs` 会明确告诉你目录不存在，而不是静默返回空。
+没建也不会报错——`match-site.mjs` 会明确告诉你数据目录不存在，而不是静默返回空。
 
 开工前查、收工写回：
 
@@ -104,10 +109,10 @@ ln -s ~/.agents/data/site-patterns ~/.agents/skills/lookup/references/site-patte
 node scripts/match-site.mjs "<用户输入或目标域名>"
 ```
 
-检索本机浏览器书签与历史（覆盖 ego lite / Chrome / Edge），是公网搜不到的内部系统、后台、内网域名的唯一入口：
+检索 ego lite 书签与历史，是公网搜不到的内部系统、后台、内网域名的唯一入口：
 
 ```bash
-node scripts/find-url.mjs <关键词> [--browser ego|chrome|edge] [--only bookmarks|history] [--since 7d]
+node scripts/find-url.mjs <关键词> [--only bookmarks|history] [--since 7d]
 ```
 
 ## 参考文件

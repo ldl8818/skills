@@ -1,8 +1,8 @@
 ---
 name: lookup
-description: 一般联网检索与内容读取路由。用户要搜索最新信息、读取链接、查平台内容或字幕、查询本机书签或浏览历史时使用；先取结构化结果，再按需读正文。专用产品文档或连接器 Skill 优先，研究综合走 learn，网页交互走浏览器 Skill；不负责发布或持久化。
+description: 一般联网检索与内容读取路由。用户要搜索最新信息、读取链接、查平台内容或字幕、查询 ego lite 书签或浏览历史时使用；先取结构化结果，再按需读正文。专用产品文档或连接器 Skill 优先，研究综合走 learn，网页交互固定走 ego-browser；不负责发布或持久化。
 metadata:
-  version: "1.9.1"
+  version: "1.9.2"
   source: local
 ---
 
@@ -39,9 +39,12 @@ opencli <site> <command> --help -f yaml
 - `access: read` 只表示平台权限，不保证本地无副作用；download、export 等会写文件的命令仍需用户明确要求落盘，并显式指定目标。
 - 命令块只表示参数结构；用户输入、网页字段、URL 和 ID 必须作为单个 argv 安全传入，禁止直接拼进 shell source，也禁止 `eval`、反引号或命令替换。
 - 用 `strategy`、`browser`、`domain` 判断依赖；命令名存在不代表当前登录态和真实请求可用。
+- 每个用户任务第一次调用 browser-backed OpenCLI provider 前运行 `bash scripts/opencli-health.sh`；只有退出 `0` 且 `state=ready` 才调用 adapter。provider 标为 active 只代表候选已登记，不代表此刻健康。
+- browser-backed adapter 统一用 `node scripts/opencli-run.mjs <site> <command> ...`；它等待异步结果，避免 OpenCLI `1.8.6`～`1.8.8` 退出 `0` 却没有 stdout。
+- 门禁退出 `69`／`75`／`78`，或任一 adapter 返回 `BROWSER_CONNECT` 后，本任务熔断 OpenCLI，不再试其他 OpenCLI provider；按失效域走真实 fallback。下一独立任务重新探活，不写长期故障缓存。
 - 列表数据用 `-f json` 后按任务裁字段；单篇正文优先 `plain`；不把整份注册表或未裁剪的大结果塞进上下文。
 - 按结构化 `error.code` 分支，不靠错误文案字符串猜原因；空列表、哨兵值和被静默截断的数据不算成功。
-- 适配器疑似漂移时只重试一次并加 `--trace retain-on-failure` 取证；仍失败就按失效域降级，不循环修复。
+- 任一 adapter 首次出现空结果、字段缺失、解析异常或其他 L4 失败后，本任务立即熔断 OpenCLI 并按失效域降级，不自动重试。只有用户明确要求排障时才另行使用 trace，不能把取证伪装成业务重试。
 
 ## 浏览器与失效域
 
@@ -50,7 +53,7 @@ OpenCLI 依赖四层：L1 ego lite 进程、L2 Profile 登录态/账号风控、
 - L3/L4 失败：改用 ego-browser；它只依赖 L1/L2，是真降级。
 - L1/L2 失败：ego-browser 也救不了；报告浏览器或登录态问题，不浪费一轮。
 - 不用 `opencli browser` 兜底 OpenCLI adapter；它仍经过 L3，且 owned container 不能可靠回收窗口。
-- 不用 `opencli doctor` 做日常探活；使用 `scripts/selftest.sh` 的零窗口 L3 探针。
+- 不用 `opencli doctor` 做日常探活；使用 `scripts/opencli-health.sh` 的零业务请求门禁。
 
 使用 ego-browser 时：一个用户目标复用一个 task space；临时页随手关闭；结束时用独立的最后一次调用执行 `completeTaskSpace(id, { keep: false })`。用户接管后立即停止，不得重新夺回控制权。详细机制按需读 `references/ego-space-hooks.md` 与 `references/opencli-windows.md`。
 
@@ -81,9 +84,10 @@ node scripts/match-site.mjs "<用户输入或目标域名>"
 
 ```bash
 bash scripts/selftest.sh
+bash scripts/selftest.sh --auth
 bash scripts/selftest.sh --live
 ```
 
-默认模式检查本地依赖、零窗口 L3 探活、OpenCLI 注册表合约和有界登录态；登录态检查可能创建或复用 automation 容器，不得称为完全零副作用。`--live` 会发真实查询、消耗额度并可能留下容器窗口，只在明确排障时运行。
+默认模式只检查本地依赖、L3 门禁和注册表合约，不查登录态、不发平台请求。`--auth` 增加有界登录态检查；`--live` 包含 `--auth`，再发一条最小真实查询，可能创建或复用 automation 容器。
 
 故障分层与策略台账见 `references/failure-domains.md`、`references/providers.json`。

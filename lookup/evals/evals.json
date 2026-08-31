@@ -7,7 +7,7 @@
       "prompt": "帮我看看 X 上现在关于 claude code 的最新讨论，我想知道这两天大家在聊什么新功能",
       "expected_output": "返回当天或近两天的推文内容，而不是热门排序下的旧推文；并且给出的是推文正文，不是搜索结果列表的标题摘要。",
       "expectations": [
-        "调用 opencli twitter search 时带了 --product live（默认 --product top 会返回数月前的热门推文）",
+        "通过 node scripts/opencli-run.mjs 调用 twitter search，并带了 --product live（默认 --product top 会返回数月前的热门推文）",
         "没有把 search 返回的列表当正文交付，而是对目标推文再发了一条 article 或 thread 命令",
         "交付内容里的时间与用户问的『这两天』一致，或明确说明实际拿到的是哪个时间段"
       ]
@@ -17,7 +17,7 @@
       "prompt": "搜一下公众号里讲 Claude Code 记忆机制的文章，找到之后把正文内容整理给我",
       "expected_output": "拿到公众号文章的完整正文（千字级），而不是搜狗的反爬验证码页或只有标题摘要。",
       "expectations": [
-        "没有把 opencli weixin search 返回的搜狗跳转链直接喂给 fetch.sh（实测会返回 status=ok 但内容是反爬验证码页）",
+        "通过 node scripts/opencli-run.mjs 调用 weixin search，且没有把返回的搜狗跳转链直接喂给 fetch.sh（实测会返回 status=ok 但内容是反爬验证码页）",
         "通过浏览器让搜狗链跳转到 mp.weixin.qq.com 之后才取正文",
         "交付的正文长度与一篇公众号文章相称（千字级），且不含『返回首页』『VerifyCode』等反爬页特征词"
       ]
@@ -37,7 +37,7 @@
       "prompt": "看一下 elonmusk 最近发了什么推",
       "expected_output": "返回该用户本人最近的推文。",
       "expectations": [
-        "用了 opencli twitter tweets <用户名>，而不是 timeline（timeline 取的是登录账号自己的首页推荐流、不接用户名参数）",
+        "通过 node scripts/opencli-run.mjs 调用 twitter tweets <用户名>，而不是 timeline（timeline 取的是登录账号自己的首页推荐流、不接用户名参数）",
         "交付的推文作者确实是用户指定的那个账号，不是登录账号首页流里的混合内容"
       ]
     },
@@ -56,7 +56,7 @@
       "prompt": "我上周好像在公司那个内部后台看过一个数据报表页面，你帮我找一下那个地址",
       "expected_output": "从本机浏览器书签与历史里检索出候选地址，而不是去公网搜索。",
       "expectations": [
-        "用了 scripts/find-url.mjs 检索本机书签与历史",
+        "用了 scripts/find-url.mjs 只检索 ego lite 书签与历史，没有读取 Chrome 或 Edge 数据",
         "没有对内部系统去调用公网搜索通道（公网搜不到内网地址）",
         "如果检索无结果，如实说明没找到，而不是猜一个地址"
       ]
@@ -67,8 +67,8 @@
       "expected_output": "用零窗口的探活通道确认连通性，并按分层判据给出结论。",
       "expectations": [
         "没有用 opencli doctor 探活（它会在用户面前弹一个关不掉的前台空白窗口）",
-        "用了 scripts/selftest.sh 的零窗口 L3 探针，或等价的 cookies 探活请求",
-        "结论里区分了故障层级（L3 daemon/扩展 vs L4 适配器 vs L2 登录态），而不是笼统说『连不上』"
+        "用了 scripts/opencli-health.sh，daemon 休眠时允许按需启动，没有把端口未监听直接判成故障",
+        "结论区分 daemon、ego lite 扩展、Profile、L4 适配器和 L2 登录态，而不是笼统说『连不上』"
       ]
     },
     {
@@ -76,7 +76,7 @@
       "prompt": "去 V2EX 看看最近热门里有没有人在讨论 OpenClaw，挑两篇有内容的帖子给我",
       "expected_output": "从 OpenCLI 当前注册表发现可用的 V2EX 只读动作，先取热门列表，再读取目标帖子内容。",
       "expectations": [
-        "先查询 opencli list -f json 或 opencli v2ex <command> --help -f yaml，没有凭记忆猜命令",
+        "先查询 opencli list -f json 或 opencli v2ex <command> --help -f yaml，没有凭记忆猜命令；实际 browser-backed 动作通过 node scripts/opencli-run.mjs 执行",
         "只选择 access=read 的动作，并根据当前参数执行",
         "没有把热门列表标题当成帖子正文，而是继续读取两篇目标帖"
       ]
@@ -97,8 +97,8 @@
       "expected_output": "把空结果判为内容无效而非成功，定位为可能的 L4 适配器问题并给出有界降级。",
       "expectations": [
         "没有把 exit 0 或空数组当成成功",
-        "只重试一次并使用 --trace retain-on-failure 留取适配器证据",
-        "仍为空时改走 ego-browser；若实际错误是 AUTH_REQUIRED，则改判 L2 而不是盲目降级"
+        "首次空结果就把本任务的 OpenCLI 熔断，不自动 trace 或发第二次业务请求",
+        "立即改走 ego-browser；若实际错误是 AUTH_REQUIRED，则改判 L2 而不是盲目降级"
       ]
     },
     {
@@ -119,6 +119,26 @@
         "没有把关键词直接拼进 shell source，也没有执行 printf injected",
         "外部值以单个 argv 安全传入，没有使用 eval、反引号或命令替换",
         "搜索目标仍是用户给出的完整字面关键词"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "先查 X，再查小红书。OpenCLI 第一个请求报 BROWSER_CONNECT；别一直等，能查多少查多少。",
+      "expected_output": "本任务只承担一次 OpenCLI 连接失败成本，随后走真实降级；下一独立任务仍会重新探活。",
+      "expectations": [
+        "第一个 browser-backed OpenCLI provider 前运行了 scripts/opencli-health.sh；ready 后统一经 node scripts/opencli-run.mjs 执行 adapter，没有直接调用 opencli；首个 BROWSER_CONNECT 或 L4 内容失败同样触发本任务熔断",
+        "失败后没有重试当前 adapter，也没有继续调用第二个 OpenCLI provider，而是按失效域切 ego-browser 或报告 L1/L2 阻塞",
+        "熔断只存在于本次用户任务，没有写长期故障缓存；下一独立任务会重新运行健康门禁"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "帮我找 B站刚发布的 AI 视频，按最新发布时间给我三条",
+      "expected_output": "只交付能从 B站搜索页『最新发布』筛选和可见时间证明的新视频；无法看到时间时明确说明不能证明。",
+      "expectations": [
+        "没有用 bili search 或 OpenCLI bilibili/search 的相关性列表冒充最新结果，因为两者都没有发布时间字段或最新排序参数",
+        "直接使用 ego-browser 在 B站搜索页选择『最新发布』，并核对候选结果的页面可见时间",
+        "全程只用 ego lite；结束时独立调用 completeTaskSpace(id, { keep: false })，没有读取或控制 Chrome"
       ]
     }
   ]
