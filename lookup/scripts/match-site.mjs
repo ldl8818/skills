@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 // 根据用户输入匹配站点经验文件（跨平台，替代 match-site.sh）
 // 用法：node match-site.mjs "用户输入文本"
-// 输出：匹配到的站点经验内容，无匹配则静默
+// 输出：匹配到的站点经验内容；无匹配或目录缺失时给出明确状态
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PATTERNS_DIR = path.join(ROOT, 'references', 'site-patterns');
+const PATTERNS_DIR = path.join(os.homedir(), '.agents', 'data', 'site-patterns');
 const query = (process.argv[2] || '').trim();
 
 // 空输出会让调用方分不清「没有站点经验」和「脚本坏了」，所以每条退路都明确说明自己。
@@ -17,7 +16,7 @@ if (!query) {
   process.exit(0);
 }
 if (!fs.existsSync(PATTERNS_DIR)) {
-  console.log(`站点经验目录不存在：${PATTERNS_DIR}（软链可能断了，检查 ~/.agents/data/site-patterns）`);
+  console.log(`站点经验目录不存在：${PATTERNS_DIR}（先创建 ~/.agents/data/site-patterns）`);
   process.exit(0);
 }
 
