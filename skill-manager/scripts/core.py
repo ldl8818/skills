@@ -322,7 +322,11 @@ def set_frontmatter_field(path, key, value):
     else:
         for i in range(1, end):
             if re.match(rf"^{re.escape(key)}:\s", lines[i]) or lines[i].strip() == f"{key}:":
-                lines[i] = new_line
+                stop = i + 1
+                while stop < end and (
+                        not lines[stop].strip() or lines[stop].startswith((" ", "\t"))):
+                    stop += 1
+                lines[i:stop] = [new_line]
                 break
         else:
             lines.insert(end, new_line)

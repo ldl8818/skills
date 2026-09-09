@@ -68,6 +68,28 @@ class CoreContractTests(unittest.TestCase):
             text = Path(path).read_text(encoding="utf-8")
             self.assertIn("metadata:\n  version: \"1.2.3\"", text)
 
+    def test_writer_replaces_entire_multiline_description(self):
+        for header in (">", "|-", ">+", "", "plain text"):
+            with self.subTest(header=header):
+                original = (
+                    f"---\nname: demo\ndescription: {header}\n"
+                    "  old first line\n\n  old second line\n"
+                    "metadata:\n  category: demo\n---\n# Body\n")
+                actual = update_skill.set_frontmatter_field(
+                    original, "description", "本地描述")
+                self.assertEqual(actual,
+                    '---\nname: demo\ndescription: "本地描述"\n'
+                    'metadata:\n  category: demo\n---\n# Body\n')
+
+    def test_merge_preserves_local_description_without_upstream_block(self):
+        upstream = "---\nname: demo\ndescription: >\n  upstream text\n---\n# New body\n"
+        local = ('---\nname: demo\ndescription: "本地描述"\n'
+                 'metadata:\n  keep_local_description: true\n---\n# Old body\n')
+        merged = update_skill.merge_skill_md(upstream, local, {})
+        self.assertNotIn("  upstream text", merged)
+        self.assertEqual(core.parse_frontmatter(merged)["description"], "本地描述")
+        self.assertTrue(merged.endswith("# New body\n"))
+
     def test_writer_migrates_legacy_top_level_managed_field(self):
         with tempfile.TemporaryDirectory() as root:
             path = os.path.join(root, "SKILL.md")
