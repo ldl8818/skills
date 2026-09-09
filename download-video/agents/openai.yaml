@@ -1,0 +1,4 @@
+interface:
+  display_name: "视频下载"
+  short_description: "一次处理单个或多个视频链接，按中文内容标题和发布日期下载到本地"
+  default_prompt: "使用 $download-video 下载这些视频链接，并保存为中文内容标题加发布日期的文件名。"
