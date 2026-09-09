@@ -21,9 +21,9 @@ OpenCLI 是标准 Chrome 扩展，用 tabs/windows API 开普通窗口，不受 
 
 `--window background` 只管抢不抢焦点，**消不掉窗口本身**。
 
-## 探活别用 doctor
+## 探活别用 doctor（≤ 1.8.6）
 
-`opencli doctor` 硬编码 `surface: 'browser'` 且没有 `--window` 选项，每跑一次就在用户面前弹一个前台空白窗口并永久留下。
+`opencli doctor` 硬编码 `surface: 'browser'` 且没有 `--window` 选项，每跑一次就在用户面前弹一个前台空白窗口并永久留下。上游 PR #2206 拟把 `checkConnectivity()` 改成无窗口 cookies 探针；本机升级到含该修复的版本后，按 `ROADMAP.md` 复核本节。本节其余段落与本文其他章节不受该 PR 影响——它只修 doctor 一条路径。
 
 确实需要 doctor 的详细诊断时，前面加 `OPENCLI_WINDOW=background`（`sendCommandRaw` 读这个环境变量）压掉抢焦点——但窗口仍会创建并留下，这只是让它不打断用户。
 
