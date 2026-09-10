@@ -223,7 +223,7 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
         return False
     command = str(event.tool_input.get("command") or "")
     file_path = str(event.tool_input.get("file_path") or "")
-    authorities = tuple((memory_root / name).resolve() for name in ("memory.md", "corrections.md", VERIFIED_RELATIVE))
+    authorities = ((memory_root / VERIFIED_RELATIVE).resolve(),)
     if file_path:
         try:
             candidate = Path(file_path).expanduser()
@@ -265,7 +265,7 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
         for token in tokens
     )
     interpreter = any(Path(token).name.startswith("python") or token in {"node", "ruby", "perl"} for token in tokens)
-    if ("corrections.md" in expanded or "verified-corrections.jsonl" in expanded or internal_authority_api) and interpreter:
+    if ("verified-corrections.jsonl" in expanded or internal_authority_api) and interpreter:
         return True
     write_signal = (
         any(token in {"tee", "rm", "mv", "cp", "truncate"} for token in tokens)
@@ -281,9 +281,9 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
     if any(str(authority) in expanded for authority in authorities):
         return True
     cwd = Path(event.cwd).expanduser().resolve() if event.cwd else None
-    if cwd == memory_root.resolve() and re.search(r"(?:^|[/\s'\"])(?:memory|corrections)\.md(?:$|[\s'\"])", expanded):
+    if cwd == memory_root.resolve() and "verified-corrections.jsonl" in expanded:
         return True
-    return bool(str(memory_root.resolve()) in expanded and any(name in expanded for name in ("memory.md", "corrections.md", "verified-corrections.jsonl")))
+    return bool(str(memory_root.resolve()) in expanded and "verified-corrections.jsonl" in expanded)
 
 
 def dispatch(platform: str, declared_event: str, payload: dict) -> int:
@@ -295,10 +295,10 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
     if _dangerous_authority_write(event, root):
         permission_decision = "deny" if platform == "codex" else "ask"
         reason = (
-            "Codex 不支持通过 Hook 请求单次批准；本次权威记忆写入已拒绝。"
-            "请复制准确的审核命令到普通终端执行。"
+            "[authority-guard] 本次调用命中受保护记忆操作检测，已拒绝；不代表一定发生了写入。"
+            "若为只读检查，请核对原始命令；若为已授权的写入、移动或审核，请在普通终端执行对应操作。"
             if platform == "codex"
-            else "本次调用将写入核心记忆或已验证纠错（权威文件），需要你亲自批准。"
+            else "本次调用命中已验证纠错账本或审核操作保护，需要你亲自批准。"
         )
         print(json.dumps({
             "hookSpecificOutput": {

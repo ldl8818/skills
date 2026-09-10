@@ -93,6 +93,23 @@ class SystemTests(unittest.TestCase):
         )
         self.assertEqual(version.stdout.strip(), f"self-improving {__version__}")
 
+    def test_archived_legacy_markdown_is_optional_and_not_recreated(self) -> None:
+        from self_improving.doctor import run_checks
+        from self_improving.review import legacy_entries
+
+        legacy = self.memory / "corrections.md"
+        legacy.write_text("# Historical corrections\n")
+        archive = self.memory / "archive"
+        archive.mkdir()
+        legacy.rename(archive / legacy.name)
+        initialize_memory(self.memory)
+        self.assertFalse(legacy.exists())
+        self.assertEqual((archive / legacy.name).read_text(), "# Historical corrections\n")
+        self.assertEqual(legacy_entries(self.memory), [])
+        with self.env():
+            failed = [item.name for item in run_checks() if not item.passed and "纠错" in item.name]
+        self.assertEqual(failed, [])
+
     def test_custom_paths_resolve(self) -> None:
         with self.env():
             self.assertEqual(Path(resolved(load_config())["memory_root"]), self.memory.resolve())
@@ -826,7 +843,7 @@ class SystemTests(unittest.TestCase):
         self.assertIn('core="budget_omitted"', output.getvalue())
 
     def test_authority_write_guard_is_platform_specific(self) -> None:
-        # Claude 端：权威写入不硬拦，改为输出 ask 决策交用户当场批准。
+        # Claude 端：普通 Markdown 维护直接放行。
         with self.env():
             output = io.StringIO()
             with redirect_stdout(output):
@@ -836,9 +853,7 @@ class SystemTests(unittest.TestCase):
                     {"tool_name": "Write", "tool_input": {"file_path": str(self.memory / "memory.md")}},
                 )
         self.assertEqual(result, 0)
-        decision = json.loads(output.getvalue())["hookSpecificOutput"]
-        self.assertEqual(decision["hookEventName"], "PreToolUse")
-        self.assertEqual(decision["permissionDecision"], "ask")
+        self.assertEqual(output.getvalue(), "")
 
         with self.env():
             output = io.StringIO()
@@ -849,9 +864,17 @@ class SystemTests(unittest.TestCase):
                     {"tool_name": "Edit", "tool_input": {"file_path": str(self.memory / "corrections.md")}},
                 )
         self.assertEqual(correction_write, 0)
-        self.assertEqual(
-            json.loads(output.getvalue())["hookSpecificOutput"]["permissionDecision"], "ask"
-        )
+        self.assertEqual(output.getvalue(), "")
+
+        with self.env():
+            output = io.StringIO()
+            with redirect_stdout(output):
+                ledger_write = dispatch(
+                    "claude", "PreToolUse",
+                    {"tool_name": "Edit", "tool_input": {"file_path": str(self.memory / ".self-improving/verified-corrections.jsonl")}},
+                )
+        self.assertEqual(ledger_write, 0)
+        self.assertEqual(json.loads(output.getvalue())["hookSpecificOutput"]["permissionDecision"], "ask")
 
         # Claude 端只读调用不弹框：exit 0 且无任何决策输出。
         with self.env():
@@ -903,11 +926,12 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "deny")
 
         for command, expects_deny in (
-            ("printf hacked >> memory.md", True),
+            ("printf updated >> memory.md", False),
+            ("printf hacked >> .self-improving/verified-corrections.jsonl", True),
             (f"cat {self.memory / 'memory.md'}", False),
             ("grep -n 边界 memory.md 2>/dev/null", False),
             ("wc -l memory.md 2>&1", False),
-            ("sed -i '' 's/rejected/active/' corrections.md", True),
+            ("sed -i '' 's/old/new/' corrections.md", False),
         ):
             code, text = codex_decision({"cwd": str(self.memory), "tool_name": "Bash", "tool_input": {"command": command}})
             self.assertEqual(code, 0)
@@ -917,14 +941,14 @@ class SystemTests(unittest.TestCase):
                 self.assertEqual(text, "")
 
         for command, expects_deny in (
-            ("*** Begin Patch\n*** Update File: memory.md\n@@\n-old\n+new\n*** End Patch", True),
+            ("*** Begin Patch\n*** Update File: memory.md\n@@\n-old\n+new\n*** End Patch", False),
             (
                 "*** Begin Patch\n*** Update File: .self-improving/verified-corrections.jsonl\n@@\n-old\n+new\n*** End Patch",
                 True,
             ),
             (
                 "*** Begin Patch\n*** Update File: notes.md\n*** Move to: memory.md\n@@\n-old\n+new\n*** End Patch",
-                True,
+                False,
             ),
             ("*** Begin Patch\n*** Update File: notes.md\n@@\n-old\n+new\n*** End Patch", False),
         ):

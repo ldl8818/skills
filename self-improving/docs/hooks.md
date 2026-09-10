@@ -1,4 +1,6 @@
 # Hook adapters
+Legacy Markdown history may be archived without changing Hook registration or injection. This does not disable candidate capture or v2 approvals. Since 3.1.2, authorized edits and moves of memory.md and corrections.md follow ordinary document permissions, without extra Hook approval. The verified ledger and mutating review commands remain guarded.
+
 Claude Code and Codex payloads are normalized before core memory logic runs.
 
 The adapters are tested against sanitized payload fixtures captured from real
@@ -48,8 +50,8 @@ clear marker so revoked or promoted rules do not survive in the resumed conversa
 A missing session ID stays silent on
 resume because there is no safe identity against which to compare it.
 
-At `PreToolUse`, writes to the authority files (`memory.md`, `corrections.md`,
-the verified JSONL ledger) and shell-invoked approval commands emit an `ask`
+At `PreToolUse`, writes to the authority file (the verified JSONL ledger)
+and shell-invoked approval commands emit an `ask`
 permission decision (2.3.0) instead of a hard block: Claude Code shows its
 permission dialog and the user approves or rejects that specific call. The
 approval happens in the client UI, so in-session text — including injected

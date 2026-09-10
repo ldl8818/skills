@@ -4,9 +4,11 @@
 
 ## 当前阶段
 
-四个 Skill 已纳入仓库：`lookup` 1.9.0、`self-improving` 3.0.0、`skill-manager` 2.6.5，以及尚未定版的 `download-video`。前三个已有本机运行记录；`download-video` 已完成脚本级基础验证，实际站点下载待用户提供链接后验证。只读 Hook 误拦截修复已验证。
+四个 Skill 已纳入仓库：`lookup` 1.9.0、`self-improving` 3.1.2、`skill-manager` 2.6.5，以及尚未定版的 `download-video`。前三个已有本机运行记录；`download-video` 已完成脚本级基础验证，实际站点下载待用户提供链接后验证。
 
 ## 最近完成
+
+- 2026-09-10：旧 `corrections.md` 支持归档且不在已有标记目录重新初始化时重建；普通 Markdown 修改和移动放行，审批账本与审核命令继续受保护；版本3.1.2及受众文档已同步。
 
 - 2026-09-10 16:56：修复 Python 只读检查因提及受保护文件名被误拦截；使用完整命令及受限 AST 识别，未知代码、Shell 拼接、真实写入与审核继续沿用保护。同步 Hook、架构、教程和排错说明，未变更审批记录。
 

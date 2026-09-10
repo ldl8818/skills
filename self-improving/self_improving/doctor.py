@@ -42,7 +42,9 @@ def run_checks() -> list[Check]:
         Check("配置", True, "schema_version=1"),
         Check("记忆目录", root.is_dir(), str(root)),
         Check("核心记忆", root.joinpath("memory.md").is_file(), str(root / "memory.md")),
-        Check("纠错库", root.joinpath("corrections.md").is_file(), str(root / "corrections.md")),
+        Check("旧纠错档案（可选）", True,
+              str(root / "corrections.md") if root.joinpath("corrections.md").is_file()
+              else "未启用或已归档；不影响候选收集和新版审批"),
     ]
     memory_path = root / "memory.md"
     remaining_tokens = max(

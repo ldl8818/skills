@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.1.2
+
+- Allow authorized edits and moves of memory.md and corrections.md as ordinary document maintenance. Keep verified ledger writes and mutating review commands guarded on both clients.
+
+## 3.1.1
+
+- Treat legacy Markdown corrections as optional audit history: doctor accepts its absence, and initialization no longer recreates it in an existing marked memory root. Candidate capture and v2 approvals are unchanged.
+
 ## Unreleased
 
 - Recognize standalone read-only Python inspections before authority-write checks; keep unknown code, shell composition and actual review/write operations guarded.

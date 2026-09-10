@@ -135,6 +135,7 @@ def initialize_memory(root: Path, package_root: Path | None = None) -> None:
     root.mkdir(parents=True, exist_ok=True)
     (root / ".learnings").mkdir(exist_ok=True)
     (root / ".self-improving").mkdir(exist_ok=True)
+    existing_root = (root / ROOT_MARKER).is_file()
     for path, content in (
         (root / "memory.md", MEMORY_TEMPLATE),
         (root / "corrections.md", CORRECTIONS_TEMPLATE),
@@ -142,6 +143,8 @@ def initialize_memory(root: Path, package_root: Path | None = None) -> None:
         (root / ".learnings/ERRORS.md", ERRORS_TEMPLATE),
         (root / VERIFIED_RELATIVE, ""),
     ):
+        if path.name == "corrections.md" and existing_root:
+            continue  # An existing installation may have archived its optional legacy log.
         if not path.exists():
             atomic_write(path, content)
     marker = root / ROOT_MARKER

@@ -2,7 +2,7 @@
 name: self-improving
 description: "管理 Claude Code 与 Codex 的审核制跨 Agent 纠错记忆。仅在用户明确要求记住、审核或撤销纠错，检查记忆健康，安装迁移该系统，或为敏感任务关闭持久学习时使用；普通报错、一次性偏好和项目规则编辑不触发。"
 metadata:
-  version: "3.0.0"
+  version: "3.1.2"
   zh_description: "跨 Claude Code 与 Codex 的审核制纠错记忆，支持安装、迁移与体检"
   compatibility: "Python 3.11+; macOS, Linux, or Windows WSL; Claude Code and/or Codex"
   source: local
@@ -20,7 +20,8 @@ Use this skill to operate a private memory repository shared by Claude Code and 
 - Keep `memory.md` out of startup context unless `include_core_memory` is explicitly enabled. Skip unchanged dynamic context on resumed sessions by default; when the eligible set changes, invalidate the prior injection and emit the full replacement or a clear signal.
 - Preserve existing third-party Hooks when installing or upgrading.
 - Current files and verified output override remembered facts.
-- Treat Hook write guards as accidental-write protection, not an operating-system authorization boundary against arbitrary same-user code execution. Claude Code returns `ask` for a protected write; Codex returns `deny`, so Codex review commands must be copied to and run in a regular terminal.
+- The legacy `corrections.md` is optional audit history. An existing marked memory root may archive it; initialization will not recreate it, and doctor does not require it. Candidates and v2 approvals keep their existing stores.
+- Authorized edits and moves of memory.md and corrections.md follow ordinary document permissions, without extra Hook approval. The verified ledger and mutating review commands remain protected. Treat Hook write guards as accidental-write protection, not an operating-system authorization boundary against arbitrary same-user code execution. Claude Code returns `ask` for a protected write; Codex returns `deny`, so Codex review commands must be copied to and run in a regular terminal.
 
 ## Commands
 The package is not installed into site-packages: run every command from the skill install directory (the directory containing `self_improving/`), otherwise `python3 -m self_improving` fails with `ModuleNotFoundError`. When triggered inside another project, find that directory in the `self-improving-hook` command inside `~/.claude/settings.json` or `~/.codex/hooks.json`, then `cd` there first.
