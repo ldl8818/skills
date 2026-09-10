@@ -217,3 +217,5 @@ python3 -m self_improving review import-legacy-interactive \
 ```
 
 先运行 `python3 -m self_improving review legacy-list` 取得稳定的 `legacy:...` 编号；列表同时覆盖合格的旧 Markdown 行和活动 v1 JSONL 批准。Markdown 编号由原文生成，不会因其他行插入而漂移。运行交互命令后，程序会先验证并显示当前旧记录 ID，再提示输入重新提炼的现行规则和作用范围；同样每次只处理一条。导入命令会返回 `[fp:...]` 指纹。v1 记录成功替换为 v2 后会追加撤销事件，不会继续出现在旧记录列表。它和普通批准一样受预算、项目范围和生命周期管理。系统故意不提供“把全部 active 一键启用”，因为旧流水没有可靠范围，批量全局注入会把单个项目的特定经验带到所有无关任务里。
+
+读取记忆文件不需要批准：常见独立 Python `read_text()` 检查已支持只读识别。若出现拒绝，先核对被拦命令是否真的写入或审核；不要因为提示就去批准某条候选。支持范围见 `hooks.md`，排查见 `troubleshooting-zh.md`。

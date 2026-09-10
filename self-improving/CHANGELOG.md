@@ -1,4 +1,9 @@
 # Changelog
+
+## Unreleased
+
+- Recognize standalone read-only Python inspections before authority-write checks; keep unknown code, shell composition and actual review/write operations guarded.
+
 ## 3.0.0 - 2026-08-31
 - Startup context is cost-safe by default: free-form `memory.md` injection is off, resumed sessions compare a per-session content digest and emit changed context only once, and all dynamic sections share a 1,200-token budget. A changed resume explicitly invalidates the prior injection, including when revoke or promote leaves no active rules. Budget omissions, expired rules, due reviews, ignored v1 rows and malformed ledger events produce an explicit receipt instead of disappearing silently.
 - Verified corrections are now lifecycle-bound v2 records with priority, promotion target, review date and expiry date. `review lifecycle-list` exposes rule-level status and `review promote` stops injection after formal placement without deleting audit history. Repository scope uses stable Git identity, so a rule applies across linked worktrees; selection resolves that identity once rather than starting Git for every rule. Legacy v1 approvals remain auditable, can be migrated explicitly to v2, and are not injected by the new default.

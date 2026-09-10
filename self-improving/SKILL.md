@@ -11,6 +11,7 @@ metadata:
 Use this skill to operate a private memory repository shared by Claude Code and Codex while keeping public program code separate from user data.
 
 ## Core rules
+- Standalone, statically recognized read-only Python inspection is permitted; unknown Python or shell composition may still be guarded. A denial alone does not mean a candidate approval was attempted. See `docs/hooks.md`.
 - Read configuration from `SELF_IMPROVING_CONFIG` or `~/.config/self-improving/config.json`.
 - Treat the configured `memory_root` as private user data. Never copy it into the public Skill repository.
 - Capture corrections and errors only when persistence is enabled. Messages starting with client-injected system tags (including slash-command echoes), prompts longer than 1500 characters, and keywords appearing only inside fenced code blocks are never corrections.

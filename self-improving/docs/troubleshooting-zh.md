@@ -127,6 +127,8 @@ python3 -m self_improving review promote --fingerprint '[fp:12ab34cd56ef]'
 
 ## Claude 弹权限框，Codex 却直接拒绝写记忆
 
+若被拦的是 Python 读取或日志检查，先看完整命令。旧检测会把“解释器＋受保护文件名”直接判成写入，即使只有 `read_text()` 和 `print()`。现已对独立 `-c`、带引号 heredoc 的受限只读 AST 放行；动态执行、未知调用、写文件、Shell 拼接和重定向仍受保护。这种误拦截没有对应的“未批准记忆”，不要额外执行审批。完整边界见 `hooks.md`。
+
 这是有意的平台差异。Claude Code 支持 Hook 请求单次批准，因此会弹权限框；Codex 当前不支持 `permissionDecision: "ask"`，使用它反而会把 Hook 标成失败并继续调用，所以 2.6.6 起对核心记忆、纠错库、审批账本以及相关审核命令统一返回 `deny`。看到拒绝提示时，复制 Agent 给出的 `approve-interactive` 或 `import-legacy-interactive` 命令到普通终端，再按提示输入规则正文和作用范围；不要把正文拼进 Shell 命令。Codex 的 `Bash` 与 `apply_patch` 都在守门范围内。
 
 五类自我进化 Hook 的执行上限是 10 秒。若仍看到接近 600 秒的卡顿，先运行 `python3 -m self_improving upgrade` 重新接线，再用 `doctor` 检查 Hook；600 秒是 Codex 在未配置超时时的默认值，不是本系统的期望配置。

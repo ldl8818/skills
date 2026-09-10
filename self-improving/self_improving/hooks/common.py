@@ -254,6 +254,9 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
                 continue
         return False
     expanded = command.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
+    from self_improving.hooks.readonly import readonly_python
+    if readonly_python(command):
+        return False
     tokens = _shell_tokens(expanded)
     if _review_invocations(tokens) and not _is_review_help(tokens):
         return True

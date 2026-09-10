@@ -89,3 +89,7 @@ timeout before reporting the wiring as healthy. Its separate current-package
 schema coverage is not proof that every event was produced by the latest client
 launch or that a client supports a particular permission decision. End-to-end
 smoke results must be reported separately from fixture replay.
+
+## Read-only Python inspection
+
+Standalone Python `-c` and quoted heredoc commands are exempt from the authority-write guard only when their complete AST matches a small read-only subset: `pathlib.Path`, `read_text`, JSON parsing, text splitting, loops and printing. The guard parses source without executing it. Merely mentioning a protected filename or module in a string is not a write. Unknown code, dynamic execution, filesystem mutation, shell composition and output redirection keep the existing guard. Claude returns `ask`; Codex returns `deny` for guarded operations. This remains accidental-write protection, not a sandbox.

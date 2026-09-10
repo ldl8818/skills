@@ -156,3 +156,5 @@ Claude Code and Codex use separate adapters because their Hook payloads and life
 Only Claude Code and Codex are supported. Obsidian, Git, Gemini,
 OpenClaw and other editors or Agents are not required and are not silently
 treated as installed.
+
+Read-only Python inspections of protected memory files are recognized conservatively; actual review/write operations remain protected. See `docs/hooks.md` for the supported syntax and `docs/troubleshooting-zh.md` for false-positive diagnosis.
