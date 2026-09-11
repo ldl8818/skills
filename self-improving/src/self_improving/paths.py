@@ -12,7 +12,8 @@ import sysconfig
 
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
 INSTALLED_SKILL_ROOT = Path(sysconfig.get_path("data")) / "self_improving_skill"
-PACKAGE_ROOT = SOURCE_ROOT if SOURCE_ROOT.joinpath("SKILL.md").is_file() else INSTALLED_SKILL_ROOT
+SKILL_SOURCE_ROOT = SOURCE_ROOT.parent
+PACKAGE_ROOT = SKILL_SOURCE_ROOT if SKILL_SOURCE_ROOT.joinpath("SKILL.md").is_file() else INSTALLED_SKILL_ROOT
 
 
 def expand_path(value: str | os.PathLike[str]) -> Path:

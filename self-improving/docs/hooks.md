@@ -1,4 +1,7 @@
 # Hook adapters
+
+Since 3.1.3, source-checkout Hook commands change directory to `src/` before invoking `python -m self_improving`. Installed wheels use their module directory. Skill links and resource lookup remain separate from that working directory. After updating an old source checkout, run `python3 -m self_improving upgrade` from `src/` to replace managed commands; unrelated Hooks are preserved.
+
 Legacy Markdown history may be archived without changing Hook registration or injection. This does not disable candidate capture or v2 approvals. Since 3.1.2, authorized edits and moves of memory.md and corrections.md follow ordinary document permissions, without extra Hook approval. The verified ledger and mutating review commands remain guarded.
 
 Claude Code and Codex payloads are normalized before core memory logic runs.

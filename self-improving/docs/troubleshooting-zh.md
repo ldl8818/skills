@@ -1,11 +1,11 @@
 # 中文排错手册
 
-> V2.1.3 · 2026-09-11 · 对齐 self-improving 3.1.2 工作树的恢复条件、只读检查和审批账本保护。版本历史见 [CHANGELOG](../CHANGELOG.md)。
+> V2.1.4 · 2026-09-11 · 对齐 self-improving 3.1.3的恢复条件、只读检查和审批账本保护。版本历史见 [CHANGELOG](../CHANGELOG.md)。
 
 先进入下载目录，再执行体检：
 
 ```bash
-cd "$HOME/skills/self-improving"
+cd "$HOME/skills/self-improving/src"
 python3 -m self_improving doctor
 ```
 
@@ -24,11 +24,11 @@ python3 --version
 你通常不在正确目录。运行：
 
 ```bash
-cd "$HOME/skills/self-improving"
+cd "$HOME/skills/self-improving/src"
 python3 -m self_improving --version
 ```
 
-如果仓库下载在别处，把路径换成你的真实目录。
+如果仓库下载在别处，把路径换成你的真实目录。3.1.3起，Python 源码位于 `src/`；旧版升级后还需在此目录执行 `python3 -m self_improving upgrade`，刷新仍指向上一级的 Hook。
 
 ## 安装成功但 Agent 没读到记忆
 

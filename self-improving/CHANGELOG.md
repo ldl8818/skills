@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 3.1.3
+
+- Move the Python package to src/self_improving while keeping imports and CLI names unchanged. Source commands and managed Hooks now run from src; templates and Skill links still resolve to the Skill root. Existing source installations must run upgrade from src to refresh Hooks.
 
 - Align documentation for Doraemon 跨 Agent 自我进化记忆系统 with current knowledge routing, catalog indexes, resume behavior and Markdown maintenance boundaries; update Skill discovery and consolidate reference sections without changing runtime behavior.
 - Recognize standalone read-only Python inspections before authority-write checks; keep unknown code, shell composition and actual review/write operations guarded.

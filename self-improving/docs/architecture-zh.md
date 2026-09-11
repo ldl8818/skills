@@ -1,6 +1,6 @@
 # Doraemon 跨 Agent 自我进化记忆系统架构与设计
 
-> V2.3.5 · 2026-09-11 · 对齐 self-improving 3.1.2 工作树的知识路由、索引和守门说明；版本历史见 [CHANGELOG](../CHANGELOG.md)。
+> V2.3.6 · 2026-09-11 · 对齐 self-improving 3.1.3 的 src 源码布局与 Hook、资源目录分离；版本历史见 [CHANGELOG](../CHANGELOG.md)。
 
 本文解释 self-improving 的整体设计：系统分成哪几层、Hook 怎样接入 Claude Code 与 Codex、一条纠错从捕获到生效要过哪些关卡，以及关键方案为什么这样取舍。安装与日常操作请读 [五分钟从零开始](quickstart-zh.md)，本文不重复命令细节。
 
@@ -9,6 +9,8 @@
 ## 1. 四层分离
 
 第一条设计决策：程序与数据彻底分开。程序可以公开、升级、回滚；用户数据永远留在用户自己选择的目录。
+
+Python 包位于 `src/self_improving/`，包名和 CLI 名称保持不变。源码运行及 Hook 的工作目录是 `src/`；文档、模板、示例及 Skill 入口仍以 Skill 根目录为准。wheel 安装使用 Python 模块目录运行 Hook，并从安装的数据目录读取资源，不依赖源码工作区。旧版源码安装更新后需在 `src/` 执行 `upgrade` 刷新 Hook 接线。
 
 ```mermaid
 flowchart TD

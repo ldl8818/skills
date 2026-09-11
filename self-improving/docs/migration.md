@@ -47,6 +47,16 @@ configured. Project-scoped approvals contain absolute paths; if
 the project lives at a different path on the new computer, revoke and approve
 that rule again with the new `project:/absolute/path` scope.
 
+Copy the complete verified ledger, including revocation and promotion events,
+and the memory root marker; do not export only currently active rows.
+The knowledge catalog lives in `memory_root`, but its review receipts live in
+`state_root/knowledge/accepted.json`. Register that file separately from disposable
+session state. Knowledge revisions include resolved paths and dependencies;
+moving identical documents can still require review. Run `knowledge check`,
+read affected sources and dependencies, then accept the checked revision.
+Do not copy old client-event evidence as proof of a new machine's readiness.
+For the planned whole-machine workflow, see [新机转移](新机转移.md).
+
 Rollback removes managed Hooks with:
 
 ```bash

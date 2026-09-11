@@ -12,8 +12,9 @@
 - 系统正式名称：**Doraemon 跨 Agent 自我进化记忆系统**（2026-07-12 定）。对外文档、发布说明统一用此名；程序包名、命令、目录仍为 `self-improving`，不改代码标识符。
 - Skill 的 `description` 是实际路由上下文，主要用途、中文触发语和负向边界必须直接写在其中；`zh_description` 只负责展示，不能替代路由描述。
 - 改安装、迁移或新手路径后，除自动测试外还要在干净 HOME／环境按文档从 0 到 1 实跑；卡住就修代码或文档，不能只凭源码测试发布。
-- 测试：`cd self-improving && python3 -m unittest discover -s tests`（本机未装 pytest）。
-- 升版本必须同步四处：`self_improving/__init__.py`、`pyproject.toml`、`SKILL.md` frontmatter、`CHANGELOG.md` 新条目。测试断言动态引用 `__version__`，不用改。
+- Python 源码放在 `self-improving/src/self_improving/`；源码运行命令先进入 `self-improving/src/`，Skill 文档、模板和示例仍在上一级。
+- 测试：`cd self-improving && PYTHONPATH=src python3 -m unittest discover -s tests`（本机未装 pytest）。
+- 升版本必须同步四处：`src/self_improving/__init__.py`、`pyproject.toml`、`SKILL.md` frontmatter、`CHANGELOG.md` 新条目。测试断言动态引用 `__version__`，不用改。
 - 升版本后 doctor 的「事件契约」会降为 ⚠（旧版本验证记录按设计作废），由下次真实 Claude/Codex 新会话自动补齐；不得用历史记录冒充当前版本已验证。
 - 行为变更（用户可感知）按受众清单**全量**同步，缺一不发。逐份点名：
   1. `self-improving/docs/architecture-zh.md` —— 架构、Hook 事件、审核流程或安全边界变了就改，实质修改递增版本头 VX.Y.Z；

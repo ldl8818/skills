@@ -4,6 +4,8 @@ A configurable, review-gated correction system for Claude Code and Codex. It cap
 
 中文用户请从 [五分钟从零开始](docs/quickstart-zh.md) 阅读。遇到问题看 [中文排错手册](docs/troubleshooting-zh.md)。想了解系统怎么设计、为什么这样设计，看 [Doraemon 跨 Agent 自我进化记忆系统架构与设计](docs/architecture-zh.md)。
 
+换电脑前可参考 [新机转移](docs/新机转移.md)，从新用户入口查看准备材料、人工记忆与隐藏配置取舍、失败续跑和业务回退要求。统一恢复器尚未实现，现有 dotfiles 引导会尝试启动网关，不能直接作为新机准备流程；文档不代表新机已恢复。
+
 ## 它怎样变聪明
 
 ```text
@@ -26,7 +28,7 @@ Obsidian and Git are optional. Obsidian can edit the memory directory; Git can v
 ## Install
 ```bash
 git clone https://github.com/ldl8818/skills.git
-cd skills/self-improving
+cd skills/self-improving/src
 python3 -m self_improving init
 ```
 
@@ -41,6 +43,7 @@ python3 -m self_improving init \
 ```
 
 The installer merges Hook configuration and backs up existing files. It does not replace unrelated Hooks.
+Source commands run from `src/`; documents, templates and Skill links remain at the Skill root. A wheel installation uses the installed package and bundled resources instead.
 In an interactive terminal it asks before enabling correction capture. In
 non-interactive use, correction capture stays off unless
 `--capture-corrections` is supplied.
@@ -78,8 +81,11 @@ python3 -m self_improving persistence enable
 ```
 
 ## Upgrade
+Start from the Skill root containing `pyproject.toml`. Update the checkout before entering `src/`, which was added in 3.1.3; `upgrade` refreshes old Hook commands that still point to the Skill root.
+
 ```bash
 git pull --ff-only
+cd src
 python3 -m self_improving upgrade
 python3 -m self_improving doctor
 ```

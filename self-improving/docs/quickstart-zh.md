@@ -1,6 +1,6 @@
 # 五分钟从零开始
 
-> V2.3.0 · 2026-09-11 · 适用于 self-improving 3.1.2 工作树：区分知识目录下的恢复行为，明确普通 Markdown 维护边界。版本历史见 [CHANGELOG](../CHANGELOG.md)。
+> V2.3.1 · 2026-09-11 · 适用于 self-improving 3.1.3：区分知识目录下的恢复行为，明确普通 Markdown 维护边界。版本历史见 [CHANGELOG](../CHANGELOG.md)。
 
 这份教程带你完成一次完整闭环：安装 → 自动捕获纠错 → 人工批准 → 新会话自动采用。无需安装 Obsidian，也无需懂 Python 编程。
 
@@ -20,7 +20,7 @@ Obsidian 和私人 Git 仓库都不是必需品。
 ```bash
 cd "$HOME"
 git clone https://github.com/ldl8818/skills.git
-cd "$HOME/skills/self-improving"
+cd "$HOME/skills/self-improving/src"
 ```
 
 如果你已下载过仓库，不要重复克隆，进入原目录后执行 `git pull --ff-only`。
@@ -75,9 +75,10 @@ Hook 应输出类似：
 - Claude Code：你在对话里说"同意"后，Agent 代跑批准命令，客户端弹出一次权限确认框；核对命令内容后点允许即完成。
 - Codex：你在对话里说"同意"后，Agent 给出一条只含候选指纹的交互命令，但不会代跑；把它复制到普通终端，再按提示输入规则正文和作用范围。Codex 的 Hook 不支持单次询问，Agent 工具里的权威写入会被直接拒绝。
 
-下面是普通终端流程：Codex 必须使用，Claude Code 可作为备用。先回到终端，在 `self-improving` 目录运行：
+下面是普通终端流程：Codex 必须使用，Claude Code 可作为备用。先回到终端，进入下载时的源码目录再运行：
 
 ```bash
+cd "$HOME/skills/self-improving/src"
 python3 -m self_improving review list
 ```
 
@@ -186,7 +187,7 @@ python3 -m self_improving persistence enable
 ```bash
 cd "$HOME/skills"
 git pull --ff-only
-cd self-improving
+cd self-improving/src
 python3 -m self_improving upgrade
 python3 -m self_improving doctor
 ```

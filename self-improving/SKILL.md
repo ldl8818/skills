@@ -2,7 +2,7 @@
 name: self-improving
 description: "管理 Claude Code 与 Codex 的审核制纠错记忆和按需知识。用户要求记住、审核、撤销或归位纠错，登记知识、复核知识版本、通过本系统读取或维护知识，检查记忆健康、安装迁移或关闭持久学习时使用；普通报错、一次性偏好、一般资料查询和未涉及本系统的项目规则编辑不触发。"
 metadata:
-  version: "3.1.2"
+  version: "3.1.3"
   zh_description: "跨 Claude Code 与 Codex 的审核制纠错与按需知识，支持版本复核、安装、迁移与体检"
   compatibility: "Python 3.11+; macOS, Linux, or Windows WSL; Claude Code and/or Codex"
   source: local
@@ -25,7 +25,7 @@ Use this skill to operate a private memory repository shared by Claude Code and 
 - With an authorized knowledge catalog, resume resets knowledge deduplication and supplies the base context once. Use `knowledge list/read` for relevant missed or full-required sources; never treat an output receipt as completed reading.
 
 ## Commands
-For the documented source-checkout installation, run commands from the directory containing `self_improving/`; `init` does not install the package into site-packages. When triggered inside another project, find that directory in the `self-improving-hook` command inside `~/.claude/settings.json` or `~/.codex/hooks.json`, then `cd` there first. An independently installed package can also expose the `self-improving` CLI in its Python environment.
+For the documented source-checkout installation, run commands from the Skill's `src/` directory containing `self_improving/`; `init` does not install the package into site-packages. Documents, templates and Skill links remain at the Skill root above `src/`. When upgrading a checkout from the old flat layout, enter `src/` and run `python3 -m self_improving upgrade` to refresh managed Hooks. When triggered inside another project, locate the checkout via the `self-improving-hook` command inside `~/.claude/settings.json` or `~/.codex/hooks.json`; old commands may still point one level above `src/`. An independently installed package can also expose the `self-improving` CLI in its Python environment.
 
 ```bash
 python3 -m self_improving init

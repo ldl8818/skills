@@ -12,7 +12,7 @@ from typing import Any
 import re
 import tomllib
 
-from self_improving.paths import PACKAGE_ROOT, atomic_write_json, default_config_path, expand_path
+from self_improving.paths import PACKAGE_ROOT, SOURCE_ROOT, atomic_write_json, default_config_path, expand_path
 
 
 MARKER = "self-improving-hook"
@@ -27,7 +27,7 @@ LEGACY_HOOK_NAMES = (
 
 
 def _hook_command_parts(platform: str, event: str) -> tuple[str, str]:
-    package = shlex.quote(str(PACKAGE_ROOT))
+    package = shlex.quote(str(SOURCE_ROOT))
     config = shlex.quote(str(default_config_path()))
     prefix = f"cd {package} && SELF_IMPROVING_CONFIG={config} "
     suffix = f" -m self_improving hook --platform {platform} --event {event} # {MARKER}"

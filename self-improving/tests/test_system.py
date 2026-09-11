@@ -74,7 +74,7 @@ class SystemTests(unittest.TestCase):
 
     def test_cli_help_version_and_invalid_exit_codes(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        env = {**os.environ, "PYTHONPATH": str(root)}
+        env = {**os.environ, "PYTHONPATH": str(root / "src")}
         for arguments, expected in ((["--help"], 0), (["--version"], 0), (["unknown"], 2)):
             result = subprocess.run(
                 [sys.executable, "-m", "self_improving", *arguments],
@@ -1309,7 +1309,7 @@ class SystemTests(unittest.TestCase):
             **os.environ,
             "HOME": str(fresh),
             "SELF_IMPROVING_CONFIG": str(fresh / ".config/self-improving/config.json"),
-            "PYTHONPATH": str(Path(__file__).resolve().parents[1]),
+            "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src"),
         }
         installed = subprocess.run(
             [
@@ -1337,20 +1337,22 @@ class SystemTests(unittest.TestCase):
         self.assertIn(MARKER, (fresh / ".claude/settings.json").read_text())
         self.assertIn(MARKER, (fresh / ".codex/hooks.json").read_text())
 
-        settings = json.loads((fresh / ".claude/settings.json").read_text())
-        hook_command = settings["hooks"]["SessionStart"][-1]["hooks"][0]["command"]
-        hook_env = {key: value for key, value in env.items() if key != "SELF_IMPROVING_CONFIG"}
-        hook_run = subprocess.run(
-            hook_command,
-            input=json.dumps({"hook_event_name": "SessionStart", "cwd": str(fresh)}),
-            text=True,
-            capture_output=True,
-            env=hook_env,
-            shell=True,
-            check=False,
-        )
-        self.assertEqual(hook_run.returncode, 0, hook_run.stdout + hook_run.stderr)
-        self.assertEqual(hook_run.stdout, "")
+        hook_env = {key: value for key, value in env.items() if key not in {"SELF_IMPROVING_CONFIG", "PYTHONPATH"}}
+        for settings_path in (".claude/settings.json", ".codex/hooks.json"):
+            settings = json.loads((fresh / settings_path).read_text())
+            hook_command = settings["hooks"]["SessionStart"][-1]["hooks"][0]["command"]
+            hook_run = subprocess.run(
+                hook_command,
+                input=json.dumps({"hook_event_name": "SessionStart", "cwd": str(fresh)}),
+                text=True,
+                capture_output=True,
+                env=hook_env,
+                cwd=fresh,
+                shell=True,
+                check=False,
+            )
+            self.assertEqual(hook_run.returncode, 0, hook_run.stdout + hook_run.stderr)
+            self.assertEqual(hook_run.stdout, "")
 
         for command in (("upgrade",), ("sync",), ("doctor",)):
             result = subprocess.run(
@@ -1395,7 +1397,7 @@ class SystemTests(unittest.TestCase):
         config_path = fresh / ".config/self-improving/config.json"
         with patch.dict(os.environ, {"SELF_IMPROVING_CONFIG": str(config_path)}):
             write_config(config)
-        env = {**os.environ, "HOME": str(fresh), "SELF_IMPROVING_CONFIG": str(config_path), "PYTHONPATH": str(Path(__file__).resolve().parents[1])}
+        env = {**os.environ, "HOME": str(fresh), "SELF_IMPROVING_CONFIG": str(config_path), "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src")}
         rejected = subprocess.run(
             [sys.executable, "-m", "self_improving", "uninstall", "--delete-data", "--confirm", str(fresh)],
             text=True,
@@ -1433,7 +1435,7 @@ class SystemTests(unittest.TestCase):
             **os.environ,
             "HOME": str(fresh),
             "SELF_IMPROVING_CONFIG": str(fresh / ".config/self-improving/config.json"),
-            "PYTHONPATH": str(Path(__file__).resolve().parents[1]),
+            "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src"),
         }
         migrated = subprocess.run(
             [sys.executable, "-m", "self_improving", "migrate", "legacy", "--apply"],
