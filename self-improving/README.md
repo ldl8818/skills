@@ -160,3 +160,5 @@ OpenClaw and other editors or Agents are not required and are not silently
 treated as installed.
 
 Read-only Python inspections of protected memory files are recognized conservatively; actual review/write operations remain protected. See `docs/hooks.md` for the supported syntax and `docs/troubleshooting-zh.md` for false-positive diagnosis.
+
+只读检查支持独立 Python 中的字符串前缀判断和负数下标；搜索与解释器命令按 Shell 命令边界分别检测，避免跨命令串联关键词。拒绝提示不再断言已经发生写入，审批账本移动仍受保护；两个 Markdown 文件按用户授权正常维护。

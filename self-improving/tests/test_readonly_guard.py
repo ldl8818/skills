@@ -77,3 +77,37 @@ PY"""
     def test_markdown_maintenance_is_allowed(self):
         for command in ("printf updated >> corrections.md", "mv corrections.md archive/"):
             self.assertFalse(self.blocked(command))
+
+    def test_pipeline_keeps_interpreter_and_source_together(self):
+        for pipe in (' | ', ' |& '):
+            command = "printf '%s' \"open('.self-improving/verified-corrections.jsonl', 'w').write('bad')\"" + pipe + 'python3'
+            self.assertTrue(self.blocked(command))
+
+            source = command.rsplit(pipe, 1)[0]
+            self.assertTrue(self.blocked('(' + source + ')' + pipe + 'python3'))
+            self.assertTrue(self.blocked('(' + source + '; printf done)' + pipe + 'python3'))
+
+    def test_table_inspection(self):
+        self.assertFalse(self.blocked("""python3 - <<'PY'
+from pathlib import Path
+p = Path('/example/memory/verified-corrections.jsonl')
+for n, line in enumerate(p.read_text().splitlines(), 1):
+    if line.startswith('| 20'):
+        parts = line.split('|')
+        print(n, parts[1].strip(), parts[3].strip()[:130], parts[-3].strip())
+PY"""))
+
+    def test_search_and_review_list(self):
+        for separator in ('; ', '\n', ' && '):
+            command = separator.join((
+                "rg -n 'append_verified_correction' self_improving/storage.py",
+                'python3 -m self_improving review lifecycle-list --json',
+            ))
+            with self.subTest(separator=separator):
+                self.assertFalse(self.blocked(command))
+                self.assertTrue(self.blocked(command + separator +
+                    "python3 -c 'from self_improving.review import decide'"))
+                self.assertTrue(self.blocked(command + separator +
+                    "mv verified-corrections.jsonl archive.md"))
+                self.assertTrue(self.blocked(command + separator +
+                    'python3 -m self_improving review approve --fingerprint example'))

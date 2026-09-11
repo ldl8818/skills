@@ -907,6 +907,11 @@ class SystemTests(unittest.TestCase):
             code, text = codex_decision({"tool_name": "Bash", "tool_input": {"command": command}})
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(text)["hookSpecificOutput"]["permissionDecision"], "deny")
+            reason = json.loads(text)["hookSpecificOutput"]["permissionDecisionReason"]
+            self.assertIn("[authority-guard]", reason)
+            self.assertIn("只读检查", reason)
+            self.assertIn("写入、移动或审核", reason)
+            self.assertNotIn("本次权威记忆写入已拒绝", reason)
 
         for command in (
             "python3 -m self_improving review approve --help",

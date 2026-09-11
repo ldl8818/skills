@@ -167,3 +167,5 @@ python3 -m self_improving uninstall --keep-data
 `review import-legacy` 只接受 `review legacy-list` 返回的稳定 `legacy:...` 编号。列表包含合格的旧 Markdown 行和活动 v1 JSONL 批准；Markdown 编号由旧行原文生成，不会因其他行插入而漂移，如果该行内容被修改，必须重新运行 `legacy-list`。v1 替换成功后会追加撤销事件，不再重复列出。`superseded`、`obsolete`、`rejected` 都不允许复活。
 
 运行 `review import-legacy-interactive --legacy-id ...` 后，正确规则不是复制事故全文，而是重新写成一句仍然适用的现行规则，并填写正式归位目标、复核期和失效期。项目或仓库范围必须使用存在的绝对路径。
+
+只读回归修复：Python 的 `startswith()` 和负数下标现可通过受限 AST 检查；简单 Shell 组合按命令边界检查解释器引用，避免把 `rg` 搜索词算到后续 Python 列表查询中。复杂展开仍保守检测。`[authority-guard]` 不断言真实写入；普通 Markdown 的归档可按授权直接执行，无需纠错审核命令。

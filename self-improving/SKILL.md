@@ -70,3 +70,5 @@ python3 -m self_improving migrate legacy
 - What is captured, what is never injected: `docs/privacy.md`
 - Per-platform Hook events, guard behavior and limits: `docs/hooks.md`
 - Design rationale (Chinese): `docs/architecture-zh.md`
+
+Read-only Python inspection includes string startswith and negative indexing. Simple shell command boundaries keep search arguments separate from interpreter detection; complex expansion remains conservative. A denied move is a file operation, not a candidate review.

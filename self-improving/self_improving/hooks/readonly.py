@@ -11,14 +11,14 @@ import shlex
 
 _PYTHON = r"(?:/[\w./-]+/)?python(?:\d+(?:\.\d+)*)?"
 _FUNCTIONS = {"Path", "print", "enumerate", "str", "len", "range"}
-_METHODS = {"read_text", "splitlines", "split", "strip", "get", "items"}
+_METHODS = {"read_text", "splitlines", "split", "strip", "get", "items", "startswith"}
 _NODES = (
     ast.Module, ast.Import, ast.ImportFrom, ast.alias, ast.Expr, ast.Assign,
     ast.For, ast.If, ast.Name, ast.Load, ast.Store, ast.Constant, ast.List,
     ast.Tuple, ast.Dict, ast.Call, ast.Attribute, ast.keyword, ast.BinOp,
     ast.Div, ast.Add, ast.JoinedStr, ast.FormattedValue, ast.Subscript,
     ast.Slice, ast.Compare, ast.Eq, ast.NotEq, ast.In, ast.NotIn,
-    ast.BoolOp, ast.And, ast.Or, ast.UnaryOp, ast.Not,
+    ast.BoolOp, ast.And, ast.Or, ast.UnaryOp, ast.Not, ast.USub,
 )
 
 

@@ -171,6 +171,37 @@ def _review_invocations(tokens: list[str]) -> list[tuple[int, str]]:
     return invocations
 
 
+def _interpreter_authority_reference(command: str, tokens: list[str]) -> bool:
+    """Do not associate a search argument with an unrelated interpreter call."""
+    groups = [tokens]
+    # Keep complex shell syntax on the conservative whole-command path.
+    if not any(marker in command for marker in ("$", "`", "<<")):
+        try:
+            lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|()\n")
+            lexer.whitespace = " \t\r"
+            lexer.whitespace_split = True
+            lexer.commenters = ""
+            groups = [[]]
+            for token in lexer:
+                if token and all(char in ";&|()\n" for char in token) and any(char in "()" for char in token):
+                    groups = [tokens]
+                    break
+                # A pipeline passes source to its interpreter; keep it together.
+                if token == "||" or (token and all(char in ";&()\n" for char in token)):
+                    groups.append([])
+                else:
+                    groups[-1].append(token)
+        except ValueError:
+            groups = [tokens]
+    references = ("verified-corrections.jsonl",
+                  "self_improving.review", "self_improving.storage", "append_verified_correction")
+    return any(
+        any(Path(token).name.startswith("python") or token in {"node", "ruby", "perl"} for token in group)
+        and any(name in token for token in group for name in references)
+        for group in groups
+    )
+
+
 def _is_review_help(tokens: list[str]) -> bool:
     """Allow only one standalone, exact, read-only help invocation."""
     invocations = _review_invocations(tokens)
@@ -260,12 +291,7 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
     tokens = _shell_tokens(expanded)
     if _review_invocations(tokens) and not _is_review_help(tokens):
         return True
-    internal_authority_api = any(
-        any(name in token for name in ("self_improving.review", "self_improving.storage", "append_verified_correction"))
-        for token in tokens
-    )
-    interpreter = any(Path(token).name.startswith("python") or token in {"node", "ruby", "perl"} for token in tokens)
-    if ("verified-corrections.jsonl" in expanded or internal_authority_api) and interpreter:
+    if _interpreter_authority_reference(expanded, tokens):
         return True
     write_signal = (
         any(token in {"tee", "rm", "mv", "cp", "truncate"} for token in tokens)

@@ -95,3 +95,5 @@ smoke results must be reported separately from fixture replay.
 ## Read-only Python inspection
 
 Standalone Python `-c` and quoted heredoc commands are exempt from the authority-write guard only when their complete AST matches a small read-only subset: `pathlib.Path`, `read_text`, JSON parsing, text splitting, loops and printing. The guard parses source without executing it. Merely mentioning a protected filename or module in a string is not a write. Unknown code, dynamic execution, filesystem mutation, shell composition and output redirection keep the existing guard. Claude returns `ask`; Codex returns `deny` for guarded operations. This remains accidental-write protection, not a sandbox.
+
+Read-only Python supports `startswith()` and negative indexes. Interpreter/reference matching is scoped to simple shell command segments (including newline, semicolon and logical separators); pipelines keep source and interpreter references together; expansion and heredocs retain conservative handling. The `[authority-guard]` message distinguishes possible detection from proven writes and directs file moves to the corresponding operation, not an unrelated review command.
