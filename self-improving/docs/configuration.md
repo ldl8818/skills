@@ -18,7 +18,7 @@ a private Git working tree. The software does not infer or publish a remote.
 - Correction capture: enabled only after an interactive yes or explicit `--capture-corrections`.
 - Command-error capture: disabled.
 - Free-form `memory.md` injection: disabled.
-- Resumed-session injection: unchanged context is skipped; newly changed context is supplied once.
+- Resumed-session injection without a knowledge catalog: unchanged context is skipped; newly changed context is supplied once. With a catalog, resume reloads the base and resets knowledge deduplication.
 - Total dynamic-context budget: 1,200 estimated tokens.
 - Automatic remote creation or data upload: never enabled.
 
@@ -42,7 +42,7 @@ a private Git working tree. The software does not infer or publish a remote.
 
 - `include_core_memory`: inject `memory.md`; disabled by default because stable policy belongs in Agent/project rules and detailed knowledge is read on demand.
 - `include_verified_corrections`: inject eligible approvals at a new-session `SessionStart`.
-- `resume_mode`: `skip` records a per-session digest and avoids reinjecting unchanged context on resume; a changed set is supplied once as a full replacement, and an empty set emits a one-time clear signal. `always` emits eligible context on every resume.
+- `resume_mode` (without a knowledge catalog): `skip` records a per-session digest and avoids reinjecting unchanged context on resume; a changed set is supplied once as a full replacement, and an empty set emits a one-time clear signal. `always` emits eligible context on every resume.
 - `max_total_tokens`: shared estimated-token ceiling for all dynamic sections; range 0–20,000.
 - `min_verified_version`: minimum approval format accepted for injection; range 1–2, default 2.
 - `review_reminder_interval_hours`: minimum interval between Stop reminders; range 0–720.
@@ -80,3 +80,5 @@ When a client exposes only an opaque output string, that client is skipped
 rather than classified by keywords; `doctor` reports the missing structured
 contract when error capture is enabled.
 `persistence.max_error_entries` caps the local error ledger at 200 rows by default.
+
+With a private knowledge catalog, resume conservatively reloads the base and resets knowledge deduplication regardless of `resume_mode`. Catalog routing is documented in [knowledge.md](knowledge.md); it adds no capture or approval switch.

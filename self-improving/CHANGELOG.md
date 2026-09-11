@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Align documentation for Doraemon 跨 Agent 自我进化记忆系统 with current knowledge routing, catalog indexes, resume behavior and Markdown maintenance boundaries; update Skill discovery and consolidate reference sections without changing runtime behavior.
+- Recognize standalone read-only Python inspections before authority-write checks; keep unknown code, shell composition and actual review/write operations guarded.
+
 ## 3.1.2
 
 - Allow authorized edits and moves of memory.md and corrections.md as ordinary document maintenance. Keep verified ledger writes and mutating review commands guarded on both clients.
@@ -8,9 +13,12 @@
 
 - Treat legacy Markdown corrections as optional audit history: doctor accepts its absence, and initialization no longer recreates it in an existing marked memory root. Candidate capture and v2 approvals are unchanged.
 
-## Unreleased
+## 3.1.0
 
-- Recognize standalone read-only Python inspections before authority-write checks; keep unknown code, shell composition and actual review/write operations guarded.
+- Add private revision-bound knowledge check, list, read and accept commands, generated catalog views and doctor diagnostics.
+- Route reviewed original sections on prompt submission; preserve required full-read pointers through compaction, recheck scope and invalidate changed sources.
+- Bound each event by the shared token estimate, isolate knowledge workers with a one-second timeout, and keep candidate persistence independent from reading.
+- Extend Codex SessionStart registration to clear and compact; preserve existing approval guards and third-party Hooks.
 
 ## 3.0.0 - 2026-08-31
 - Startup context is cost-safe by default: free-form `memory.md` injection is off, resumed sessions compare a per-session content digest and emit changed context only once, and all dynamic sections share a 1,200-token budget. A changed resume explicitly invalidates the prior injection, including when revoke or promote leaves no active rules. Budget omissions, expired rules, due reviews, ignored v1 rows and malformed ledger events produce an explicit receipt instead of disappearing silently.

@@ -47,6 +47,23 @@ def _category(relative: Path) -> str:
 
 
 def render_index(root: Path) -> str:
+    active = ""
+    from self_improving.knowledge import CATALOG, snapshot
+    if (root / CATALOG).exists():
+        try:
+            current = snapshot(root)
+            active = "\n## 登记知识\n\n路由只维护 knowledge-catalog.json；复核状态用 `knowledge check` 查询。\n\n| ID | 来源 | 标题 | 行数 |\n|---|---|---|---:|\n"
+            for ident, item in current["items"].items():
+                title = item.get("title", "读取失败").replace("|", "¦")
+                source = item['entry']['path'].replace(' ', '%20')
+                active += f"| {ident} | [原文](<{source}>) | {title} | {item.get('lines', '待检查')} |\n"
+            active += "\n## 分类入口\n\n未登记不等于弃用。完整文件清单用 `python3 -m self_improving knowledge list --all` 查询，不常驻上下文。\n\n"
+            for directory in sorted(root.iterdir()):
+                if directory.is_dir() and not directory.name.startswith('.'):
+                    active += f"- [{directory.name}](<{directory.name}/>)\n"
+            return "# Memory Index\n\n> 本文件由 `python3 -m self_improving sync` 生成；路由只维护 knowledge-catalog.json。\n" + active
+        except (OSError, ValueError):
+            active = "\n知识目录不可用，请运行 `knowledge check`。全量资料入口仍保留。\n\n"
     rows: list[str] = []
     for path in sorted(root.rglob("*.md"), key=lambda item: item.relative_to(root).as_posix().casefold()):
         relative = path.relative_to(root)
@@ -64,7 +81,8 @@ def render_index(root: Path) -> str:
         "# Memory Index\n\n"
         "> 本文件由 `python3 -m self_improving sync` 生成；禁止手工修改表格。\n"
         "> `memory.md` 仅在配置开启核心注入时加载，其他文件按任务需要读取。\n\n"
-        "| 类别 | 文件 | 标题 | 行数 |\n"
+        + active
+        + "| 类别 | 文件 | 标题 | 行数 |\n"
         "|---|---|---|---:|\n"
         + "\n".join(rows)
         + "\n"

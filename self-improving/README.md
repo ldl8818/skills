@@ -1,4 +1,4 @@
-# Self-improving cross-agent memory
+# Doraemon 跨 Agent 自我进化记忆系统
 
 A configurable, review-gated correction system for Claude Code and Codex. It captures explicit corrections, waits for human approval, and supplies only current, scoped approvals to later new sessions. Program code can be public; user memory remains in a separate private directory.
 
@@ -114,7 +114,7 @@ python3 -m self_improving review import-legacy-interactive --legacy-id 'legacy:1
 python3 -m self_improving review import-legacy --legacy-id 'legacy:12ab34cd56ef' --correct '重新提炼后的现行规则' --scope global --promotion-target global-rules
 ```
 
-Current v2 answers are injected at `SessionStart`. With the default `skip` mode,
+Current v2 answers are injected at `SessionStart`. Without a knowledge catalog, the default `skip` mode means
 each session records a digest of the context it actually received: an unchanged
 resume is silent, while any changed rule set is supplied once on the next resume
 with an explicit signal that invalidates the prior injection. Revoking or promoting
@@ -159,6 +159,6 @@ Only Claude Code and Codex are supported. Obsidian, Git, Gemini,
 OpenClaw and other editors or Agents are not required and are not silently
 treated as installed.
 
-Read-only Python inspections of protected memory files are recognized conservatively; actual review/write operations remain protected. See `docs/hooks.md` for the supported syntax and `docs/troubleshooting-zh.md` for false-positive diagnosis.
+## Optional reviewed knowledge routing
 
-只读检查支持独立 Python 中的字符串前缀判断和负数下标；搜索与解释器命令按 Shell 命令边界分别检测，避免跨命令串联关键词。拒绝提示不再断言已经发生写入，审批账本移动仍受保护；两个 Markdown 文件按用户授权正常维护。
+Version 3.1 adds original-section loading from a private catalog, without new services or model calls. With a catalog, startup/resume/clear/compact reset the knowledge stage and resume supplies the base context again; UserPromptSubmit supplies newly relevant sources within the shared event budget. Without a catalog the correction-only resume behavior described above remains unchanged. The generated index lists registered sources and category links; use `knowledge list --all` for full discovery. See [knowledge setup and maintenance](docs/knowledge.md) for registration, review, invalidation and full-read obligations.

@@ -235,6 +235,8 @@ def _session_context_output(
             previous = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError, json.JSONDecodeError):
             previous = {}
+        if not isinstance(previous, dict):
+            previous = {}
         previous_digest = previous.get("digest")
         if source == "resume" and resume_mode != "always" and previous_digest == current_digest:
             return ""
@@ -335,6 +337,7 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
         }, ensure_ascii=False))
         return 0
     if event.event == "SessionStart":
+        from self_improving.knowledge import CATALOG, context as knowledge_context
         injection = config.get("injection", {})
         total_budget = int(injection.get("max_total_tokens", 1200))
         if total_budget <= 0:
@@ -378,16 +381,40 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
             attrs = " ".join(f'{key}="{value}"' for key, value in receipt.items())
             sections.append(f"<self-improving-receipt {attrs}/>")
         rendered = "\n".join(sections)
+        has_knowledge = (root / CATALOG).is_file()
+        extra = knowledge_context(config, {**event.__dict__, "platform": platform}, max(0, total_budget - estimate_tokens(rendered) - SESSION_UPDATE_RESERVE_TOKENS))
+        if extra:
+            rendered = "\n".join(filter(None, (rendered, extra)))
         output = _session_context_output(
             state_root,
             platform,
             event.session_id,
             event.source,
-            str(injection.get("resume_mode", "skip")),
+            "always" if has_knowledge else str(injection.get("resume_mode", "skip")),
             rendered,
         )
+        if has_knowledge and not event.session_id:
+            output = rendered
         if output and estimate_tokens(output) <= total_budget:
             print(output)
+        return 0
+    if event.event == "UserPromptSubmit":
+        from self_improving.knowledge import context as knowledge_context
+        budget = int(config.get("injection", {}).get("max_total_tokens", 1200))
+        sections = []
+        if persistence_enabled(config) and config["persistence"].get("capture_corrections"):
+            text = _correction_text(event.prompt)
+            hit = CORRECTION.search(text) if text else None
+            if hit:
+                result = append_candidate(root, state_root, f"{platform}-user-prompt", event.prompt,
+                                          int(config["persistence"].get("max_candidate_chars", 500)), _match_context(text, hit))
+                sections.append(f'<correction-captured result="{result}"/>')
+        extra = knowledge_context(config, {**event.__dict__, "platform": platform}, max(0, budget - estimate_tokens("\n".join(sections)) - 1))
+        if extra:
+            sections.append(extra)
+        rendered = "\n".join(sections)
+        if rendered and estimate_tokens(rendered) <= budget:
+            print(rendered)
         return 0
     if event.event == "Stop":
         if not persistence_enabled(config):
@@ -401,19 +428,6 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
     if not persistence_enabled(config):
         return 0
     persistence = config["persistence"]
-    if event.event == "UserPromptSubmit" and persistence.get("capture_corrections"):
-        text = _correction_text(event.prompt)
-        hit = CORRECTION.search(text) if text else None
-        if hit:
-            result = append_candidate(
-                root,
-                state_root,
-                f"{platform}-user-prompt",
-                event.prompt,
-                int(persistence.get("max_candidate_chars", 500)),
-                _match_context(text, hit),
-            )
-            print(f'<correction-captured result="{result}"/>')
     if event.event == "PostToolUse" and persistence.get("capture_command_errors"):
         if event.failed:
             detail = event.tool_output or f"command exited with status {event.exit_status}"

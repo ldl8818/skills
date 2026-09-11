@@ -166,6 +166,15 @@ def run_checks() -> list[Check]:
         error_count = sum(1 for line in errors.read_text(encoding="utf-8").splitlines() if line.startswith("| 20")) if errors.exists() else 0
         error_limit = int(config.get("persistence", {}).get("max_error_entries", 200))
         checks.append(Check("错误库体积", error_count <= error_limit, f"{error_count}/{error_limit} 条", warning=True))
+    from self_improving.knowledge import CATALOG, check as knowledge_check
+    if (root / CATALOG).exists():
+        try:
+            knowledge = knowledge_check(config)
+            pending_ids = [item["id"] for item in knowledge["items"] if item["status"] != "ready"]
+            checks.append(Check("知识目录与版本", knowledge["structural_ok"] and knowledge["reviewed"],
+                                "待核对：" + ", ".join(pending_ids) if pending_ids else "登记来源及直接依赖版本一致", warning=True))
+        except (OSError, ValueError) as exc:
+            checks.append(Check("知识目录与版本", False, str(exc), warning=True))
     return checks
 
 

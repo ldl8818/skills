@@ -77,7 +77,7 @@ def _groups(platform: str, config: dict[str, Any]) -> dict[str, list[dict[str, A
     matchers = {
         "PreToolUse": "Write|Edit|Bash" if platform == "claude" else "Bash|apply_patch",
         "PostToolUse": "Bash",
-        "SessionStart": None if platform == "claude" else "startup|resume",
+        "SessionStart": None if platform == "claude" else "startup|resume|clear|compact",
         "UserPromptSubmit": None,
         "Stop": None,
     }

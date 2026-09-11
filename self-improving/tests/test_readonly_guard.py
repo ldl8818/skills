@@ -3,12 +3,27 @@
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-import shlex
 
 from self_improving.hooks.common import _dangerous_authority_write
 
 
 class ReadonlyGuardTests(unittest.TestCase):
+    def test_markdown_maintenance_is_not_an_approval(self):
+        for name in ('memory.md', 'corrections.md'):
+            for command in (
+                f'mv {name} archive/{name}',
+                f'mv /example/memory/{name} /example/memory/archive/{name}',
+                f"python3 -c \"from pathlib import Path; Path('{name}').write_text('updated')\"",
+                f'printf updated >> {name}',
+            ):
+                with self.subTest(command=command):
+                    self.assertFalse(self.blocked(command))
+            for tool_name in ('Write', 'Edit'):
+                event = SimpleNamespace(event='PreToolUse', tool_name=tool_name,
+                    tool_input={'file_path': f'/example/memory/{name}'}, cwd='/example/memory')
+                self.assertFalse(_dangerous_authority_write(event, Path(event.cwd)))
+        self.assertTrue(self.blocked('mv .self-improving/verified-corrections.jsonl archive/ledger.jsonl'))
+
     def blocked(self, command):
         event = SimpleNamespace(event="PreToolUse", tool_name="Bash",
                                 tool_input={"command": command}, cwd="/example/memory")
@@ -18,7 +33,7 @@ class ReadonlyGuardTests(unittest.TestCase):
         command = """python3 - <<'PY'
 from pathlib import Path
 b = Path('/example/memory')
-for name in ['memory.md', 'index.md', 'corrections.md']:
+for name in ['memory.md', 'index.md', 'verified-corrections.jsonl']:
     p = b / name
     print('FILE', p)
     for i, line in enumerate(p.read_text().splitlines(), 1):
@@ -28,23 +43,25 @@ PY"""
 
     def test_readonly_inline_and_literals(self):
         for source in (
-            "from pathlib import Path; print(Path('corrections.md').read_text())",
-            "import json; print(json.loads('{\"file\": \"corrections.md\"}'))",
-            "print('self_improving.review corrections.md >')",
+            "from pathlib import Path; print(Path('verified-corrections.jsonl').read_text())",
+            "import json; print(json.loads('{\"file\": \"verified-corrections.jsonl\"}'))",
+            "print('self_improving.review verified-corrections.jsonl >')",
         ):
+            import shlex
             with self.subTest(source=source):
                 self.assertFalse(self.blocked('python3 -c ' + shlex.quote(source)))
 
     def test_writes_and_unknown_code_stay_guarded(self):
+        import shlex
         for source in (
-            "from pathlib import Path; Path('.self-improving/verified-corrections.jsonl').write_text('bad')",
-            "open('.self-improving/verified-corrections.jsonl', 'w').write('bad')",
+            "from pathlib import Path; Path('verified-corrections.jsonl').write_text('bad')",
+            "open('verified-corrections.jsonl', 'w').write('bad')",
             "from self_improving.review import decide",
             "exec(\"print('verified-corrections.jsonl')\")",
-            "import os; os.remove('.self-improving/verified-corrections.jsonl')",
-            "from pathlib import Path; Path('.self-improving/verified-corrections.jsonl').unlink()",
-            "from pathlib import Path; Path('source').replace('.self-improving/verified-corrections.jsonl')",
-            "from pathlib import Path; print = Path('.self-improving/verified-corrections.jsonl').write_text; print('bad')",
+            "import os; os.remove('verified-corrections.jsonl')",
+            "from pathlib import Path; Path('verified-corrections.jsonl').unlink()",
+            "from pathlib import Path; Path('source').replace('verified-corrections.jsonl')",
+            "from pathlib import Path; print = Path('verified-corrections.jsonl').write_text; print('bad')",
             "from pathlib import Path; Path.write_text = print; print('verified-corrections.jsonl')",
             "print('verified-corrections.jsonl', file=open('output', 'w'))",
             "print('verified-corrections.jsonl') # incomplete\n(",
@@ -54,16 +71,17 @@ PY"""
 
     def test_shell_composition_is_not_exempt(self):
         for command in (
-            "python3 -c \"print('verified-corrections.jsonl')\" > .self-improving/verified-corrections.jsonl",
+            "python3 -c \"print('verified-corrections.jsonl')\" > verified-corrections.jsonl",
             "python3 -c \"print('verified-corrections.jsonl')\"; touch other",
             "python3 - <<PY\nprint('verified-corrections.jsonl')\nPY",
-            "python3 - <<'PY'\nprint('verified-corrections.jsonl')\nPY\nrm .self-improving/verified-corrections.jsonl",
+            "python3 - <<'PY'\nprint('verified-corrections.jsonl')\nPY\nrm verified-corrections.jsonl",
             "python3 -m self_improving review approve --fingerprint example",
         ):
             with self.subTest(command=command):
                 self.assertTrue(self.blocked(command))
 
     def test_callable_callbacks_stay_guarded(self):
+        import shlex
         for source in (
             "sorted(['verified-corrections.jsonl'], key=eval)",
             "sorted(['verified-corrections.jsonl'], key=exec)",
@@ -73,10 +91,6 @@ PY"""
         ):
             with self.subTest(source=source):
                 self.assertTrue(self.blocked('python3 -c ' + shlex.quote(source)))
-
-    def test_markdown_maintenance_is_allowed(self):
-        for command in ("printf updated >> corrections.md", "mv corrections.md archive/"):
-            self.assertFalse(self.blocked(command))
 
     def test_pipeline_keeps_interpreter_and_source_together(self):
         for pipe in (' | ', ' |& '):

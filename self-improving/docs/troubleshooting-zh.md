@@ -1,15 +1,6 @@
 # 中文排错手册
 
-> V2.1.1 · 2026-09-10 · 普通 Markdown 授权修改与旧纠错档案归档不再触发额外守门。
-
-旧 `corrections.md` 可以停用归档。体检中的“旧纠错档案（可选）”不要求文件存在；已有标记目录升级或重新初始化时不会重建它。候选收集、审批账本独立运行。自3.1.2起，memory.md 与 corrections.md 的授权修改和移动不再额外拦截；审批账本及变更审核命令仍受保护。
-
-> V2.1.0 · 2026-08-31 · 适用于 self-improving 3.0.0，补充恢复替换与清空信号，并保持体检和运行时预算一致。
-> V2.0.0 · 2026-08-31 · 适用于 self-improving 3.0.0，补充恢复跳过、生命周期、总预算收据和结构化失败判定。
-> V1.6.0 · 2026-08-31 · 适用于 self-improving 2.6.6，补充 Codex 硬拒绝、普通终端审核与短超时。
-> V1.5.0 · 2026-08-04 · 适用于 self-improving 2.6.5，补充两端 Stop Hook 非法 JSON 报错与修复。
-> V1.4.0 · 2026-07-28 · 适用于 self-improving 2.6.4，补充斜杠命令与超长提示词不捕获，新增「候选看不出为什么被捕获」。
-> V1.3.0 · 2026-07-13 · 适用于 self-improving 2.6.0，补充捕获前置过滤的两种「没进候选箱」情形。
+> V2.1.3 · 2026-09-11 · 对齐 self-improving 3.1.2 工作树的恢复条件、只读检查和审批账本保护。版本历史见 [CHANGELOG](../CHANGELOG.md)。
 
 先进入下载目录，再执行体检：
 
@@ -42,7 +33,7 @@ python3 -m self_improving --version
 ## 安装成功但 Agent 没读到记忆
 
 1. 运行 `python3 -m self_improving doctor`，确认对应 Agent Hook 为 `✅`。
-2. 完全关闭旧会话，再新开会话；默认 `resume_mode=skip`，恢复旧会话只跳过未变化内容，新批准规则会在下一次恢复时补注一次。
+2. 完全关闭旧会话，再新开会话；没有知识目录时默认 `resume_mode=skip`，恢复旧会话只跳过未变化内容，新批准规则会在下一次恢复时补注一次。
 3. 更新 Agent 后运行 `python3 -m self_improving upgrade`，让 Hook 重新接线。
 4. 检查配置中的 `memory_root` 是否指向实际私人记忆目录。
 
@@ -76,7 +67,7 @@ python3 -m self_improving persistence enable
 ## 批准后仍没有生效
 
 1. `review approve-interactive --fingerprint ...` 应先显示当前指纹，再询问规则、作用范围、归位目标和生命周期；作用域可用 `global`、`repo:/仓库绝对路径` 或 `project:/绝对路径`。多条候选必须逐条运行。
-2. `doctor` 的“学习闭环”应显示“机器可验证”与“当前可注入”均大于 0。
+2. `doctor` 的“学习闭环”应显示“机器可验证”“全作用域活动上界”和“预算内可选”均大于0；后两者是保守上界，实际注入仍须核对会话目录与预算。
 3. 检查配置：
 
 ```json
@@ -87,12 +78,12 @@ python3 -m self_improving persistence enable
 }
 ```
 
-4. 新开会话，或恢复同一个有 `session_id` 的会话；恢复时只有内容发生变化才会发送一次完整替换。撤销或归位最后一条规则后，下一次恢复会发送清空信号。若设为 `resume_mode=always`，则每次恢复都重复注入，一般只用于诊断。
+4. 新开会话，或恢复同一个有 `session_id` 的会话；没有知识目录时，恢复时只有内容发生变化才会发送一次完整替换。撤销或归位最后一条规则后，下一次恢复会发送清空信号。无知识目录时，`resume_mode=always` 会在每次恢复重复注入；有目录时不论该设置如何，都重置知识去重并补发基础上下文。
 5. 作用范围必须覆盖当前目录；`repo` 作用域会覆盖同仓库 linked worktree，`project` 只覆盖一个目录树。
 6. v1 旧批准默认只保留审计，不注入；应把稳定内容归位正式规则，确需临时中转时重新审核为 v2。
 7. `<self-improving-receipt>` 中 `omitted` 表示总 token、数量或字符预算淘汰，`expired` 表示已失效，`due` 表示到复核期，`legacy_ignored` 表示旧版忽略，`malformed` 表示账本损坏。不要靠无限增大预算掩盖这些状态。
 
-用 `python3 -m self_improving review lifecycle-list` 查看每条 v2 规则的状态、日期、范围和归位目标。如果恢复会话没有 `session_id`，系统无法安全判断是不是同一会话，默认保持静默；新开会话仍会正常注入。
+用 `python3 -m self_improving review lifecycle-list` 查看每条 v2 规则的状态、日期、范围和归位目标。无知识目录时，如果恢复会话没有 `session_id`，系统无法安全比较同一会话的摘要，默认保持静默；有目录时则重复提供安全输出。新开会话仍按配置注入。
 
 ## doctor 显示事件契约 `0/5` 或不满 `5/5`
 
@@ -131,9 +122,11 @@ python3 -m self_improving review promote --fingerprint '[fp:12ab34cd56ef]'
 
 ## Claude 弹权限框，Codex 却直接拒绝写记忆
 
-若被拦的是 Python 读取或日志检查，先看完整命令。旧检测会把“解释器＋受保护文件名”直接判成写入，即使只有 `read_text()` 和 `print()`。现已对独立 `-c`、带引号 heredoc 的受限只读 AST 放行；动态执行、未知调用、写文件、Shell 拼接和重定向仍受保护。这种误拦截没有对应的“未批准记忆”，不要额外执行审批。完整边界见 `hooks.md`。
+先区分操作对象：`memory.md` 与 `corrections.md` 自3.1.2起按普通授权维护，修改和归档不再触发额外守门。旧 `corrections.md` 为可选历史资料，已有标记目录归档后不会由初始化重建，体检也不要求它存在。
 
-这是有意的平台差异。Claude Code 支持 Hook 请求单次批准，因此会弹权限框；Codex 当前不支持 `permissionDecision: "ask"`，使用它反而会把 Hook 标成失败并继续调用，所以 2.6.6 起对核心记忆、纠错库、审批账本以及相关审核命令统一返回 `deny`。看到拒绝提示时，复制 Agent 给出的 `approve-interactive` 或 `import-legacy-interactive` 命令到普通终端，再按提示输入规则正文和作用范围；不要把正文拼进 Shell 命令。Codex 的 `Bash` 与 `apply_patch` 都在守门范围内。
+审批账本写入及变更审核命令仍受保护：Claude Code 返回 `ask` 请求单次确认；Codex 返回 `deny`。纠错审核时，Codex 用户在普通终端运行含指纹的交互命令，再输入规则、范围和生命周期；普通文件操作不能靠批准无关候选解锁。
+
+若被拦的是只读检查，先核对完整命令。独立 Python `-c`、带引号 heredoc 的受限 AST 支持 `read_text()`、`startswith()` 和负数下标；简单 Shell 命令分别匹配解释器与引用，管道保留输入关联。未知代码和复杂展开仍可能被保守拦截。`[authority-guard]` 只表示命中检测，不证明已经写入或正在审批。完整边界见 [hooks.md](hooks.md)。
 
 五类自我进化 Hook 的执行上限是 10 秒。若仍看到接近 600 秒的卡顿，先运行 `python3 -m self_improving upgrade` 重新接线，再用 `doctor` 检查 Hook；600 秒是 Codex 在未配置超时时的默认值，不是本系统的期望配置。
 
@@ -168,4 +161,12 @@ python3 -m self_improving uninstall --keep-data
 
 运行 `review import-legacy-interactive --legacy-id ...` 后，正确规则不是复制事故全文，而是重新写成一句仍然适用的现行规则，并填写正式归位目标、复核期和失效期。项目或仓库范围必须使用存在的绝对路径。
 
-只读回归修复：Python 的 `startswith()` 和负数下标现可通过受限 AST 检查；简单 Shell 组合按命令边界检查解释器引用，避免把 `rg` 搜索词算到后续 Python 列表查询中。复杂展开仍保守检测。`[authority-guard]` 不断言真实写入；普通 Markdown 的归档可按授权直接执行，无需纠错审核命令。
+## 知识没有自动提供或提示待复核
+
+先运行 `knowledge check --json`。`invalid` 检查路径、章节、敏感模式及源／部署；`needs_review` 表示版本未复核，不代表内容错误。已授权维护中核验当前来源及直接依赖后再 accept，不能反复确认旧 digest。
+
+没有命中时用 `knowledge list` 和 `knowledge read ID`；必读长文使用 `--full`。出现 unavailable 时核对 worker 超时、锁、损坏状态或运行目录；候选捕获关闭不会停用知识读取。目录存在时 resume 保守补发基础入口，这不是重复注入故障。详见 [知识边界](knowledge.md)。
+
+## Exact hook trust after changes
+
+Codex requires review and trust of the current hook definition after matcher or command changes. Use the normal `/hooks` interface to inspect the changed self-improving hook and enable that exact definition. Do not use bypass flags. Configuration wiring alone does not prove trust or execution; check a real next model request after startup, resume, clear or compact. Official contract: https://learn.chatgpt.com/docs/hooks .

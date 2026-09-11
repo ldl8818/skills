@@ -257,10 +257,50 @@ def command_uninstall(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_knowledge(args: argparse.Namespace) -> int:
+    import json
+    from self_improving import knowledge
+    config = resolved(load_config())
+    if args.knowledge_action == "accept":
+        result = knowledge.accept(config, args.revision)
+    elif args.knowledge_action == "read":
+        result = knowledge.read(config, args.id, args.full)
+    elif args.knowledge_action == "list" and args.all:
+        result = knowledge.discover(config)
+    else:
+        result = knowledge.check(config)
+    if getattr(args, "json", False) or args.knowledge_action == "accept":
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.knowledge_action == "read":
+        print(f"{result['path']} [{result['status']}] {result['revision']}\n\n{result['body']}")
+    elif isinstance(result, list):
+        print("\n".join(result))
+    else:
+        print(f"revision: {result['revision']}")
+        for row in result["items"]:
+            print(f"{row['id']} | {row['status']} | {row.get('title', '')} | {row['estimated_tokens']} estimated tokens" + (f" | {row['error']}" if "error" in row else ""))
+        for group in result.get("exact_duplicate_groups", []):
+            print("Exact duplicate wording; review scope before merging: " + ", ".join(group))
+    return int(args.knowledge_action == "check" and not (result["structural_ok"] and result["reviewed"]))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="self-improving")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
+    knowledge = sub.add_parser("knowledge")
+    actions = knowledge.add_subparsers(dest="knowledge_action", required=True)
+    for name in ("check", "list", "read", "accept"):
+        action = actions.add_parser(name)
+        action.add_argument("--json", action="store_true")
+        if name == "read":
+            action.add_argument("id")
+            action.add_argument("--full", action="store_true")
+        if name == "list":
+            action.add_argument("--all", action="store_true")
+        if name == "accept":
+            action.add_argument("--revision", required=True)
+    knowledge.set_defaults(func=command_knowledge)
     init = sub.add_parser("init")
     init.add_argument("--agents", type=_agents, default=("claude", "codex"))
     init.add_argument("--memory-root", default="~/Documents/self-improving-memory")

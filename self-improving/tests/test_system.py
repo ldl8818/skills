@@ -843,17 +843,19 @@ class SystemTests(unittest.TestCase):
         self.assertIn('core="budget_omitted"', output.getvalue())
 
     def test_authority_write_guard_is_platform_specific(self) -> None:
-        # Claude 端：普通 Markdown 维护直接放行。
+        # Claude 端：权威写入不硬拦，改为输出 ask 决策交用户当场批准。
         with self.env():
             output = io.StringIO()
             with redirect_stdout(output):
                 result = dispatch(
                     "claude",
                     "PreToolUse",
-                    {"tool_name": "Write", "tool_input": {"file_path": str(self.memory / "memory.md")}},
+                    {"tool_name": "Write", "tool_input": {"file_path": str(self.memory / ".self-improving/verified-corrections.jsonl")}},
                 )
         self.assertEqual(result, 0)
-        self.assertEqual(output.getvalue(), "")
+        decision = json.loads(output.getvalue())["hookSpecificOutput"]
+        self.assertEqual(decision["hookEventName"], "PreToolUse")
+        self.assertEqual(decision["permissionDecision"], "ask")
 
         with self.env():
             output = io.StringIO()
@@ -861,20 +863,12 @@ class SystemTests(unittest.TestCase):
                 correction_write = dispatch(
                     "claude",
                     "PreToolUse",
-                    {"tool_name": "Edit", "tool_input": {"file_path": str(self.memory / "corrections.md")}},
-                )
-        self.assertEqual(correction_write, 0)
-        self.assertEqual(output.getvalue(), "")
-
-        with self.env():
-            output = io.StringIO()
-            with redirect_stdout(output):
-                ledger_write = dispatch(
-                    "claude", "PreToolUse",
                     {"tool_name": "Edit", "tool_input": {"file_path": str(self.memory / ".self-improving/verified-corrections.jsonl")}},
                 )
-        self.assertEqual(ledger_write, 0)
-        self.assertEqual(json.loads(output.getvalue())["hookSpecificOutput"]["permissionDecision"], "ask")
+        self.assertEqual(correction_write, 0)
+        self.assertEqual(
+            json.loads(output.getvalue())["hookSpecificOutput"]["permissionDecision"], "ask"
+        )
 
         # Claude 端只读调用不弹框：exit 0 且无任何决策输出。
         with self.env():
@@ -1011,12 +1005,12 @@ class SystemTests(unittest.TestCase):
         with self.env():
             install_hooks(self.config, "codex")
             payload = json.loads(self.codex.read_text())
-            self.assertEqual(payload["hooks"]["SessionStart"][-1]["matcher"], "startup|resume")
+            self.assertEqual(payload["hooks"]["SessionStart"][-1]["matcher"], "startup|resume|clear|compact")
             self.config["injection"]["resume_mode"] = "always"
             write_config(self.config)
             install_hooks(self.config, "codex")
             payload = json.loads(self.codex.read_text())
-            self.assertEqual(payload["hooks"]["SessionStart"][-1]["matcher"], "startup|resume")
+            self.assertEqual(payload["hooks"]["SessionStart"][-1]["matcher"], "startup|resume|clear|compact")
 
     def test_codex_bash_only_guard_is_not_reported_as_installed(self) -> None:
         with self.env():
