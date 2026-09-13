@@ -4,14 +4,12 @@
 
 ## 当前接力点
 
-- 来源交付：源码提交4dec473已推送 main，远端 SHA 一致；self-improving 与 skill-manager 两条 CI 均通过。
-- 状态：源码已提交并推送；真实新 Mac 与 Skills 模型路由待验证。
-- 任务：交付 V3 新机引导及其依赖的冻结 Skills，使新机能够从 GitHub 取得当前源码。
-- 范围：check、health、hunt、ui、write 4.0.0，skill-manager 2.6.7冻结维护／安装入口，Lookup 1.10.0退役依赖整合，以及 V3 引导与说明。
-- 已做到：新机引导和 dotfiles setup 完成开发与隔离验证；Hermes、Doraemon 必需，不迁移工作项目，Ghostty 来源已同步。dotfiles 已推送；本次精确提交 Skills 配套源码，不包含其他审计或旧版方案。
-- 验证：58项 Skill 管理、6项 health、6项 Lookup 提取、8项引导测试与5个冻结版结构检查通过；此前18项 dotfiles setup、87项仓库检查和隔离 smoke 通过。真实系统安装、登录、新机事件与模型盲测未完成。
-- 下一步：在新 Mac 取得本仓库版本，按 [使用说明](self-improving/mac-environment-migration/使用说明.md) 启动引导，完成登录、知识复核与真实验收。
-- 边界：不运行旧 final／全量 apply，不启动网关或业务任务；私人清单和凭据不入公开仓库。其他未提交方案及规则改动保留。
+- 状态：待验证；V3 Agent 入口与文档已完成本地验证，准备提交推送；真实新 Mac 全程待验收。
+- 任务：在新 Mac 用 Codex 按 AI Agent 指南完成选定环境搭建与真实验收。
+- 已做到：参数化引导、系统密码／登录交还、同一状态续跑、JSON 结果和只读快照已实现；Hermes、Doraemon 必需，不迁移工作项目。私人清单附可复制接管指令。
+- 验证：12项引导测试、23项 dotfiles setup 测试、87项仓库检查、元文件检查与隔离 smoke 通过；配置测试使用含空格的干净 HOME 和真实 chezmoi，系统安装及网络为模拟。
+- 下一步：先推送 dotfiles 接口，再推送本仓库指南，核对远端 SHA 与 CI；在新机按 [AI Agent 新机搭建指南](self-improving/mac-environment-migration/AI-Agent新机搭建指南.md) 执行。
+- 边界：未在旧机安装或部署；真实 Codex 全程驱动、系统安装、登录及新会话未验证。保留其他规则及方案改动。
 
 ## 当前阶段
 
@@ -22,6 +20,8 @@
 只读 Hook 修复与知识治理快照已在当前工作区集成。提交时必须保留 `self-improving/src/self_improving/hooks/readonly.py`、`hooks/common.py` 中的只读检测入口、`tests/test_readonly_guard.py` 及本次文档修正，不得用整文件复制覆盖 main。迁移前20文件隔离快照已完成完整验证；src 布局验证见下方最新记录。
 
 ## 最近完成
+
+- 2026-09-13 12:10：补齐 V3 Codex 接管指南与无交互入口，支持参数选择、用户操作交还和同一状态续跑；已有客户端复用，Agent 不代填人工验收。准备按接口先于指南的顺序发布。
 
 - 2026-09-13 11:45：按用户授权交付 V3 引导及冻结 Skills 配套源码，补齐 GitHub 取得说明并完成相关测试；其他审计方案、旧版迁移方案与无关规则不纳入提交。远端与 CI 结果在提交后核验。
 
@@ -71,6 +71,8 @@
 - 上游 issue `jackwener/OpenCLI#2202` 与 PR `#2206` 自 2026-07-31 起无维护者响应：零 review、零评论、CI 未运行、无 assignee。上述待办在上游合并前无法启动。
 
 ## 最近验证
+
+- 2026-09-13 12:10：12项引导、23项 setup、87项仓库检查、元文件与隔离 smoke 均通过。干净 HOME 配置使用真实 chezmoi；系统安装和网络为模拟，真实新 Mac 全程待验收。
 
 - 2026-09-13 11:49：源码4dec473完成远端核对，两条 CI（self-improving、skill-manager）均通过；本地78项相关测试、32项 Lookup 回归、冻结版结构检查、85文件暂存扫描及隔离安装／重复运行通过。新机实机验收仍待执行。
 

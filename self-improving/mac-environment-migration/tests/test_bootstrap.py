@@ -24,6 +24,38 @@ class BootstrapTests(unittest.TestCase):
     def test_arguments_rejected(self):
         self.assertEqual(self.shell('main unexpected').returncode, 64)
 
+    def test_agent_selection_and_no_ghostty_prompt(self):
+        result = self.shell('parse_args --agent --repo example/dotfiles; ask() { exit 99; }; confirm_ghostty')
+        self.assertEqual(result.returncode, 0)
+
+    def test_agent_requires_nonsecret_repository(self):
+        for args in ['--agent', '--agent --repo https://user:secret@example.invalid/repo', '--agent --repo example/repo --prerequisites']:
+            self.assertEqual(self.shell('parse_args ' + args).returncode, 64)
+
+    def test_manual_action_is_structured_without_stdin(self):
+        import json
+        result = self.shell('action github_login')
+        self.assertEqual(result.returncode, 20)
+        self.assertEqual(json.loads(result.stdout), {"schema": 1, "status": "manual_required", "action": "github_login"})
+
+    def test_missing_brew_hands_off_without_running_installer(self):
+        import json
+        # Replace commands through PATH, keeping the actual entrypoint and no TTY.
+        with tempfile.TemporaryDirectory(prefix="bootstrap-agent-") as tmp:
+            fake = Path(tmp)
+            commands = {"uname": 'if [ "$1" = -s ]; then echo Darwin; else echo arm64; fi',
+                        "id": 'echo 501', "sw_vers": 'echo 15.0', "xcode-select": 'exit 0'}
+            for name, body in commands.items():
+                path = fake / name
+                path.write_text('#!/bin/sh\n' + body + '\n')
+                path.chmod(0o755)
+            import os
+            result = subprocess.run(["/bin/sh", "-c", '. "$1"; brew_find() { return 1; }; installer() { exit 99; }; main --agent --repo example/dotfiles', "test", str(SCRIPT)],
+                                    env={**os.environ, "PATH": str(fake) + os.pathsep + os.environ.get("PATH", "")},
+                                    stdin=subprocess.DEVNULL, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 20)
+            self.assertEqual(json.loads(result.stdout)["action"], "homebrew_install")
+
     def test_existing_package_never_installs(self):
         result = self.shell('example() { return 0; }; BREW=false; brew_package example')
         self.assertEqual(result.returncode, 0)

@@ -3,6 +3,36 @@
 set -eu
 
 say() { printf '%s\n' "$*" >&2; }
+action() { printf '{"schema":1,"status":"manual_required","action":"%s"}\n' "$1"; return 20; }
+parse_args() {
+    agent_mode=false
+    prerequisites_only=false
+    repo=''
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --agent) agent_mode=true; shift ;;
+            --prerequisites) prerequisites_only=true; shift ;;
+            --repo) [ "$#" -ge 2 ] || return 64; repo=$2; shift 2 ;;
+            *) say '用法：setup.command [--agent --repo owner/repo | --prerequisites]'; return 64 ;;
+        esac
+    done
+    if [ "$agent_mode" = true ]; then
+        [ "$prerequisites_only" = false ] || return 64
+        validate_repo "$repo" || return 64
+    elif [ -n "$repo" ]; then return 64
+    fi
+}
+validate_repo() {
+    case "$1" in *[!a-zA-Z0-9_./-]*|/*|*..*|*/|''|*/*/*) return 64;; esac
+    case "$1" in */*) return 0;; *) return 64;; esac
+}
+confirm_ghostty() {
+    [ "$agent_mode" = true ] && return 0
+    [ "${TERM_PROGRAM:-}" = ghostty ] && return 0
+    say 'Ghostty 已就绪。可以切到 Ghostty 后续跑。'
+    ask '继续请输入 continue，其他输入暂停：' || return 20
+    [ "$answer" = continue ] || return 20
+}
 ask() {
     printf '%s ' "$1" >&2
     IFS= read -r answer </dev/tty || return 20
@@ -38,7 +68,7 @@ ghostty_ready() {
     return 10
 }
 main() {
-    [ "$#" -eq 0 ] || { say '用法：/bin/sh setup.command'; return 64; }
+    parse_args "$@" || return $?
     [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] || {
         say '仅支持 Apple Silicon macOS；请勿在 Rosetta 终端运行。'; return 30;
     }
@@ -48,9 +78,15 @@ main() {
     if ! xcode-select -p >/dev/null 2>&1; then
         xcode-select --install || true
         say '请完成系统 Command Line Tools 安装，再运行同一入口。'
+        action command_line_tools
         return 20
     fi
     if ! BREW=$(brew_find); then
+        if [ "$agent_mode" = true ]; then
+            say '请用户在自己的终端运行同一脚本加 --prerequisites，直接完成系统密码提示。'
+            action homebrew_install
+            return 20
+        fi
         say '正在运行 Homebrew 官方安装器；密码由系统直接读取。'
         installer https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh || return 30
         BREW=$(brew_find) || return 30
@@ -69,6 +105,7 @@ main() {
         (umask 077; set -C; printf '%s\n' 'eval "$(/opt/homebrew/bin/brew shellenv)"' > "$HOME/.zprofile") || return 30
         /usr/bin/env -i HOME="$HOME" PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/zsh -lc 'command -v brew >/dev/null' </dev/null || return 30
     fi
+    [ "$prerequisites_only" = true ] && return 0
     ghost_rc=0
     ghostty_ready || ghost_rc=$?
     case "$ghost_rc" in
@@ -76,11 +113,7 @@ main() {
         0) : ;;
         *) say 'Ghostty 安装不完整，请处理后续跑。'; return 30 ;;
     esac
-    if [ "${TERM_PROGRAM:-}" != ghostty ]; then
-        say 'Ghostty 已就绪。请在 Ghostty 中重新运行同一 setup.command，继续后续步骤。'
-        ask '已经切到 Ghostty？输入 continue 继续，其他输入暂停：' || return 20
-        [ "$answer" = continue ] || return 20
-    fi
+    confirm_ghostty || return 20
     git --version >/dev/null 2>&1 || brew_package git || return 30
     brew_package gh || return 30
     brew_package chezmoi || return 30
@@ -93,12 +126,17 @@ main() {
     }
     source_dir=$(chezmoi source-path) || return 30
     if [ ! -e "$source_dir/.git" ]; then
+        if [ "$agent_mode" = true ]; then
+            gh auth status >/dev/null 2>&1 || { action github_login; return 20; }
+        else
         gh auth status >/dev/null 2>&1 || gh auth login --hostname github.com --git-protocol https --web || return 20
+        fi
         gh auth setup-git --hostname github.com || return 20
+        if [ "$agent_mode" = false ]; then
         ask '配置仓库（仅 owner/repo，不含 token）：' || return 20
         repo=$answer
-        case "$repo" in *[!a-zA-Z0-9_./-]*|/*|*..*|*/|''|*/*/*) say '仓库格式无效。'; return 64;; esac
-        case "$repo" in */*) :;; *) return 64;; esac
+        fi
+        validate_repo "$repo" || return 64
         if [ -e "$source_dir" ] && [ -n "$(ls -A "$source_dir")" ]; then
             say '配置来源目录非空，请保留内容并手动处理。'; return 30
         fi
@@ -109,6 +147,14 @@ main() {
         say '配置仓库尚无 V3 setup 入口，请取得已交付版本；不会执行旧全量恢复。'; return 30;
     }
     say "使用配置来源：$source_dir"
+    if [ "$agent_mode" = true ]; then
+        actual_origin=$(git -C "$source_dir" remote get-url origin) || return 30
+        case "$actual_origin" in "https://github.com/$repo.git"|"https://github.com/$repo"|"git@github.com:$repo.git") :;;
+            *) say '配置来源与选定仓库不一致，请核对；未执行仓库代码。'; return 30;;
+        esac
+        printf '%s\n' '{"schema":1,"status":"ok","action":"run_restore_setup_agent"}'
+        return 0
+    fi
     ask '确认信任该配置仓库并运行其 setup？输入 continue：' || return 20
     [ "$answer" = continue ] || return 20
     exec /bin/zsh "$source_dir/bin/restore" setup
