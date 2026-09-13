@@ -4,11 +4,11 @@
 
 ## 当前接力点
 
-- 状态：待验证；V3 Agent 入口与文档已完成本地验证，准备提交推送；真实新 Mac 全程待验收。
+- 状态：待验证；V3 Agent 入口与文档已发布，源码3b1f708对应 CI 通过；真实新 Mac 全程待验收。
 - 任务：在新 Mac 用 Codex 按 AI Agent 指南完成选定环境搭建与真实验收。
 - 已做到：参数化引导、系统密码／登录交还、同一状态续跑、JSON 结果和只读快照已实现；Hermes、Doraemon 必需，不迁移工作项目。私人清单附可复制接管指令。
 - 验证：12项引导测试、23项 dotfiles setup 测试、87项仓库检查、元文件检查与隔离 smoke 通过；配置测试使用含空格的干净 HOME 和真实 chezmoi，系统安装及网络为模拟。
-- 下一步：先推送 dotfiles 接口，再推送本仓库指南，核对远端 SHA 与 CI；在新机按 [AI Agent 新机搭建指南](self-improving/mac-environment-migration/AI-Agent新机搭建指南.md) 执行。
+- 下一步：dotfiles 接口905ca73与本仓库源码3b1f708已推送并核对远端 SHA；在新机按 [AI Agent 新机搭建指南](self-improving/mac-environment-migration/AI-Agent新机搭建指南.md) 执行。
 - 边界：未在旧机安装或部署；真实 Codex 全程驱动、系统安装、登录及新会话未验证。保留其他规则及方案改动。
 
 ## 当前阶段
@@ -71,6 +71,8 @@
 - 上游 issue `jackwener/OpenCLI#2202` 与 PR `#2206` 自 2026-07-31 起无维护者响应：零 review、零评论、CI 未运行、无 assignee。上述待办在上游合并前无法启动。
 
 ## 最近验证
+
+- 2026-09-13 12:13：dotfiles 接口905ca73、Skills 指南与引导3b1f708已推送，远端 SHA 一致；self-improving CI 34737330834成功。真实新 Mac 全程仍待目标机验收。
 
 - 2026-09-13 12:10：12项引导、23项 setup、87项仓库检查、元文件与隔离 smoke 均通过。干净 HOME 配置使用真实 chezmoi；系统安装和网络为模拟，真实新 Mac 全程待验收。
 
