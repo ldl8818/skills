@@ -125,3 +125,7 @@
 - 2026-09-10 16:56：新增只读保护回归测试先复现4处失败，修复后本版本81项通过；与 knowledge-governance 快照组合102项通过。实际 Codex Hook 放行 Python 只读检查，写入／删除／改名／动态执行／审批保护由测试验证。`git diff --check` 通过。`sync --check` 发现现有知识索引差异，doctor 另报旧引用、核心记忆时效和错误库体积告警；留给并行知识治理任务，本次未重写私人索引。
 
 - 2026-09-10 00:37：新增 `download-video` Skill，已通过 Python 编译检查和合成参数／核心函数 smoke；未进行实际站点下载验证。
+
+## push 命令
+
+- 2026-09-13 16:16：命令与本机入口完成；真身 commands/push.md 由本仓库维护，两个入口直接软链到真身，默认 Luna medium 执行、主 Agent 复核。真实 Codex CLI 调用通过本地 bare remote 的正常提交、无关已暂存项保护、无改动3个场景；Claude Code 2.1.243 菜单识别 /push。Codex CLI 0.154.0 实测拒绝旧 prompts，Codex 各端用“执行push”；IDE／桌面完整调用未单独验收。命令格式、源／部署、单跳链接和本次公开内容扫描通过；验证完成，按用户授权交付本次命令；保留其他 WIP 与原业务接力点。

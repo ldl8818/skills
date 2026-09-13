@@ -1,6 +1,6 @@
 # dev/skills — 多 Skill 公开仓库
 
-公开发布在 `github.com/ldl8818/skills`。每个一级目录是一个独立 Skill；仓库导航见 `README.md`。
+公开发布在 `github.com/ldl8818/skills`。各 Skill 目录独立分发；`commands/` 保存显式调用的普通命令，不加入 Skill 自动发现；仓库导航见 `README.md`。
 
 ## 红线
 
