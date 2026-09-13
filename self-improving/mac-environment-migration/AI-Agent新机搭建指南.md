@@ -6,7 +6,7 @@
 
 用户说“按这份指南帮我搭建”即授权本轮选定环境的安装、下载和定向配置；同一任务内不要每装一个包重复确认。平台权限门禁仍按工具要求申请。
 
-默认必需项：Homebrew、Ghostty、Codex、Claude Code、Hermes、Obsidian、Doraemon 和 chezmoi 配置。没有选定工作项目；不安装 OpenClaw，不启动网关、cron、launchd、业务脚本或 Obsidian 自动同步。用户改变选择时以用户要求为准，缺少选择不得猜。
+默认必需项：Homebrew、Ghostty、Codex、Claude Code、Hermes、Obsidian、Doraemon 和 chezmoi 配置。工作项目和 Hermes 网关范围以用户私人清单为准；网关被选为必需项时，必须恢复选定角色的配置、记忆、渠道授权及必要启动服务，完成旧新机切换后启用并验收。安装配置阶段不提前启动；其他 cron、业务脚本、OpenClaw 和 Obsidian 自动同步不随之启用。用户改变选择时以用户要求为准，缺少选择不得猜。
 
 先复用已经可运行的 Codex。安装、登录、配置接入是不同状态；不要重装正在使用的 Codex，也不要因配置即将恢复而退出当前接管会话。配置完成后再开新会话验证，旧会话保持可用于排错。
 
@@ -42,7 +42,7 @@
 
 ## 3．驱动已有恢复入口
 
-从 `/opt/homebrew/bin/chezmoi source-path` 取得配置源，读取其 AGENTS.md 与 README-AGENT.md 的 **V3 分支**。旧手册后面的全量 apply、patches、gateways 不适用本任务。检查 `bin/restore setup --help` 包含 `--agent`；旧源若没有，先核对 Git 状态，再在授权范围内取得包含该接口的版本，不能转跑旧入口。入口会补齐本进程的 Homebrew／用户 CLI 搜索路径，不依赖正在运行的 Codex 刷新父进程环境。
+从 `/opt/homebrew/bin/chezmoi source-path` 取得配置源，读取其 AGENTS.md 与 README-AGENT.md 的 **V3 分支**。基础安装不执行旧手册的全量 apply、patches、gateways。用户选定网关时，另按明确范围核对材料、运行依赖及旧机停用，再使用受控网关入口；不得为了启动服务直接转跑整套旧流程。检查 `bin/restore setup --help` 包含 `--agent`；旧源若没有，先核对 Git 状态，再在授权范围内取得包含该接口的版本，不能转跑旧入口。入口会补齐本进程的 Homebrew／用户 CLI 搜索路径，不依赖正在运行的 Codex 刷新父进程环境。
 
 第一次把已确认选择传入同一 `bin/restore setup`，示意如下。路径含空格仍必须是一个参数：
 
@@ -50,8 +50,10 @@
 /bin/zsh "$DOTFILES_SOURCE/bin/restore" setup --agent \
   --vault-dir "$VAULT_DIR" --vault-repo "$VAULT_REPO" --branch "$VAULT_BRANCH" \
   --skills-repo ldl8818/skills \
-  --components codex,claude,obsidian,hermes,doraemon
+  --components codex,claude,obsidian,hermes,doraemon --gateways all
 ```
+
+上述示例选择主网关及配置源中固定的9个角色；用户不需要网关时省略 `--gateways all`。已有基础 state 可以单独追加该参数，选定后不能静默降为不恢复。
 
 USB 首次取得方式追加 `--method usb`；先按使用说明把完整知识库复制到新机本地目录。Git 分支与来源不匹配时停止该项，不自动 checkout、reset 或修改 origin。
 
@@ -75,12 +77,26 @@ USB 首次取得方式追加 `--method usb`；先按使用说明把完整知识�
 
 实际登录由用户在客户端中完成。配置恢复后让 Codex／Claude 各开一个新会话，验证所选规则、Skills 与知识接入；Hermes 验证核心记忆。当前负责搭建的 Codex 不用主动结束，只在需要新会话读取新配置时交接准确路径与未完事项。
 
-Obsidian 打开前检查插件和失效路径，再让用户确认笔记、附件和需要的同步设置。真实外部或付费请求、GitHub 测试写回按具体授权执行；没有执行就标待验证。任务／网关未启用要明确列出，不把它们当作基础环境失败。
+Obsidian 打开前检查插件和失效路径，再让用户确认笔记、附件和需要的同步设置。真实外部或付费请求、GitHub 测试写回按具体授权执行；没有执行就标待验证。未选定任务未启用应明确列出；已选定的必需网关未启用或未验收，必须保持迁移未完成。
 
 `setup --verify` 只用于用户亲自在目标机做完检查后的确认，Agent 不得替用户回答 yes，不得调用它把“文件存在”升级成“客户端已验证”。你可以给出实际证据和剩余项，让用户在自己的终端完成最后确认。
 
 结束时交付简短摘要、state 的实际绝对路径、同一个续跑命令及剩余人工项。不要以安装退出0、孤立 HOME 或脚本模拟通过冒充真实新 Mac 全程验收。
 
+## 网关被选为必需项时
+
+共用 `gateway-manifest` 给出固定10项，`status --json` 返回逐项实时状态。准备阶段只生成私有启动定义，配置、运行依赖、配对与记忆分别检查；不将 plist 提前放进 LaunchAgents，不启动服务。已有非空或无法识别的 cron 存储需单独核对，不能随网关启动业务任务。
+
+1. **先准备新机**：运行带 `--gateways all` 的 setup。缺凭据时给用户一条带实际配置源路径的 `bin/restore setup --gateway-secrets` 命令，在用户自己的终端由 age 读取密码。Agent 不代填，不读取凭据内容；旧新内容冲突保留并报告。
+2. **停旧机并取得最终记忆**：新机依赖准备完成后，在旧机使用已更新的 `bin/restore gateway-stop`，停用全部受管服务并阻止下次登录自动加载；确认没有手动启动的副本。随后运行 `bin/restore setup --gateway-export-memory`，导出10个角色实际存在的 SOUL／USER／MEMORY，含未纳管的记忆。导出本身不启动或停止服务。
+3. **导入私人材料**：导出 JSON 给出 HOME 下的私人快照目录，每次独立生成；通过可信的本地传递方式复制到新机 HOME 下非 Git 目录，不上传公共来源。Agent 运行 `bin/restore setup --agent --gateway-memory-dir <新机快照绝对目录>`；校验清单、指纹与文件冲突。已导入后的新记忆不会被旧快照覆盖。
+4. **切换启用**：用户在新机自己的终端运行 `bin/restore setup --gateway-cutover`，确认旧机全部停用且无手动副本。工具重查材料后定向部署10个启动定义，通过共用 `gateway-resume` 启动；重复执行不重载健康实例。返回20仍表示需要后续人工验收，不能只看退出码判断启动失败。
+5. **逐个验收**：普通 setup 续跑重查当前实例与平台连接；用户逐个测试消息收发、角色记忆读取、重启恢复，再以 `setup --verify` 记录确认。测试消息由用户发起或按明确发送授权执行。必需项缺失时整体保持未完成。
+
+切换失败时，先在新机经 `bin/restore gateway-stop` 停用并核对没有手动副本，再在旧机经 `bin/restore gateway-resume` 恢复服务；保留旧机数据。Agent 给出每台机器应运行的具体路径，不能在当前旧机误执行新机启用步骤。
+
+网关配置按新机路径生成：保留模型与平台配置，排除未迁移工作项目的 kanban、业务 hooks 和命令白名单；使用 Hermes venv 和稳定 PATH，不引用旧临时 Codex 路径。未迁移项目的业务能力不因恢复角色网关而自动具备。渠道授权与补丁兼容性在目标机另验。
+
 ## 当前覆盖
 
-Agent 模式覆盖无终端输入的参数传递、保存选择、重复执行、已有 Codex 复用、结构化状态及登录交还；脚本与配置验证使用隔离环境。真实新 Mac 上 Codex 全程驱动、系统权限和账号登录仍须实机完成。
+Agent 模式覆盖参数传递、保存选择、重复执行、已有 Codex 复用、结构化状态及登录交还；选定网关支持材料准备、私人记忆快照和逐项实时检查，凭据解密、切换确认与最终验收由用户终端完成。脚本与配置验证使用隔离环境。真实新 Mac 上 Codex 全程驱动、系统权限和账号登录仍须实机完成。
