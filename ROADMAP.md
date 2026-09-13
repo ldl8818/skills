@@ -4,7 +4,8 @@
 
 ## 当前接力点
 
-- 状态：提交交付；真实新 Mac 与 Skills 模型路由待验证。
+- 来源交付：源码提交4dec473已推送 main，远端 SHA 一致；self-improving 与 skill-manager 两条 CI 均通过。
+- 状态：源码已提交并推送；真实新 Mac 与 Skills 模型路由待验证。
 - 任务：交付 V3 新机引导及其依赖的冻结 Skills，使新机能够从 GitHub 取得当前源码。
 - 范围：check、health、hunt、ui、write 4.0.0，skill-manager 2.6.7冻结维护／安装入口，Lookup 1.10.0退役依赖整合，以及 V3 引导与说明。
 - 已做到：新机引导和 dotfiles setup 完成开发与隔离验证；Hermes、Doraemon 必需，不迁移工作项目，Ghostty 来源已同步。dotfiles 已推送；本次精确提交 Skills 配套源码，不包含其他审计或旧版方案。
@@ -70,6 +71,8 @@
 - 上游 issue `jackwener/OpenCLI#2202` 与 PR `#2206` 自 2026-07-31 起无维护者响应：零 review、零评论、CI 未运行、无 assignee。上述待办在上游合并前无法启动。
 
 ## 最近验证
+
+- 2026-09-13 11:49：源码4dec473完成远端核对，两条 CI（self-improving、skill-manager）均通过；本地78项相关测试、32项 Lookup 回归、冻结版结构检查、85文件暂存扫描及隔离安装／重复运行通过。新机实机验收仍待执行。
 
 - 2026-09-11 21:26：全部待提交内容的隔离快照通过109项测试；3.1.3 wheel 构建成功，Python 源码逐字一致且无字节码缓存。独立虚拟环境与干净 HOME 完成版本、init、upgrade、sync --check、doctor、资源检查及保留数据卸载。新增内容公共／私人红线与敏感模式零命中，diff 检查通过。本机 sync --check 通过，doctor 显示 Codex 事件5／5、Claude 0／5；既有私人文档路径和错误库体积告警保留。本次不代表真实新 Mac 验收或统一恢复器交付。
 
