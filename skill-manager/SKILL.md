@@ -3,24 +3,23 @@ name: skill-manager
 description: 管理已安装 Skill：列出与溯源、检查更新、启停、删除、定版本和自检，并区分已安装、已启用与本会话生效。仅在用户明确提到 Skill 生命周期时使用；创建或优化 Skill 内容走 skill-creator，插件连接走 plugin-management。
 license: MIT
 metadata:
-  version: "2.6.5"
+  version: "2.6.7"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
 
 # Skill 生命周期管理器
 
-所有操作通过 `scripts/` 下的脚本执行——脚本是唯一的数据收集与判定层，
-不要绕开脚本手工拼装状态。**脚本输出原文展示给用户，不要总结、改写或转成自己的格式。**
+使用 `scripts/` 作为状态收集与判定层，不手工编造状态。默认按用户问题汇总结果，保留名称、来源、版本、启用状态和错误等必要核对字段；用户明确要求原文时完整展示原始输出，不改写关键值。
 
 ## 核心原则：宁可说不知道，也不编一个
 
 1. **缺失的信息就报缺失，绝不用默认值填充。**
    编出来的版本号和真的一模一样，人会信它、基于它做决定；
    诚实的「来源未登记」只是让人多跑一条命令。
-2. **「没登记」不等于「没有」，而是「还没去找」。**
-   权威记录往往已经存在（安装器 lock、上游仓库），顺序永远是：
-   查记录 → 联网搜 → 内容比对 → 确认了才写。找不到才承认 unknown。
+2. **「没登记」不等于「没有」。**
+   先查已有权威记录；普通列表和体检可以如实报告 unknown，不自动联网溯源。
+   用户要求溯源，或当前操作确实需要确定来源时，再搜索候选、比对内容；写登记仍须在授权范围内。
 3. **版本号靠内容比对确认，不靠推断。**
    「上游最新版」不等于「本地这份」——本地可能装于任何历史时点，倒推必错。
 
@@ -32,7 +31,7 @@ metadata:
 | 用户意图 | 命令 | 脚本 |
 |---------|------|------|
 | 列出技能 | `list`（全局 + 当前项目）；`list <项目>`；`list --all [-n N]` 全景，展开最近活跃前 3 个、其余折叠 | `list_skills.py` |
-| 检查更新 | `check`（本地版本 vs 上游最新） | `scan_and_check.py` |
+| 检查更新 | `check [--include-frozen]`（冻结项只读比较，不解冻） | `scan_and_check.py` |
 | 溯源 | `trace <名字> [--repo <URL>] [--write]`；`trace --all --write` 批量 | `trace_source.py` |
 | 更新 | `update <名字> [--project <路径>] [--ref main\|release]`；直装或 Claude 插件；无参 = 批量；`--dry-run` 只列不做 | `update_skill.py` |
 | 启用 / 禁用 | `enable\|disable <名字> [--project <路径>]`；直装或 Claude 插件 | `toggle_skill.py` |
@@ -81,7 +80,7 @@ Codex 插件由 `list` 和 `doctor` 只读盘点；其启停、更新、删除�
 
 ## 溯源（trace）
 
-来源不明的 skill，不要标成「本地」了事，去把它查出来。三级递进：
+来源不明时报告「来源未登记」，不猜成本地。仅在用户要求溯源或当前操作确需来源时，对指定对象递进检查；批量溯源须有批量任务范围：
 
 1. **安装器记录** `~/.agents/.skill-lock.json` —— 最权威，先查这里。
 2. **GitHub 搜索** —— lock 里没有就联网搜候选仓库，列给用户挑。
@@ -98,11 +97,11 @@ Codex 插件由 `list` 和 `doctor` 只读盘点；其启停、更新、删除�
 | local | **显式声明** `source: local` | 人工 semver |
 | frozen | `update_policy: frozen` | 人工 semver + 🔒 |
 | plugin | 在 `installed_plugins.json` 里 | 上游 plugin.json 的版本 |
-| unknown | 以上都不是 | `来源未登记` → 去 `trace`，别猜 |
+| unknown | 以上都不是 | `来源未登记`；按任务需要执行 `trace`，别猜 |
 
 - 来源列直接写仓库名（如 `tw93/Waza`），不写「GitHub」。
 - GitHub 来源**不套 semver**（身份是上游 commit）；要脱离上游自己管，先标 `frozen`。
-- unknown 不是兜底分类，是待办：`doctor` 报出它，`trace` 消灭它。
+- unknown 表示证据不足：`doctor` 报出它，是否执行 `trace` 由本次任务范围决定，不因列表出现 unknown 自动扩大工作。
 - **版本号末尾 `*` = 内容改过、版本号没跟上**（`fingerprints.json` 自动监督，别手改），
   `bump` 平账；会自我改写的 skill 标 `self_mutating: true` 豁免。
 
@@ -130,6 +129,8 @@ metadata:
 
 中文描述查找顺序：`zh_description` > `descriptions_zh.json` > 原始 description。
 `doctor` 只揪**生效中**却还是英文描述的 skill（未启用的不占上下文，不强求）。
+
+冻结版的维护流程见 [references/冻结版本维护.md](references/冻结版本维护.md)。上游更新在隔离目录评估，保持 `update_policy: frozen`，不通过解除冻结来合并。
 
 ## 项目视图
 

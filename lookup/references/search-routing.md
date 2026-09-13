@@ -72,10 +72,12 @@ aihot 是单一编辑管道，适合发现，不替代源头：
 静态页面首选：
 
 ```bash
-bash ~/.agents/skills/read/scripts/fetch.sh <url>
+bash scripts/fetch.sh <url>
 ```
 
-失败时先判形态：反爬、空壳、动态渲染、登录态、二进制或内容无关。普通公开 URL 可用 Jina Reader 作为远端降级，但 URL 会发送给第三方，敏感和内网页面禁用：
+命令从 Lookup 根目录运行；提取脚本随本 Skill 分发，无需另装阅读 Skill。默认仅请求原站，不自动降级或安装提取依赖。
+
+失败时先判形态：反爬、空壳、动态渲染、登录态、二进制或内容无关。用户允许向第三方发送的普通公开 URL 可用 Jina Reader 作为远端降级，认证、敏感和内网页面禁用：
 
 ```bash
 curl -fsSL "https://r.jina.ai/<url>"

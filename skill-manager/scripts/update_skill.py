@@ -359,7 +359,7 @@ def update_direct_skill(skill_name, project=None, ref_arg=None):
 
     if meta.get("update_policy") == "frozen":
         print(f"🧊 {skill_name} 已声明 update_policy: frozen（绝版或深度定制），按策略不更新。"
-              f"确需更新请先移除该标记并人工评估合并。")
+              f"保留冻结标记，在隔离目录比较上游后选择性合并；不要直接覆盖本地版。")
         return False
 
     github_url = meta.get("github_url")

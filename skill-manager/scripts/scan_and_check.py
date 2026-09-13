@@ -4,6 +4,7 @@
 用法:
   python3 scan_and_check.py           人类可读表格
   python3 scan_and_check.py --json    原始 JSON（供其他脚本消费）
+  python3 scan_and_check.py --include-frozen  只读比较冻结版来源，不解冻或更新
 
 2026-07-11 重写：旧版自己实现了一套收集逻辑，与 list 各说各话，且把
 「远程最新 tag」填进版本列冒充本地版本（本地明明装的是 13.10.2，却显示
@@ -78,12 +79,22 @@ def marketplace_repo(marketplace):
     return repo if "://" in repo else f"https://github.com/{repo}"
 
 
-def check_one(target):
+def check_one(target, include_frozen=False):
     kind, name, url, local_hash, extra = target
     base = {**extra, "kind": kind, "name": name}
     if extra.get("frozen"):
-        return {**base, "status": "frozen",
-                "message": "已冻结（脱离上游，按本地版本号管）"}
+        result = {**base, "status": "frozen",
+                  "message": "已冻结（脱离上游，按本地版本号管）"}
+        if include_frozen:
+            ref, remote = remote_latest(url, tags_ok=extra.get("ref") != "main") if url else (None, None)
+            comparison = "unknown" if not remote or not local_hash else (
+                "same" if remote == local_hash else "different")
+            result.update(remote=ref, remote_hash=remote, baseline_hash=local_hash,
+                          upstream_comparison=comparison)
+            result["message"] = {"unknown": "已冻结；上游比较证据不足",
+                                 "same": "已冻结；上游与登记基线相同",
+                                 "different": f"已冻结；上游 {ref} 与基线不同，仅供人工评估合并"}[comparison]
+        return result
     if not url:
         return {**base, "status": "local", "message": "本地 skill，无上游可比"}
     # 插件是按 commit 装的（update 也走 HEAD），拿 tag 比会永远误报「有新版」。
@@ -151,7 +162,7 @@ ORDER = {"outdated": 0, "error": 1, "unknown": 2, "current": 3, "frozen": 4, "lo
 def main():
     targets = build_targets()
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
-        results = list(ex.map(check_one, targets))
+        results = list(ex.map(lambda target: check_one(target, "--include-frozen" in sys.argv), targets))
 
     if AS_JSON:
         print(json.dumps(results, ensure_ascii=False, indent=2))
@@ -180,7 +191,7 @@ def main():
             tail = "" if r["enabled"] else "   ← 未启用，可以不管"
             print(f"   /skill-manager update {r['name']}{tail}")
     else:
-        print("\n🎉 所有可追踪的 skill 都是最新")
+        print("\n没有检测到可自动更新项；冻结项与查询失败项见上表。")
 
     ahead = [r for r in results if r.get("ahead")]
     if ahead:

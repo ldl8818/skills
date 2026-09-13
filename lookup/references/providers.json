@@ -307,7 +307,7 @@
           "_note": "只在用户明确要求归档时使用；显式指定输出目录并关闭图片下载"
         },
         {
-          "id": "read-fetch-sh",
+          "id": "lookup-fetch-sh",
           "type": "cli",
           "status": "broken",
           "priority": 90,
@@ -342,14 +342,15 @@
       "desc": "取任意网页正文",
       "providers": [
         {
-          "id": "read-fetch-sh",
+          "id": "lookup-fetch-sh",
           "type": "cli",
           "status": "active",
           "priority": 10,
           "failure_domain": "direct-http",
           "auth": "none",
           "bin": "bash",
-          "args": ["{HOME}/.agents/skills/read/scripts/fetch.sh", "{url}"],
+          "args": ["scripts/fetch.sh", "{url}"],
+          "_note": "从 Lookup 根目录执行；脚本随 Skill 分发，仅请求原站",
           "validator": "text_nonempty+not_nav_only",
           "max_output_chars": 40000
         },
@@ -364,7 +365,7 @@
           "args": ["-fsSL", "https://r.jina.ai/{url}"],
           "validator": "text_nonempty+not_nav_only",
           "max_output_chars": 40000,
-          "_note": "URL 会发送给第三方；敏感链接禁用"
+          "_note": "仅用于用户允许发送给第三方的公开 URL；认证、内网和敏感链接禁用"
         }
       ]
     },

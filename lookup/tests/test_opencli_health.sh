@@ -777,8 +777,8 @@ test_registry_stderr_does_not_pollute_json() {
   local fake_bin="$fixture_dir/bin"
   local fake_home="$fixture_dir/home"
   local output reader_pid runtime_mode
-  mkdir -p "$fixture_dir/scripts" "$fixture_dir/references" "$fake_bin" "$fake_home/.agents/skills/read/scripts"
-  : > "$fake_home/.agents/skills/read/scripts/fetch.sh"
+  mkdir -p "$fixture_dir/scripts" "$fixture_dir/references" "$fake_bin" "$fake_home"
+  cp "$ROOT_DIR/scripts/fetch.sh" "$ROOT_DIR/scripts/fetch_local.py" "$fixture_dir/scripts/"
   cp "$ROOT_DIR/scripts/selftest.sh" "$fixture_dir/scripts/selftest.sh"
   cp "$ROOT_DIR/scripts/flock-holder.py" "$fixture_dir/scripts/flock-holder.py"
   cp "$ROOT_DIR/scripts/find-url.mjs" "$ROOT_DIR/scripts/match-site.mjs" "$ROOT_DIR/scripts/ego-spaces.mjs" "$fixture_dir/scripts/"

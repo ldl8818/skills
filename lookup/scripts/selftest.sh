@@ -175,9 +175,9 @@ else
   skip "策略台账无效，无法派生 provider 依赖"
 fi
 
-FETCH_SH="$HOME/.agents/skills/read/scripts/fetch.sh"
-if [[ -f "$FETCH_SH" ]]; then
-  ok "fetch.sh 存在"
+FETCH_SH="$SELF_DIR/fetch.sh"
+if [[ -f "$FETCH_SH" && -f "$SELF_DIR/fetch_local.py" ]] && bash -n "$FETCH_SH"; then
+  ok "Lookup 本地提取脚本存在，Shell 语法通过"
 else
   bad "fetch.sh 不在 $FETCH_SH —— 静态抓取通道失效"
 fi

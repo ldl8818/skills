@@ -1,0 +1,106 @@
+[
+  {
+    "request": "看这个 GitHub URL，告诉我项目做什么",
+    "expected": null
+  },
+  {
+    "request": "为新功能给一个技术方案并直接实现",
+    "expected": null
+  },
+  {
+    "request": "深入研究这个行业并给出处",
+    "expected": null
+  },
+  {
+    "request": "帮我做一个设置页面",
+    "expected": "ui"
+  },
+  {
+    "request": "这个页面层级很乱，按截图改好",
+    "expected": "ui"
+  },
+  {
+    "request": "升级后按钮点击崩溃",
+    "expected": "hunt"
+  },
+  {
+    "request": "这个测试以前通过，现在失败",
+    "expected": "hunt"
+  },
+  {
+    "request": "review 当前 diff 是否能合并",
+    "expected": "check"
+  },
+  {
+    "request": "审计整个仓库的代码质量",
+    "expected": "check"
+  },
+  {
+    "request": "润色这段中文，不改变意思",
+    "expected": "write"
+  },
+  {
+    "request": "写一版 release notes 文案",
+    "expected": "write"
+  },
+  {
+    "request": "Codex 忽略 AGENTS.md 里的规则",
+    "expected": "health"
+  },
+  {
+    "request": "MCP 配好了但 Agent 看不到工具",
+    "expected": "health"
+  },
+  {
+    "request": "请修改 AGENTS.md 加一条命令",
+    "expected": null
+  },
+  {
+    "request": "截图里按钮难看",
+    "expected": "ui"
+  },
+  {
+    "request": "截图显示按钮点了没反应",
+    "expected": "hunt"
+  },
+  {
+    "request": "Build a settings page",
+    "expected": "ui"
+  },
+  {
+    "request": "The test crashes after upgrading",
+    "expected": "hunt"
+  },
+  {
+    "request": "Review this PR for merge readiness",
+    "expected": "check"
+  },
+  {
+    "request": "Proofread this paragraph",
+    "expected": "write"
+  },
+  {
+    "request": "Audit conflicting Agent skill instructions",
+    "expected": "health"
+  },
+  {
+    "request": "Read this URL and summarize it",
+    "expected": null
+  },
+  {
+    "request": "Implement this plan",
+    "expected": null
+  },
+  {
+    "request": "Fix a typo in the README while implementing login",
+    "expected": null
+  },
+  {
+    "request": "Create a standalone illustration",
+    "expected": null
+  },
+  {
+    "request": "Typeset this Word document",
+    "expected": null
+  }
+]

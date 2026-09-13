@@ -1,8 +1,8 @@
 # lookup
 
-> The general entry point for public-web lookup and content retrieval. Skill content is in Chinese.
+> The general entry point for public-web lookup, content retrieval and source-backed research. Skill content is in Chinese.
 
-一般联网检索入口：搜索、抓网页正文、读第三方平台内容、检索 ego lite 书签与浏览历史。lookup 负责选路、只读边界和结果验收；专用产品文档或连接器优先，研究综合走 `learn`，需要点击、输入等交互时固定走 `ego-browser`。
+一般联网检索入口：搜索、抓网页正文、读第三方平台内容、检索 ego lite 书签与浏览历史。lookup 负责选路、只读边界和结果验收；专用产品文档或连接器优先，多来源研究综合使用本 Skill 的条件参考，需要点击、输入等交互时固定走 `ego-browser`。
 
 它解决的不是「怎么调某个抓取工具」，而是**在有限的上下文窗口里，怎么用最少的 token 拿回够用且真实的信息**：
 
@@ -31,11 +31,11 @@
 | `yt-dlp` | YouTube 搜索与字幕 | YouTube 通道不可用 |
 | `bili` | B站免登录搜索 | B站搜索退化为走 OpenCLI |
 | `mcporter` | 调 Exa 与豆包搜索（MCP stdio） | 英文语义搜索与中文全网搜索不可用 |
-| `fetch.sh` | 静态抓取博客/文档/新闻 | 需换其他静态抓取方式 |
+| 随包 `scripts/fetch.sh` | 静态抓取博客/文档/新闻 | 随 Lookup 安装，不依赖其他 Skill |
 | `node` ≥ 18 | 跑 `scripts/*.mjs` 与 OpenCLI 异步兼容入口 | 本机历史、站点经验和 browser adapter 不可用 |
 | `python3`、`curl`、`jq` | 健康门禁、HTTP 状态与 OpenCLI 合约校验 | 默认自检不完整 |
 
-`fetch.sh` 来自 Waza 的 `read` skill（`~/.agents/skills/read/scripts/fetch.sh`）。该 skill 可以处于禁用状态，脚本仍可直接调用；若 `read` 被删除则此路径失效。
+静态提取脚本已随 Lookup 分发：从 Lookup 根目录运行 `bash scripts/fetch.sh <url>`。仅请求原站，支持 HTTP(S) 文本页面；拒绝凭据 URL、非文本响应及超过5 MB的内容，失败不自动转发第三方。默认无额外 Python 依赖；已有 `readability-lxml`／`html2text` 时可提升正文提取质量，不自动安装。源自 Waza 的本地提取实现与精简规则保留 [原作者 MIT 许可](scripts/LICENSE-waza)，不再依赖已退役的阅读或研究 Skill。
 
 `yt-dlp`、`bili` 装在 uv tool 隔离环境（`uv tool list` 可查），可执行文件在 `~/.local/bin/`。
 
@@ -85,6 +85,7 @@ bash scripts/selftest.sh --live   # 再发一条最小真实查询
 bash tests/test_opencli_health.sh # 冷启动、并发锁、恢复和 runner 离线回归
 bash tests/test_find_url.sh       # ego lite 本机历史回归
 bash tests/test_match_site.sh     # 站点经验真身回归
+python3 -m unittest discover -s tests -p 'test_fetch.py' # 独立正文提取与失败边界
 ```
 
 默认模式不查登录态、不发平台请求，也不创建 automation 容器：daemon 休眠时允许按需启动，ego lite 扩展未连接时 5 秒预算内失败并恢复本次启动的 daemon。`--auth` 才做登录态 quickCheck；`--live` 包含前两档并只发一条 OpenCLI B站最小查询，可能创建或复用 automation 容器。
@@ -95,7 +96,7 @@ browser-backed adapter 统一经 `node scripts/opencli-run.mjs ...` 执行。Ope
 
 ## 测试用例
 
-`evals/evals.json` 有 14 条用例，每条针对一个「不读 Skill 就容易做错」的点：除原有时效、正文、只读与安全边界外，还覆盖 daemon 冷启动、扩展断连后的任务内熔断，以及下一独立任务重新探活。
+`evals/evals.json` 有 16 条用例，每条针对一个「不读 Skill 就容易做错」的点：除原有时效、正文、只读与安全边界外，还覆盖 daemon 冷启动、扩展断连后的任务内熔断，以及下一独立任务重新探活。
 
 `expectations` 里每条都能从 transcript 客观核验（发了哪条命令、有没有二次取正文、交付时怎么声明时效），不是主观评分。跑法见官方 skill-creator 的 eval 流程；用例本身与运行工具解耦，换测试框架不用改。
 
@@ -129,6 +130,7 @@ SKILL.md 只留所有任务都要执行的流程、安全边界和验收判据�
 
 | 文件 | 什么时候读 |
 |---|---|
+| [`references/研究综合.md`](references/研究综合.md) | 多来源研究、资料综合与参考文章；普通搜索不加载 |
 | [`references/search-routing.md`](references/search-routing.md) | 全网搜索、AI 资讯、已知网页和本机历史 |
 | [`references/platform-routing.md`](references/platform-routing.md) | 平台内检索、OpenCLI 动态发现和 Agent-Reach 体检 |
 | [`references/failure-domains.md`](references/failure-domains.md) | 判断故障层级、评估某条通道值不值得加 |

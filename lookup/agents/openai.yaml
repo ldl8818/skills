@@ -1,4 +1,4 @@
 interface:
   display_name: "Lookup"
-  short_description: "统一路由联网搜索、平台内容读取、本机历史检索与结果有效性校验"
-  default_prompt: "使用 $lookup 搜索并读取目标信息，选择合适通道并验证结果有效性。"
+  short_description: "统一路由联网搜索、网页读取、本机历史检索与有出处的研究综合"
+  default_prompt: "使用 $lookup 搜索并读取目标信息，选择合适通道，核验来源，并按请求完成摘要或研究综合。"
