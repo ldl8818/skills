@@ -6,6 +6,7 @@ A configurable, review-gated correction system for Claude Code and Codex. It cap
 
 换电脑以 [AI 工作环境新机迁移：小范围方案 V3](docs/新机转移V3.md) 为准：复用现有 chezmoi、官方安装方式，迁移必要配置与知识，并逐项检查和续跑。轻量引导与新 `bin/restore setup` 的本地交付见 [使用说明](mac-environment-migration/使用说明.md)；真实新 Mac 安装与验收尚未完成。[旧教程](docs/新机转移.md) 中的整机兜底、final 和业务回切要求已被替代，旧工具代码不再使用；原 dotfiles 全量恢复包含网关步骤，不能用来替代新机 setup。
 
+[Codex 指令审计与改进方案](docs/Codex指令审计与改进方案.md) 保存历史讨论、原文依据及当时的实施验收记录；仅供追溯，当前规则与状态以各自真身和 ROADMAP 为准。
 
 ## 它怎样变聪明
 
