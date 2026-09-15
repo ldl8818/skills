@@ -1,13 +1,13 @@
 ---
 name: check
-description: "审查代码变更、项目代码质量和发布就绪状态，以当前证据和风险相称的验证支持结论。仅在明确要求 code review、项目审计、PR／issue triage、合并或发布验收时使用；不用于具体故障排查、文案改写或方案实施。"
+description: "审查代码、PR、项目质量或发布就绪状态；不用于具体故障修复。"
 license: MIT
 metadata:
+  version: "4.0.1"
   github_path: "skills/check"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
   github_url: "https://github.com/tw93/waza"
-  version: "4.0.0"
   update_policy: "frozen"
 ---
 

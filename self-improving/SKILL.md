@@ -1,6 +1,6 @@
 ---
 name: self-improving
-description: "管理 Claude Code 与 Codex 的审核制纠错记忆和按需知识。用户要求记住、审核、撤销或归位纠错，登记知识、复核知识版本、通过本系统读取或维护知识，检查记忆健康、安装迁移或关闭持久学习时使用；普通报错、一次性偏好、一般资料查询和未涉及本系统的项目规则编辑不触发。"
+description: "管理跨 Agent 纠错记忆与按需知识：审核、登记、版本复核、迁移和体检；普通项目规则编辑不触发。"
 metadata:
   version: "3.1.3"
   zh_description: "跨 Claude Code 与 Codex 的审核制纠错与按需知识，支持版本复核、安装、迁移与体检"

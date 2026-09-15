@@ -1,13 +1,13 @@
 ---
 name: write
-description: "起草、改写、校对或本地化用户明确要求处理的文案，保留原意、事实和作者表达。用于写文案、改稿、润色、去 AI 味或 release notes 文案；不用于研究抓取、发布执行、代码注释或实现任务中的附带文字修改。"
+description: "起草、改写、校对和本地化文案；不用于实现任务中的附带文字修改。"
 license: MIT
 metadata:
+  version: "4.0.1"
   github_path: "skills/write"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
   github_url: "https://github.com/tw93/waza"
-  version: "4.0.0"
   update_policy: "frozen"
 ---
 

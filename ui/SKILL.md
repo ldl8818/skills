@@ -1,13 +1,13 @@
 ---
 name: ui
-description: "创建或精修真实产品的网页、原生页面与组件，结合项目约定和实际渲染验证。用户明确要求做页面、修改界面、调整层级或按截图修正视觉细节时使用；不用于后端、文档排版、独立图片生成或运行时故障。"
+description: "创建或精修产品页面、组件与视觉细节；不用于运行故障或文档排版。"
 license: MIT
 metadata:
+  version: "4.0.1"
   github_path: "skills/ui"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
   github_url: "https://github.com/tw93/waza"
-  version: "4.0.0"
   update_policy: "frozen"
 ---
 

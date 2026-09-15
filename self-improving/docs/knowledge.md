@@ -28,7 +28,7 @@ The catalog is the only manually maintained route table. Text stays in the origi
 
 Paths are relative to the private memory root unless absolute. Roots must be bounded directories, never the home or filesystem root. There are at most128 entries. `scope` uses the existing global/project/repo syntax. `active` routes by triggers; `reference` monitors a source without injecting its body. Empty sections mean full text. Set `required: true` and empty sections for sources that must be read in full. Optional `source` names a source copy whose bytes must equal the deployed file. Direct dependency IDs bind the reviewed revision, without recursive invalidation of the entire library.
 
-Run from the Skill directory, or use the installed CLI:
+Run from the source checkout's `src/` directory, or use the installed CLI:
 
 ```bash
 python3 -m self_improving knowledge check --json
@@ -38,8 +38,9 @@ python3 -m self_improving knowledge read design
 python3 -m self_improving knowledge read design --full
 python3 -m self_improving knowledge accept --revision <digest-from-check>
 python3 -m self_improving sync
-python3 -m self_improving doctor
 ```
+
+Run `sync` when source text, titles, paths or catalog inputs change. Run `python3 -m self_improving doctor` when installation, configuration or Hook wiring changes; a wording-only update does not require a full diagnosis. Changes to authorization, routing or workflow instructions need targeted behavior scenarios as well as source and deployment checks.
 
 `check` exits1 for invalid or unreviewed sources. It reports exact repeated clauses as review leads, not automatic deletion requests. Existing doctor link checks supplement it. Read the changed sources and their direct dependencies, resolve semantic conflicts within authorization, verify deployment, then accept the exact digest. Concurrent changes reject acceptance. `accept` confirms only a reviewed knowledge version; it neither approves policy nor changes the correction ledger. When policy changes, also inspect `review lifecycle-list --json` and use the existing guarded correction workflow for promotion or revocation.
 

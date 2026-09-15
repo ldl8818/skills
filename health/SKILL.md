@@ -1,13 +1,13 @@
 ---
 name: health
-description: "以脱敏证据审计 AI Agent 指令、配置、Skills、Hooks、MCP、权限和验证器健康。明确要求审计或诊断 Codex／Claude／Pi 的配置异常、指令冲突或工具不生效时使用；不用于应用故障、PR 审查、通用代码质量或普通指令文件编辑。"
+description: "审计或诊断 Agent 指令、配置、Skills、Hooks、MCP 与权限问题。"
 license: MIT
 metadata:
+  version: "4.0.1"
   github_path: "skills/health"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
   github_url: "https://github.com/tw93/waza"
-  version: "4.0.0"
   update_policy: "frozen"
 ---
 

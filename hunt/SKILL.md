@@ -1,13 +1,13 @@
 ---
 name: hunt
-description: "通过复现、证据和定向验证诊断并修复可观察的软件故障。用户报告报错、崩溃、测试失败、回归、性能异常或运行行为失效时使用；不用于泛化代码审查、纯审美偏好或新功能设计。"
+description: "诊断并修复报错、崩溃、测试失败、回归或性能异常。"
 license: MIT
 metadata:
+  version: "4.0.1"
   github_path: "skills/hunt"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
   github_url: "https://github.com/tw93/waza"
-  version: "4.0.0"
   update_policy: "frozen"
 ---
 

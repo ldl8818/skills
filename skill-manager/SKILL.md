@@ -1,9 +1,9 @@
 ---
 name: skill-manager
-description: 管理已安装 Skill：列出与溯源、检查更新、启停、删除、定版本和自检，并区分已安装、已启用与本会话生效。仅在用户明确提到 Skill 生命周期时使用；创建或优化 Skill 内容走 skill-creator，插件连接走 plugin-management。
+description: "管理已安装 Skills：盘点、溯源、更新、启停、删除、定版与自检。内容编写走 skill-creator。"
 license: MIT
 metadata:
-  version: "2.6.7"
+  version: "2.6.8"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
