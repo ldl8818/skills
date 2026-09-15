@@ -21,8 +21,9 @@
 
 `commands/` 保存显式调用的普通命令文档，不注册为 Skill。
 
-- [push](commands/push.md)：使用 GPT-5.6 Luna（medium）提交并推送当前任务，主 Agent 核对范围、检查及远端结果。默认仅当前任务，明确“全部”才按主题处理全部已确认改动。
-- 本机 Claude Code 输入 `/push`；Codex CLI／IDE／桌面应用输入“执行push”。通过 chezmoi 将 `~/.claude/commands/push.md`、`~/.agents/commands/push.md` 单跳链接到本仓库真身，全局规则提供 Codex 按需入口。新机器需先取得本仓库并部署对应链接／规则，Claude Code 调用 Luna 还需已登录的 Codex CLI。
+- [push](commands/push.md)：统一由主 Agent 直接提交并推送，不启动执行子 Agent。低风险走最低必要检查，标准档定向检查受影响部分，复用已有验证。指定范围时遵循指定；省略范围时，待提交任务全部完成则按任务分批提交，存在未完成或状态不明任务则仅处理本次任务。完成判断、最低检查及按需场景表见命令正文。
+- 普通文案提交只做局部检查与 Git 结果核验，复用已有上下文和验证；无明确适用门禁时不跑全仓检查。普通 push 不等待 CI 终态、不自动修复 CI；推送、本地检查与 CI 结果分别报告，项目明确要求的门禁仍保留。
+- 本机 Claude Code 输入 `/push`；Codex CLI／IDE／桌面应用输入“执行push”。通过 chezmoi 将 `~/.claude/commands/push.md`、`~/.agents/commands/push.md` 单跳链接到本仓库真身，全局规则提供 Codex 按需入口。新机器需先取得本仓库并部署对应链接／规则；执行只需当前客户端的终端能力及 Git 认证，不依赖另一模型或客户端。
 - [Codex 自定义 prompts](https://developers.openai.com/codex/custom-prompts/) 已弃用，本机 CLI 0.154.0 实测不识别 `/prompts:push`，因此不将它作为可用入口。Claude Code 的 [commands Markdown 格式](https://code.claude.com/docs/en/skills#where-skills-live) 仍受支持。新装后重启客户端／新开会话加载入口。
 
 五个 Waza 衍生 Skill 独立维护为本地4.0.1冻结版，保留原作者 MIT 许可与来源 commit。安装、恢复和上游选择性合并见 [冻结版本维护](skill-manager/references/冻结版本维护.md)。本仓库按独立 Skill 分发，没有 Waza 整仓的 plugin mirror 或 Desktop bundle。
