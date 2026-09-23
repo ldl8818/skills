@@ -12,7 +12,10 @@ NAMES = ('check', 'health', 'hunt', 'ui', 'write')
 ENTRY_ROOTS = ('.agents/skills', '.claude/skills', '.codex/skills')
 
 
-def install(repo, home):
+def install(repo, home, clients=('claude', 'codex')):
+    if not clients or not set(clients) <= {'claude', 'codex'}:
+        raise ValueError('invalid clients')
+    roots = ('.agents/skills',) + tuple(f'.{client}/skills' for client in dict.fromkeys(clients))
     repo, home = repo.resolve(), home.resolve()
     pending = []
     # Preflight the complete set before mutating any entry.
@@ -23,7 +26,7 @@ def install(repo, home):
         meta = core.parse_skill_md(str(source / 'SKILL.md'))
         if meta.get('name') != name or meta.get('update_policy') != 'frozen':
             raise ValueError(f'{name}: expected a frozen named Skill')
-        for relative in ENTRY_ROOTS:
+        for relative in roots:
             entry = home / relative / name
             # A client root may be a symlink, but must remain inside the supplied HOME.
             try:
@@ -56,9 +59,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repo', required=True, type=Path)
     parser.add_argument('--home', type=Path, default=Path.home(), help='Target home; default current user')
+    parser.add_argument('--clients', default='claude,codex', help='Comma-separated claude,codex; shared Agent links are always installed')
     args = parser.parse_args()
     try:
-        count = install(args.repo, args.home)
+        count = install(args.repo, args.home, tuple(args.clients.split(',')))
     except (OSError, ValueError) as error:
         print(f'Frozen Skill install blocked: {error}', file=sys.stderr)
         return 1

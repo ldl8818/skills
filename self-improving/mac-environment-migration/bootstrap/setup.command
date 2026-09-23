@@ -1,5 +1,5 @@
 #!/bin/sh
-# V3: only prerequisites and handoff. No global chezmoi apply.
+# Terminal wizard or Agent handoff. No global chezmoi apply.
 set -eu
 
 say() { printf '%s\n' "$*" >&2; }
@@ -19,7 +19,7 @@ parse_args() {
     if [ "$agent_mode" = true ]; then
         [ "$prerequisites_only" = false ] || return 64
         validate_repo "$repo" || return 64
-    elif [ -n "$repo" ]; then return 64
+    elif [ -n "$repo" ]; then validate_repo "$repo" || return 64
     fi
 }
 validate_repo() {
@@ -29,9 +29,16 @@ validate_repo() {
 confirm_ghostty() {
     [ "$agent_mode" = true ] && return 0
     [ "${TERM_PROGRAM:-}" = ghostty ] && return 0
-    say 'Ghostty 已就绪。可以切到 Ghostty 后续跑。'
-    ask '继续请输入 continue，其他输入暂停：' || return 20
-    [ "$answer" = continue ] || return 20
+    say 'Ghostty 已就绪；当前终端继续搭建，完成后再使用 Ghostty。'
+}
+wait_for_tools() {
+    xcode-select -p >/dev/null 2>&1 && return 0
+    xcode-select --install || true
+    if [ "$agent_mode" = true ]; then action command_line_tools; return 20; fi
+    while ! xcode-select -p >/dev/null 2>&1; do
+        ask '请在系统窗口完成 Command Line Tools 安装，然后按回车继续；输入 q 暂停：' || return 20
+        [ "$answer" != q ] || return 20
+    done
 }
 ask() {
     printf '%s ' "$1" >&2
@@ -75,12 +82,7 @@ main() {
     [ "$(id -u)" -ne 0 ] || { say '请以普通用户运行，不要 sudo 整个入口。'; return 30; }
     mac_version=$(sw_vers -productVersion)
     [ "${mac_version%%.*}" -ge 15 ] || { say '当前 Homebrew 支持要求 macOS 15以上，请先处理系统版本。'; return 30; }
-    if ! xcode-select -p >/dev/null 2>&1; then
-        xcode-select --install || true
-        say '请完成系统 Command Line Tools 安装，再运行同一入口。'
-        action command_line_tools
-        return 20
-    fi
+    wait_for_tools || return $?
     if ! BREW=$(brew_find); then
         if [ "$agent_mode" = true ]; then
             say '请用户在自己的终端运行同一脚本加 --prerequisites，直接完成系统密码提示。'
@@ -132,7 +134,7 @@ main() {
         gh auth status >/dev/null 2>&1 || gh auth login --hostname github.com --git-protocol https --web || return 20
         fi
         gh auth setup-git --hostname github.com || return 20
-        if [ "$agent_mode" = false ]; then
+        if [ "$agent_mode" = false ] && [ -z "$repo" ]; then
         ask '配置仓库（仅 owner/repo，不含 token）：' || return 20
         repo=$answer
         fi
@@ -147,17 +149,23 @@ main() {
         say '配置仓库尚无 V3 setup 入口，请取得已交付版本；不会执行旧全量恢复。'; return 30;
     }
     say "使用配置来源：$source_dir"
-    if [ "$agent_mode" = true ]; then
+    if [ -n "$repo" ]; then
         actual_origin=$(git -C "$source_dir" remote get-url origin) || return 30
         case "$actual_origin" in "https://github.com/$repo.git"|"https://github.com/$repo"|"git@github.com:$repo.git") :;;
             *) say '配置来源与选定仓库不一致，请核对；未执行仓库代码。'; return 30;;
         esac
+    fi
+    if [ "$agent_mode" = true ]; then
         printf '%s\n' '{"schema":1,"status":"ok","action":"run_restore_setup_agent"}'
         return 0
     fi
     ask '确认信任该配置仓库并运行其 setup？输入 continue：' || return 20
     [ "$answer" = continue ] || return 20
-    exec /bin/zsh "$source_dir/bin/restore" setup
+    # An older clone must not silently fall back to the incomplete interactive flow.
+    /bin/zsh "$source_dir/bin/restore" setup --help | grep -q -- '--wizard' || {
+        say '配置源尚无终端向导，请保留已有内容并取得含 --wizard 的版本。'; return 30;
+    }
+    exec /bin/zsh "$source_dir/bin/restore" setup --wizard
 }
 
 # Functions can be sourced by tests without invoking system installation.

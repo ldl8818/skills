@@ -13,6 +13,17 @@ import scan_and_check
 
 
 class FrozenTests(unittest.TestCase):
+    def test_codex_only_never_creates_claude(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            repo = self.fixture(root)
+            home = root / 'home'
+            self.assertEqual(install_frozen.install(repo, home, ('codex',)), 10)
+            self.assertEqual(install_frozen.install(repo, home, ('codex',)), 0)
+            self.assertFalse((home / '.claude').exists())
+            with self.assertRaises(ValueError):
+                install_frozen.install(repo, home, ('unexpected',))
+
     def fixture(self, root):
         repo = root / 'repo'
         for name in install_frozen.NAMES:

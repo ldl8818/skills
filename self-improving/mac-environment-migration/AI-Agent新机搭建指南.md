@@ -1,12 +1,14 @@
 # AI Agent 新机搭建指南
 
+首选是[使用说明](使用说明.md)中的一行终端命令，无需先装 Codex。本文保留给已经运行的 Codex 接管；Agent 不调用 `--wizard`，继续使用无交互接口。本次默认不迁移 Claude Code。
+
 这份指南交给新 Mac 上已经安装并登录的 Codex。你负责取得源码、执行、诊断、续跑和核验；用户只处理账号登录、系统密码、系统权限及确实影响数据的冲突选择。这是一次性搭建任务，复用已有脚本，不创建常驻 Agent 或另一套恢复器。
 
 ## 接管目标与边界
 
 用户说“按这份指南帮我搭建”即授权本轮选定环境的安装、下载和定向配置；同一任务内不要每装一个包重复确认。平台权限门禁仍按工具要求申请。
 
-默认必需项：Homebrew、Ghostty、Codex、Claude Code、Hermes、Obsidian、Doraemon 和 chezmoi 配置。工作项目和 Hermes 网关范围以用户私人清单为准；网关被选为必需项时，必须恢复选定角色的配置、记忆、渠道授权及必要启动服务，完成旧新机切换后启用并验收。安装配置阶段不提前启动；其他 cron、业务脚本、OpenClaw 和 Obsidian 自动同步不随之启用。用户改变选择时以用户要求为准，缺少选择不得猜。
+默认必需项：Homebrew、Ghostty、Codex、Hermes、Obsidian、Doraemon 和 chezmoi 配置；不选 Claude Code。工作项目和 Hermes 网关范围以用户私人清单为准；网关被选为必需项时，必须恢复选定角色的配置、记忆、渠道授权及必要启动服务，完成旧新机切换后启用并验收。安装配置阶段不提前启动；其他 cron、业务脚本、OpenClaw 和 Obsidian 自动同步不随之启用。用户改变选择时以用户要求为准，缺少选择不得猜。
 
 先复用已经可运行的 Codex。安装、登录、配置接入是不同状态；不要重装正在使用的 Codex，也不要因配置即将恢复而退出当前接管会话。配置完成后再开新会话验证，旧会话保持可用于排错。
 
@@ -50,7 +52,7 @@
 /bin/zsh "$DOTFILES_SOURCE/bin/restore" setup --agent \
   --vault-dir "$VAULT_DIR" --vault-repo "$VAULT_REPO" --branch "$VAULT_BRANCH" \
   --skills-repo ldl8818/skills \
-  --components codex,claude,obsidian,hermes,doraemon --gateways all
+  --components codex,obsidian,hermes,doraemon --gateways all
 ```
 
 上述示例选择主网关及配置源中固定的9个角色；用户不需要网关时省略 `--gateways all`。已有基础 state 可以单独追加该参数，选定后不能静默降为不恢复。
@@ -75,7 +77,7 @@ USB 首次取得方式追加 `--method usb`；先按使用说明把完整知识�
 
 自动核对软件路径／版本、Git 身份、字体、配置与链接、Hook 依赖及 Doraemon doctor。结合 JSON 列出已通过、失败、待登录、待真实验证、未迁移项；必需项不通过不能宣布环境完成。
 
-实际登录由用户在客户端中完成。配置恢复后让 Codex／Claude 各开一个新会话，验证所选规则、Skills 与知识接入；Hermes 验证核心记忆。当前负责搭建的 Codex 不用主动结束，只在需要新会话读取新配置时交接准确路径与未完事项。
+实际登录由用户在客户端中完成。配置恢复后让 Codex 开一个新会话，验证所选规则、Skills 与知识接入；Hermes 验证核心记忆。当前负责搭建的 Codex 不用主动结束，只在需要新会话读取新配置时交接准确路径与未完事项。配置源中的插件／MCP 名称保存在 state 的 extension_inventory，导入的旧机现役配置名称保存在 source_extension_inventory；合并后与旧机应用实时清单对照，在新机按需安装和授权，不把名字存在当作运行时已恢复。
 
 Obsidian 打开前检查插件和失效路径，再让用户确认笔记、附件和需要的同步设置。真实外部或付费请求、GitHub 测试写回按具体授权执行；没有执行就标待验证。未选定任务未启用应明确列出；已选定的必需网关未启用或未验收，必须保持迁移未完成。
 

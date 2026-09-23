@@ -80,6 +80,8 @@ Codex 插件由 `list` 和 `doctor` 只读盘点；启停、更新和删除仍�
 
 ## 本机数据文件（仓库里没有，首次运行自动生成）
 
+新机恢复使用 `scripts/install_frozen.py --repo <Skills仓库> --home <目标HOME>` 建立5个冻结 Skill 的单跳入口。默认兼容 Claude／Codex；仅需要 Codex 时追加 `--clients codex`，只创建共用 Agent 和 Codex 入口，不创建 `.claude`。已有冲突先停止，不覆盖目录。
+
 这些 json 记录的是「**这台机器的状态**」，换台机器毫无意义，且含本机绝对路径，
 所以既不入仓库、也不放在任何客户端目录里，统一存放在 **`~/.skill-manager/data/`**
 （2.4.0 起；旧的 `~/.claude/data/skill-manager/` 和 Skill 目录残留会在首次读写账本时自动搬过去）：
