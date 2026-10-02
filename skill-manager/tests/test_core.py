@@ -172,26 +172,30 @@ class CoreContractTests(unittest.TestCase):
     def test_global_root_matrix_covers_common_clients(self):
         self.assertEqual([label for label, _ in core.global_skill_roots()], [
             "共享", "Claude", "Gemini CLI", "Grok", "Antigravity 2.0",
-            "Antigravity IDE", "Antigravity CLI", "Codex",
+            "Antigravity IDE", "Antigravity CLI", "Codex", "WorkBuddy",
         ])
         suffixes = [Path(path).parts[-3:] for _, path in core.global_skill_roots()]
         self.assertIn((".gemini", "config", "skills"), suffixes)
         self.assertIn((".gemini", "antigravity", "skills"), suffixes)
         self.assertIn((".gemini", "antigravity-cli", "skills"), suffixes)
+        self.assertIn((".workbuddy-ai", "skills"), [s[-2:] for s in suffixes])
 
     def test_project_root_matrix_covers_common_clients_and_antigravity_alias(self):
         roots = dict(core.project_skill_roots("/workspace"))
         self.assertEqual(set(roots), {
-            "共享", "Claude", "Codex", "Gemini CLI", "Grok", "Antigravity 旧别名",
+            "共享", "Claude", "Codex", "Gemini CLI", "Grok", "WorkBuddy",
+            "Antigravity 旧别名",
         })
         self.assertEqual(roots["Codex"], "/workspace/.codex/skills")
+        self.assertEqual(roots["WorkBuddy"], "/workspace/.codebuddy/skills")
         self.assertEqual(roots["Antigravity 旧别名"], "/workspace/.agent/skills")
 
     def test_project_detection_accepts_every_supported_project_root(self):
         markers = (
             (".agents", "skills"), (".claude", "skills"),
             (".codex", "skills"), (".gemini", "skills"),
-            (".grok", "skills"), (".agent", "skills"),
+            (".grok", "skills"), (".codebuddy", "skills"),
+            (".agent", "skills"),
         )
         for marker in markers:
             with self.subTest(marker=marker), tempfile.TemporaryDirectory() as root:

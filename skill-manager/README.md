@@ -2,12 +2,12 @@
 
 > Cross-agent Skill lifecycle manager. CLI output is in Chinese.
 
-Grok、Claude Code、Gemini CLI、Google Antigravity 和 OpenAI Codex 的 Skill 生命周期管理器：**列出、溯源、查更新、启停、定版本、自检、删除**。
+Grok、Claude Code、Gemini CLI、Google Antigravity、OpenAI Codex 和 WorkBuddy 的 Skill 生命周期管理器：**列出、溯源、查更新、启停、定版本、自检、删除**。
 
 一台机器上的 Skill 通常分为三大类：**全局直装、项目级、插件**。其中全局直装再按共享范围细分：
 
-- **全局直装**：共享全局 `~/.agents/skills/`；客户端全局 `~/.claude/skills/`、`~/.codex/skills/`、`~/.gemini/skills/`、`~/.grok/skills/`、`~/.gemini/config/skills/`、`~/.gemini/antigravity/skills/`、`~/.gemini/antigravity-cli/skills/`。
-- **项目级**：`<项目>/.agents/skills/`、`.claude/skills/`、`.codex/skills/`、`.gemini/skills/`、`.grok/skills/`，以及 Antigravity 向后兼容的 `.agent/skills/`。
+- **全局直装**：共享全局 `~/.agents/skills/`；客户端全局 `~/.claude/skills/`、`~/.codex/skills/`、`~/.gemini/skills/`、`~/.grok/skills/`、`~/.gemini/config/skills/`、`~/.gemini/antigravity/skills/`、`~/.gemini/antigravity-cli/skills/`、`~/.workbuddy-ai/skills/`。
+- **项目级**：`<项目>/.agents/skills/`、`.claude/skills/`、`.codex/skills/`、`.gemini/skills/`、`.grok/skills/`、`.codebuddy/skills/`，以及 Antigravity 向后兼容的 `.agent/skills/`。
 - **插件**：Claude 插件纳入生命周期管理；Codex 插件只做状态盘点。
 
 此外，Codex 还会在 `~/.codex/skills/.system/` 提供客户端内置 Skill。它们不是用户安装，也不是插件，本工具单列为「Codex 内置」并只读盘点。

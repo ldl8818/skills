@@ -2,6 +2,7 @@
 
 > 核对日期：2026-07-18。客户端规范会演进；改适配器前重新打开一手文档，
 > 不用搜索摘要或某台机器的现状代替官方承诺。
+> WorkBuddy 条目为 2026-10-02 本机实测，未取得官方文档，单独按「无公开规范」对待。
 
 ## 管理器实际扫描的目录
 
@@ -15,6 +16,7 @@
 6. `~/.gemini/antigravity/skills/`：Antigravity IDE 全局入口。
 7. `~/.gemini/antigravity-cli/skills/`：Antigravity CLI 全局入口。
 8. `~/.codex/skills/`：Codex 客户端管理的 Skill 入口；其中 `.system/` 另列为内置、只读盘点。
+9. `~/.workbuddy-ai/skills/`：WorkBuddy。
 
 ### 项目级
 
@@ -24,6 +26,7 @@
 4. `<project>/.gemini/skills/`：Gemini CLI。
 5. `<project>/.grok/skills/`：Grok Build。
 6. `<project>/.agent/skills/`：Antigravity 向后兼容的旧别名；新项目应使用 `.agents/skills/`。
+7. `<project>/.codebuddy/skills/`：WorkBuddy 客户端兼容入口。
 
 ## 客户端承诺与边界
 
@@ -34,6 +37,7 @@
 | Gemini CLI | `.gemini/skills/` 或 `.agents/skills/` | `~/.gemini/skills/` 或 `~/.agents/skills/` | 同一层级两者同名时，`.agents/skills/` 优先 |
 | Google Antigravity | `.agents/skills/` | 见下方三种产品形态 | 新规范是 `.agents/skills/`，向后兼容 `.agent/skills/` |
 | OpenAI Codex | `.agents/skills/` | `~/.agents/skills/` | OpenAI 当前公开文档把 `.agents/skills/` 作为仓库与用户作用域；管理器另兼容扫描项目 `.codex/skills/` 和用户 `~/.codex/skills/` |
+| WorkBuddy | `.codebuddy/skills/` | `~/.workbuddy-ai/skills/` | 未取得公开规范；结论来自本机实测（2026-10-02）：客户端扫描上述两处，用户级目录下的条目被登记为 `userSettings`。配置主目录由 `CODEBUDDY_CONFIG_DIR` 指定，同层 `~/.workbuddy` 只放 device-id 与日志 |
 
 Antigravity 的「全局目录」不能只写一个：
 
@@ -56,3 +60,6 @@ Antigravity 的「全局目录」不能只写一个：
 - [Google Antigravity Skills](https://antigravity.google/docs/skills)
 - [Google Antigravity Skills Codelab](https://codelabs.developers.google.com/getting-started-with-antigravity-skills)
 - [OpenAI Codex Skills](https://developers.openai.com/codex/concepts/customization#skills)
+
+WorkBuddy 未找到公开的 Skill 目录规范，上表该行结论来自本机客户端行为实测，不是官方承诺；
+客户端升级后须重新核对，不得据本表断言官方支持。

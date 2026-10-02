@@ -49,6 +49,9 @@ CLAUDE_DIR = os.path.join(HOME, ".claude")
 CODEX_DIR = os.path.join(HOME, ".codex")
 GEMINI_DIR = os.path.join(HOME, ".gemini")
 GROK_DIR = os.path.join(HOME, ".grok")
+# WorkBuddy 的配置主目录是 ~/.workbuddy-ai（由 CODEBUDDY_CONFIG_DIR 指定）。
+# 同层还有个 ~/.workbuddy，只放 device-id 与日志，不是 Skill 入口，别混。
+WORKBUDDY_DIR = os.path.join(HOME, ".workbuddy-ai")
 GLOBAL_SKILLS_DIR = os.path.join(CLAUDE_DIR, "skills")
 COMMANDS_DIR = os.path.join(CLAUDE_DIR, "commands")
 GLOBAL_SETTINGS = os.path.join(CLAUDE_DIR, "settings.json")
@@ -60,6 +63,7 @@ CODEX_SKILLS_DIR = os.path.join(CODEX_DIR, "skills")
 CODEX_SYSTEM_SKILLS_DIR = os.path.join(CODEX_SKILLS_DIR, ".system")
 GEMINI_SKILLS_DIR = os.path.join(GEMINI_DIR, "skills")
 GROK_SKILLS_DIR = os.path.join(GROK_DIR, "skills")
+WORKBUDDY_SKILLS_DIR = os.path.join(WORKBUDDY_DIR, "skills")
 ANTIGRAVITY_SKILLS_DIR = os.path.join(GEMINI_DIR, "config", "skills")
 ANTIGRAVITY_IDE_SKILLS_DIR = os.path.join(GEMINI_DIR, "antigravity", "skills")
 ANTIGRAVITY_CLI_SKILLS_DIR = os.path.join(GEMINI_DIR, "antigravity-cli", "skills")
@@ -548,7 +552,7 @@ def is_project_dir(path):
     """
     path = os.path.realpath(os.path.abspath(path))
     excluded = (HOME, AGENTS_DIR, CLAUDE_DIR, CODEX_DIR, GEMINI_DIR, GROK_DIR,
-                STATE_DIR)
+                WORKBUDDY_DIR, STATE_DIR)
     if path in {os.path.realpath(p) for p in excluded}:
         return False
     return (any(os.path.isdir(root) for _, root in project_skill_roots(path))
@@ -1090,6 +1094,7 @@ def global_skill_roots():
         ("Antigravity IDE", ANTIGRAVITY_IDE_SKILLS_DIR),
         ("Antigravity CLI", ANTIGRAVITY_CLI_SKILLS_DIR),
         ("Codex", CODEX_SKILLS_DIR),
+        ("WorkBuddy", WORKBUDDY_SKILLS_DIR),
     ]
 
 
@@ -1101,6 +1106,7 @@ def project_skill_roots(project_path):
         ("Codex", os.path.join(project_path, ".codex", "skills")),
         ("Gemini CLI", os.path.join(project_path, ".gemini", "skills")),
         ("Grok", os.path.join(project_path, ".grok", "skills")),
+        ("WorkBuddy", os.path.join(project_path, ".codebuddy", "skills")),
         ("Antigravity 旧别名", os.path.join(project_path, ".agent", "skills")),
     ]
 

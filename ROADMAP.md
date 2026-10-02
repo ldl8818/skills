@@ -6,12 +6,14 @@
 
 - 2026-09-23 23:16：单一终端向导开发与隔离验证完成，已发布，实机验收待执行。排除 Claude Code 及其所有入口；恢复10网关、neat-freak／push；旧机快照附带插件／MCP 名称，保留扩展待处理状态。17项引导、59项 Skill 管理、53项 setup／网关／向导、87项 dotfiles 检查通过；含空格干净 HOME 使用真实 chezmoi 和实际 Skills 安装器重复执行通过，无 Claude 目录及服务启动。当前官方 Hermes 安装器的默认记忆冲突已修复并覆盖回归。源码、公私红线及链接检查通过，未执行真实安装、凭据解密或旧新机切换。
 
-- 状态：终端向导已发布，真实新 Mac 验收待执行。
+- 状态：新 Mac 基础配置与 Shell 缺项已定向修复，网关迁移及真实客户端验收未完成。
+- 2026-09-24 04:58：目标机 lookup 必需 CLI 已补齐，Python 工具隔离安装，视频工具复用现有 Node LTS 与 ffmpeg；用户安装扩展后已完成浏览器 Profile 绑定。默认自检38项通过、0失败、2项跳过，桥接、注册表及5个站点静态检查通过；搜索 MCP 配置仍缺，未做平台登录及业务验收，Hermes 保持未启动。
 - 任务：在新 Mac 用一行终端命令恢复 Codex、基础环境、Hermes 主网关及9个角色；不迁移 Claude Code，完成扩展核对与真实验收。
 - 已做到：全部网关材料准备、现役私人记忆导出／导入、用户终端解密、旧机停用与新机启用入口、健康实例续跑及逐项验收已实现；安装阶段不部署启动服务。
 - 验证：23项基础 setup、14项网关、12项引导、87项仓库检查及元文件／隔离 smoke 通过。含空格干净 HOME 使用真实 chezmoi；系统安装、服务控制和凭据解密使用模拟，不代表真实网关验证。
-- 下一步：新机运行已发布的终端向导，就绪后按停旧机、导出最终记忆、导入新机、切换启用的顺序实机验收。
-- 边界：本轮未启停旧机服务、未安装或部署现役 HOME；不迁移工作项目，不自动启用其他业务任务。保留其他会话改动。
+- 2026-09-24 03:36：目标机补齐 Shell 工具、Node LTS 与 npm 配置；交互式目录跳转、Yazi 启退及 Ghostty 字体识别通过，字体仅补做系统注册。Doraemon 索引修复、规则及 Hook 接线核验完成，真实事件4/5类；保留现役登录、插件及 Obsidian 原有插件设置。dotfiles 窄入口61项专项与87项仓库检查通过。
+- 下一步：完成用户终端登录与网关凭据解密，取得旧机停用后的最终记忆快照，再定向导入；收到旧机停用确认后才切换启用，逐个验收网关及客户端。
+- 边界：未启停旧机服务、未启动新机网关；不迁移 Claude Code 或工作项目，不删除旧备份。插件清单核对不等于旧机扩展全部恢复，保留其他会话改动。
 
 ## 本次全部改动交付
 
@@ -21,13 +23,15 @@
 
 ## 当前阶段
 
-九个 Skill 已纳入仓库：`check`、`health`、`hunt`、`ui`、`write` 为本地4.0.1冻结版；另有 `lookup` 1.10.1、`self-improving` 3.1.3、`skill-manager` 2.6.8，以及尚未定版的 `download-video`。lookup、self-improving、skill-manager 已有本机运行记录；self-improving 3.1.3的 doctor 当前显示 Codex 事件覆盖5／5、Claude 0／5，Claude 新版本真实客户端验证待完成；`download-video` 已完成脚本级基础验证，实际站点下载待用户提供链接后验证。
+九个 Skill 已纳入仓库：`check`、`health`、`hunt`、`ui`、`write` 为本地4.0.1冻结版；另有 `lookup` 1.10.1、`self-improving` 3.1.3、`skill-manager` 2.6.9，以及尚未定版的 `download-video`。lookup、self-improving、skill-manager 已有本机运行记录；self-improving 3.1.3的 doctor 当前显示 Codex 事件覆盖5／5、Claude 0／5，Claude 新版本真实客户端验证待完成；`download-video` 已完成脚本级基础验证，实际站点下载待用户提供链接后验证。
 
 ### 并行任务合并注意
 
 只读 Hook 修复与知识治理快照已在当前工作区集成。提交时必须保留 `self-improving/src/self_improving/hooks/readonly.py`、`hooks/common.py` 中的只读检测入口、`tests/test_readonly_guard.py` 及本次文档修正，不得用整文件复制覆盖 main。迁移前20文件隔离快照已完成完整验证；src 布局验证见下方最新记录。
 
 ## 最近完成
+
+- 2026-10-02 18:55：skill-manager 2.6.9 纳入 WorkBuddy 客户端：`core.py` 客户端根矩阵加全局 `~/.workbuddy-ai/skills` 与项目级 `.codebuddy/skills`，`references/client-paths.md` 路径清单、客户端承诺表与核对日期同步，SKILL.md 状态模型与 README 客户端清单补齐，测试期望值同步；根 README 的 push 入口补 `~/.workbuddy-ai/commands/push.md` 单跳链接。test_core 34项、test_cli 19项、test_frozen 6项通过。客户端承诺标注为「本机实测」而非官方规范，项目级路径未实测。未提交。
 
 - 2026-09-13 14:32：补齐10个 Hermes 网关的材料准备、私人记忆快照、用户终端凭据恢复、停用／启用和逐项验收，保持基础入口兼容；5个角色未纳管的现役记忆由快照覆盖。工具及文档准备提交发布，未执行实机切换。
 

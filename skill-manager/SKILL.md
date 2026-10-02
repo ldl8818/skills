@@ -3,7 +3,7 @@ name: skill-manager
 description: "管理已安装 Skills：盘点、溯源、更新、启停、删除、定版与自检。内容编写走 skill-creator。"
 license: MIT
 metadata:
-  version: "2.6.8"
+  version: "2.6.9"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
@@ -66,8 +66,8 @@ Claude 插件写裸名即可，脚本会自动补全 `@市场名`。全部脚本
 | 分类 | 位置 | 含义 |
 |---|---|---|
 | 全局直装（共享） | `~/.agents/skills/<名>/` | Agent Skills 通用位置；Codex 官方全局作用域，多客户端也可共同采用 |
-| 全局直装（客户端） | `~/.claude/skills/`、`~/.gemini/skills/`、`~/.grok/skills/`、`~/.gemini/config/skills/`、`~/.gemini/antigravity/skills/`、`~/.gemini/antigravity-cli/skills/`、`~/.codex/skills/` | 各客户端的用户级入口 |
-| 项目级 | `<项目>/.agents/skills/`、`.claude/skills/`、`.codex/skills/`、`.gemini/skills/`、`.grok/skills/`、`.agent/skills/` | 通用入口、客户端专用入口与 Antigravity 旧别名 |
+| 全局直装（客户端） | `~/.claude/skills/`、`~/.gemini/skills/`、`~/.grok/skills/`、`~/.gemini/config/skills/`、`~/.gemini/antigravity/skills/`、`~/.gemini/antigravity-cli/skills/`、`~/.codex/skills/`、`~/.workbuddy-ai/skills/` | 各客户端的用户级入口 |
+| 项目级 | `<项目>/.agents/skills/`、`.claude/skills/`、`.codex/skills/`、`.gemini/skills/`、`.grok/skills/`、`.codebuddy/skills/`、`.agent/skills/` | 通用入口、客户端专用入口与 Antigravity 旧别名 |
 | Codex 内置 | `~/.codex/skills/.system/<名>/` | Codex 管理的内置能力；只读盘点，不当作用户安装或插件 |
 | Claude 插件 | `~/.claude/plugins/installed_plugins.json`、缓存、全局／项目 `enabledPlugins` | 插件位置、版本及全局／项目启用状态 |
 | Codex 插件 | `~/.codex/config.toml`、`~/.codex/plugins/cache/` | 插件开关、缓存 manifest 与版本 |
