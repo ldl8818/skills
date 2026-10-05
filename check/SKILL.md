@@ -3,7 +3,7 @@ name: check
 description: "审查代码、PR、项目质量或发布就绪状态；不用于具体故障修复。"
 license: MIT
 metadata:
-  version: "4.0.1"
+  version: "4.0.3"
   github_path: "skills/check"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
@@ -25,7 +25,7 @@ Findings name the location, observed defect, impact, and a practical repair dire
 Separate source, generated files, installed packages, CI, registry and release state.
 
 ## Rules
-1. A review request is report-only. Apply repairs or external actions only within authorization already valid for the task; do not ask again for an authorized action.
+1. Follow the requested outcome and applicable standing repair authorization in AGENTS.md or the user's instructions. A standalone review is report-only only where repair is not authorized; standing authorization for necessary fixes applies without per-finding confirmation. When review is part of an implementation or delivery request, including “review, then commit/push if clean,” fix confirmed in-scope defects, verify the repairs, and continue to the authorized delivery. “If clean” is a quality gate to satisfy before delivery. Honor explicit read-only instructions; ask only when a repair expands scope or requires an action not already authorized.
 2. Inspect staged, unstaged and untracked state before reviewing or writing. Preserve other work; do not stash or reset it to simplify verification.
 3. Ground defects in current code and reachable behavior. Trace dynamic registration, packaging and callers before claiming something is dead. A clean review is valid.
 4. Choose verification by affected risk. Stop once required checks pass unless a new change, failure or unresolved risk justifies expansion.

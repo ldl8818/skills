@@ -3,7 +3,7 @@ name: hunt
 description: "诊断并修复报错、崩溃、测试失败、回归或性能异常。"
 license: MIT
 metadata:
-  version: "4.0.1"
+  version: "4.0.2"
   github_path: "skills/hunt"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
@@ -24,7 +24,7 @@ Establish the cause using a reproducible path or the closest reliable signal, th
 Use source traces, logs, runtime state, relevant tests and the affected client or renderer.
 
 ## Rules
-1. Establish expected versus observed behavior and the affected version or environment. A diagnosis-only request does not authorize a production fix; an ongoing repair authorization persists across status questions.
+1. Establish expected versus observed behavior and the affected version or environment. Apply task and standing repair authorization from the user and AGENTS.md; ordinary troubleshooting must continue through authorized repair and verification. Honor explicit diagnosis-only or read-only instructions. Existing authorization persists across status questions; production actions still require applicable authorization.
 2. Before applying a production behavior fix, establish evidence for its root cause. Temporary logs, assertions, probes, minimal tests and isolated experiments are allowed during diagnosis.
 3. Design experiments to distinguish hypotheses. When evidence contradicts the current model or repeated attempts fail, rebuild that model and continue investigating rather than guessing another patch.
 4. Change the failed behavior within the authorized scope. Inspect same-cause siblings when evidence warrants it; do not refactor unrelated neighboring logic.

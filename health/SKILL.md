@@ -3,7 +3,7 @@ name: health
 description: "审计或诊断 Agent 指令、配置、Skills、Hooks、MCP 与权限问题。"
 license: MIT
 metadata:
-  version: "4.0.1"
+  version: "4.0.2"
   github_path: "skills/health"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
@@ -24,7 +24,7 @@ Produce a prioritized, evidence-backed report within the requested Agent scope.
 Each finding names the affected layer, redacted evidence, impact and actionable next step. A clean report with explicit coverage limits is valid.
 
 ## Rules
-1. Audits are report-only unless the user authorizes repairs. Keep existing task authorization; do not repeat approval requests.
+1. Apply task and standing repair authorization from the user and AGENTS.md before treating an audit as report-only. Fix confirmed in-scope problems covered by that authorization, verify the failed and relevant normal paths, then report. Honor explicit read-only instructions and preserve the boundaries on scope and external actions; do not request per-finding approval for an already authorized necessary fix.
 2. Start with current-project static summary. Do not read historical sessions, unrelated global configuration or live MCP tools by default.
 3. Explain scope before expanding to global configuration, deep inspection, live probes or inspector delegation. Perform them only when included in the user's request or subsequently authorized.
 4. Redact credentials and private payloads at collection time. Report structural evidence rather than raw configuration, command bodies or historical transcript.

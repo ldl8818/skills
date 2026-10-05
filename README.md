@@ -26,4 +26,4 @@
 - 本机 Claude Code 与 WorkBuddy 输入 `/push`；Codex CLI／IDE／桌面应用输入“执行push”。通过 chezmoi 将 `~/.claude/commands/push.md`、`~/.agents/commands/push.md`、`~/.workbuddy-ai/commands/push.md` 单跳链接到本仓库真身，全局规则提供 Codex 按需入口。新机器需先取得本仓库并部署对应链接／规则；执行只需当前客户端的终端能力及 Git 认证，不依赖另一模型或客户端。
 - [Codex 自定义 prompts](https://developers.openai.com/codex/custom-prompts/) 已弃用，本机 CLI 0.154.0 实测不识别 `/prompts:push`，因此不将它作为可用入口。Claude Code 的 [commands Markdown 格式](https://code.claude.com/docs/en/skills#where-skills-live) 仍受支持。新装后重启客户端／新开会话加载入口。
 
-五个 Waza 衍生 Skill 独立维护为本地4.0.1冻结版，保留原作者 MIT 许可与来源 commit。安装、恢复和上游选择性合并见 [冻结版本维护](skill-manager/references/冻结版本维护.md)。本仓库按独立 Skill 分发，没有 Waza 整仓的 plugin mirror 或 Desktop bundle。
+五个 Waza 衍生 Skill 独立维护为本地冻结版，当前 `check` 为4.0.3，`health`、`hunt` 为4.0.2，`ui`、`write` 为4.0.1，保留原作者 MIT 许可与来源 commit。安装、恢复和上游选择性合并见 [冻结版本维护](skill-manager/references/冻结版本维护.md)。本仓库按独立 Skill 分发，没有 Waza 整仓的 plugin mirror 或 Desktop bundle。
