@@ -24,7 +24,11 @@
 
 ## 当前阶段
 
-九个 Skill 已纳入仓库：`check` 为本地4.1.0冻结版，`hunt` 为本地4.2.0冻结版，`health` 为本地4.0.2冻结版，`ui`、`write` 为本地4.0.1冻结版；另有 `lookup` 1.12.0、`self-improving` 3.1.3、`skill-manager` 2.6.9，以及尚未定版的 `download-video`。lookup、self-improving、skill-manager 已有本机运行记录；self-improving 3.1.3的 doctor 当前显示 Codex 事件覆盖5／5、Claude 0／5，Claude 新版本真实客户端验证待完成；`download-video` 已完成脚本级基础验证，实际站点下载待用户提供链接后验证。
+九个 Skill 已纳入仓库：`check` 为本地5.0.0冻结版，`hunt` 为本地4.2.0冻结版，`health` 为本地4.0.2冻结版，`ui`、`write` 为本地4.0.1冻结版；另有 `lookup` 1.12.0、`self-improving` 3.1.3、`skill-manager` 2.6.9，以及尚未定版的 `download-video`。lookup、self-improving、skill-manager 已有本机运行记录；self-improving 3.1.3的 doctor 当前显示 Codex 事件覆盖5／5、Claude 0／5，Claude 新版本真实客户端验证待完成；`download-video` 已完成脚本级基础验证，实际站点下载待用户提供链接后验证。
+
+### Check 完整引擎验收
+
+check 5.0.0采用 Alibaba 官方 Skill 主干，保留 Waza 历史和本地定制。动态范围与原生预览已验证；完整 OCR 的真实模型验收待完成，需先在使用端配置已选定的模型通道，再执行一次实际审查。预览、宿主补查和模型审查的结果分别记录。
 
 ### 并行任务合并注意
 

@@ -8,7 +8,7 @@
 - `commands/`：显式调用的普通命令文档，与独立 Skills 分开维护，不加入 Skill 自动发现。
 - [ROADMAP.md](ROADMAP.md)：施工与接力状态，不在本文记录版本现状、待办或验证历史。
 - 根 `AGENTS.md` 是规则真身，`CLAUDE.md` 保持指向它的单跳相对软链；修改子目录时同时遵循适用的 `AGENTS.md`。
-- 本地冻结的 Waza 衍生 Skills：更新、恢复或选择性合并前读 [冻结版本维护](skill-manager/references/冻结版本维护.md)，保留许可与来源信息。
+- 本地定制冻结 Skills：更新、恢复或选择性合并前读 [冻结版本维护](skill-manager/references/冻结版本维护.md)，保留许可与来源信息。
 - 新机引导位于 `self-improving/mac-environment-migration/`，范围与检查入口见该目录的 [AGENTS.md](self-improving/mac-environment-migration/AGENTS.md)。
 
 ## 公开内容边界

@@ -124,4 +124,4 @@ MIT
 
 `python3 scripts/scan_and_check.py --include-frozen` 只读比较冻结版的登记来源与上游发布点；状态始终保持 frozen，不进入自动更新列表。比较结果表示 commit 相同或不同，不表示本地改造版落后。查询失败明确显示证据不足。
 
-本仓库的 Waza 衍生版采用独立本地版本，流程见 [冻结版本维护](references/冻结版本维护.md)。
+本仓库的定制冻结版采用独立本地版本，流程见 [冻结版本维护](references/冻结版本维护.md)。

@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "skill-manager/**"
+      - "check/**"
       - ".github/workflows/skill-manager.yml"
   pull_request:
     paths:
       - "skill-manager/**"
+      - "check/**"
       - ".github/workflows/skill-manager.yml"
 
 permissions:
@@ -27,6 +29,8 @@ jobs:
       - name: Run unit and isolated CLI tests
         working-directory: skill-manager
         run: python -m unittest discover -s tests -v
+      - name: Run Check scope behavior tests
+        run: python -m unittest discover -s check/tests -v
       - name: Compile scripts
         working-directory: skill-manager
         run: python -m compileall -q scripts
