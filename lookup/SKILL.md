@@ -1,8 +1,8 @@
 ---
 name: lookup
-description: "联网搜索、读取链接、获取平台内容与字幕、查询浏览历史或综合资料；统一选路与证据验收，专用来源优先，支持当前 Agent 浏览器与 ego-browser 兜底。"
+description: "联网搜索、读取链接、获取平台内容与字幕、查询浏览历史或综合资料；专用来源优先，日常网页默认 ego-browser，按任务选路并核验出处。"
 metadata:
-  version: "1.11.1"
+  version: "1.12.0"
   source: local
 ---
 
@@ -13,8 +13,9 @@ metadata:
 ## 执行流程
 
 1. **识别任务与证据**：区分发现 URL、已知链接、平台搜索、本机历史、交互网页；确认需要正文、评论、字幕还是视频画面。
-2. **选最短有效路径**：专用官方文档／API／已连接服务优先；其次使用已可用的搜索、CLI 或本地正文提取。需要浏览器时先发现当前 Agent 的合适浏览器能力，最后使用 ego lite 的正式 `ego-browser` Skill。遵循用户指定的环境与已有授权，不混用账号。
+2. **选最短有效路径**：专用官方文档／API／已连接服务优先；其次使用已可用的搜索、CLI 或本地正文提取。确需浏览器时，本机日常外部网页默认使用正式 `ego-browser` Skill；localhost、元素标注与开发调试按实际能力选择宿主 Browser、DevTools 或 ego。用户指定环境优先，技术不可用或能力不足时可换独立路径，详见 [浏览器选路.md](references/浏览器选路.md)。
 3. **按需读参考**：
+   - 浏览器选择、指定环境与技术降级：[浏览器选路.md](references/浏览器选路.md)；只有需要浏览器时加载。
    - 全网搜索、网页、历史：[search-routing.md](references/search-routing.md)。
    - X、小红书、YouTube、B站、Douyin、公众号等：[platform-routing.md](references/platform-routing.md)。
    - 字幕：[youtube-subtitles.md](references/youtube-subtitles.md)；公众号：[weixin-article.md](references/weixin-article.md)。

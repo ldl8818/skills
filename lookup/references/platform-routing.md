@@ -56,7 +56,7 @@ node scripts/opencli-run.mjs douyin search "<词>" -f json --limit 5 --window ba
 ## 时效与内容
 
 - X 的热门与实时排序不同。用户问最近时，使用支持的实时参数并核对逐条时间；某人最近发帖选用户帖子动作，不把首页推荐流当该用户时间线。
-- B站或Douyin的注册表没有最新排序参数、实际结果没有发布时间时，改用当前 Agent 合适的浏览器检查页面可见时间与排序；必要时再用 ego-browser。缺失就明确说明，不能用播放量、热度或搜索窗口猜发布时间。
+- B站或Douyin的注册表没有最新排序参数、实际结果没有发布时间时，按 [浏览器选路.md](浏览器选路.md) 用浏览器检查页面可见时间与排序；本机日常平台页面默认 ego-browser。缺失就明确说明，不能用播放量、热度或搜索窗口猜发布时间。
 - 小红书优先保留完整访问 URL 到 `access_url`；用于显示或去重的 URL 不能覆盖它。仅有裸 ID 时通过搜索／feed／原始分享链接恢复合法定位信息。
 - 用户只要几个讨论观点，完整短帖即可构成证据；需要整串讨论、长文、上下文或评论时才追加对应动作。截断片段与搜索摘要不能代表全文。
 - 视频结果先标明 `metadata / subtitles / asr / visual`。字幕或 ASR 能支持口播摘要；讲解界面、演示结果或画面细节需要实际画面证据。拿不到时只完成可证明的部分，不换成另一个视频冒充原目标。
@@ -67,7 +67,7 @@ node scripts/opencli-run.mjs douyin search "<词>" -f json --limit 5 --window ba
 
 首次使用同一 browser bridge/Profile 时探活，后续复用该任务内结果。连接失败只暂停共享 bridge/Profile 的 browser-backed 命令；站点动作失败只暂停相同 `site+action`；认证失败只影响相同站点／账号；合法空结果和部分证据不触发全局故障。精确规则见 [failure-domains.md](failure-domains.md)。
 
-同一失败路径不循环尝试；业务超时先确认旧动作结束，不自动重派。需要补救时依次考虑已可用的专用 API／CLI、当前 Agent 合适的浏览器，最后 ego lite 的正式 `ego-browser` Skill。必须核对候选是否绕开失败依赖，不能用 `opencli browser` 绕过同一失效 bridge。
+同一失败路径不循环尝试；业务超时先确认旧动作结束，不自动重派。需要补救时先考虑已可用的专用 API／CLI；仍需浏览器时按 [浏览器选路.md](浏览器选路.md) 选择，本机日常外部网页默认正式 ego-browser。必须核对候选是否绕开失败依赖，不能用 `opencli browser` 绕过同一失效 bridge。
 
 宿主浏览器功能名、操作 API、快照和收尾机制按其实际工具／Skill 文档发现，不假设所有 Agent 都有名为 BrowserUse 的工具。ego 只按正式安装 Skill 使用；不复制它的旧 API，见 [ego-space-hooks.md](ego-space-hooks.md)。
 

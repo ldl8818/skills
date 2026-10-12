@@ -2,7 +2,7 @@
 
 > One general entry point for web lookup, content retrieval and source-backed research. Skill instructions are in Chinese.
 
-Lookup 负责把联网目标交给合适工具，并验证结果是否足够、真实且可追溯。专用官方资料和已连接服务优先；平台动作直接调用 OpenCLI 或专用 CLI；需要浏览器时先发现当前 Agent 合适的浏览器能力，最后使用 ego lite 的正式 `ego-browser` Skill。
+Lookup 负责把联网目标交给合适工具，并验证结果是否足够、真实且可追溯。专用官方资料和已连接服务优先；平台动作直接调用 OpenCLI 或专用 CLI；确需浏览器时，本机日常外部网页默认使用 ego lite 的正式 `ego-browser` Skill；localhost、元素标注与开发调试按实际能力选择，规则统一见 [浏览器选路.md](references/浏览器选路.md)。
 
 ## 职责与可移植性
 
@@ -30,8 +30,8 @@ Agent Reach 可选提供安装、诊断、后端选型与已配置音频转写�
 | mcporter 与已配置的 Exa／豆包等 | 可选搜索来源，不要求每个人都安装 |
 | agent-reach | 可选环境诊断与转写；转写另需 ffmpeg／ffprobe 和配置好的服务商 |
 | python3、curl、jq | 正文提取、结果处理和 OpenCLI 门禁／合约检查 |
-| 当前 Agent 浏览器能力 | 需要渲染、交互或 CLI 缺少动作时使用，按实际工具文档发现 |
-| ego lite 与正式 ego-browser Skill | 最后的浏览器候选；使用其当前正式接口与资源归属规则 |
+| ego lite 与正式 ego-browser Skill | 本机日常外部网页的默认浏览器；按当前正式接口操作 |
+| 当前 Agent Browser／DevTools | 按开发、标注、调试、指定环境及技术降级需求选择 |
 
 静态正文脚本 `scripts/fetch.sh` 随 Skill 分发，默认只请求原站、本地提取，不自动安装依赖或转发第三方。支持 HTTP(S) HTML、纯文本与 Markdown，保留最终来源 URL；拒绝凭据 URL、非文本响应和超出大小限制的内容。`--prefer` 选择提取器，`--max-output-chars` 默认 40,000；stdout 保持正文，stderr 给机器可读状态。exit 3 表示有正文但截断，仍可按任务使用已证实部分。已有 `readability-lxml`／`html2text` 时可提升提取质量。
 
@@ -58,7 +58,7 @@ test ! -e ~/.codex/skills/lookup && test ! -L ~/.codex/skills/lookup && \
   ln -s ~/.agents/skills/lookup ~/.codex/skills/lookup
 ```
 
-只给一个客户端使用时，可直接安装到该客户端发现的 Skill 目录。新开或重启客户端会话后，用「搜一下」「读这个链接」「这个视频讲了什么」触发。Skill 只能路由实际加载它的 Agent，不替未加载的客户端强制拦截联网操作。共享全局规则若已有旧的浏览器强制顺序，应同步为「联网检索使用 Lookup；浏览器选择遵循用户指定环境，并按 Lookup 发现合适宿主能力，最后 ego-browser」，避免更高层规则覆盖这里的选路。
+只给一个客户端使用时，可直接安装到该客户端发现的 Skill 目录。新开或重启客户端会话后，用「搜一下」「读这个链接」「这个视频讲了什么」触发。Skill 只能路由实际加载它的 Agent，不替未加载的客户端强制拦截联网操作。共享全局规则应与 [浏览器选路.md](references/浏览器选路.md) 一致：专用来源优先，日常外部网页默认 ego-browser，开发与调试按任务选择；保留用户指定环境和独立技术降级。默认选择不等于强制所有 Agent、账号和任务使用同一个浏览器。
 
 ### OpenCLI Profile
 
@@ -117,6 +117,7 @@ node scripts/find-url.mjs "<关键词>" --since 7d
 
 | 文件 | 读取时机 |
 |---|---|
+| [浏览器选路.md](references/浏览器选路.md) | 需要浏览器时的默认选择、开发场景、指定环境与技术降级 |
 | [search-routing.md](references/search-routing.md) | 全网搜索、网页、历史与站点经验 |
 | [platform-routing.md](references/platform-routing.md) | 平台动作、命令发现与维护边界 |
 | [failure-domains.md](references/failure-domains.md) | 失败作用域、结果信封与有界降级 |

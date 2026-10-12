@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "_doc": "Lookup 的策略资料，不是自动执行器。Agent 按任务选择 provider、执行与验收；本文件不自动运行 args、priority、validator 或 fallback。OpenCLI 命令事实来自安装版本的 opencli list -f json；selftest 仅核对必要合约。active/conditional 是登记状态，不表示当前健康。",
   "failure_domains": {
     "_model": "分别判断浏览器进程、站点账号、bridge+Profile、site+action；只有共享实际依赖才共享故障。",
@@ -21,23 +21,23 @@
     "deadline_exceeded",
     "unknown"
   ],
-  "ego_browser_fallback": {
+  "ego_browser": {
     "provider_id": "ego-browser",
     "failure_domain": "ego-browser-api",
     "invocation": "load-installed-official-skill",
-    "priority": 90,
     "use_when": [
-      "前序适合任务的API/CLI与宿主浏览器不可用或内容不足",
-      "用户明确指定ego环境"
+      "无合适专用来源且本机日常外部网页需要浏览器",
+      "用户明确指定ego环境",
+      "开发或其他任务中实际能力最合适"
     ],
     "useless_when": [
       "已确认同一ego进程不可用",
       "同一站点账号认证失效或风控"
     ],
     "requires": [
-      "加载正式安装ego-browser Skill",
+      "加载与安装版本匹配的正式ego-browser Skill",
       "只操作本任务已证明归属的空间",
-      "用户接管后停止"
+      "用户接管或权限拒绝后停止相关操作"
     ]
   },
   "actions": {
@@ -500,7 +500,7 @@
           "id": "host-browser-weixin-dom",
           "type": "manual",
           "status": "conditional",
-          "priority": 10,
+          "priority": 30,
           "failure_domain": "host-browser-api",
           "evidence_type": "full_text",
           "validator": "task_sufficient_with_provenance",
@@ -508,13 +508,13 @@
             "宿主浏览器可用",
             "已观察真实落地URL与正文"
           ],
-          "_note": "使用宿主正式接口；搜狗跳转/验证页不代表正文"
+          "_note": "按浏览器选路的指定环境或技术降级条件使用宿主正式接口；搜狗跳转/验证页不代表正文"
         },
         {
           "id": "ego-browser-weixin-dom",
           "type": "manual",
           "status": "conditional",
-          "priority": 30,
+          "priority": 10,
           "failure_domain": "ego-browser-api",
           "selectors": {
             "title": "#activity-name",
@@ -523,7 +523,7 @@
           },
           "validator": "task_sufficient_with_provenance",
           "evidence_type": "full_text",
-          "_note": "最终浏览器候选，加载正式ego-browser Skill；历史selector失效时重新观察"
+          "_note": "本机日常外部网页的默认浏览器，加载正式ego-browser Skill；用户指定环境优先；历史selector失效时重新观察"
         },
         {
           "id": "opencli-weixin-download",
@@ -830,15 +830,14 @@
       "helper不联网、不路由、不重试、不证明来源真实性"
     ]
   },
-  "host_browser_fallback": {
+  "host_browser": {
     "provider_id": "host-browser",
     "failure_domain": "host-browser-api",
     "invocation": "discover-current-agent",
-    "priority": 80,
     "use_when": [
-      "无合适API/CLI动作",
-      "当前site+action输出不足",
-      "有独立可用浏览器路径能绕开已确认故障"
+      "用户指定当前宿主浏览器或特定环境",
+      "localhost预览、元素标注、前端验证或调试更适合宿主Browser或DevTools",
+      "ego技术不可用或能力不足，且候选能绕开已确认失败依赖"
     ],
     "requires": [
       "当前宿主能力文档",
@@ -847,11 +846,12 @@
     ]
   },
   "browser_routing": {
-    "order": [
-      "user-explicit-environment",
-      "suitable-host-browser",
-      "ego-browser"
-    ],
-    "note": "顺序是Agent策略，须核对能力/登录态/共享失败域；不为重试静默切换账号"
+    "reference": "references/浏览器选路.md",
+    "dedicated_sources_first": true,
+    "user_environment_first": true,
+    "local_external_web_default": "ego-browser",
+    "development_selection": "按任务比较实际可用的宿主Browser、DevTools与ego",
+    "technical_fallback": "independent-authorized-browser",
+    "note": "策略不自动执行；默认不等于唯一。核对能力、登录态和共享失败域；不因权限拒绝或用户接管换工具绕过限制。"
   }
 }
