@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # 零平台业务请求：检查指定 Profile 的 daemon/extension 状态，必要时启动 daemon。
 # 一个 Python 进程维护 monotonic 预算与子进程归属，避免反复启动解释器计时。
-# 内部启动预算 3.2s，恢复预算 0.75s，总预算 4.2s；正常调度下墙钟 <5s。
+# daemon 启动预算 3.2s；监听后另给扩展 17s 重连；恢复预算 0.75s。
+# 已运行状态仍快速返回；未监听失败 <5s，冷启动重连含收尾 <22s（正常调度）。
 set -uo pipefail
 if ! command -v python3 >/dev/null 2>&1; then
   printf '%s\n' '{"ok":false,"state":"dependency_missing","next":"install_python3","elapsed_ms":0}'
@@ -24,6 +25,7 @@ from urllib.parse import urlencode
 
 START = time.monotonic()
 START_DEADLINE = START + 3.2
+RECONNECT_BUDGET = 17.0
 TOTAL_DEADLINE = START + 4.2
 PROFILE = os.environ.get('LOOKUP_OPENCLI_PROFILE', 'ego-lite')
 PORT = os.environ.get('OPENCLI_DAEMON_PORT', '19825')
@@ -177,7 +179,7 @@ def prepare_lock():
 
 
 def main():
-    global status_url, context_id, PORT, daemon_child
+    global status_url, context_id, PORT, daemon_child, TOTAL_DEADLINE
     if os.environ.get('OPENCLI_CDP_ENDPOINT'):
         raise HealthFailure('unsupported_transport', 'unset_opencli_cdp_endpoint', 78)
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,63}', PROFILE):
@@ -227,18 +229,26 @@ def main():
                                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                     stderr=subprocess.DEVNULL, close_fds=True, start_new_session=True)
     last_status = {}
-    while time.monotonic() < START_DEADLINE:
+    phase_deadline = START_DEADLINE
+    waiting_for_extension = False
+    while time.monotonic() < phase_deadline:
         check_signal()
-        _, status = probe(min(0.25, START_DEADLINE - time.monotonic()))
+        _, status = probe(min(0.25, phase_deadline - time.monotonic()))
         check_signal()
         if status:
             last_status = status
             if classify(status, cold=True):
                 emit(True, 'ready', 'running', 'connected', 'use_opencli', status)
                 return 0
-        if daemon_child.poll() is not None and not last_status:
+            if not waiting_for_extension:
+                # The daemon is listening. Allow one complete extension retry
+                # backoff; repeated disconnected replies never renew this budget.
+                phase_deadline = time.monotonic() + RECONNECT_BUDGET
+                TOTAL_DEADLINE = phase_deadline + 1.0
+                waiting_for_extension = True
+        if daemon_child.poll() is not None and not status:
             raise HealthFailure('daemon_start_failed', 'check_opencli_daemon', 69, 'stopped')
-        time.sleep(max(0, min(0.1, START_DEADLINE - time.monotonic())))
+        time.sleep(max(0, min(0.1, phase_deadline - time.monotonic())))
     if last_status:
         if last_status.get('profileDisconnected') is True:
             raise HealthFailure('profile_disconnected', 'connect_lookup_profile', 78, 'running', 'disconnected', last_status)

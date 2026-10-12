@@ -113,10 +113,16 @@ if os.environ.get('FAKE_START_FAIL') == '1':
     raise SystemExit(1)
 started = time.monotonic()
 delay = float(os.environ.get('FAKE_START_DELAY', '0'))
-while time.monotonic() - started < 8:
+reconnect_delay = float(os.environ.get('FAKE_RECONNECT_DELAY', '0'))
+lifetime = float(os.environ.get('FAKE_DAEMON_LIFETIME', '8'))
+while time.monotonic() - started < lifetime:
     if (base / 'stop-request').exists(): break
     if time.monotonic() - started >= delay:
         (base / 'ready-pid').write_text(str(os.getpid()))
+    if time.monotonic() - started >= reconnect_delay:
+        (base / 'extension-ready').touch()
+    if os.environ.get('FAKE_EXIT_AFTER_STATUS') == '1' and (base / 'disconnected-seen').exists():
+        raise SystemExit(1)
     time.sleep(.02)
 """
 
@@ -159,6 +165,11 @@ if mode in ('required', 'cold-required'):
     status.update(profileRequired=True)
 if mode == 'profile-disconnected':
     status.update(extensionConnected=False, profileDisconnected=True)
+if mode == 'cold-delayed-profile' and not (base / 'extension-ready').exists():
+    # Read a daemon-owned marker: macOS Python 3.9 monotonic clocks are
+    # process-local, so separate fixture processes must not compare them.
+    status.update(extensionConnected=False, profileDisconnected=True)
+    (base / 'disconnected-seen').touch()
 if mode == 'wrong-profile':
     status.update(contextId='unrelated-context')
 if mode == 'reconnect':
@@ -183,9 +194,9 @@ class HealthTests(Fixture):
         write(self.bin / 'curl', '#!' + sys.executable + '\n' + MOCK_CURL, True)
         self.command = ['bash', str(ROOT / 'scripts/opencli-health.sh')]
 
-    def health(self, mode='ready', **env):
+    def health(self, mode='ready', timeout=6, **env):
         start = time.monotonic()
-        code, out, err = self.run_cmd(self.command, FAKE_MODE=mode, **env)
+        code, out, err = self.run_cmd(self.command, timeout=timeout, FAKE_MODE=mode, **env)
         self.wall = time.monotonic() - start
         self.assertFalse(err, err)
         return code, json.loads(out)
@@ -223,6 +234,38 @@ class HealthTests(Fixture):
         self.assertEqual(code, 0)
         self.assertTrue(result['ok'])
         self.assertGreaterEqual(int((self.base / 'ready-count').read_text()), 2)
+
+    def test_cold_start_waits_through_extension_backoff(self):
+        # Installed extension retry can take 15s plus jitter. A 16s fixture
+        # verifies the real cold-start failure without a browser or network.
+        code, result = self.health('cold-delayed-profile', timeout=21,
+                                   FAKE_RECONNECT_DELAY='16', FAKE_DAEMON_LIFETIME='24')
+        self.assertEqual((code, result['state']), (0, 'ready'))
+        self.assertTrue(result['started_daemon'])
+        self.assertFalse(result['restored_daemon'])
+        self.assertTrue(self.daemon_alive())
+        self.assertLess(self.wall, 21)
+        self.lock_available()
+
+    def test_cold_reconnect_timeout_remains_bounded_and_cleans_own_daemon(self):
+        code, result = self.health('cold-delayed-profile', timeout=23,
+                                   FAKE_RECONNECT_DELAY='60', FAKE_DAEMON_LIFETIME='24')
+        self.assertEqual((code, result['state']), (78, 'profile_disconnected'))
+        self.assertGreaterEqual(self.wall, 17)
+        self.assertLess(self.wall, 22)
+        self.assertTrue(result['restored_daemon'])
+        self.assertFalse(self.daemon_alive())
+        self.lock_available()
+
+    def test_daemon_exit_during_reconnect_does_not_reuse_old_profile_status(self):
+        code, result = self.health('cold-delayed-profile', FAKE_RECONNECT_DELAY='60',
+                                   FAKE_EXIT_AFTER_STATUS='1')
+        self.assertTrue((self.base / 'disconnected-seen').exists())
+        self.assertEqual((code, result['state']), (69, 'daemon_start_failed'))
+        self.assertEqual(result['daemon'], 'stopped')
+        self.assertLess(self.wall, 3)
+        self.assertTrue(result['restored_daemon'])
+        self.assertFalse(self.daemon_alive())
 
     def test_existing_disconnected_daemon_is_not_touched(self):
         existing = self.spawn([sys.executable, '-c', 'import time; time.sleep(8)'])

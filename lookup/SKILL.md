@@ -2,7 +2,7 @@
 name: lookup
 description: "联网搜索、读取链接、获取平台内容与字幕、查询浏览历史或综合资料；统一选路与证据验收，专用来源优先，支持当前 Agent 浏览器与 ego-browser 兜底。"
 metadata:
-  version: "1.11.0"
+  version: "1.11.1"
   source: local
 ---
 

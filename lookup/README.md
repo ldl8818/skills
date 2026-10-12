@@ -90,6 +90,8 @@ python3 -m unittest discover -s tests -p 'test_result_helpers.py'
 
 默认自检查本地依赖、选定 bridge/Profile 和必要注册表合约，不发平台业务请求。daemon 休眠时可按需启动。`--auth` 增加有界认证检查；`--live` 再发一条最小业务查询，可能创建或复用浏览器资源。可选候选缺失、合约漂移和实际业务失败分别报告。
 
+健康检查对已运行 daemon 快速返回。冷启动分两段：先用3.2秒等待 daemon 监听，再给扩展17秒完成已有重连退避；收到断连状态不会反复延长预算。未监听的失败在正常调度下5秒内返回，冷启动重连连同收尾在22秒内结束。只检查状态，不重发平台动作，也不切换到其他已连接 Profile。
+
 `node scripts/opencli-run.mjs ...` 负责 Profile 一致性与有界异步等待。`OPENCLI_RUN_IMPORT_TIMEOUT_MS` 默认给入口加载 15 秒；`LOOKUP_OPENCLI_TIMEOUT_MS` 默认给整个调用 90 秒，包含加载阶段。业务超时后不能自动重派同一动作。兼容补丁的版本与源码条件见 [opencli-windows.md](references/opencli-windows.md)，工具升级后需重新核验该入口。
 
 结果 helper 只处理已捕获的数据：`scripts/normalize-result.py` 从 stdin 读取包含 provider、exit_code、stdout、stderr 的 JSON 信封；`scripts/clean-subtitles.py` 清洗实际字幕文件，保留时间位置与合法重复。它们不自动选择工具、登录或查询，具体输入见对应参考与 `--help`。
