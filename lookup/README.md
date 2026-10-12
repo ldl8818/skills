@@ -1,145 +1,130 @@
 # lookup
 
-> The general entry point for public-web lookup, content retrieval and source-backed research. Skill content is in Chinese.
+> One general entry point for web lookup, content retrieval and source-backed research. Skill instructions are in Chinese.
 
-一般联网检索入口：搜索、抓网页正文、读第三方平台内容、检索 ego lite 书签与浏览历史。lookup 负责选路、只读边界和结果验收；专用产品文档或连接器优先，多来源研究综合使用本 Skill 的条件参考，需要点击、输入等交互时固定走 `ego-browser`。
+Lookup 负责把联网目标交给合适工具，并验证结果是否足够、真实且可追溯。专用官方资料和已连接服务优先；平台动作直接调用 OpenCLI 或专用 CLI；需要浏览器时先发现当前 Agent 合适的浏览器能力，最后使用 ego lite 的正式 `ego-browser` Skill。
 
-它解决的不是「怎么调某个抓取工具」，而是**在有限的上下文窗口里，怎么用最少的 token 拿回够用且真实的信息**：
+## 职责与可移植性
 
-- **分层选通道** — 能停在「已结构化的结果」就不要下沉到「整页拉回自己读」。实测抓同一个 X 主页，整页快照与页面内跑 JS 只取 `article` 节点，信息量相同、token 差一个数量级。
-- **内容有效性校验** — 抓取工具返回 `status=ok` 不等于拿到了内容。小红书、B站、YouTube 三个平台都出现过 `ok` 但内容是导航菜单、二进制乱码、页脚版权的情况；公众号那条路更是返回反爬验证码页却报成功。正文、关键字段、主题、哨兵值和截断状态都要检查，命中失败判据即换通道。
-- **失效域建模** — 两个工具名不同不代表是两条路。`ego-browser` 和 OpenCLI 共享同一个浏览器进程与登录态，所以浏览器崩了换谁都没用；但 OpenCLI 多依赖 daemon、扩展和站点适配器两层，那两层坏的时候换 `ego-browser` 是有效兜底。判断故障在哪一层，比盲目重试省一轮。
-- **动态命令发现** — OpenCLI 的 `list -f json` 是命令、参数、字段和读写权限的事实源。lookup 不复制整套命令清单，只保留必须覆写的默认值、验收条件和跨工具优先级。
+Lookup 是策略层，不复制平台爬取实现。它保留几类跨工具判断：
 
-## 这个 Skill 能不能直接拿走用
+- 先取结构化字段或定向正文，完整短帖已足够时不多请求一次。
+- 区分成功、真实无匹配、部分证据与失败，保留来源、时间、访问 URL 和证据类型。
+- 按 bridge/Profile、站点账号、site/action 分别降级；一个动作出错不拖垮全部平台。
+- 核对工具是否共享浏览器、账号或网络，选择能绕过失败依赖的候选。
+- 根据安装版本发现公开命令；不把历史经验、无窗口或零费用写成永久保证。
 
-**能拿走的是决策结构，不是命令本身。**
+**OpenCLI 是独立开源工具。** 浏览器能力和登录态是否可用取决于用户环境，不绑定某一个 Agent。Lookup 的 OpenCLI helper 默认使用已有 `ego-lite` Profile，也支持用 `LOOKUP_OPENCLI_PROFILE` 指定其他明确配置的 Profile；它不会自行换账号。历史检索脚本仍只支持 ego lite，这是局部能力限制，不代表其他联网路径不可用。
 
-与本仓库另两个 Skill 不同，lookup 里的具体命令绑定了作者的本机工具链——其中 `ego lite` 浏览器和 OpenCLI 适配器不是通用可得的软件。你直接安装后，六平台那部分命令大概率跑不起来。
+Agent Reach 可选提供安装、诊断、后端选型与已配置音频转写。它不必经过每条请求；Lookup 保留唯一通用检索触发权，Agent Reach 和 OpenCLI `smart-search` 的通用路由 Skill 不同时自动接管搜索，专用能力可按需使用。
 
-真正可复用的是这几层判断：结构化结果优先、只读命令发现、内容有效性校验、失效域是否真正独立，以及「搜索结果是列表不是正文」这类反复踩过的坑。把命令换成你自己的工具，这套结构照样成立。
+## 按需依赖
 
-底层工具是可替换的取水口，换工具不改决策结构——这是 SKILL.md 开头就写明的设计前提。
+| 依赖 | 用途与边界 |
+|---|---|
+| 当前 Agent 搜索、连接器或官方文档能力 | 优先使用已安装且适合任务的来源 |
+| OpenCLI 与已配置 Profile | 平台结构化动作；缺失时选择其他可用路径 |
+| Node.js ≥ 20.18.1 | 当前 OpenCLI 的运行要求；随包 mjs helper 随之使用同一环境 |
+| yt-dlp 与其要求的 JS runtime | YouTube 搜索及人工／自动字幕 |
+| bili-cli | B站搜索／详情／音频的可选直接路径 |
+| mcporter 与已配置的 Exa／豆包等 | 可选搜索来源，不要求每个人都安装 |
+| agent-reach | 可选环境诊断与转写；转写另需 ffmpeg／ffprobe 和配置好的服务商 |
+| python3、curl、jq | 正文提取、结果处理和 OpenCLI 门禁／合约检查 |
+| 当前 Agent 浏览器能力 | 需要渲染、交互或 CLI 缺少动作时使用，按实际工具文档发现 |
+| ego lite 与正式 ego-browser Skill | 最后的浏览器候选；使用其当前正式接口与资源归属规则 |
 
-## 依赖
+静态正文脚本 `scripts/fetch.sh` 随 Skill 分发，默认只请求原站、本地提取，不自动安装依赖或转发第三方。支持 HTTP(S) HTML、纯文本与 Markdown，保留最终来源 URL；拒绝凭据 URL、非文本响应和超出大小限制的内容。`--prefer` 选择提取器，`--max-output-chars` 默认 40,000；stdout 保持正文，stderr 给机器可读状态。exit 3 表示有正文但截断，仍可按任务使用已证实部分。已有 `readability-lxml`／`html2text` 时可提升提取质量。
 
-| 依赖 | 用途 | 缺了会怎样 |
-|---|---|---|
-| `ego lite` | agent 专用浏览器，提供 `ego-browser` 命令 | X / 小红书 / Douyin / 公众号全部不可用 |
-| `opencli` | 平台适配器，六平台的结构化搜索 | 同上，且失去登录态判断手段 |
-| `agent-reach` | 可选的跨工具后端体检 | 六平台之外的渠道需自行判断后端；不影响常用路由 |
-| `yt-dlp` | YouTube 搜索与字幕 | YouTube 通道不可用 |
-| `bili` | B站免登录搜索 | B站搜索退化为走 OpenCLI |
-| `mcporter` | 调 Exa 与豆包搜索（MCP stdio） | 英文语义搜索与中文全网搜索不可用 |
-| 随包 `scripts/fetch.sh` | 静态抓取博客/文档/新闻 | 随 Lookup 安装，不依赖其他 Skill |
-| `node` ≥ 18 | 跑 `scripts/*.mjs` 与 OpenCLI 异步兼容入口 | 本机历史、站点经验和 browser adapter 不可用 |
-| `python3`、`curl`、`jq` | 健康门禁、HTTP 状态与 OpenCLI 合约校验 | 默认自检不完整 |
-
-静态提取脚本已随 Lookup 分发：从 Lookup 根目录运行 `bash scripts/fetch.sh <url>`。仅请求原站，支持 HTTP(S) 文本页面；拒绝凭据 URL、非文本响应及超过5 MB的内容，失败不自动转发第三方。默认无额外 Python 依赖；已有 `readability-lxml`／`html2text` 时可提升正文提取质量，不自动安装。源自 Waza 的本地提取实现与精简规则保留 [原作者 MIT 许可](scripts/LICENSE-waza)，不再依赖已退役的阅读或研究 Skill。
-
-`yt-dlp`、`bili` 装在 uv tool 隔离环境（`uv tool list` 可查），可执行文件在 `~/.local/bin/`。
+相关 Waza 衍生实现保留 [原作者 MIT 许可](scripts/LICENSE-waza)。具体依赖安装与版本以工具自己的官方文档为准，普通查询不自动维护环境。
 
 ## 安装
 
-多客户端共用时装到共享全局目录：
+多客户端共用时安装到共享目录：
 
 ```bash
 git clone https://github.com/ldl8818/skills.git
 mkdir -p ~/.agents/skills
-rsync -a --delete --exclude '.DS_Store' \
-  skills/lookup/ ~/.agents/skills/lookup/
+test ! -e ~/.agents/skills/lookup && test ! -L ~/.agents/skills/lookup && \
+  rsync -a --exclude '.DS_Store' skills/lookup/ ~/.agents/skills/lookup/
 ```
 
-再给各客户端建**单 Skill 软链**（不要整目录链接）：
+上面的复制步骤只接受未安装的目标。共享入口已存在或是软链时，先确认其真实来源，再更新原安装或其 Git checkout，不覆盖另一份安装。再给需要的客户端建立单 Skill 软链；客户端目标已存在时同样先核对来源：
 
 ```bash
 mkdir -p ~/.claude/skills ~/.codex/skills
-ln -s ~/.agents/skills/lookup ~/.claude/skills/lookup
-ln -s ~/.agents/skills/lookup ~/.codex/skills/lookup
+test ! -e ~/.claude/skills/lookup && test ! -L ~/.claude/skills/lookup && \
+  ln -s ~/.agents/skills/lookup ~/.claude/skills/lookup
+test ! -e ~/.codex/skills/lookup && test ! -L ~/.codex/skills/lookup && \
+  ln -s ~/.agents/skills/lookup ~/.codex/skills/lookup
 ```
 
-只给 Claude Code 用时，把 rsync 的目标换成 `~/.claude/skills/lookup/` 即可。
+只给一个客户端使用时，可直接安装到该客户端发现的 Skill 目录。新开或重启客户端会话后，用「搜一下」「读这个链接」「这个视频讲了什么」触发。Skill 只能路由实际加载它的 Agent，不替未加载的客户端强制拦截联网操作。共享全局规则若已有旧的浏览器强制顺序，应同步为「联网检索使用 Lookup；浏览器选择遵循用户指定环境，并按 Lookup 发现合适宿主能力，最后 ego-browser」，避免更高层规则覆盖这里的选路。
 
-装好后新开或重启客户端会话才会加载。之后说「搜一下…」「读一下这个网页」「这个视频讲了什么」即可触发。
+### OpenCLI Profile
 
-OpenCLI 还需把 ego lite 中已连接的官方扩展 Profile 绑定为固定别名；`<contextId>` 只能取自 ego lite，不能拿 Chrome 的 Profile 代替：
+先按 OpenCLI 官方文档完成安装及扩展连接，再从实际 Profile 清单选择用户明确使用的浏览器。不要用其他 Profile 通过门禁：
 
 ```bash
 opencli profile list
 opencli profile rename <contextId> ego-lite
-opencli profile use ego-lite
 ```
 
-### 可选：ego task space 自动收尾
+默认别名是 `ego-lite`。需要另一明确配置的 Profile 时，给 health 与 runner 使用同一 `LOOKUP_OPENCLI_PROFILE` 环境变量。helper 不替用户登录，也不注入或导出 Cookie。
 
-ego lite 的每个 agent task space 底层是一个独立浏览器窗口，靠 Agent 主动收尾不可靠——会话被打断、上下文压缩，窗口就永久残留。`scripts/ego-spaces.mjs` 提供两层机制兜底：Stop hook 门禁（结束回复时若仍有 agent 持有的 space 就阻断并让模型处理）＋ SessionStart 闲置回收（全局超过 2 小时未用 ego 则清理孤儿 space）。
-
-需要往 `~/.claude/settings.json` 加三条 hook，配置见 [`references/ego-space-hooks.md`](references/ego-space-hooks.md)。零依赖，只要 Node ≥ 18；不装也不影响其他功能。
+ego 不是必装前提；需要它时加载当前正式 `ego-browser` Skill。旧空间辅助脚本只做保守检查，普通安装不自动写 hook、不按全局闲置时间回收未知空间，见 [ego-space-hooks.md](references/ego-space-hooks.md)。
 
 ## 验证
 
-```bash
-bash scripts/selftest.sh          # 本地依赖 + L3 门禁 + 注册表合约
-bash scripts/selftest.sh --auth   # 再检查有界登录态
-bash scripts/selftest.sh --live   # 再发一条最小真实查询
-bash tests/test_opencli_health.sh # 冷启动、并发锁、恢复和 runner 离线回归
-bash tests/test_find_url.sh       # ego lite 本机历史回归
-bash tests/test_match_site.sh     # 站点经验真身回归
-python3 -m unittest discover -s tests -p 'test_fetch.py' # 独立正文提取与失败边界
-```
-
-默认模式不查登录态、不发平台请求，也不创建 automation 容器：daemon 休眠时允许按需启动，ego lite 扩展未连接时 5 秒预算内失败并恢复本次启动的 daemon。`--auth` 才做登录态 quickCheck；`--live` 包含前两档并只发一条 OpenCLI B站最小查询，可能创建或复用 automation 容器。
-
-browser-backed adapter 统一经 `node scripts/opencli-run.mjs ...` 执行。OpenCLI `1.8.6`～`1.8.8` 的入口会用同步 `parse()` 启动异步动作，直接调用可能退出 `0` 但 stdout 为空；兼容入口固定使用 `ego-lite` Profile，只对尚未派发动作的入口加载设置硬时限，动作开始后完整等待 OpenCLI 自身收敛，避免降级操作与仍在运行的旧操作重叠。
-
-失败项按 `references/failure-domains.md` 的分层判据处理：探活失败是 L3，登录态失败是 L2，注册表合约漂移是 L4。
-
-## 测试用例
-
-`evals/evals.json` 有 16 条用例，每条针对一个「不读 Skill 就容易做错」的点：除原有时效、正文、只读与安全边界外，还覆盖 daemon 冷启动、扩展断连后的任务内熔断，以及下一独立任务重新探活。
-
-`expectations` 里每条都能从 transcript 客观核验（发了哪条命令、有没有二次取正文、交付时怎么声明时效），不是主观评分。跑法见官方 skill-creator 的 eval 流程；用例本身与运行工具解耦，换测试框架不用改。
-
-## 本机数据（在 Skill 目录之外）
-
-站点抓取经验存在 `~/.agents/data/site-patterns/<域名>.md`，放在 skill 目录之外是为了增删、重装 skill 都不影响积累。
-
-`match-site.mjs` 直接读取这份跨 Skill 数据，不依赖仓库内软链。首次使用只需创建数据目录：
+从 Lookup 根目录运行：
 
 ```bash
-mkdir -p ~/.agents/data/site-patterns
+bash scripts/selftest.sh
+bash scripts/selftest.sh --auth
+bash scripts/selftest.sh --live
+bash tests/test_opencli_health.sh
+bash tests/test_find_url.sh
+bash tests/test_match_site.sh
+python3 -m unittest discover -s tests -p 'test_fetch.py'
+python3 -m unittest discover -s tests -p 'test_result_helpers.py'
 ```
 
-没建也不会报错——`match-site.mjs` 会明确告诉你数据目录不存在，而不是静默返回空。
+默认自检查本地依赖、选定 bridge/Profile 和必要注册表合约，不发平台业务请求。daemon 休眠时可按需启动。`--auth` 增加有界认证检查；`--live` 再发一条最小业务查询，可能创建或复用浏览器资源。可选候选缺失、合约漂移和实际业务失败分别报告。
 
-开工前查、收工写回：
+`node scripts/opencli-run.mjs ...` 负责 Profile 一致性与有界异步等待。`OPENCLI_RUN_IMPORT_TIMEOUT_MS` 默认给入口加载 15 秒；`LOOKUP_OPENCLI_TIMEOUT_MS` 默认给整个调用 90 秒，包含加载阶段。业务超时后不能自动重派同一动作。兼容补丁的版本与源码条件见 [opencli-windows.md](references/opencli-windows.md)，工具升级后需重新核验该入口。
+
+结果 helper 只处理已捕获的数据：`scripts/normalize-result.py` 从 stdin 读取包含 provider、exit_code、stdout、stderr 的 JSON 信封；`scripts/clean-subtitles.py` 清洗实际字幕文件，保留时间位置与合法重复。它们不自动选择工具、登录或查询，具体输入见对应参考与 `--help`。
+
+## 行为评估
+
+`evals/evals.json` 保留原有场景并补充故障作用域、已有足够正文、人工字幕、浏览器选择、未知指标与空间归属等边界。用例是评估规范，不是已完成的跑分。
+
+从实际 transcript 和交付内容检查是否满足目标、授权、时效、来源与证据标准；工具名只在能力或契约本身是测试目标时限定。不要求无意义的固定二次请求，不以运行了某个命令替代内容验收。离线单元测试、场景评估和真实平台验证分别报告。
+
+## 本机数据
+
+可复用公开站点经验位于 `~/.agents/data/site-patterns/`，不在 Skill 安装目录里。匹配命令：
 
 ```bash
 node scripts/match-site.mjs "<用户输入或目标域名>"
+node scripts/find-url.mjs "<关键词>" --since 7d
 ```
 
-检索 ego lite 书签与历史，是公网搜不到的内部系统、后台、内网域名的唯一入口：
-
-```bash
-node scripts/find-url.mjs <关键词> [--only bookmarks|history] [--since 7d]
-```
+`find-url.mjs` 只查 ego lite 的一个 Profile：默认 `Local State` 的 `profile.last_used`，未设置则 `Default`；`--profile "<已登记目录名>"` 可指定授权目标，不遍历所有 Profile。`--json` 提供结构化结果与 `more_available`，错误不会伪装成空列表；普通 top-N 和触及保护上限的 partial 分别报告。其他浏览器要发现独立的已授权能力，不猜内部地址、不把内部关键词发到公网。详细输出与退出码见 [search-routing.md](references/search-routing.md)。
 
 ## 参考文件
 
-SKILL.md 只留所有任务都要执行的流程、安全边界和验收判据；搜索与平台细节按需读：
-
-| 文件 | 什么时候读 |
+| 文件 | 读取时机 |
 |---|---|
-| [`references/研究综合.md`](references/研究综合.md) | 多来源研究、资料综合与参考文章；普通搜索不加载 |
-| [`references/search-routing.md`](references/search-routing.md) | 全网搜索、AI 资讯、已知网页和本机历史 |
-| [`references/platform-routing.md`](references/platform-routing.md) | 平台内检索、OpenCLI 动态发现和 Agent-Reach 体检 |
-| [`references/failure-domains.md`](references/failure-domains.md) | 判断故障层级、评估某条通道值不值得加 |
-| [`references/opencli-windows.md`](references/opencli-windows.md) | OpenCLI 留下的空白窗口关不掉时 |
-| [`references/ego-space-hooks.md`](references/ego-space-hooks.md) | 装 task space 自动收尾的 hook、或 Stop 被它拦下时 |
-| [`references/weixin-article.md`](references/weixin-article.md) | 取公众号文章正文（搜狗跳转链的处理） |
-| [`references/youtube-subtitles.md`](references/youtube-subtitles.md) | 下 YouTube 字幕 |
-| [`references/providers.json`](references/providers.json) | 策略覆盖层：跨工具优先级、必要 OpenCLI 合约、失效域与校验器 |
+| [search-routing.md](references/search-routing.md) | 全网搜索、网页、历史与站点经验 |
+| [platform-routing.md](references/platform-routing.md) | 平台动作、命令发现与维护边界 |
+| [failure-domains.md](references/failure-domains.md) | 失败作用域、结果信封与有界降级 |
+| [providers.json](references/providers.json) | 跨工具策略、必要合约与证据条件；不自动执行 |
+| [youtube-subtitles.md](references/youtube-subtitles.md) | 字幕、视频证据与转写 |
+| [weixin-article.md](references/weixin-article.md) | 公众号跳转与正文 |
+| [ego-space-hooks.md](references/ego-space-hooks.md) | 正式 ego-browser 入口与空间归属 |
+| [opencli-windows.md](references/opencli-windows.md) | doctor 与窗口行为的版本依据 |
+| [研究综合.md](references/研究综合.md) | 多来源分析；普通搜索不加载 |
 
 ## License
 
-MIT，见仓库根 [`LICENSE`](../LICENSE)。
+MIT，见仓库根 [LICENSE](../LICENSE)。

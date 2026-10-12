@@ -1,111 +1,91 @@
 # 搜索与网页路由
 
-用于全网搜索、AI 资讯、已知网页、本机浏览历史和站点经验。平台内搜索改读 `platform-routing.md`。
-
-## 目录
-
-- [选择入口](#选择入口)
-- [结构化结果优先](#结构化结果优先)
-- [中文与英文搜索](#中文与英文搜索)
-- [AI 资讯](#ai-资讯)
-- [读取已知网页](#读取已知网页)
-- [本机历史与站点经验](#本机历史与站点经验)
-- [时效与原文核实](#时效与原文核实)
+用于全网搜索、AI 资讯、已知网页、本机历史和站点经验。平台内搜索读 [platform-routing.md](platform-routing.md)。
 
 ## 选择入口
 
-| 目标 | 首选 | 备注 |
-|---|---|---|
-| 中文全网搜索 | 豆包搜索 | 支持发布时间与天数过滤，月额度有限 |
-| 英文、全球、技术论据 | Exa | 返回 highlights，通常不用再抓整页 |
-| AI 圈动态 | aihot | 先发现，再回原文核实 |
-| 英文搜索兜底 | WebSearch | Exa 无结果或不可用时 |
-| 已知博客、文档、新闻 | `fetch.sh` | 静态抓取首选 |
-| 自己访问过的页面 | `find-url.mjs` | 只查 ego lite 书签与历史 |
-| 动态、登录、交互网页 | ego-browser | 长尾站点最后使用 |
+| 目标 | 路径 |
+|---|---|
+| 已指定服务、产品文档、代码仓库 | 专用官方资料／已连接服务／对应 Skill；对版本敏感信息核对当前来源 |
+| 普通全网搜索 | 当前 Agent 已有搜索能力；若已有配置，按语言与覆盖范围选 Exa、豆包等 |
+| 中文实时话题 | 能提供可核验时间的搜索服务；已有豆包配置时可用其时效参数 |
+| 英文、全球、技术出处 | 已有 Exa 或宿主搜索，回到必要的第一手资料 |
+| AI 圈动态 | aihot 等聚合源发现候选，再核对相关原始出处 |
+| 已知静态网页 | 随包 `scripts/fetch.sh` 本地提取 |
+| 动态、登录、需交互页面 | 当前 Agent 合适且已授权的浏览器，最后 ego-browser |
+| 用户访问过的内部页面 | 用户指明的历史／书签能力；现有 `find-url.mjs` 只查 ego lite |
 
-## 结构化结果优先
+不要因为一个可选工具缺失就声称不能联网，也不要为了普通检索临时安装整个工具链。宿主和用户明确的来源／浏览器要求优先。
 
-按以下层级拿数据，能停在上一层就不下沉：
+## 结构化结果与足够性
 
-1. API／CLI 已结构化字段；
-2. 定向正文或目标节点；
-3. 整页内容。
+优先 API／CLI 字段，再取定向正文或节点，最后才读整页。只保留问题需要的标题、作者、时间、URL、相关正文和必要指标。
 
-对 JSON 结果先裁字段，再放进上下文。只保留回答问题需要的标题、作者、时间、URL、正文摘要和必要指标。
+按结果是否覆盖问题决定下一步：完整短帖或足够的官方段落可直接引用；搜索摘要、转述或截断片段只支持发现和有限结论。重要具体事实需要相应源头证据，但不强制同一完整内容重复读取。多来源分析见 [研究综合.md](研究综合.md)。
 
-## 中文与英文搜索
+## 已配置搜索服务示例
 
-英文与技术搜索：
-
-```bash
-mcporter call 'exa.web_search_exa(query: "<词>", numResults: 3)'
-```
-
-中文搜索：
+下面仅说明参数结构；动态关键词要经结构化参数或安全 argv 传入，不能插入未经转义的调用表达式。
 
 ```bash
-mcporter call 'huashu-doubao-search.doubao_search(query: "<词>", count: 5, max_age_days: 7)'
+mcporter call exa.web_search_exa query="<词>" numResults=3
+mcporter call huashu-doubao-search.doubao_search query="<词>" count=5 max_age_days=7
 ```
 
-- 用户问「最新、最近、今天」时传 `max_age_days`；不要求时效时省略，避免无理由缩窄结果。
-- 豆包额度为 500 次/月；不用于轮询或批量爬取。
-- Exa 适合英文技术和出处检索；中文实时话题优先豆包。
-- 搜索摘要只能支持初筛；引用具体事实时回原始 URL 核实。
+- 先确认工具存在且参数与当前 schema 一致；未配置时使用宿主搜索，不自动索取新 Key。
+- 用户要求最新／最近／今天时使用支持的时效参数，并核对逐条发布时间；未要求时效时不无故缩窄。
+- 配额和费用以实际配置与当前服务为准，不把历史月额度写成永久规则；普通检索不变成后台轮询或批量抓取。
+- 无匹配、限流、网络失败与结构缺失分别判断；保留已取到的证据，按缺口选择不同覆盖范围的服务。
 
 ## AI 资讯
 
+已有 aihot 可作为候选发现来源：
+
 ```bash
 curl -fsSL "https://aihot.virxact.com/api/v1/items?mode=selected&window=24h&limit=10"
-curl -fsSL "https://aihot.virxact.com/api/v1/dailies/latest"
 ```
 
-aihot 是单一编辑管道，适合发现，不替代源头：
-
-- 特定人物动态：回 X 或其官方来源；
-- 分钟级突发：回实时平台搜索；
-- 具体事实和时间点：打开条目原文核对；
-- 非 AI 领域：改用豆包、Exa 或 WebSearch。
+聚合器适合发现，不证明实时性或事实本身。人物动态回其公开原始来源，技术变更回官方文档／仓库，非 AI 领域使用合适搜索。单条没有时间字段时不编造发布时间。
 
 ## 读取已知网页
 
-静态页面首选：
+从 Lookup 根目录执行：
 
 ```bash
-bash scripts/fetch.sh <url>
+bash scripts/fetch.sh "<url>"
 ```
 
-命令从 Lookup 根目录运行；提取脚本随本 Skill 分发，无需另装阅读 Skill。默认仅请求原站，不自动降级或安装提取依赖。
+脚本随 Skill 分发，默认只请求原站、本地提取，不自动安装依赖、不自动发送到第三方。支持 HTML、纯文本与 Markdown；不执行页面 JS，纯文本中的代码标签保持字面含义。
 
-失败时先判形态：反爬、空壳、动态渲染、登录态、二进制或内容无关。用户允许向第三方发送的普通公开 URL 可用 Jina Reader 作为远端降级，认证、敏感和内网页面禁用：
+`--prefer auto|readability|stdlib` 选择提取器，`--max-output-chars N` 控制完整 stdout 预算（默认 40,000 字符，兼容 `--max-chars`）。stdout 是正文 Markdown，`Source` 记录最终重定向 URL；stderr 提供 `provider: lookup/fetch` 的 JSON 状态、提取器、媒体类型、截断及错误字段；成功／partial 还包含原始 `requested_url`、最终 `final_url` 和实际 UTC 抓取时间 `fetched_at`，后者不代表文章发布时间。exit 0 表示完整提取，3 表示已有正文但截断，1 表示错误；参数错误为 2。保留三路结果，不把 exit 3 的有效正文丢掉，也不把提取成功当内容真实性证明。
+
+失败时区分反爬、空壳、动态渲染、认证、非文本和内容无关。静态公开 URL 确认允许外发时可以考虑 Jina；认证、敏感或内网链接不得发送：
 
 ```bash
-curl -fsSL "https://r.jina.ai/<url>"
+curl -fsSL "https://r.jina.ai/<公开url>"
 ```
 
-`opencli web read` 不作默认入口：当前实现依赖浏览器，默认创建输出目录并下载图片。只有确需 iframe、等待选择器或渲染诊断时，才在理解窗口代价后使用 `--stdout` 和关闭图片下载；普通动态网页优先 ego-browser。
+动态或需登录页面优先使用当前宿主合适浏览器，再用正式 ego-browser；仅在独立路径确有帮助时换工具。OpenCLI `web read` 是否创建文件、下载图片、需要浏览器由当前帮助确认；普通阅读不默认归档。
 
-抓取结果必须通过 `SKILL.md` 的内容有效性校验。公众号搜狗跳转链是已知例外，必须读 `weixin-article.md`。
+公众号搜狗跳转另读 [weixin-article.md](weixin-article.md)，不要把中转验证页当正文。
 
 ## 本机历史与站点经验
 
-公网搜不到的内部后台、内网域名和自己访问过的页面，先查本机：
+用户明确找访问过的页面时，可运行：
 
 ```bash
-node scripts/find-url.mjs <关键词> [--only bookmarks|history] [--since 7d]
+node scripts/find-url.mjs "<关键词>" --since 7d
+node scripts/match-site.mjs "<域名或任务>"
 ```
 
-已知 URL 或域名开工前匹配站点经验：
+`find-url.mjs` 仅支持 ego lite，默认只读 `Local State` 中 `profile.last_used` 指向的一个 Profile，未设置则用 `Default`。用户指定其他已登记 Profile 时用 `--profile "<目录名>"`；这里是本机 Profile 目录名，不是 OpenCLI 别名。不为了查不到就遍历所有 Profile，也不读取 Cookie。
 
-```bash
-node scripts/match-site.mjs "<用户输入或目标域名>"
-```
+`--json` 返回 `profile / bookmarks / history / more_available`；stderr 的 `provider: lookup/find-url` 状态区分 `ok / empty / partial / error`。默认 `--limit 20` 是两个集合共享的总额度，书签优先、历史占用剩余额度；只需历史时显式用 `--only history`。普通 top-N 成功仍可带 `more_available`，`--limit 0` 总共最多返回 1,000 项，触及该上限且仍有结果才是 partial / exit 3。关键词按字面 AND 匹配；ASCII 大小写不敏感，非 ASCII 字符按原字面匹配。数据库读取失败或文件缺失不是无匹配；按实际状态说明范围，不猜地址、不把内部关键词发送公网。其他浏览器的历史要发现独立的已授权能力。
 
-找不到就如实说明，不猜地址。验证过的模式写回 `~/.agents/data/site-patterns/<域名>.md`，不得写凭据和私人正文。
+`match-site.mjs` 对真实 URL 按主机／子域边界匹配，真实主机优先于文本别名；不要因相似域名或查询参数里的别名命中就套用站点规则。站点经验在 `~/.agents/data/site-patterns/`，只保存验证过的公开结构和版本／日期。先匹配已有经验即可，不把一次失败写成永久封禁，不记录私人正文或凭据。
 
-## 时效与原文核实
+## 时效与来源
 
-- 搜索结果必须带可核对的发布时间，才能回答「最近」。
-- 服务端窗口只能证明候选经过时间筛选；不带单条时间字段时，不能编造具体时点。
-- 热门排序不等于最新排序。
-- 聚合器、搜索摘要和第三方转述不等于原文；重要事实至少打开一个源头。
+- 最新排序、可见发布时间、服务端时间窗口分别说明；热门不等于最新，窗口过滤不等于每条时间已核实。
+- 缺失时间、作者、正文或访问定位时标记未知／部分；不要为了完整格式虚构。
+- 把本次实际读取、来源自身宣称和推理区分开。研究涉及多种证据时按问题组合，不固定来源数量或阶段。

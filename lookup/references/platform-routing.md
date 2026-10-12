@@ -1,132 +1,84 @@
 # 平台检索路由
 
-用于 X、YouTube、小红书、B站、公众号、Douyin 及临时请求的其他平台。命令事实以 OpenCLI 当前注册表为准，本文只保存稳定策略和必须覆写的默认值。
+用于平台内搜索、帖子／文章正文、评论和视频信息。OpenCLI 当前安装版本的注册表是命令事实源；本文件只保存跨工具策略与证据边界。
 
 ## 目录
 
-- [通用发现流程](#通用发现流程)
-- [六个平台速查](#六个平台速查)
-- [时效与正文](#时效与正文)
-- [OpenCLI 失败处理](#opencli-失败处理)
-- [Agent-Reach 的位置](#agent-reach-的位置)
-- [浏览器兜底](#浏览器兜底)
+- [发现与执行](#发现与执行)
+- [平台速查](#平台速查)
+- [时效与内容](#时效与内容)
+- [失败与浏览器降级](#失败与浏览器降级)
+- [Agent Reach 与维护](#agent-reach-与维护)
 
-## 通用发现流程
+## 发现与执行
 
-1. 从注册表确认站点、动作、读写权限和依赖：
+1. 用户明确指定的服务、专用官方能力或已连接只读工具先用。已有结果足以支持问题时不额外抓取。
+2. 需要 OpenCLI 时按站点裁剪注册表，选择 `access: read`，再读取匹配命令帮助：
 
    ```bash
    opencli list -f json | jq --arg site "<site>" \
      '[.[] | select(.site == $site and .access == "read") | {site,name,strategy,browser,domain,args,columns}]'
-   ```
-
-2. 只选 `access: read`，再读取命令的当前参数。download、export 等本地落盘命令另看 `local_effect`，不能仅凭 read 自动执行：
-
-   ```bash
    opencli <site> <command> --help -f yaml
    ```
 
-3. adapter 存在且正好覆盖目标时，先按本节门禁确认当前 bridge；不存在所需动作时直接换其他 CLI、API 或 ego-browser，不空试。
-4. 列表输出用 JSON 并裁字段；正文命令可用 `plain`。搜索列表不能直接当正文。
-5. 命中 `AUTH_REQUIRED` 是 L2，不切 ego-browser；结构变化、空结果和适配器异常才是 L4。
+3. 用 `strategy / browser / domain` 判断是否依赖浏览器；browser-backed 命令先过 `scripts/opencli-health.sh`，再经 `node scripts/opencli-run.mjs ...`。纯 API／本地命令不承担无关浏览器探测。
+4. 保留命令的 exit code、stdout、stderr；结构化结果按任务裁字段。download/export 即便标为 read 仍可能写本地文件，任务所需的字幕、音频等临时素材可存于独立临时目录并仅清理本任务文件；长期归档按用户保存需求执行，均限定输出范围。
+5. `references/providers.json` 只供 Agent 选择和验收，并非自动执行器。不要把台账模板直接拼成 shell 命令，也不要复制完整注册表。
 
-OpenCLI 注册表是命令签名的事实源；`references/providers.json` 只记录跨工具优先级、失败域、必要参数和验收条件。
+## 平台速查
 
-## 六个平台速查
+| 平台 | 常用路径 | 必须保留的边界 |
+|---|---|---|
+| X | OpenCLI `twitter/search`；按需 `tweets / thread / article` | 最新搜索显式用当前支持的实时排序；作者时间和原始 URL 可核对。完整短帖已够用时不再请求详情 |
+| YouTube | yt-dlp 搜索、人工／自动字幕；按需 OpenCLI transcript、已配置 ASR | 字幕参考 [youtube-subtitles.md](youtube-subtitles.md)；元数据、字幕、口播和画面分别标记 |
+| 小红书 | OpenCLI `xiaohongshu/search / note / comments` | 保留搜索结果中的完整可访问 URL、`xsec_token`／`xsec_source`；不能删参数后用裸 ID 盲读 |
+| B站 | bili-cli 搜索／详情；OpenCLI 搜索／字幕；按需音频转写 | 搜索、字幕、音频是不同动作；实际结果缺时间时不能证明最新 |
+| 公众号 | 专用工具或 OpenCLI `weixin/search` 发现；浏览器解析跳转与正文 | 搜狗中转链不是文章地址；按 [weixin-article.md](weixin-article.md) 核对落地页 |
+| Douyin | OpenCLI `douyin/search`；有需要再发现 `user-videos` 等动作 | 搜索卡片不等于视频全文；缺少发布时间不证明最近；不可见互动数保持未知 |
 
-下表保存经过验证的首选动作和不可省略的策略参数。执行前仍需从注册表核对当前命令。
-
-| 平台 | 搜索／发现 | 正文／详情 | 稳定约束 |
-|---|---|---|---|
-| X | `twitter/search` | `twitter/article`、`twitter/thread`、`twitter/tweets` | 最新搜索显式传 `--product live`；看某人用 `tweets`，不用 `timeline` |
-| YouTube | `yt-dlp ytsearch` | `yt-dlp` 字幕 | 直连失效域独立于 ego lite；字幕读 `youtube-subtitles.md` |
-| 小红书 | `xiaohongshu/search` | `xiaohongshu/note`、`xiaohongshu/comments` | 从搜索结果取完整 URL／ID，再读正文 |
-| B站 | `bili search` | `bilibili/subtitle` | 普通搜索优先免登录 `bili`；时效是硬要求时直接用 ego-browser 选择「最新发布」；不要用 yt-dlp 抓 B站 |
-| 公众号 | `weixin/search` | ego-browser 跳转后取 DOM | 搜索返回搜狗跳转链，正文读 `weixin-article.md`；归档另走显式落盘流程 |
-| Douyin | `douyin/search` | 以搜索结果可见内容为限 | 结果没有发布时间，不能证明「最近」 |
-
-常用命令示例：
+以下只展示参数结构，执行前核对本机帮助；外部输入通过独立 argv 传入：
 
 ```bash
 node scripts/opencli-run.mjs twitter search "<词>" --product live -f json --limit 5 --window background
-node scripts/opencli-run.mjs twitter article <tweet-id> -f plain --window background
-node scripts/opencli-run.mjs twitter thread <tweet-id> -f json --window background
-node scripts/opencli-run.mjs twitter tweets <用户名> -f json --limit 20 --window background
-
-yt-dlp "ytsearch5:<词>" --flat-playlist --print "%(title)s\t%(channel)s\t%(duration_string)s\t%(url)s"
-
+node scripts/opencli-run.mjs twitter tweets "<账号>" -f json --limit 20 --window background
+node scripts/opencli-run.mjs twitter thread "<推文ID>" -f json --window background
+node scripts/opencli-run.mjs twitter article "<推文ID>" -f plain --window background
 node scripts/opencli-run.mjs xiaohongshu search "<词>" -f json --limit 5 --window background
-node scripts/opencli-run.mjs xiaohongshu note <完整URL或ID> -f plain --window background
-node scripts/opencli-run.mjs xiaohongshu comments <note-id> -f json --window background
-
+node scripts/opencli-run.mjs xiaohongshu note "<含访问参数的完整URL>" -f plain --window background
 bili search "<词>" --type video -n 5
-node scripts/opencli-run.mjs bilibili subtitle <BV号> -f json --window background
-
+node scripts/opencli-run.mjs bilibili subtitle "<BV号>" -f json --window background
 node scripts/opencli-run.mjs weixin search "<词>" -f json --limit 5 --window background
 node scripts/opencli-run.mjs douyin search "<词>" -f json --limit 5 --window background
 ```
 
-`--window background` 只控制焦点，不保证不创建 automation 容器窗口。不要把它描述成无窗口模式。
+`LOOKUP_OPENCLI_PROFILE` 统一选择已配置的 OpenCLI Profile，默认 `ego-lite`；不要暗中换到另一账号。`--window background` 控制焦点，不等于所有命令都不创建窗口。
 
-`weixin/download` 虽然在注册表中是 `access: read`，但会创建目录和文件；普通正文读取不得把它当自动 fallback。只有用户明确要求归档时，才显式指定输出目录并关闭不需要的图片下载。
+## 时效与内容
 
-## 时效与正文
+- X 的热门与实时排序不同。用户问最近时，使用支持的实时参数并核对逐条时间；某人最近发帖选用户帖子动作，不把首页推荐流当该用户时间线。
+- B站或Douyin的注册表没有最新排序参数、实际结果没有发布时间时，改用当前 Agent 合适的浏览器检查页面可见时间与排序；必要时再用 ego-browser。缺失就明确说明，不能用播放量、热度或搜索窗口猜发布时间。
+- 小红书优先保留完整访问 URL 到 `access_url`；用于显示或去重的 URL 不能覆盖它。仅有裸 ID 时通过搜索／feed／原始分享链接恢复合法定位信息。
+- 用户只要几个讨论观点，完整短帖即可构成证据；需要整串讨论、长文、上下文或评论时才追加对应动作。截断片段与搜索摘要不能代表全文。
+- 视频结果先标明 `metadata / subtitles / asr / visual`。字幕或 ASR 能支持口播摘要；讲解界面、演示结果或画面细节需要实际画面证据。拿不到时只完成可证明的部分，不换成另一个视频冒充原目标。
+- 已核对的 [Douyin搜索实现](https://github.com/jackwener/opencli/blob/b06ab7780e73d3021e12e0f170086c2d55675776/clis/douyin/search.js#L168-L175) 用 `0` 填充不可见的 plays/comments/shares，这类值应视为未知；不把字段存在当实测。当前命令是否可读取评论或用户视频，仍需核对帮助和实际非空结果。
+- 已足够的内容直接交付；仅为影响结论的具体缺口补充必要读取，每个请求有界，不固定限制整个任务只能再请求一次。结果归一化见 [failure-domains.md](failure-domains.md)。
 
-- X `search` 默认热门排序；用户问最新时必须用 `--product live`。
-- B站的 `bili search` 与 `bilibili/search` 都没有发布时间字段或最新排序参数，不能证明结果时效；用户明确要「最新／最近」时直接用 ego-browser 在搜索页选择「最新发布」，并核对页面可见时间。页面仍无时间时如实说明不能证明，不拿相关性列表冒充最新。
-- Douyin 结果没有时间字段；交付时明确写「无法证明发布时间」，不能按播放量猜新旧。
-- 小红书当前搜索字段包含 `published_at`，仍要检查实际值是否存在，不能只看 schema。
-- 公众号搜索的 `publish_time` 可用于初筛；搜狗跳转链本身不是正文。
-- 六个平台的搜索结果都是列表；用户要「讲了什么、怎么评价、完整内容」时必须再取正文、帖子串、详情、评论或字幕。
+## 失败与浏览器降级
 
-## OpenCLI 失败处理
+首次使用同一 browser bridge/Profile 时探活，后续复用该任务内结果。连接失败只暂停共享 bridge/Profile 的 browser-backed 命令；站点动作失败只暂停相同 `site+action`；认证失败只影响相同站点／账号；合法空结果和部分证据不触发全局故障。精确规则见 [failure-domains.md](failure-domains.md)。
 
-每个用户任务第一次准备调用 browser-backed OpenCLI provider 前运行：
+同一失败路径不循环尝试；业务超时先确认旧动作结束，不自动重派。需要补救时依次考虑已可用的专用 API／CLI、当前 Agent 合适的浏览器，最后 ego lite 的正式 `ego-browser` Skill。必须核对候选是否绕开失败依赖，不能用 `opencli browser` 绕过同一失效 bridge。
 
-```bash
-bash scripts/opencli-health.sh
-```
+宿主浏览器功能名、操作 API、快照和收尾机制按其实际工具／Skill 文档发现，不假设所有 Agent 都有名为 BrowserUse 的工具。ego 只按正式安装 Skill 使用；不复制它的旧 API，见 [ego-space-hooks.md](ego-space-hooks.md)。
 
-只有退出 `0` 且 `state=ready` 才进入 adapter。退出 `69`／`75`／`78`，或任一 adapter 返回 `BROWSER_CONNECT` 后，本任务不再尝试其他 OpenCLI provider，直接按失效域切换真实 fallback；下一独立任务重新探活，不把短暂故障写成长期缓存。`active`／`conditional` 只表示 provider 已登记，不是运行时健康证明。
+## Agent Reach 与维护
 
-browser-backed 命令统一经 `node scripts/opencli-run.mjs ...` 执行；runner 和门禁都固定到已绑定的 `ego-lite` Profile。直接调用 OpenCLI `1.8.6`～`1.8.8` 可能在异步动作完成前退出 `0`，空 stdout 仍必须判失败，不能当成空结果。
-
-其余失败按结构化错误和失效层级处理：
-
-- `auth_required`：L2，核对 `node scripts/opencli-run.mjs auth status --site <site> --timeout 8 -f json`；不换同登录态浏览器。
-- daemon 休眠：门禁按需启动，不单凭 `127.0.0.1:19825` 未监听判故障。
-- daemon 无法启动、ego lite 扩展未连接，或 `ego-lite` Profile 未绑定／断连／错配：L3，按门禁 JSON 的 `state` 和 `next` 处理；可用时改走 ego-browser。
-- 命令存在但字段缺失、空结果、解析异常：L4；本任务立即熔断 OpenCLI 并改用 ego-browser，不自动重试。只有用户明确要求排障时才另行使用 trace。
-- 命令不存在：不猜旧命令；回注册表找同目标的只读动作，找不到就换工具。
-
-不要用 `opencli verify --smoke` 证明真实平台可用；当前发布包的 smoke 依赖环境测试目录，不能替代实际请求。`convention-audit` 面向 adapter 开发，不作为日常路由门禁。
-
-## Agent-Reach 的位置
-
-Agent-Reach 是安装、选型和跨工具体检层；读取仍由上游工具执行。它的 Skill 保持禁用，避免与 lookup 抢「搜索、URL、平台」触发词。
-
-遇到以下情况才用：
-
-- 用户明确请求六平台之外的 Agent-Reach 渠道；
-- 不确定某个平台当前有哪些非 OpenCLI 后端；
-- 需要判断 CLI、MCP、登录配置是否存在。
+Agent Reach 是可选的工具选型、安装与诊断辅助，不是所有请求必经的 OpenCLI 包装层。常用查询直接调用上游工具。只有环境维护、查找其他后端或使用已配置的 `agent-reach transcribe` 时才加载相应资料。
 
 ```bash
 agent-reach doctor --json
 ```
 
-`status: warn` 或 `active_backend: null` 只表示 doctor 没有完成实时验证，不等于通道不可用。继续检查实际 CLI 注册表、登录态和最小只读请求。不要因为 doctor 的配置级结果跳过真实验证。
+doctor 主要说明配置和探测范围；`active_backend: null` 可能是缺工具或刻意跳过实时验证，结合 status/message 判断，不直接宣称平台可用或不可用。已核对的 [Twitter backend 选择代码](https://github.com/Panniantong/Agent-Reach/blob/94f06c1969dfc1834001269d79d3ad0972d9dee6/agent_reach/channels/twitter.py#L44-L77) 仅在 `ok` 时设置 active backend。它也不证明 Lookup 选定的 Profile、账号或具体目标内容可用。
 
-Agent-Reach 更新可能重新生成并启用它自己的 Skill；更新后重新确认启停状态。它的参考命令可按需读取，但运行时触发权只留给 lookup。
-
-## 浏览器兜底
-
-OpenCLI adapter 有精确动作时先用它；没有动作，或 L3/L4 失败时用 ego-browser。不要改用 `opencli browser` 作为故障兜底，因为它与 adapter 同样依赖 L3，且 owned container 的窗口不能可靠回收。
-
-ego-browser 执行纪律：
-
-- 一个用户目标只开一个 task space；追问、重试、验证继续复用。
-- 在一个 heredoc 内完成能确定的多步读取，减少往返。
-- 页面变化后重新观察，不复用旧 selector／ref。
-- 结束时独占最后一次调用执行 `completeTaskSpace(id, { keep: false })`。
-- 用户接管时立即停止；不得调用跨 space CDP 关闭其他 target。
+只保留 Lookup 自动接管通用联网检索，Agent Reach 和 OpenCLI `smart-search` 的通用路由 Skill 不同时抢触发；具体平台说明可以按需引用。查询失败不自动升级或重装；维护时记录工具版本与来源 commit，更新后复核必要合约和受影响动作。Agent Reach 的持续维护不等于本机实时更新；已核对的 [`check-update` 实现](https://github.com/Panniantong/Agent-Reach/blob/94f06c1969dfc1834001269d79d3ad0972d9dee6/agent_reach/cli.py#L2271-L2332) 主要比较 Release 版本号，版本号相同也不证明 main 修复已安装。

@@ -1,312 +1,206 @@
 #!/usr/bin/env node
-// find-url - 从本地 ego lite 书签/历史中检索 URL
-// 用于定位公网搜索覆盖不到的目标（组织内部系统、SSO 后台、内网域名等）。
-//
-// 用法：
-//   node find-url.mjs [关键词...] [--only bookmarks|history] [--limit N] [--since 1d|7h|YYYY-MM-DD]
-//
-//   <关键词>             空格分词、多词 AND，匹配 title + url；可省略
-//   --only <source>      限定数据源（bookmarks / history），默认两者都查
-//   --browser ego        兼容旧调用；其他浏览器一律拒绝
-//   --limit N            条数上限，默认 20；0 = 不限
-//   --since <window>     时间窗（仅作用于历史）。1d / 7h / 30m 或 YYYY-MM-DD
-//   --sort recent|visits 历史排序：按最近访问 / 按访问次数，默认 recent
-//
-// 示例：
-//   node find-url.mjs 财务小智
-//   node find-url.mjs agent skills
-//   node find-url.mjs github --since 7d --only history
-//   node find-url.mjs --since 7d --only history --sort visits   # 最近一周高频网站
-//   node find-url.mjs --since 2d --only history --limit 0
-//   node find-url.mjs github --browser ego                      # 只查 ego lite
+// find-url — 只在 ego lite 的当前或显式指定 Profile 中查书签与历史。
+// 用法：node find-url.mjs [关键词...] [--only bookmarks|history]
+//        [--profile Default] [--limit N] [--since 1d|7h|YYYY-MM-DD] [--json]
+// 多词按字面 AND 匹配；--limit 默认 20，0 表示最多 1000 条（有界全量）。
+// 只读 SQLite 查询使用其事务快照并读取 WAL，不再复制整份私人历史库。
 
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
-// --- 参数解析 -----------------------------------------------------------
-function parseArgs(argv) {
-  const a = { keywords: [], only: null, browser: null, limit: 20, since: null, sort: 'recent' };
+const MAX_ROWS = 1000;
+const QUERY_TIMEOUT_MS = 5000;
+const QUERY_MAX_BYTES = 5 * 1024 * 1024;
+const WEBKIT_EPOCH_DIFF_US = 11644473600000000n;
+// Match SQLite's built-in lower(): ASCII case-insensitive, non-ASCII literal.
+const asciiLower = value => value.replace(/[A-Z]/g, char => char.toLowerCase());
+
+export class LookupError extends Error {
+  constructor(code, message) { super(message); this.code = code; }
+}
+
+export function parseArgs(argv) {
+  const a = { keywords: [], only: null, browser: null, profile: null, limit: 20, since: null, sort: 'recent', json: false };
+  const valueOptions = new Set(['--only', '--browser', '--profile', '--limit', '--since', '--sort']);
   for (let i = 0; i < argv.length; i++) {
     const v = argv[i];
-    if (v === '--only')         a.only    = argv[++i];
-    else if (v === '--browser') a.browser = argv[++i];
-    else if (v === '--limit')   a.limit   = parseInt(argv[++i], 10);
-    else if (v === '--since')   a.since   = parseSince(argv[++i]);
-    else if (v === '--sort')    a.sort    = argv[++i];
-    else if (v === '-h' || v === '--help') { printUsage(); process.exit(0); }
-    else if (v.startsWith('--')) die(`未知参数: ${v}`);
+    if (v === '--') { a.keywords.push(...argv.slice(i + 1)); break; }
+    if (v === '--json') { a.json = true; continue; }
+    if (v === '-h' || v === '--help') { a.help = true; continue; }
+    if (valueOptions.has(v)) {
+      const value = argv[++i];
+      if (value === undefined || value.startsWith('--')) throw new LookupError('INVALID_ARGUMENT', v + ' 需要值');
+      if (v === '--limit') {
+        if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) > MAX_ROWS) {
+          throw new LookupError('INVALID_ARGUMENT', '--limit 需为 0 到 1000 的整数');
+        }
+        a.limit = Number(value);
+      } else if (v === '--since') a.since = parseSince(value);
+      else a[v.slice(2)] = value;
+    } else if (v.startsWith('--')) throw new LookupError('INVALID_ARGUMENT', '未知参数');
     else a.keywords.push(v);
   }
-  if (a.only && !['bookmarks', 'history'].includes(a.only)) die(`--only 仅支持 bookmarks|history`);
-  if (!['recent', 'visits'].includes(a.sort)) die(`--sort 仅支持 recent|visits`);
-  if (Number.isNaN(a.limit) || a.limit < 0) die('--limit 需为非负整数');
+  if (a.only && !['bookmarks', 'history'].includes(a.only)) throw new LookupError('INVALID_ARGUMENT', '--only 仅支持 bookmarks|history');
+  if (!['recent', 'visits'].includes(a.sort)) throw new LookupError('INVALID_ARGUMENT', '--sort 仅支持 recent|visits');
+  if (a.browser && a.browser !== 'ego') throw new LookupError('BROWSER_UNSUPPORTED', '本 Skill 固定只读 ego lite，不读取 Chrome 或 Edge 数据');
+  if (a.only === 'bookmarks' && !a.keywords.length && !a.help) throw new LookupError('INVALID_ARGUMENT', '查询书签需要至少一个关键词');
   return a;
 }
 
-function parseSince(s) {
-  if (!s) die('--since 需要值');
-  const m = s.match(/^(\d+)([dhm])$/);
-  if (m) {
-    const n = parseInt(m[1], 10);
-    const ms = { d: 86400000, h: 3600000, m: 60000 }[m[2]];
-    return new Date(Date.now() - n * ms);
-  }
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) die(`无效 --since 值: ${s}（用 1d / 7h / 30m / YYYY-MM-DD）`);
-  return d;
+function parseSince(value) {
+  const window = value.match(/^(\d+)([dhm])$/);
+  const date = window
+    ? new Date(Date.now() - Number(window[1]) * { d: 86400000, h: 3600000, m: 60000 }[window[2]])
+    : new Date(value);
+  if (!Number.isFinite(date.getTime())) throw new LookupError('INVALID_ARGUMENT', '无效 --since 值');
+  return date;
 }
 
-function die(msg) { console.error(msg); process.exit(1); }
-function printUsage() { console.error(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 21).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); }
-
-// --- ego lite 用户数据目录 ------------------------------------------------
 function knownBrowserDataDirs() {
-  const home = os.homedir();
-  switch (os.platform()) {
-    case 'darwin':
-      return [
-        // ego lite 使用 Chromium 数据布局（Local State + Default/Bookmarks + Default/History）。
-        { id: 'ego',    label: 'ego lite', dir: path.join(home, 'Library/Application Support/Citro Labs/ego lite') },
-      ];
-    default:
-      return [];
+  if (os.platform() !== 'darwin') return [];
+  return [{ id: 'ego', label: 'ego lite', dir: path.join(os.homedir(), 'Library/Application Support/Citro Labs/ego lite') }];
+}
+
+function safeProfileName(name) {
+  return typeof name === 'string' && name.length > 0 && name !== '.' && name !== '..'
+    && !/[\/\\\x00-\x1f]/.test(name) && !path.isAbsolute(name);
+}
+
+export function selectProfile(dataDir, requested) {
+  let state = {};
+  const statePath = path.join(dataDir, 'Local State');
+  if (fs.existsSync(statePath)) {
+    try { state = JSON.parse(fs.readFileSync(statePath, 'utf8')); }
+    catch { throw new LookupError('PROFILE_STATE_INVALID', 'ego lite 的 Profile 索引无法读取'); }
   }
+  const info = state?.profile?.info_cache || {};
+  const chosen = requested || state?.profile?.last_used || 'Default';
+  if (!safeProfileName(chosen)) throw new LookupError('PROFILE_INVALID', 'Profile 必须是登记的单个目录名');
+  const registered = Object.prototype.hasOwnProperty.call(info, chosen);
+  if (!registered && chosen !== 'Default') throw new LookupError('PROFILE_NOT_FOUND', '指定的 ego lite Profile 未登记');
+  const directory = path.join(dataDir, chosen);
+  if (!fs.existsSync(directory) || !fs.statSync(directory).isDirectory() || fs.lstatSync(directory).isSymbolicLink()) {
+    throw new LookupError('PROFILE_NOT_FOUND', '指定的 ego lite Profile 目录不可用');
+  }
+  return { dir: chosen, name: registered ? info[chosen]?.name || chosen : chosen };
 }
 
-// --- Profile 枚举 -------------------------------------------------------
-function listProfiles(dataDir) {
-  try {
-    const state = JSON.parse(fs.readFileSync(path.join(dataDir, 'Local State'), 'utf-8'));
-    const info = state?.profile?.info_cache || {};
-    const list = Object.keys(info).map(dir => ({ dir, name: info[dir].name || dir }));
-    if (list.length) return list;
-  } catch { /* 回退 */ }
-  return [{ dir: 'Default', name: 'Default' }];
-}
-
-// --- 书签检索 -----------------------------------------------------------
-function searchBookmarks(profileDir, profileName, browserLabel, keywords) {
+export function searchBookmarks(profileDir, profileName, browserLabel, keywords) {
   const file = path.join(profileDir, 'Bookmarks');
-  if (!fs.existsSync(file)) return [];
+  if (!keywords.length) return [];
+  if (!fs.existsSync(file)) throw new LookupError('BOOKMARKS_UNAVAILABLE', '所选 Profile 没有可读取的书签文件');
   let data;
-  try { data = JSON.parse(fs.readFileSync(file, 'utf-8')); } catch { return []; }
-  if (!keywords.length) return [];  // 书签无时间维度，无关键词不返回
-
-  const needles = keywords.map(k => k.toLowerCase());
+  try { data = JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch { throw new LookupError('BOOKMARKS_UNREADABLE', '书签数据无法读取或格式无效'); }
+  if (!data || !data.roots || typeof data.roots !== 'object' || Array.isArray(data.roots)) {
+    throw new LookupError('BOOKMARKS_UNREADABLE', '书签数据缺少 roots 字段');
+  }
+  const needles = keywords.map(asciiLower);
   const out = [];
   function walk(node, trail) {
-    if (!node) return;
-    if (node.type === 'url') {
-      const hay = `${node.name || ''} ${node.url || ''}`.toLowerCase();
-      if (needles.every(n => hay.includes(n))) {
-        out.push({ browser: browserLabel, profile: profileName, name: node.name || '', url: node.url || '', folder: trail.join(' / ') });
-      }
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'url' && typeof node.url === 'string') {
+      const name = typeof node.name === 'string' ? node.name : '';
+      const hay = asciiLower(name + ' ' + node.url);
+      if (needles.every(n => hay.includes(n))) out.push({ browser: browserLabel, profile: profileName, name, url: node.url, folder: trail.join(' / ') });
     }
     if (Array.isArray(node.children)) {
-      const sub = node.name ? [...trail, node.name] : trail;
-      for (const c of node.children) walk(c, sub);
+      const sub = typeof node.name === 'string' && node.name ? [...trail, node.name] : trail;
+      for (const child of node.children) walk(child, sub);
     }
   }
   for (const root of Object.values(data.roots || {})) walk(root, []);
   return out;
 }
 
-// --- 历史检索（SQLite 运行时锁定，需 copy 到 tmp） ------------------------
-const WEBKIT_EPOCH_DIFF_US = 11644473600000000n;  // 1601→1970 微秒差
-const activeHistoryCopies = new Set();
-
-function cleanupActiveHistoryCopies() {
-  for (const file of activeHistoryCopies) {
-    try { fs.unlinkSync(file); } catch {}
-    activeHistoryCopies.delete(file);
+export function searchHistory(profileDir, profileName, browserLabel, keywords, since, limit, sort) {
+  const source = path.join(profileDir, 'History');
+  if (!fs.existsSync(source)) throw new LookupError('HISTORY_UNAVAILABLE', '所选 Profile 没有可读取的历史文件');
+  const quote = value => "'" + String(value).replaceAll("'", "''") + "'";
+  const conds = ['last_visit_time > 0'];
+  for (const keyword of keywords) {
+    // instr makes % and _ literal; quotes are escaped as SQL string data.
+    conds.push("instr(lower(coalesce(title, '') || ' ' || coalesce(url, '')), " + quote(asciiLower(keyword)) + ') > 0');
   }
-}
-
-process.once('exit', cleanupActiveHistoryCopies);
-for (const [signal, exitCode] of [['SIGHUP', 129], ['SIGINT', 130], ['SIGTERM', 143]]) {
-  process.once(signal, () => {
-    cleanupActiveHistoryCopies();
-    process.exit(exitCode);
-  });
-}
-
-function cleanupOrphanedHistoryCopies(runtimeDir) {
-  for (const name of fs.readdirSync(runtimeDir)) {
-    const match = /^browser-history-(\d+)-\d+-[a-z0-9]+\.sqlite$/.exec(name);
-    if (!match) continue;
-    let ownerAlive = true;
-    try { process.kill(Number(match[1]), 0); } catch (error) { ownerAlive = error?.code !== 'ESRCH'; }
-    if (!ownerAlive) {
-      try { fs.unlinkSync(path.join(runtimeDir, name)); } catch {}
-    }
-  }
-}
-
-function ensurePrivateRuntimeDir() {
-  const tmpRoot = path.join(os.homedir(), 'tmp');
-  const runtimeDir = path.join(tmpRoot, 'lookup-runtime');
-  for (const dir of [tmpRoot, runtimeDir]) {
-    if (fs.existsSync(dir) && fs.lstatSync(dir).isSymbolicLink()) {
-      die(`拒绝使用软链临时目录: ${dir}`);
-    }
-    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-    const stat = fs.statSync(dir);
-    if (!stat.isDirectory() || (typeof process.getuid === 'function' && stat.uid !== process.getuid())) {
-      die(`临时目录不属于当前用户: ${dir}`);
-    }
-  }
-  fs.chmodSync(runtimeDir, 0o700);
-  cleanupOrphanedHistoryCopies(runtimeDir);
-  return runtimeDir;
-}
-
-function copyPrivateFile(src, dest) {
-  const noFollow = fs.constants.O_NOFOLLOW || 0;
-  const srcFd = fs.openSync(src, fs.constants.O_RDONLY);
-  let destFd;
+  if (since) conds.push('last_visit_time >= ' + (BigInt(since.getTime()) * 1000n + WEBKIT_EPOCH_DIFF_US));
+  const boundedLimit = Math.max(1, Math.min(Number(limit) || MAX_ROWS, MAX_ROWS + 1));
+  const orderBy = sort === 'visits' ? 'visit_count DESC, last_visit_time DESC' : 'last_visit_time DESC';
+  const sql = "SELECT coalesce(title, '') AS title, url, "
+    + "datetime((last_visit_time - 11644473600000000)/1000000, 'unixepoch', 'localtime') AS visit, "
+    + 'visit_count FROM urls WHERE ' + conds.join(' AND ')
+    + ' ORDER BY ' + orderBy + ' LIMIT ' + boundedLimit + ';';
+  let raw;
   try {
-    destFd = fs.openSync(dest, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | noFollow, 0o600);
-    const buffer = Buffer.allocUnsafe(1024 * 1024);
-    let bytesRead;
-    while ((bytesRead = fs.readSync(srcFd, buffer, 0, buffer.length, null)) > 0) {
-      let offset = 0;
-      while (offset < bytesRead) {
-        offset += fs.writeSync(destFd, buffer, offset, bytesRead - offset);
-      }
-    }
-    fs.fchmodSync(destFd, 0o600);
-  } finally {
-    if (destFd !== undefined) fs.closeSync(destFd);
-    fs.closeSync(srcFd);
-  }
-}
-
-function searchHistory(profileDir, profileName, browserLabel, keywords, since, limit, sort) {
-  const src = path.join(profileDir, 'History');
-  if (!fs.existsSync(src)) return [];
-  const tmpDir = ensurePrivateRuntimeDir();
-  const tmp = path.join(tmpDir, `browser-history-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.sqlite`);
-  activeHistoryCopies.add(tmp);
-  try {
-    copyPrivateFile(src, tmp);
-    const conds = ['last_visit_time > 0'];
-    for (const kw of keywords) {
-      const esc = kw.toLowerCase().replace(/'/g, "''");
-      conds.push(`LOWER(title || ' ' || url) LIKE '%${esc}%'`);
-    }
-    if (since) {
-      const webkitUs = BigInt(since.getTime()) * 1000n + WEBKIT_EPOCH_DIFF_US;
-      conds.push(`last_visit_time >= ${webkitUs}`);
-    }
-    const limitClause = limit === 0 ? -1 : limit;
-    const orderBy = sort === 'visits'
-      ? 'visit_count DESC, last_visit_time DESC'
-      : 'last_visit_time DESC';
-    const sql = `SELECT title, url,
-      datetime((last_visit_time - 11644473600000000)/1000000, 'unixepoch', 'localtime') AS visit,
-      visit_count
-      FROM urls WHERE ${conds.join(' AND ')}
-      ORDER BY ${orderBy} LIMIT ${limitClause};`;
-
-    const raw = execFileSync('sqlite3', ['-separator', '\t', tmp, sql], { encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024 });
-    return raw.trim().split('\n').filter(Boolean).map(line => {
-      const [title, url, visit, visit_count] = line.split('\t');
-      return { browser: browserLabel, profile: profileName, title, url, visit, visit_count: parseInt(visit_count, 10) };
+    raw = execFileSync('sqlite3', ['-init', os.devNull, '-batch', '-readonly', '-json', '-cmd', '.timeout 2000', source, sql], {
+      encoding: 'utf8', timeout: QUERY_TIMEOUT_MS, killSignal: 'SIGKILL', maxBuffer: QUERY_MAX_BYTES,
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
-  } catch (e) {
-    if (e.code === 'ENOENT') die('未找到 sqlite3 命令。macOS/Linux 通常自带；Windows 可用 `winget install sqlite.sqlite` 或从 https://sqlite.org/download.html 下载后加入 PATH。');
-    return [];
-  } finally {
-    try { fs.unlinkSync(tmp); } catch {}
-    activeHistoryCopies.delete(tmp);
+  } catch (error) {
+    const code = error.code === 'ENOENT' ? 'DEPENDENCY_UNAVAILABLE'
+      : error.code === 'ETIMEDOUT' ? 'HISTORY_TIMEOUT'
+      : error.code === 'ENOBUFS' ? 'OUTPUT_LIMIT' : 'HISTORY_UNREADABLE';
+    throw new LookupError(code, '历史查询失败；不是没有匹配记录。请检查 sqlite3、数据库状态或缩小查询范围');
+  }
+  let rows;
+  try { rows = JSON.parse(raw.trim() || '[]'); }
+  catch { throw new LookupError('HISTORY_INVALID_RESULT', '历史查询返回了无效 JSON'); }
+  if (!Array.isArray(rows) || rows.some(row => !row || typeof row.title !== 'string'
+      || typeof row.url !== 'string' || typeof row.visit !== 'string'
+      || !Number.isInteger(row.visit_count) || row.visit_count < 0)) {
+    throw new LookupError('HISTORY_INVALID_RESULT', '历史查询缺少必要字段');
+  }
+  return rows.map(row => ({ browser: browserLabel, profile: profileName, ...row }));
+}
+
+// Human-readable output cannot let a page title create another result line.
+export const cleanField = value => String(value ?? '').replaceAll('|', '│').replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+
+export function main(argv = process.argv.slice(2), browserDirs = knownBrowserDataDirs()) {
+  try {
+    const args = parseArgs(argv);
+    if (args.help) {
+      console.log('用法：node find-url.mjs [关键词...] [--only bookmarks|history] [--profile Default] [--limit 0..1000] [--since 7d] [--sort recent|visits] [--json]');
+      return 0;
+    }
+    const browser = browserDirs.find(item => item.id === 'ego' && fs.existsSync(item.dir));
+    if (!browser) throw new LookupError('BROWSER_DATA_UNAVAILABLE', '未找到 ego lite 用户数据目录');
+    const profile = selectProfile(browser.dir, args.profile);
+    const profileDir = path.join(browser.dir, profile.dir);
+    const cap = args.limit || MAX_ROWS;
+    const bookmarks = args.only === 'history' ? [] : searchBookmarks(profileDir, profile.name, browser.label, args.keywords);
+    const history = args.only === 'bookmarks' ? [] : searchHistory(profileDir, profile.name, browser.label, args.keywords, args.since, cap + 1, args.sort);
+    const bookmarksOut = bookmarks.slice(0, cap);
+    const historyOut = history.slice(0, cap - bookmarksOut.length);
+    const moreAvailable = bookmarks.length > bookmarksOut.length || history.length > historyOut.length;
+    const result = { profile: profile.dir, bookmarks: bookmarksOut, history: historyOut, more_available: moreAvailable };
+    const truncated = args.limit === 0 && moreAvailable;
+    if (args.json) console.log(JSON.stringify(result));
+    else {
+      if (args.only !== 'history') {
+        console.log('[书签] ' + result.bookmarks.length + ' 条');
+        for (const row of result.bookmarks) console.log('  ' + [row.name || '(无标题)', row.url, row.folder].filter(Boolean).map(cleanField).join(' | '));
+      }
+      if (args.only !== 'bookmarks') {
+        console.log('[历史] ' + result.history.length + ' 条');
+        for (const row of result.history) console.log('  ' + [row.title || '(无标题)', row.url, row.visit, 'visits=' + row.visit_count].map(cleanField).join(' | '));
+      }
+      if (truncated) console.log('[TRUNCATED: 最多返回 1000 条；请使用关键词或 --since 缩小范围。]');
+    }
+    const empty = !result.bookmarks.length && !result.history.length;
+    console.error(JSON.stringify({ provider: 'lookup/find-url', status: truncated ? 'partial' : empty ? 'empty' : 'ok',
+      truncated, empty_confirmed: empty, more_available: moreAvailable }));
+    return truncated ? 3 : 0;
+  } catch (error) {
+    console.error(JSON.stringify({ provider: 'lookup/find-url', status: 'error',
+      error: { code: error instanceof LookupError ? error.code : 'LOCAL_READ_FAILED',
+        message: error instanceof LookupError ? error.message : '本机检索失败；没有返回历史或书签内容' } }));
+    return 1;
   }
 }
 
-// --- 输出格式化 ---------------------------------------------------------
-// 用 `|` 作字段分隔符；字段内含 `|` 的替换成 `│`（全宽竖线）避免歧义
-const clean = s => String(s ?? '').replaceAll('|', '│').trim();
-
-function originTag(item, showBrowser, showProfile) {
-  if (showBrowser && showProfile) return '@' + clean(item.browser) + '-' + clean(item.profile);
-  if (showBrowser) return '@' + clean(item.browser);
-  if (showProfile) return '@' + clean(item.profile);
-  return null;
-}
-
-function printBookmarks(items, showBrowser, showProfile) {
-  console.log(`[书签] ${items.length} 条`);
-  for (const b of items) {
-    const segs = [clean(b.name) || '(无标题)', clean(b.url)];
-    if (b.folder) segs.push(clean(b.folder));
-    const tag = originTag(b, showBrowser, showProfile);
-    if (tag) segs.push(tag);
-    console.log('  ' + segs.join(' | '));
-  }
-}
-
-function printHistory(items, showBrowser, showProfile, sortLabel) {
-  console.log(`[历史] ${items.length} 条（${sortLabel}）`);
-  for (const h of items) {
-    const segs = [clean(h.title) || '(无标题)', clean(h.url), h.visit];
-    if (h.visit_count > 1) segs.push(`visits=${h.visit_count}`);
-    const tag = originTag(h, showBrowser, showProfile);
-    if (tag) segs.push(tag);
-    console.log('  ' + segs.join(' | '));
-  }
-}
-
-// --- main ---------------------------------------------------------------
-const args = parseArgs(process.argv.slice(2));
-if (args.browser && args.browser !== 'ego') die('本 Skill 固定只读 ego lite，不读取 Chrome 或 Edge 数据');
-
-let browsers = knownBrowserDataDirs().filter(b => fs.existsSync(b.dir));
-if (args.browser) {
-  const filtered = browsers.filter(b => b.id === args.browser);
-  if (!filtered.length) {
-    const available = browsers.map(b => b.id).join('、') || '无';
-    die(`未找到浏览器 ${args.browser} 的用户数据目录（已检测到：${available}）`);
-  }
-  browsers = filtered;
-}
-if (!browsers.length) die('未找到 ego lite 用户数据目录');
-
-const doBookmarks = args.only !== 'history';
-const doHistory   = args.only !== 'bookmarks';
-
-const bookmarks = [];
-const history = [];
-for (const browser of browsers) {
-  const profiles = listProfiles(browser.dir);
-  for (const p of profiles) {
-    const pDir = path.join(browser.dir, p.dir);
-    if (!fs.existsSync(pDir)) continue;
-    if (doBookmarks) bookmarks.push(...searchBookmarks(pDir, p.name, browser.label, args.keywords));
-    if (doHistory)   history.push(...searchHistory(pDir, p.name, browser.label, args.keywords, args.since, args.limit === 0 ? 0 : args.limit * 2, args.sort));
-  }
-}
-
-// 历史跨 profile/浏览器 合并后按指定 sort 重排 + 切顶
-if (args.sort === 'visits') {
-  history.sort((a, b) => (b.visit_count || 0) - (a.visit_count || 0) || (b.visit || '').localeCompare(a.visit || ''));
-} else {
-  history.sort((a, b) => (b.visit || '').localeCompare(a.visit || ''));
-}
-const bookmarksOut = args.limit === 0 ? bookmarks : bookmarks.slice(0, args.limit);
-const historyOut   = args.limit === 0 ? history   : history.slice(0, args.limit);
-
-// 仅当结果真的横跨多个 browser/profile 时才输出 @ 标注（避免单源场景噪音）
-const seenBrowsers = new Set([...bookmarksOut, ...historyOut].map(x => x.browser));
-const seenProfiles = new Set([...bookmarksOut, ...historyOut].map(x => x.profile));
-const showBrowser = seenBrowsers.size > 1;
-const showProfile = seenProfiles.size > 1;
-
-const sortLabel = args.sort === 'visits' ? '按访问次数' : '按最近访问';
-if (doBookmarks) printBookmarks(bookmarksOut, showBrowser, showProfile);
-if (doBookmarks && doHistory) console.log();
-if (doHistory)   printHistory(historyOut, showBrowser, showProfile, sortLabel);
-
-if (!args.keywords.length && doBookmarks && !doHistory) {
-  console.error('\n提示：书签无时间维度，无关键词查询无意义。加关键词或切换 --only history。');
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  process.exitCode = main();
 }

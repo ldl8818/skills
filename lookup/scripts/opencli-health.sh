@@ -1,465 +1,266 @@
 #!/usr/bin/env bash
-# OpenCLI daemon 与 ego lite Browser Bridge 的零业务请求健康门禁。
-# 用户侧墙钟不超过 5 秒：内部桥接等待最多 3.2 秒，预留 0.75 秒恢复
-# 本次启动的 daemon、0.25 秒渲染，并给解释器启动与系统调度留 0.8 秒余量。
-
+# 零平台业务请求：检查指定 Profile 的 daemon/extension 状态，必要时启动 daemon。
+# 一个 Python 进程维护 monotonic 预算与子进程归属，避免反复启动解释器计时。
+# 内部启动预算 3.2s，恢复预算 0.75s，总预算 4.2s；正常调度下墙钟 <5s。
 set -uo pipefail
-
-STATUS_URL_BASE="http://127.0.0.1:19825/status"
-STATUS_URL=""
-PROFILE_ALIAS="ego-lite"
-PROFILE_CONTEXT_ID=""
-TOTAL_BUDGET_MS=4200
-START_BUDGET_MS=3200
-STOP_TOTAL_BUDGET_MS=750
-RUNTIME_DIR="${HOME:-}/tmp/lookup-runtime"
-LOCK_FILE="$RUNTIME_DIR/opencli-health-daemon.v2.flock"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCK_HOLDER="$SCRIPT_DIR/flock-holder.py"
-started_daemon=false
-started_daemon_pid=""
-started_daemon_fingerprint=""
-restored_daemon=false
-restored_daemon_state=unknown
-lock_owned=false
-lock_holder_pid=""
-lock_status_file=""
-daemon_entry=""
-node_bin=""
-signal_pending=false
-start_ms=0
-start_deadline_ms=0
-overall_deadline_ms=0
-
-fixed_error() {
-  local state="$1"
-  local next="$2"
-  local exit_code="$3"
-  printf '{"ok":false,"state":"%s","daemon":"unknown","extension":"unknown","started_daemon":false,"restored_daemon":false,"elapsed_ms":0,"next":"%s"}\n' "$state" "$next"
-  exit "$exit_code"
-}
-
 if ! command -v python3 >/dev/null 2>&1; then
-  fixed_error "dependency_missing" "install_python3" 78
+  printf '%s\n' '{"ok":false,"state":"dependency_missing","next":"install_python3","elapsed_ms":0}'
+  exit 78
 fi
+exec python3 - <<'PY'
+import errno
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import time
+from urllib.parse import urlencode
 
-now_ms() {
-  python3 -c 'import time; print(int(time.monotonic() * 1000))'
-}
+START = time.monotonic()
+START_DEADLINE = START + 3.2
+TOTAL_DEADLINE = START + 4.2
+PROFILE = os.environ.get('LOOKUP_OPENCLI_PROFILE', 'ego-lite')
+PORT = os.environ.get('OPENCLI_DAEMON_PORT', '19825')
+daemon_child = None
+restored = False
+lock_fd = None
+interrupted = False
+status_url = ''
+context_id = ''
 
-start_ms=$(now_ms)
 
-for dependency in opencli curl jq node; do
-  if ! command -v "$dependency" >/dev/null 2>&1; then
-    fixed_error "dependency_missing" "install_$dependency" 78
-  fi
-done
+class HealthFailure(Exception):
+    def __init__(self, state, next_step, code, daemon='unknown', extension='unknown', status=None):
+        self.state, self.next_step, self.code = state, next_step, code
+        self.daemon, self.extension, self.status = daemon, extension, status or {}
 
-resolve_ego_lite_profile() {
-  local config_dir="${OPENCLI_CONFIG_DIR:-${HOME:-}/.opencli}"
-  local config_file="$config_dir/browser-profiles.json"
-  local encoded_context
-  [[ -r "$config_file" ]] || return 1
-  PROFILE_CONTEXT_ID=$(jq -er --arg alias "$PROFILE_ALIAS" \
-    '.aliases[$alias] | select(type == "string" and length > 0)' "$config_file" 2>/dev/null) || return 1
-  [[ "$PROFILE_CONTEXT_ID" != *$'\n'* ]] || return 1
-  encoded_context=$(jq -nr --arg value "$PROFILE_CONTEXT_ID" '$value | @uri') || return 1
-  STATUS_URL="${STATUS_URL_BASE}?contextId=${encoded_context}"
-}
 
-if ! resolve_ego_lite_profile; then
-  fixed_error "profile_unbound" "bind_ego_lite_profile" 78
-fi
+class Interrupted(Exception):
+    pass
 
-elapsed_ms() {
-  local current
-  current=$(now_ms)
-  printf '%s\n' "$((current - start_ms))"
-}
 
-remaining_until_ms() {
-  local remaining=$(( $1 - $(now_ms) ))
-  [[ "$remaining" -gt 0 ]] || remaining=0
-  printf '%s\n' "$remaining"
-}
+def on_signal(_signum, _frame):
+    # Defer cleanup until Popen has returned its exact child handle. A second
+    # signal only sets this flag again; it cannot interrupt recovery.
+    global interrupted
+    interrupted = True
 
-min_ms() {
-  if [[ "$1" -le "$2" ]]; then printf '%s\n' "$1"; else printf '%s\n' "$2"; fi
-}
 
-read_status() {
-  local timeout_ms="${1:-1000}"
-  local timeout_seconds
-  [[ "$timeout_ms" -gt 0 ]] || timeout_ms=1
-  printf -v timeout_seconds '%d.%03d' "$((timeout_ms / 1000))" "$((timeout_ms % 1000))"
-  curl --silent --show-error --connect-timeout "$timeout_seconds" --max-time "$timeout_seconds" \
-    -H 'X-OpenCLI: 1' \
-    "$STATUS_URL" 2>/dev/null
-}
+for sig in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+    signal.signal(sig, on_signal)
 
-status_is_ready() {
-  jq -e --arg context_id "$PROFILE_CONTEXT_ID" \
-    '.extensionConnected == true and .contextId == $context_id' >/dev/null 2>&1 <<<"$1"
-}
 
-process_is_done() {
-  local process_state
-  process_state=$(ps -o stat= -p "$1" 2>/dev/null | tr -d '[:space:]')
-  [[ -z "$process_state" ]] || [[ "$process_state" == Z* ]]
-}
+def check_signal():
+    if interrupted:
+        raise Interrupted()
 
-release_start_lock() {
-  if [[ "$lock_holder_pid" =~ ^[0-9]+$ ]]; then
-    kill -TERM "$lock_holder_pid" 2>/dev/null || true
-    wait "$lock_holder_pid" 2>/dev/null || true
-  fi
-  lock_holder_pid=""
-  if [[ -n "$lock_status_file" ]]; then
-    rm -f -- "$lock_status_file"
-  fi
-  lock_status_file=""
-  lock_owned=false
-}
 
-process_fingerprint() {
-  ps -o lstart= -p "$1" 2>/dev/null | tr -d '[:space:]'
-}
+def emit(ok, state, daemon, extension, next_step, status=None):
+    status = status or {}
+    result = dict(ok=ok, state=state, daemon=daemon, extension=extension,
+                  started_daemon=daemon_child is not None, restored_daemon=restored,
+                  elapsed_ms=round((time.monotonic() - START) * 1000), next=next_step,
+                  transport='extension', profile=PROFILE, daemon_port=PORT,
+                  fault_scope='bridge_profile')
+    for source, target in [('daemonVersion', 'daemon_version'), ('extensionVersion', 'extension_version')]:
+        if isinstance(status.get(source), str):
+            result[target] = status[source]
+    print(json.dumps(result, ensure_ascii=False, separators=(',', ':')), flush=True)
 
-process_command() {
-  ps -o command= -p "$1" 2>/dev/null
-}
 
-claim_spawned_daemon() {
-  local daemon_pid="$1"
-  local fingerprint
-  started_daemon=true
-  [[ "$daemon_pid" =~ ^[0-9]+$ ]] || return 1
-  fingerprint=$(process_fingerprint "$daemon_pid")
-  [[ -n "$fingerprint" ]] || return 1
-  started_daemon_pid="$daemon_pid"
-  started_daemon_fingerprint="$fingerprint"
-}
+def probe(seconds=0.25):
+    seconds = max(0.001, min(seconds, max(0.001, TOTAL_DEADLINE - time.monotonic())))
+    try:
+        result = subprocess.run(
+            ['curl', '--silent', '--show-error', '--connect-timeout', str(seconds),
+             '--max-time', str(seconds), '--max-filesize', '65536', '-H', 'X-OpenCLI: 1', status_url],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+            timeout=seconds + 0.05, close_fds=True)
+    except subprocess.TimeoutExpired:
+        return 28, {}
+    except OSError:
+        return 69, {}
+    try:
+        status = json.loads(result.stdout)
+        if not isinstance(status, dict) or status.get('ok') is not True:
+            status = {}
+    except (ValueError, TypeError):
+        status = {}
+    return result.returncode, status
 
-started_daemon_is_current() {
-  local command_line
-  [[ -n "$started_daemon_pid" ]] && [[ -n "$started_daemon_fingerprint" ]] || return 1
-  [[ "$(process_fingerprint "$started_daemon_pid")" == "$started_daemon_fingerprint" ]] || return 1
-  command_line=$(process_command "$started_daemon_pid")
-  [[ -n "$daemon_entry" ]] && [[ "$command_line" == *"$daemon_entry"* ]]
-}
 
-resolve_daemon_entry() {
-  local opencli_path
-  local opencli_real
-  opencli_path=$(command -v opencli) || return 1
-  opencli_real=$(node -e 'console.log(require("node:fs").realpathSync(process.argv[1]))' "$opencli_path") || return 1
-  daemon_entry="$(dirname "$opencli_real")/daemon.js"
-  node_bin=$(command -v node) || return 1
-  [[ -f "$daemon_entry" ]] && [[ -x "$node_bin" ]]
-}
+def ready(status):
+    return status.get('extensionConnected') is True and status.get('contextId') == context_id
 
-acquire_start_lock() {
-  local lock_status
-  local lock_wait_ms
-  lock_wait_ms=$(remaining_until_ms "$start_deadline_ms")
-  [[ "$lock_wait_ms" -gt 0 ]] || return 75
-  [[ -r "$LOCK_HOLDER" ]] || return 78
-  lock_status_file=$(mktemp "$RUNTIME_DIR/opencli-health-lock.XXXXXX") || return 78
-  python3 "$LOCK_HOLDER" "$LOCK_FILE" "$lock_status_file" "$lock_wait_ms" "$$" &
-  lock_holder_pid=$!
-  while [[ "$(remaining_until_ms "$start_deadline_ms")" -gt 0 ]]; do
-    if [[ -s "$lock_status_file" ]]; then
-      lock_status=$(<"$lock_status_file")
-      if [[ "$lock_status" -eq 0 ]] && kill -0 "$lock_holder_pid" 2>/dev/null; then
-        lock_owned=true
+
+def classify(status, cold=False):
+    if status.get('profileRequired') is True:
+        raise HealthFailure('profile_required', 'select_lookup_profile', 78, 'running', 'connected', status)
+    if ready(status):
+        return True
+    if status.get('profileDisconnected') is True:
+        if cold:
+            return False  # New daemon may still be waiting for extension reconnect.
+        raise HealthFailure('profile_disconnected', 'connect_lookup_profile', 78, 'running', 'disconnected', status)
+    if status.get('extensionConnected') is True:
+        raise HealthFailure('profile_mismatch', 'rebind_lookup_profile', 78, 'running', 'connected', status)
+    if not cold:
+        raise HealthFailure('extension_disconnected', 'enable_extension_in_lookup_profile', 69, 'running', 'disconnected', status)
+    return False
+
+
+def recover_own_daemon(last_status=None):
+    global restored
+    if daemon_child is None:
+        return 'unknown'
+    # Popen owns an unreaped child PID. Never signal a PID read from /status,
+    # inspect the global process list, or call the shared /shutdown endpoint.
+    deadline = min(time.monotonic() + 0.75, TOTAL_DEADLINE)
+    if daemon_child.poll() is None:
+        daemon_child.terminate()
+        try:
+            daemon_child.wait(timeout=max(0.001, min(0.5, deadline - time.monotonic())))
+        except subprocess.TimeoutExpired:
+            daemon_child.kill()
+            try:
+                daemon_child.wait(timeout=max(0.001, deadline - time.monotonic()))
+            except subprocess.TimeoutExpired:
+                return 'unknown'
+    restored = daemon_child.poll() is not None
+    remaining = deadline - time.monotonic()
+    if remaining > 0.02:
+        _, current = probe(min(0.1, remaining))
+        return 'running' if current else 'stopped'
+    # A different daemon may have taken the port; do not claim it was stopped.
+    if last_status and last_status.get('pid') not in (None, daemon_child.pid):
+        return 'running'
+    return 'unknown'
+
+
+def prepare_lock():
+    global lock_fd
+    home = Path(os.environ.get('HOME', ''))
+    if not home.is_absolute():
+        raise HealthFailure('lock_unavailable', 'check_home_tmp_permissions', 78)
+    for directory in (home / 'tmp', home / 'tmp' / 'lookup-runtime'):
+        if directory.is_symlink():
+            raise HealthFailure('lock_unavailable', 'check_home_tmp_permissions', 78)
+        directory.mkdir(exist_ok=True)
+        info = directory.stat()
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid():
+            raise HealthFailure('lock_unavailable', 'check_home_tmp_permissions', 78)
+    runtime = home / 'tmp' / 'lookup-runtime'
+    runtime.chmod(0o700)
+    lock_fd = os.open(runtime / 'opencli-health-daemon.v2.flock',
+                      os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    info = os.fstat(lock_fd)
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_nlink != 1:
+        raise HealthFailure('lock_unavailable', 'check_home_tmp_permissions', 78)
+    os.fchmod(lock_fd, 0o600)
+    while True:
+        check_signal()
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return
+        except OSError as error:
+            if error.errno not in (errno.EACCES, errno.EAGAIN):
+                raise
+        if time.monotonic() >= START_DEADLINE:
+            raise HealthFailure('daemon_start_lock_timeout', 'retry_opencli_health', 75)
+        time.sleep(0.02)
+
+
+def main():
+    global status_url, context_id, PORT, daemon_child
+    if os.environ.get('OPENCLI_CDP_ENDPOINT'):
+        raise HealthFailure('unsupported_transport', 'unset_opencli_cdp_endpoint', 78)
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,63}', PROFILE):
+        raise HealthFailure('invalid_profile', 'set_lookup_opencli_profile_alias', 78)
+    if not re.fullmatch(r'[0-9]+', PORT) or not 1 <= int(PORT) <= 65535:
+        raise HealthFailure('invalid_daemon_port', 'set_opencli_daemon_port', 78)
+    PORT = int(PORT)
+    for dependency in ('opencli', 'curl', 'node'):
+        if not shutil.which(dependency):
+            raise HealthFailure('dependency_missing', 'install_' + dependency, 78)
+    config = Path(os.environ.get('OPENCLI_CONFIG_DIR') or str(Path.home() / '.opencli'))
+    try:
+        context_id = json.loads((config / 'browser-profiles.json').read_text())['aliases'][PROFILE]
+        if not isinstance(context_id, str) or not context_id or '\n' in context_id:
+            raise ValueError()
+    except (OSError, ValueError, KeyError, TypeError):
+        raise HealthFailure('profile_unbound', 'bind_lookup_profile', 78)
+    status_url = 'http://127.0.0.1:{}/status?{}'.format(PORT, urlencode({'contextId': context_id}))
+    code, status = probe(1.0)
+    check_signal()
+    if code == 0 and status:
+        classify(status)
+        emit(True, 'ready', 'running', 'connected', 'use_opencli', status)
         return 0
-      fi
-      release_start_lock
-      [[ "$lock_status" -eq 75 ]] && return 75
-      return 78
-    fi
-    if ! kill -0 "$lock_holder_pid" 2>/dev/null; then
-      wait "$lock_holder_pid" 2>/dev/null || true
-      release_start_lock
-      return 78
-    fi
-    sleep 0.02
-  done
-  release_start_lock
-  return 75
-}
+    if code != 7:
+        raise HealthFailure('daemon_unresponsive', 'check_opencli_daemon', 75, 'unknown', status=status)
+    prepare_lock()
+    remaining = START_DEADLINE - time.monotonic()
+    if remaining <= 0:
+        raise HealthFailure('daemon_start_lock_timeout', 'retry_opencli_health', 75)
+    code, status = probe(min(1.0, remaining))
+    check_signal()
+    if code == 0 and status:
+        classify(status)
+        emit(True, 'ready', 'running', 'connected', 'use_opencli', status)
+        return 0
+    if code != 7:
+        raise HealthFailure('daemon_unresponsive', 'check_opencli_daemon', 75, 'unknown', status=status)
+    daemon_entry = Path(shutil.which('opencli')).resolve().parent / 'daemon.js'
+    if not daemon_entry.is_file():
+        raise HealthFailure('daemon_entry_missing', 'check_opencli_installation', 78, 'stopped')
+    if time.monotonic() >= START_DEADLINE:
+        raise HealthFailure('daemon_start_lock_timeout', 'retry_opencli_health', 75)
+    env = dict(os.environ, OPENCLI_PROFILE=PROFILE, OPENCLI_DAEMON_PORT=str(PORT))
+    # close_fds prevents both daemon and curl from extending our kernel lock.
+    daemon_child = subprocess.Popen([shutil.which('node'), str(daemon_entry)], env=env,
+                                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL, close_fds=True, start_new_session=True)
+    last_status = {}
+    while time.monotonic() < START_DEADLINE:
+        check_signal()
+        _, status = probe(min(0.25, START_DEADLINE - time.monotonic()))
+        check_signal()
+        if status:
+            last_status = status
+            if classify(status, cold=True):
+                emit(True, 'ready', 'running', 'connected', 'use_opencli', status)
+                return 0
+        if daemon_child.poll() is not None and not last_status:
+            raise HealthFailure('daemon_start_failed', 'check_opencli_daemon', 69, 'stopped')
+        time.sleep(max(0, min(0.1, START_DEADLINE - time.monotonic())))
+    if last_status:
+        if last_status.get('profileDisconnected') is True:
+            raise HealthFailure('profile_disconnected', 'connect_lookup_profile', 78, 'running', 'disconnected', last_status)
+        raise HealthFailure('extension_disconnected', 'enable_extension_in_lookup_profile', 69, 'running', 'disconnected', last_status)
+    raise HealthFailure('daemon_timeout', 'check_opencli_daemon', 75)
 
-prepare_runtime_dir() {
-  [[ -n "${HOME:-}" ]] && [[ "$HOME" == /* ]] || return 1
-  [[ ! -L "$HOME/tmp" ]] || return 1
-  mkdir -p "$HOME/tmp" 2>/dev/null || return 1
-  [[ -d "$HOME/tmp" ]] && [[ -O "$HOME/tmp" ]] || return 1
-  [[ ! -L "$RUNTIME_DIR" ]] || return 1
-  mkdir -p "$RUNTIME_DIR" 2>/dev/null || return 1
-  chmod 700 "$RUNTIME_DIR" 2>/dev/null || return 1
-  [[ -d "$RUNTIME_DIR" ]] && [[ -O "$RUNTIME_DIR" ]] && [[ -w "$RUNTIME_DIR" ]]
-}
 
-emit() {
-  local ok_value="$1"
-  local state="$2"
-  local daemon="$3"
-  local extension="$4"
-  local next="$5"
-  local status_json="${6:-}"
-  local elapsed
-  local daemon_version=""
-  local extension_version=""
-  elapsed=$(elapsed_ms)
-
-  if [[ -n "$status_json" ]]; then
-    daemon_version=$(jq -r '.daemonVersion // empty' <<<"$status_json" 2>/dev/null || true)
-    extension_version=$(jq -r '.extensionVersion // empty' <<<"$status_json" 2>/dev/null || true)
-  fi
-
-  jq -cn \
-    --argjson ok "$ok_value" \
-    --arg state "$state" \
-    --arg daemon "$daemon" \
-    --arg extension "$extension" \
-    --argjson started_daemon "$started_daemon" \
-    --argjson restored_daemon "$restored_daemon" \
-    --argjson elapsed_ms "$elapsed" \
-    --arg next "$next" \
-    --arg daemon_version "$daemon_version" \
-    --arg extension_version "$extension_version" '
-      {
-        ok: $ok,
-        state: $state,
-        daemon: $daemon,
-        extension: $extension,
-        started_daemon: $started_daemon,
-        restored_daemon: $restored_daemon,
-        elapsed_ms: $elapsed_ms,
-        next: $next
-      }
-      + (if $daemon_version == "" then {} else {daemon_version: $daemon_version} end)
-      + (if $extension_version == "" then {} else {extension_version: $extension_version} end)
-    '
-}
-
-restore_started_daemon() {
-  local current_status="${1:-}"
-  local observed_pid=""
-  local stop_deadline
-  local stop_start
-  local term_deadline
-  local remaining_ms
-  local probe_budget_ms
-  [[ "$started_daemon" == true ]] || return
-  if [[ -n "$current_status" ]]; then
-    observed_pid=$(jq -r '.pid // empty' <<<"$current_status" 2>/dev/null || true)
-    [[ "$observed_pid" != "$started_daemon_pid" ]] || current_status=""
-  fi
-
-  stop_start=$(now_ms)
-  stop_deadline=$((stop_start + STOP_TOTAL_BUDGET_MS))
-  [[ "$stop_deadline" -le "$overall_deadline_ms" ]] || stop_deadline="$overall_deadline_ms"
-  if process_is_done "$started_daemon_pid"; then
-    wait "$started_daemon_pid" 2>/dev/null || true
-    restored_daemon=true
-  elif ! started_daemon_is_current; then
-    restored_daemon_state=unknown
-    return
-  else
-    # 只向本次直接生成且启动指纹仍一致的 PID 发信号；绝不经全局
-    # /shutdown 端点，以免身份核验后端口 owner 被替换而误停别的任务。
-    kill -TERM "$started_daemon_pid" 2>/dev/null || true
-    term_deadline=$(min_ms "$stop_deadline" "$(( $(now_ms) + 500 ))")
-    while started_daemon_is_current; do
-      [[ "$(now_ms)" -lt "$term_deadline" ]] || break
-      sleep 0.02
-    done
-    if started_daemon_is_current; then
-      kill -KILL "$started_daemon_pid" 2>/dev/null || true
-    fi
-    while started_daemon_is_current; do
-      [[ "$(now_ms)" -lt "$stop_deadline" ]] || break
-      sleep 0.02
-    done
-    if ! started_daemon_is_current; then
-      wait "$started_daemon_pid" 2>/dev/null || true
-      restored_daemon=true
-    else
-      restored_daemon_state=unknown
-      return
-    fi
-  fi
-
-  remaining_ms=$(remaining_until_ms "$stop_deadline")
-  if [[ "$remaining_ms" -gt 0 ]]; then
-    probe_budget_ms=$(min_ms "$remaining_ms" 100)
-    current_status=$(read_status "$probe_budget_ms" || true)
-  fi
-  if [[ -n "$current_status" ]] && jq -e 'type == "object" and .ok == true' >/dev/null 2>&1 <<<"$current_status"; then
-    restored_daemon_state=running
-  else
-    restored_daemon_state=stopped
-  fi
-}
-
-handle_signal() {
-  trap '' HUP INT TERM
-  overall_deadline_ms=$(( $(now_ms) + STOP_TOTAL_BUDGET_MS ))
-  restore_started_daemon
-  release_start_lock
-  exit 130
-}
-
-defer_signal() {
-  signal_pending=true
-}
-
-trap release_start_lock EXIT
-trap handle_signal HUP INT TERM
-
-start_deadline_ms=$((start_ms + START_BUDGET_MS))
-overall_deadline_ms=$((start_ms + TOTAL_BUDGET_MS))
-if ! prepare_runtime_dir; then
-  emit false "lock_unavailable" "unknown" "unknown" "create_home_tmp" ""
-  exit 78
-fi
-status_json=$(read_status)
-status_result=$?
-
-if [[ "$status_result" -eq 0 ]] && [[ -n "$status_json" ]] && jq -e 'type == "object" and .ok == true' >/dev/null 2>&1 <<<"$status_json"; then
-  if jq -e '.profileRequired == true' >/dev/null 2>&1 <<<"$status_json"; then
-    emit false "profile_required" "running" "connected" "select_ego_lite_profile" "$status_json"
-    exit 78
-  fi
-  if jq -e '.profileDisconnected == true' >/dev/null 2>&1 <<<"$status_json"; then
-    emit false "profile_disconnected" "running" "disconnected" "select_connected_ego_lite_profile" "$status_json"
-    exit 78
-  fi
-  if status_is_ready "$status_json"; then
-    emit true "ready" "running" "connected" "use_opencli" "$status_json"
-    exit 0
-  fi
-  if jq -e '.extensionConnected == true' >/dev/null 2>&1 <<<"$status_json"; then
-    emit false "profile_mismatch" "running" "connected" "rebind_ego_lite_profile" "$status_json"
-    exit 78
-  fi
-  emit false "extension_disconnected" "running" "disconnected" "start_or_enable_opencli_extension_in_ego_lite" "$status_json"
-  exit 69
-fi
-
-if [[ "$status_result" -ne 7 ]]; then
-  emit false "daemon_unresponsive" "running" "unknown" "check_opencli_daemon" "$status_json"
-  exit 75
-fi
-
-acquire_start_lock
-lock_status=$?
-if [[ "$lock_status" -ne 0 ]]; then
-  if [[ "$lock_status" -eq 78 ]]; then
-    emit false "lock_unavailable" "unknown" "unknown" "check_home_tmp_permissions" ""
-    exit 78
-  fi
-  emit false "daemon_start_lock_timeout" "unknown" "unknown" "retry_opencli_health" ""
-  exit 75
-fi
-
-# 另一并发任务可能已在持锁期间启动 daemon；锁内必须重新探活后才能认领。
-remaining_ms=$(remaining_until_ms "$start_deadline_ms")
-[[ "$remaining_ms" -gt 0 ]] || {
-  emit false "daemon_start_lock_timeout" "unknown" "unknown" "retry_opencli_health" ""
-  exit 75
-}
-remaining_ms=$(min_ms "$remaining_ms" 1000)
-status_json=$(read_status "$remaining_ms")
-status_result=$?
-if [[ "$status_result" -eq 0 ]] && [[ -n "$status_json" ]] && jq -e 'type == "object" and .ok == true' >/dev/null 2>&1 <<<"$status_json"; then
-  if jq -e '.profileRequired == true' >/dev/null 2>&1 <<<"$status_json"; then
-    emit false "profile_required" "running" "connected" "select_ego_lite_profile" "$status_json"
-    exit 78
-  fi
-  if jq -e '.profileDisconnected == true' >/dev/null 2>&1 <<<"$status_json"; then
-    emit false "profile_disconnected" "running" "disconnected" "select_connected_ego_lite_profile" "$status_json"
-    exit 78
-  fi
-  if status_is_ready "$status_json"; then
-    emit true "ready" "running" "connected" "use_opencli" "$status_json"
-    exit 0
-  fi
-  if jq -e '.extensionConnected == true' >/dev/null 2>&1 <<<"$status_json"; then
-    emit false "profile_mismatch" "running" "connected" "rebind_ego_lite_profile" "$status_json"
-    exit 78
-  fi
-  emit false "extension_disconnected" "running" "disconnected" "start_or_enable_opencli_extension_in_ego_lite" "$status_json"
-  exit 69
-fi
-if [[ "$status_result" -ne 7 ]]; then
-  emit false "daemon_unresponsive" "running" "unknown" "check_opencli_daemon" "$status_json"
-  exit 75
-fi
-
-last_status=""
-if ! resolve_daemon_entry; then
-  emit false "daemon_entry_missing" "stopped" "unknown" "reinstall_opencli" ""
-  exit 78
-fi
-
-# 直接运行 OpenCLI 安装包自己的 daemon 入口，PID 在生成瞬间即由本门禁持有。
-# 启动临界区只暂存信号，记下 PID 与启动指纹后立刻恢复完整处理，避免
-# detached 子进程尚未监听时无法证明归属。
-trap defer_signal HUP INT TERM
-python3 -c 'import os, sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' \
-  "$node_bin" "$daemon_entry" 9>&- >/dev/null 2>&1 &
-spawned_daemon_pid=$!
-claim_spawned_daemon "$spawned_daemon_pid" || true
-trap handle_signal HUP INT TERM
-if [[ "$signal_pending" == true ]]; then
-  handle_signal
-fi
-
-while :; do
-  remaining_ms=$(remaining_until_ms "$start_deadline_ms")
-  [[ "$remaining_ms" -gt 0 ]] || break
-  probe_budget_ms=$(min_ms "$remaining_ms" 250)
-  status_json=$(read_status "$probe_budget_ms" || true)
-  if [[ -n "$status_json" ]] && jq -e 'type == "object" and .ok == true' >/dev/null 2>&1 <<<"$status_json"; then
-    last_status="$status_json"
-    if jq -e '.profileRequired == true' >/dev/null 2>&1 <<<"$status_json"; then
-      restore_started_daemon "$status_json"
-      emit false "profile_required" "$restored_daemon_state" "connected" "select_ego_lite_profile" "$status_json"
-      exit 78
-    fi
-    # 本次刚启动的 daemon 可能先监听端口、随后才等到 ego lite 扩展重连；
-    # 预算内保留断连状态继续轮询，既有 daemon 的稳定断连仍在上方立即失败。
-    if status_is_ready "$status_json"; then
-      emit true "ready" "running" "connected" "use_opencli" "$status_json"
-      exit 0
-    fi
-    if jq -e '.extensionConnected == true' >/dev/null 2>&1 <<<"$status_json"; then
-      restore_started_daemon "$status_json"
-      emit false "profile_mismatch" "$restored_daemon_state" "connected" "rebind_ego_lite_profile" "$status_json"
-      exit 78
-    fi
-  fi
-
-  if process_is_done "$started_daemon_pid" && [[ -z "$last_status" ]]; then
-    restore_started_daemon "$last_status"
-    emit false "daemon_start_failed" "$restored_daemon_state" "unknown" "reinstall_opencli" ""
-    exit 69
-  fi
-
-  sleep 0.25
-done
-
-restore_started_daemon "$last_status"
-if [[ -n "$last_status" ]]; then
-  if jq -e '.profileDisconnected == true' >/dev/null 2>&1 <<<"$last_status"; then
-    emit false "profile_disconnected" "$restored_daemon_state" "disconnected" "select_connected_ego_lite_profile" "$last_status"
-    exit 78
-  fi
-  emit false "extension_disconnected" "$restored_daemon_state" "disconnected" "start_or_enable_opencli_extension_in_ego_lite" "$last_status"
-  exit 69
-fi
-
-emit false "daemon_timeout" "$restored_daemon_state" "unknown" "check_opencli_daemon" ""
-exit 75
+try:
+    exit_code = main()
+except Interrupted:
+    recover_own_daemon()
+    exit_code = 130
+except HealthFailure as error:
+    daemon_state = recover_own_daemon(error.status) if daemon_child is not None else error.daemon
+    emit(False, error.state, daemon_state, error.extension, error.next_step, error.status)
+    exit_code = error.code
+except OSError:
+    daemon_state = recover_own_daemon() if daemon_child is not None else 'unknown'
+    emit(False, 'local_runtime_error', daemon_state, 'unknown', 'check_local_runtime')
+    exit_code = 78
+finally:
+    if lock_fd is not None:
+        os.close(lock_fd)
+sys.exit(exit_code)
+PY

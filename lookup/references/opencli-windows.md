@@ -1,30 +1,33 @@
-# OpenCLI 的容器窗口为什么关不掉
+# OpenCLI 诊断与窗口版本差异
 
-SKILL.md 只留结论和自检入口。本文是机制细节，用户抱怨「又多了空白窗口」、或你想找个办法关掉它们时读——**结论是关不掉，别再找了，只能靠不触发。**
+仅在诊断连接、窗口残留或升级兼容性时读。先记录安装版本与实际实现，历史问题不能直接套用到新版本。
 
-## 它绕过了 Space 机制
+## doctor 的当前依据
 
-OpenCLI 是标准 Chrome 扩展，用 tabs/windows API 开普通窗口，不受 ego 的 Space 隔离约束。所以 `completeTaskSpace()` 回收不到它——那个只管 ego 的 task space。把 OpenCLI 留下的窗口误判成「task space 没收尾」会导致你反复检查错的地方。
+旧文档把 `opencli doctor` 一律描述成会创建无法关闭的前台窗口，已不适用于核对过的新实现。
 
-扩展按 role 维护两个「容器窗口」（`ownedContainers`，`chrome.windows.create` 建 1280x900 普通窗口），role 由命令的 surface 决定：
+2026-10-12 检查的 OpenCLI main `b06ab7780e73d3021e12e0f170086c2d55675776` 中，[`checkConnectivity()`](https://github.com/jackwener/opencli/blob/b06ab7780e73d3021e12e0f170086c2d55675776/src/doctor.ts#L81-L99) 使用 `cookies` 探针与 `opencli-probe.invalid`，不通过新标签页测试连通性。它仍可能按需启动 daemon；不创建测试页不等于整个命令没有本地副作用。
 
-| 容器 role | 谁触发 | 默认焦点 | 橙色「OpenCLI Browser」标签组 | 注册表丢失后 |
-|---|---|---|---|---|
-| `automation` | 适配器命令（六平台 search 等） | background | 无 | **无法再识别，下条命令新建 → 孤儿累积** |
-| `interactive` | `opencli browser ...`、`opencli doctor` | **foreground（抢焦点弹窗）** | 有 | 能按标签组标题全局找回，有限自愈 |
+日常查询用 `scripts/opencli-health.sh` 检查 Lookup 选定 bridge/Profile；用户明确排障时可在理解安装版本的情况下运行 doctor。不要为遵守旧禁令而放弃有效诊断，也不要只用版本号推定目标内容可读。
 
-`automation` 那一列的「孤儿累积」是窗口越堆越多的真正来源：注册表一丢，已存在的窗口再也认不出来，下条命令又建一个新的。
+## 平台动作与窗口归属
 
-## 为什么没有关闭路径
+OpenCLI adapter、OpenCLI 通用 browser 和宿主浏览器可能使用不同的标签／容器管理机制。依据当前工具公开接口判断哪些资源属于本任务，不把所有窗口都当 ego task space。
 
-扩展在 `releaseLease()` 里把最后一个标签导航回 `about:blank` 当可复用占位符，**全文件没有一处 `chrome.windows.remove`**。实测 `opencli browser <sess> close` 和 `opencli browser tab close` 都只释放 lease，窗口不动；那个占位标签在 `tab list` 里根本不出现，所以你也看不到它。
+- `--window background` 控制焦点，不承诺无窗口。
+- bridge/Profile 健康只说明连接，不能代替平台登录态和业务结果验收。
+- OpenCLI bridge 故障时 `opencli browser` 通常仍共享该依赖，不能作为独立 fallback；换当前宿主合适浏览器，再考虑 ego-browser。
+- 窗口或任务空间回收按实际创建者的正式接口和归属处理。没有归属证据时只报告，不跨会话关闭标签、不杀共享浏览器或 daemon。
+- ego 正式 Skill 的版本化接口见 [ego-space-hooks.md](ego-space-hooks.md)，这里不复制 API。
 
-`--window background` 只管抢不抢焦点，**消不掉窗口本身**。
+## 更新兼容层
 
-## 探活别用 doctor（≤ 1.8.6）
+`opencli-run.mjs` 只做选定 Profile、异步入口兼容与有界等待，不替代上游平台逻辑。`LOOKUP_OPENCLI_PROFILE` 默认 `ego-lite`；继承的另一个 `OPENCLI_PROFILE` 不得把任务切到别的账号。
 
-`opencli doctor` 硬编码 `surface: 'browser'` 且没有 `--window` 选项，每跑一次就在用户面前弹一个前台空白窗口并永久留下。上游 PR #2206 拟把 `checkConnectivity()` 改成无窗口 cookies 探针；本机升级到含该修复的版本后，按 `ROADMAP.md` 复核本节。本节其余段落与本文其他章节不受该 PR 影响——它只修 doctor 一条路径。
+当前 helper 对非空 `OPENCLI_CDP_ENDPOINT` 拒绝执行，避免未声明地换到另一浏览器 transport。需要 CDP 环境时应明确核对支持并补充独立验证，不能靠环境变量偷偷跳过 Profile 门禁。
 
-确实需要 doctor 的详细诊断时，前面加 `OPENCLI_WINDOW=background`（`sendCommandRaw` 读这个环境变量）压掉抢焦点——但窗口仍会创建并留下，这只是让它不打断用户。
+入口加载默认 15 秒，由 `OPENCLI_RUN_IMPORT_TIMEOUT_MS` 控制；整个调用的等待预算默认 90 秒，由 `LOOKUP_OPENCLI_TIMEOUT_MS` 控制，包含加载阶段。业务超时不证明服务端未执行，不能自动重派。
 
-零窗口的 L3 替代是 `scripts/selftest.sh` 里的 cookies 探针。另外 `opencli profile list` 和 `opencli daemon status` 也零窗口，但它们只读 daemon 记忆里的连接状态、不做端到端往返，只能用来看「daemon 起没起」。`opencli auth status` 有逐站超时和 quickCheck，但仍可能创建或复用 automation 容器，不能冒充零窗口探活。
+当前兼容补丁只覆盖已核对的 `@jackwener/opencli` 1.8.6–1.8.8，且必须识别到磁盘入口仍调用同步 `runCli().parse()`。版本、包归属或入口特征变化时退出 78／`COMPAT_UNVERIFIED`，不盲目继续 patch；按新安装源码重新验证，若上游已正确等待 `parseAsync` 就移除补丁。具体平台逻辑继续由上游维护。
+
+`OPENCLI_CONFIG_DIR` 可指定已配置的 OpenCLI 目录，`OPENCLI_DAEMON_PORT` 可指定 daemon 端口；health 与 runner 必须使用同一环境。不要把改端口或 Profile 当作绕过失败依赖的证明。

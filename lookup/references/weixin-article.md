@@ -1,48 +1,27 @@
-# 公众号取正文
+# 公众号正文与跳转
 
-`node scripts/opencli-run.mjs weixin search` 返回的是**搜狗跳转链**（`weixin.sogou.com/link?url=...`），不是文章地址。这条链只有真实浏览器能走通，所以取正文必须过一次 ego lite。
+已知公众号原文链接时先使用合适的专用读取能力。OpenCLI `weixin/search` 有时返回 `weixin.sogou.com/link?url=...` 中转链；它不是文章正文地址，可能需要浏览器执行跳转。
 
-2026-07-30 实测的三条死路，别再试：
+## 核对目标与正文
 
-| 试法 | 结果 |
-|---|---|
-| `fetch.sh <搜狗链>` | **返回 `status=ok`，内容却是搜狗反爬验证码页**（911 字节，「此验证码用于确认这些请求是您的正常行为」）——典型的假成功 |
-| `curl` 直连或带浏览器 UA + Referer | 302 到 `weixin.sogou.com/antispider/` |
-| `node scripts/opencli-run.mjs weixin download --url <搜狗链>` | `status: invalid URL`，它只认 `mp.weixin.qq.com` |
+1. 保留搜索结果的原始链接、标题、公众号名和可用时间，判断是中转链还是 `mp.weixin.qq.com` 原文。
+2. 中转链需要浏览器时先使用当前 Agent 合适浏览器，最后使用正式 `ego-browser` Skill；先读该工具实际接口。
+3. 等待真实跳转完成，观察落地 URL 与当前页面；按页面状态等待，不固定 sleep 后盲读。验证页、登录页和中转页不能交付为正文。
+4. 定向提取标题、作者、发布时间和正文。历史页面常见选择器为 `#activity-name`、`#js_name`、`#js_content`；节点不存在时重新观察 DOM，不因旧选择器失效就声称文章不存在。
+5. 正文是否完整按文章与任务判断，不设统一千字门槛。完整短文可交付；长文片段明确标部分，缺口影响问题时再补充。
+6. 按正式浏览器 Skill 收尾本任务资源，不调用旧 API 或回收其他会话页面。
 
-## 默认走这条：一个 heredoc 打开并读回正文
+过去曾观察到中转链经普通 HTTP 返回验证码页、下载命令只接受原文 URL；这些是带版本与环境条件的经验，不是所有未来实现都无效的证明。当前调用仍以 URL、内容与错误状态验收，避免反复尝试同一已失败中转路径。
 
-搜狗链在浏览器里会 JS 跳转到 `mp.weixin.qq.com`，落地后直接取 DOM 即可。实测 2555 字正文完整。
+## 显式归档
 
-```bash
-ego-browser nodejs <<'EOF'
-const task = await useOrCreateTaskSpace('<按用户目标命名>')
-await openOrReuseTab('<搜狗跳转链>', { wait: true, timeout: 30 })
-await new Promise(r => setTimeout(r, 4000))   // 搜狗是 JS 跳转，不等会读到中转页
-
-const r = await js(`(() => {
-  const t = document.querySelector('#activity-name')?.innerText?.trim() || '';
-  const a = document.querySelector('#js_name')?.innerText?.trim() || '';
-  const c = document.querySelector('#js_content')?.innerText?.trim() || '';
-  return JSON.stringify({ title: t, author: a, chars: c.length, body: c });
-})()`)
-cliLog(r)
-EOF
-```
-
-读完按纪律用独占的最后一个 heredoc 调 `completeTaskSpace(id, { keep: false })`。
-
-`#activity-name` / `#js_name` / `#js_content` 这三个选择器是 2026-07 的页面结构，平台改版会失效；失效时先 `snapshotText()` 重新找节点，再更新这里。
-
-## 要落盘归档时走这条
-
-仅当用户明确要求归档时使用 `node scripts/opencli-run.mjs weixin download`。它会在本地创建文件，产出带元数据的干净 Markdown（实测 7197 字节，含标题、公众号名、发布时间、原文链接）；且**必须先用上面的办法拿到真实 `mp.weixin.qq.com` 地址**。
+仅在用户需要保存时才选择 OpenCLI `weixin/download`。先从当前注册表和帮助确认 `access`、输出目录和图片选项，再传真实原文 URL：
 
 ```bash
-node scripts/opencli-run.mjs weixin download --url '<mp.weixin.qq.com 真实地址>' \
-  --output <目录> --download-images false -f yaml --window background
+node scripts/opencli-run.mjs weixin download --url "<mp.weixin.qq.com 原文URL>" \
+  --output "<指定目录>" --download-images false -f json --window background
 ```
 
-跳转后的真实地址形如 `mp.weixin.qq.com/s?src=11&timestamp=...&signature=...`，带签名参数，`download` 接受这种形式。
+[已核对实现](https://github.com/jackwener/opencli/blob/b06ab7780e73d3021e12e0f170086c2d55675776/clis/weixin/download.js#L342-L352) 遇验证页会返回含 `title: Error` 和失败 `status` 的非空结果行；exit 0 或非空数组仍不能证明归档成功，应核对实际状态、正文与生成文件。
 
-只是要读内容就别用它——同样的信息量，直读少一轮命令、还不落盘。
+真实可访问 URL 可能含签名或跳转参数；保留在 `access_url`，不要为了去重或美化覆盖它。只阅读时不为了拿同一内容重复归档；保存操作遵循用户现有授权、范围与文件保留规则。

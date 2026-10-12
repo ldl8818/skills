@@ -1,25 +1,51 @@
-# YouTube 字幕
+# YouTube 字幕与视频证据
 
-要「这个视频讲了什么」时走这条。B站字幕不走这里，用 `node scripts/opencli-run.mjs bilibili subtitle <BV号>`——**不要用 yt-dlp 抓 B站**。
+用户要求了解指定视频时，始终围绕同一个 URL 获取证据。简介、字幕、ASR 转写和画面观察分别说明；只取得语言内容时，不声称核验过界面、图表或完整画面。B站先从当前工具注册表选择对应字幕动作，不套用 YouTube 命令。
 
-## 三步
+## 选择字幕轨道
 
-```bash
-# 1) 下载
-yt-dlp --write-auto-sub --sub-lang "en,zh-Hans" --skip-download --sub-format vtt -o "$HOME/tmp/%(id)s" "<URL>"
+1. 已有完整字幕或可用的当前轨道信息时直接复用；否则用已安装的 yt-dlp 查询人工字幕、自动字幕及语言。先核对当前帮助；URL 和选项通过独立 argv 传入。
 
-# 2) 清洗后再读，别直接读 .vtt
-sed -e '/-->/d' -e '/^WEBVTT/d' -e '/^Kind:/d' -e '/^Language:/d' -e 's/<[^>]*>//g' \
-    "$HOME/tmp/<id>.en.vtt" | awk 'NF' | awk '!seen[$0]++'
+   ~~~bash
+   yt-dlp --no-playlist --skip-download --list-subs "<目标URL>"
+   ~~~
 
-# 3) 读完删掉，别留在 ~/tmp
-trash "$HOME/tmp/<id>".*.vtt
-```
+2. 优先选择能够保留原意的人工字幕；没有合适人工轨道时再用自动字幕。用户要中文摘要不代表只能读取中文字幕，可以读取原语言后总结或翻译。没有请求语言不等于视频完全没有字幕。
+3. 在本任务新建的临时目录保存所选轨道；按实际返回文件名读取，不假定一定生成 .en.vtt。以下是参数结构，临时目录与语言由当前任务确认：
 
-**第 2 步不是可选的。**自动字幕带内联时间码和滚动重复（`We're<00:00:19.039><c> no</c>` 这种），实测 14807 字节清洗后只剩 1224 字节，**省 92%**。直接读原始 VTT 是在烧上下文。
+   ~~~bash
+   yt-dlp --no-playlist --skip-download --write-subs \
+     --sub-langs "<已确认语言>" --sub-format vtt \
+     --paths "<本任务临时目录>" -o "%(id)s.%(ext)s" "<目标URL>"
+   ~~~
 
-## 两条不用管的输出
+   选择自动字幕时将 --write-subs 换为 --write-auto-subs。只取所需轨道；读取字幕使用的临时文件与下载完整视频、长期归档分开处理。命令使用宿主执行器的有限总时限，网络重试也须有界。
+4. 检查实际文件存在、非空、语言正确且有可用时间段。不能只凭退出码或某条 warning 判断成功。警告与输出矛盾时，以真实字幕内容和覆盖范围为依据，不关闭沙箱或反复请求来掩盖故障。
 
-`Error solving N challenge requests using "node" provider` 和 `Access to this API has been restricted` 这两条 WARNING **每次都会出现，且不影响字幕**——沙箱开、关两种情况实测都照常拿到中英文 VTT。它们只影响需要签名求解的视频流格式，纯下字幕用不到。**不要为它关沙箱，也不要去查 YouTube 侧**，那是白费一轮。
+## 清洗与定位
 
-输出 `There are no subtitles for the requested languages` 是正常结果不是故障：这个视频就是没字幕。别据此判定通道不通，换个视频即可。
+从 Lookup 根目录执行：
+
+~~~bash
+python3 scripts/clean-subtitles.py "<实际字幕文件.vtt>" --max-output-chars 40000
+~~~
+
+脚本只读本地 VTT/SRT，保留每个输出片段的开始时间，仅去除相邻滚动字幕的重叠或相同时间段的重复；不做全局句子去重。普通重复对白、后文再次出现的句子及字幕中的字面文本都应保留。
+
+stdout 是带时间位置的文本，stderr 是单个 JSON 状态对象：
+
+- 退出 0 / status=ok：已处理可用字幕，仍需检查是否覆盖用户问题。
+- 退出 3 / status=partial：正文预算导致截断，或有无法解析的 cue。查看 truncated、malformed_cues，只补影响结论的缺口。
+- 退出 1 / status=error：输入不可读或没有可用的带时间字幕，不当成已证明原视频没有字幕。
+
+40,000 字符是默认输出预算，最多读取 5 MiB 输入。需要更完整上下文时定向提高预算或读取相应片段；不要把部分字幕写成全片结论。读完后只清理本任务创建且已不再需要的临时文件，保留用户原有文件。
+
+## 同一视频的备用能力
+
+- yt-dlp 失败或所需轨道不可用时，检查当前 OpenCLI 的 YouTube transcript 动作与参数；它可能输出分组文本，columns 为空不代表该动作无用。
+- 仍无可用字幕且任务需要口述内容时，使用已经配置并处于任务授权范围内的音频转写能力。可按需复用 Agent Reach 的 transcribe，但不在普通查询中自动安装、升级或新开通付费服务。
+- 区分字幕与 ASR 的来源；转写可能有漏词和专名错误，依赖精确措辞时回到音频或其他原始材料核对。
+- 需要核对视频画面时，使用当前可用的视觉/视频能力；宿主浏览器能力适用时先使用，ego-browser 仍是最后网页兜底。打开播放页本身不能证明已读取音轨或画面。
+- 所有候选都缺少所需内容时，说明具体缺口。用户指定的视频不能用另一个视频替代；不存在字幕不是整个 OpenCLI 或网络通道故障。
+
+版本相关命令以当前已安装帮助和注册表为准。方案参考 [Agent Reach 视频能力](https://github.com/Panniantong/Agent-Reach/blob/94f06c1969dfc1834001269d79d3ad0972d9dee6/agent_reach/skill/references/video.md)，不把其经验当作长期固定的平台保证。
