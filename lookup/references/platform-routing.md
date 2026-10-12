@@ -36,20 +36,7 @@
 | 公众号 | 专用工具或 OpenCLI `weixin/search` 发现；浏览器解析跳转与正文 | 搜狗中转链不是文章地址；按 [weixin-article.md](weixin-article.md) 核对落地页 |
 | Douyin | OpenCLI `douyin/search`；有需要再发现 `user-videos` 等动作 | 搜索卡片不等于视频全文；缺少发布时间不证明最近；不可见互动数保持未知 |
 
-以下只展示参数结构，执行前核对本机帮助；外部输入通过独立 argv 传入：
-
-```bash
-node scripts/opencli-run.mjs twitter search "<词>" --product live -f json --limit 5 --window background
-node scripts/opencli-run.mjs twitter tweets "<账号>" -f json --limit 20 --window background
-node scripts/opencli-run.mjs twitter thread "<推文ID>" -f json --window background
-node scripts/opencli-run.mjs twitter article "<推文ID>" -f plain --window background
-node scripts/opencli-run.mjs xiaohongshu search "<词>" -f json --limit 5 --window background
-node scripts/opencli-run.mjs xiaohongshu note "<含访问参数的完整URL>" -f plain --window background
-bili search "<词>" --type video -n 5
-node scripts/opencli-run.mjs bilibili subtitle "<BV号>" -f json --window background
-node scripts/opencli-run.mjs weixin search "<词>" -f json --limit 5 --window background
-node scripts/opencli-run.mjs douyin search "<词>" -f json --limit 5 --window background
-```
+具体参数从当前命令帮助读取；必要合约由台账与 selftest 核对，不在本文重复保存平台命令清单。
 
 `LOOKUP_OPENCLI_PROFILE` 统一选择已配置的 OpenCLI Profile，默认 `ego-lite`；不要暗中换到另一账号。`--window background` 控制焦点，不等于所有命令都不创建窗口。
 
@@ -73,7 +60,7 @@ node scripts/opencli-run.mjs douyin search "<词>" -f json --limit 5 --window ba
 
 ## Agent Reach 与维护
 
-Agent Reach 是可选的工具选型、安装与诊断辅助，不是所有请求必经的 OpenCLI 包装层。常用查询直接调用上游工具。只有环境维护、查找其他后端或使用已配置的 `agent-reach transcribe` 时才加载相应资料。
+Agent Reach 与 Lookup 的平台路由职责重叠。本组合按需复用其对应平台的候选资料、诊断和已配置转写，最终按任务证据选择实际工具，见 [任务选路.md](任务选路.md)。常用查询直接调用上游工具，无需经过 Agent Reach；陌生平台也不另建完整目录。
 
 ```bash
 agent-reach doctor --json

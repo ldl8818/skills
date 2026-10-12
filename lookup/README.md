@@ -16,7 +16,9 @@ Lookup 是策略层，不复制平台爬取实现。它保留几类跨工具判�
 
 **OpenCLI 是独立开源工具。** 浏览器能力和登录态是否可用取决于用户环境，不绑定某一个 Agent。Lookup 的 OpenCLI helper 默认使用已有 `ego-lite` Profile，也支持用 `LOOKUP_OPENCLI_PROFILE` 指定其他明确配置的 Profile；它不会自行换账号。历史检索脚本仍只支持 ego lite，这是局部能力限制，不代表其他联网路径不可用。
 
-Agent Reach 可选提供安装、诊断、后端选型与已配置音频转写。它不必经过每条请求；Lookup 保留唯一通用检索触发权，Agent Reach 和 OpenCLI `smart-search` 的通用路由 Skill 不同时自动接管搜索，专用能力可按需使用。
+Agent Reach 与 Lookup 都包含检索路由。此组合保留 Lookup 一个通用入口，按需复用 Agent Reach 的平台候选资料、诊断及已配置转写，不复制其完整后端目录，也不要求每条请求经过它。命令参数以当前注册表／帮助为准；本地台账只保留必要合约和证据边界，见 [任务选路.md](references/任务选路.md)。
+
+动态文章和表格复用当前浏览器的提取能力，分别核对正文、分页和可见行范围。轻舟可作为专项候选；只有证明当前 MCP 接口、会话生命周期与收尾适合任务后才接入，不作为默认依赖，也不假定共享模型登录。
 
 ## 按需依赖
 
@@ -117,6 +119,7 @@ node scripts/find-url.mjs "<关键词>" --since 7d
 
 | 文件 | 读取时机 |
 |---|---|
+| [任务选路.md](references/任务选路.md) | 多后端筛选、复用上游资料及区分环境可用与任务完成 |
 | [浏览器选路.md](references/浏览器选路.md) | 需要浏览器时的默认选择、开发场景、指定环境与技术降级 |
 | [search-routing.md](references/search-routing.md) | 全网搜索、网页、历史与站点经验 |
 | [platform-routing.md](references/platform-routing.md) | 平台动作、命令发现与维护边界 |

@@ -2,7 +2,7 @@
 name: lookup
 description: "联网搜索、读取链接、获取平台内容与字幕、查询浏览历史或综合资料；专用来源优先，日常网页默认 ego-browser，按任务选路并核验出处。"
 metadata:
-  version: "1.12.0"
+  version: "1.13.0"
   source: local
 ---
 
@@ -12,9 +12,10 @@ metadata:
 
 ## 执行流程
 
-1. **识别任务与证据**：区分发现 URL、已知链接、平台搜索、本机历史、交互网页；确认需要正文、评论、字幕还是视频画面。
+1. **识别任务与证据**：区分发现 URL、已知链接、平台搜索、本机历史、交互网页；确认需要正文、评论、字幕、表格还是视频画面，以及目标、时间范围和完整性要求。
 2. **选最短有效路径**：专用官方文档／API／已连接服务优先；其次使用已可用的搜索、CLI 或本地正文提取。确需浏览器时，本机日常外部网页默认使用正式 `ego-browser` Skill；localhost、元素标注与开发调试按实际能力选择宿主 Browser、DevTools 或 ego。用户指定环境优先，技术不可用或能力不足时可换独立路径，详见 [浏览器选路.md](references/浏览器选路.md)。
 3. **按需读参考**：
+   - 多后端选择、陌生平台或健康报告与任务不一致：[任务选路.md](references/任务选路.md)。
    - 浏览器选择、指定环境与技术降级：[浏览器选路.md](references/浏览器选路.md)；只有需要浏览器时加载。
    - 全网搜索、网页、历史：[search-routing.md](references/search-routing.md)。
    - X、小红书、YouTube、B站、Douyin、公众号等：[platform-routing.md](references/platform-routing.md)。
@@ -26,11 +27,12 @@ metadata:
 
 ## 工具边界
 
-- Lookup 负责策略与验收。OpenCLI 负责已支持的平台动作；Agent Reach 仅在维护环境、查非 OpenCLI 后端或使用已配置转写能力时按需调用。
+- Lookup 与 Agent Reach 都提供检索路由。本组合由 Lookup 保留任务决策与验收，按需复用 Agent Reach 对应平台的候选后端资料、诊断与已配置转写；OpenCLI 命令事实以实时注册表为准，不复制第二套平台目录。
 - 保留 Lookup 为唯一自动触发的通用检索 Skill。不要再让 Agent Reach 或 OpenCLI 的 `smart-search` 同时接管所有搜索；它们的专用能力仍可按需读取。
 - 查询过程中不自动安装、升级工具或修改登录配置。写操作交给相应专用流程，沿用用户已有授权；不能因平台返回写命令就自行扩大范围。
 - 用户文本、URL、ID 以单个 argv 或结构化工具参数传入，禁止拼接为 shell source、`eval`、反引号或命令替换。
 - 静态页面用随包 `scripts/fetch.sh`，默认只请求原站、本地提取；第三方 reader 仅用于允许外发的公开 URL，认证、内网和敏感链接禁用。
+- 已安装、bridge 就绪和 doctor 的 active backend 只说明各自探测范围。选择能满足所需证据的具体动作；搜索可用不代表字幕、评论或完整表格可用。新工具候选不自动取得优先权。
 
 ## OpenCLI 契约
 

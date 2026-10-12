@@ -70,6 +70,6 @@ HTTP 403／429、网关错误或验证页只证明当前通道失败，不能据
 
 ## 策略台账维护
 
-`references/providers.json` 是 Agent 使用的策略和合约资料，不自动执行其 `args`、`priority`、`validator` 或 fallback。`scripts/selftest.sh` 只读取 OpenCLI 必要合约，与实时注册表比较；不证明返回内容、账号或所有平台可用。
+`references/providers.json` 是必要合约和任务边界资料，不保存可执行命令模板；候选按数组顺序列出，实际筛选见 [任务选路.md](任务选路.md)，不自动执行或降级。`scripts/selftest.sh` 只读取 OpenCLI 必要合约，与实时注册表比较；不证明返回内容、账号或所有平台可用。
 
 只维护跨工具优先级、必要字段、授权／证据边界与失效作用域，不复制整个 OpenCLI 注册表。升级后检查安装版本、必要合约与受影响的最小真实场景；报告哪些未验证，不维护容易过期的固定成功率或单点统计。

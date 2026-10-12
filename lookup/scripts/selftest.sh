@@ -133,7 +133,7 @@ done
 
 PROVIDERS_OK=0
 if command -v jq >/dev/null 2>&1 && jq -e '
-  (.version == 3)
+  (.version == 5)
   and ((.actions | type) == "object" and (.actions | length) > 0)
   and all(.actions[]; ((.providers | type) == "array" and (.providers | length) > 0))
   and all(.actions[]; (([.providers[].id] | length) == ([.providers[].id] | unique | length)))
@@ -157,7 +157,7 @@ if command -v jq >/dev/null 2>&1 && jq -e '
   )
   and (([.actions[].providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional")) | .command] | length) == ([.actions[].providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional")) | .command] | unique | length))
 ' "$PROVIDERS_JSON" >/dev/null 2>&1; then
-  ok "providers.json v3 schema 与 OpenCLI 合约字段完整"
+  ok "providers.json v5 schema 与 OpenCLI 合约字段完整"
   PROVIDERS_OK=1
 else
   bad "providers.json 不可解析、schema 错误或 OpenCLI 合约字段不完整"

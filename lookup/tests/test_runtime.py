@@ -602,7 +602,7 @@ class SelftestTests(Fixture):
             write(scripts / name, '')
         self.registry = [{'site': 'example', 'name': 'search', 'access': 'read',
                           'args': [{'name': 'query', 'positional': True}], 'columns': ['title']}]
-        self.providers = {'version': 3, 'actions': {'example/search': {'providers': [
+        self.providers = {'version': 5, 'actions': {'example/search': {'providers': [
             {'id': 'primary', 'type': 'opencli', 'status': 'active', 'command': 'example/search',
              'required_access': 'read', 'auth': 'none', 'required_args': ['query'], 'required_columns': ['title']},
             {'id': 'optional', 'type': 'opencli', 'status': 'conditional', 'command': 'optional/search',
@@ -625,6 +625,14 @@ else process.exit(99)
         write(scripts / 'opencli-health.sh', '#!/bin/sh\nprintf \'%s\\n\' \'{"ok":true,"state":"ready","profile":"ego-lite"}\'\n', True)
         self.command = ['bash', str(scripts / 'selftest.sh')]
 
+    def test_shipped_provider_schema_is_accepted(self):
+        shutil.copyfile(ROOT / 'references/providers.json', self.providers_file)
+        _, out, _ = self.run_cmd(self.command, timeout=12)
+        # The mocked registry need not implement real platforms, but the shipped
+        # policy must pass the actual selftest schema gate.
+        self.assertIn('schema 与 OpenCLI 合约字段完整', out)
+        self.assertNotIn('schema 错误', out)
+
     def test_optional_providers_skip_and_stderr_does_not_pollute_registry(self):
         code, out, _ = self.run_cmd(self.command, timeout=12)
         self.assertEqual(code, 0, out[-1800:])
@@ -632,6 +640,19 @@ else process.exit(99)
         self.assertIn('optional/search', out)
         self.assertIn('lookup-fixture-uninstalled', out)
         self.assertEqual((self.home / 'tmp/lookup-runtime').stat().st_mode & 0o777, 0o700)
+
+    def test_unknown_schema_and_missing_contract_are_rejected(self):
+        for mutation in ('version', 'required_access'):
+            with self.subTest(mutation=mutation):
+                policy = json.loads(json.dumps(self.providers))
+                if mutation == 'version':
+                    policy['version'] = 999
+                else:
+                    del policy['actions']['example/search']['providers'][0]['required_access']
+                write(self.providers_file, json.dumps(policy))
+                code, out, _ = self.run_cmd(self.command, timeout=12)
+                self.assertEqual(code, 1)
+                self.assertIn('schema 错误', out)
 
     def test_existing_conditional_write_drift_still_fails(self):
         self.registry.append({'site': 'optional', 'name': 'search', 'access': 'write',

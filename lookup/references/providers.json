@@ -1,6 +1,6 @@
 {
-  "version": 4,
-  "_doc": "Lookup 的策略资料，不是自动执行器。Agent 按任务选择 provider、执行与验收；本文件不自动运行 args、priority、validator 或 fallback。OpenCLI 命令事实来自安装版本的 opencli list -f json；selftest 仅核对必要合约。active/conditional 是登记状态，不表示当前健康。",
+  "version": 5,
+  "_doc": "Lookup 的必要合约与任务边界，不是完整后端目录或自动执行器。候选按数组顺序列出，仅在条件相当时参考；实际选择见 references/任务选路.md。命令参数来自当前注册表／帮助；active/conditional 是登记状态，不表示当前健康。",
   "failure_domains": {
     "_model": "分别判断浏览器进程、站点账号、bridge+Profile、site+action；只有共享实际依赖才共享故障。",
     "opencli-browser": "已选定的 browser/Profile + 站点会话 + OpenCLI bridge + 具体 adapter；按 LOOKUP_OPENCLI_PROFILE 配置，默认 ego-lite",
@@ -49,7 +49,6 @@
           "type": "opencli",
           "command": "twitter/search",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -94,7 +93,6 @@
           "type": "opencli",
           "command": "twitter/article",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -121,7 +119,6 @@
           "type": "opencli",
           "command": "twitter/thread",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -148,7 +145,6 @@
           "type": "opencli",
           "command": "twitter/tweets",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -175,19 +171,9 @@
           "id": "ytdlp-search",
           "type": "cli",
           "status": "active",
-          "priority": 10,
           "failure_domain": "direct-http",
           "auth": "none",
           "bin": "yt-dlp",
-          "args": [
-            "ytsearch{limit}:{query}",
-            "--flat-playlist",
-            "--print",
-            "%(title)s\t%(channel)s\t%(duration_string)s\t%(url)s"
-          ],
-          "defaults": {
-            "limit": 5
-          },
           "validator": "task_sufficient_with_provenance",
           "evidence_type": "metadata"
         }
@@ -200,26 +186,9 @@
           "id": "ytdlp-subs",
           "type": "cli",
           "status": "active",
-          "priority": 10,
           "failure_domain": "direct-http",
           "auth": "none",
           "bin": "yt-dlp",
-          "args": [
-            "--write-sub",
-            "--write-auto-sub",
-            "--sub-langs",
-            "{lang}",
-            "--skip-download",
-            "--sub-format",
-            "vtt",
-            "-o",
-            "{tmpdir}/%(id)s",
-            "--",
-            "{url}"
-          ],
-          "defaults": {
-            "lang": "根据目标视频现有轨道与用户语言选择"
-          },
           "post": "scripts/clean-subtitles.py <actual-vtt-file>",
           "cleanup": "仅清理本任务生成的已确认路径",
           "validator": "task_sufficient_with_provenance",
@@ -231,11 +200,13 @@
           "type": "opencli",
           "command": "youtube/transcript",
           "status": "conditional",
-          "priority": 20,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
-          "required_args": ["url", "mode"],
+          "required_args": [
+            "url",
+            "mode"
+          ],
           "required_columns": [],
           "normalizer_provider": "opencli/youtube/transcript",
           "evidence_type": "subtitles",
@@ -247,14 +218,9 @@
           "id": "agent-reach-transcribe",
           "type": "cli",
           "status": "conditional",
-          "priority": 40,
           "failure_domain": "remote-http",
           "auth": "configured-transcription-provider",
           "bin": "agent-reach",
-          "args": [
-            "transcribe",
-            "{url}"
-          ],
           "evidence_type": "asr",
           "local_effect": "temporary-audio",
           "validator": "task_sufficient_with_provenance",
@@ -275,7 +241,6 @@
           "type": "opencli",
           "command": "xiaohongshu/search",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -315,7 +280,6 @@
           "type": "opencli",
           "command": "xiaohongshu/note",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -343,7 +307,6 @@
           "type": "opencli",
           "command": "xiaohongshu/comments",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -372,21 +335,9 @@
           "id": "bili-search",
           "type": "cli",
           "status": "active",
-          "priority": 10,
           "failure_domain": "direct-http",
           "auth": "none",
           "bin": "bili",
-          "args": [
-            "search",
-            "{query}",
-            "--type",
-            "video",
-            "-n",
-            "{limit}"
-          ],
-          "defaults": {
-            "limit": 5
-          },
           "validator": "task_sufficient_with_provenance",
           "evidence_type": "metadata",
           "freshness_policy": "仅实际可核对时间和支持的排序能证明最新；不足时用浏览器核对"
@@ -396,7 +347,6 @@
           "type": "opencli",
           "command": "bilibili/search",
           "status": "active",
-          "priority": 20,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -424,7 +374,6 @@
           "type": "opencli",
           "command": "bilibili/subtitle",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -444,7 +393,6 @@
           "id": "bili-audio-asr",
           "type": "manual",
           "status": "conditional",
-          "priority": 40,
           "failure_domain": "direct-http",
           "auth": "configured-transcription-provider",
           "evidence_type": "asr",
@@ -465,7 +413,6 @@
           "type": "opencli",
           "command": "weixin/search",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "upstream_failure_domain": "sogou",
           "auth": "none",
@@ -497,24 +444,9 @@
       "desc": "取公众号文章正文",
       "providers": [
         {
-          "id": "host-browser-weixin-dom",
-          "type": "manual",
-          "status": "conditional",
-          "priority": 30,
-          "failure_domain": "host-browser-api",
-          "evidence_type": "full_text",
-          "validator": "task_sufficient_with_provenance",
-          "requires": [
-            "宿主浏览器可用",
-            "已观察真实落地URL与正文"
-          ],
-          "_note": "按浏览器选路的指定环境或技术降级条件使用宿主正式接口；搜狗跳转/验证页不代表正文"
-        },
-        {
           "id": "ego-browser-weixin-dom",
           "type": "manual",
           "status": "conditional",
-          "priority": 10,
           "failure_domain": "ego-browser-api",
           "selectors": {
             "title": "#activity-name",
@@ -526,11 +458,23 @@
           "_note": "本机日常外部网页的默认浏览器，加载正式ego-browser Skill；用户指定环境优先；历史selector失效时重新观察"
         },
         {
+          "id": "host-browser-weixin-dom",
+          "type": "manual",
+          "status": "conditional",
+          "failure_domain": "host-browser-api",
+          "evidence_type": "full_text",
+          "validator": "task_sufficient_with_provenance",
+          "requires": [
+            "宿主浏览器可用",
+            "已观察真实落地URL与正文"
+          ],
+          "_note": "按浏览器选路的指定环境或技术降级条件使用宿主正式接口；搜狗跳转/验证页不代表正文"
+        },
+        {
           "id": "opencli-weixin-download",
           "type": "opencli",
           "command": "weixin/download",
           "status": "conditional",
-          "priority": 50,
           "failure_domain": "opencli-browser",
           "auth": "none",
           "required_access": "read",
@@ -563,7 +507,6 @@
           "type": "opencli",
           "command": "douyin/search",
           "status": "active",
-          "priority": 10,
           "failure_domain": "opencli-browser",
           "auth": "browser-session",
           "required_access": "read",
@@ -603,17 +546,17 @@
           "id": "lookup-fetch-sh",
           "type": "cli",
           "status": "active",
-          "priority": 10,
           "failure_domain": "direct-http",
           "auth": "none",
           "bin": "bash",
-          "args": [
-            "scripts/fetch.sh",
-            "{url}"
-          ],
           "_note": "从 Lookup 根目录执行；仅请求原站，HTML/纯文本/Markdown分别提取，stdout含最终Source URL，stderr为状态JSON",
           "normalizer_provider": "lookup/fetch",
-          "exit_codes": {"0": "ok", "3": "partial", "1": "error", "2": "invalid_args"},
+          "exit_codes": {
+            "0": "ok",
+            "3": "partial",
+            "1": "error",
+            "2": "invalid_args"
+          },
           "output_budget_arg": "--max-output-chars",
           "validator": "task_sufficient_with_provenance",
           "max_output_chars": 40000,
@@ -623,14 +566,9 @@
           "id": "jina-reader",
           "type": "http",
           "status": "conditional",
-          "priority": 20,
           "failure_domain": "remote-http",
           "auth": "none",
           "bin": "curl",
-          "args": [
-            "-fsSL",
-            "https://r.jina.ai/{url}"
-          ],
           "validator": "task_sufficient_with_provenance",
           "max_output_chars": 40000,
           "_note": "仅用于用户允许发送给第三方的公开 URL；认证、内网和敏感链接禁用",
@@ -645,7 +583,6 @@
           "id": "host-search-en",
           "type": "manual",
           "status": "conditional",
-          "priority": 5,
           "failure_domain": "remote-http",
           "evidence_type": "excerpt",
           "validator": "task_sufficient_with_provenance",
@@ -658,19 +595,9 @@
           "id": "exa-mcp",
           "type": "mcp-cli",
           "status": "conditional",
-          "priority": 10,
           "failure_domain": "remote-http",
           "auth": "none",
           "bin": "mcporter",
-          "args": [
-            "call",
-            "exa.web_search_exa",
-            "query={query}",
-            "numResults={limit}"
-          ],
-          "defaults": {
-            "limit": 3
-          },
           "validator": "task_sufficient_with_provenance",
           "evidence_type": "excerpt"
         }
@@ -683,7 +610,6 @@
           "id": "host-search-zh",
           "type": "manual",
           "status": "conditional",
-          "priority": 5,
           "failure_domain": "remote-http",
           "evidence_type": "excerpt",
           "validator": "task_sufficient_with_provenance",
@@ -696,19 +622,9 @@
           "id": "doubao-web-search",
           "type": "mcp-cli",
           "status": "conditional",
-          "priority": 10,
           "failure_domain": "remote-http",
           "auth": "key_in_mcporter_env",
           "bin": "mcporter",
-          "args": [
-            "call",
-            "huashu-doubao-search.doubao_search",
-            "query={query}",
-            "count={limit}"
-          ],
-          "defaults": {
-            "limit": 5
-          },
           "conditional_args": [
             "需要时效时添加 max_age_days: {freshness_days}"
           ],
@@ -731,18 +647,9 @@
           "id": "aihot-api",
           "type": "http",
           "status": "conditional",
-          "priority": 10,
           "failure_domain": "remote-http",
           "auth": "none",
           "bin": "curl",
-          "args": [
-            "-fsSL",
-            "https://aihot.virxact.com/api/v1/items?mode=selected&window={window}&limit={limit}"
-          ],
-          "defaults": {
-            "limit": 10,
-            "window": "24h"
-          },
           "keep_fields": [
             "score",
             "title",
@@ -762,15 +669,9 @@
           "id": "find-url-mjs",
           "type": "cli",
           "status": "active",
-          "priority": 10,
           "failure_domain": "local-data",
           "auth": "none",
           "bin": "node",
-          "args": [
-            "{SKILL_DIR}/scripts/find-url.mjs",
-            "{query}",
-            "--json"
-          ],
           "validator": "task_sufficient_with_provenance",
           "evidence_type": "metadata",
           "normalizer_provider": "lookup/find-url",
