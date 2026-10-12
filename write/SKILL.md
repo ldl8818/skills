@@ -3,7 +3,7 @@ name: write
 description: "起草、改写、校对和本地化文案；不用于实现任务中的附带文字修改。"
 license: MIT
 metadata:
-  version: "4.0.1"
+  version: "4.1.0"
   github_path: "skills/write"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
@@ -36,6 +36,7 @@ Use the supplied draft, audience, medium, requested language and verifiable prod
 - English prose: [references/write-en.md](references/write-en.md).
 - Bilingual copy: [references/write-zh-bilingual.md](references/write-zh-bilingual.md).
 - Product localization: [references/write-product-localization.md](references/write-product-localization.md).
+- Ambiguous operating instructions, error text or wording-only edits to rules: [references/技术说明消歧.md](references/技术说明消歧.md). Editing an instruction does not authorize executing it or redesigning its workflow.
 - Long-form work: [references/mode-long-form.md](references/mode-long-form.md).
 - Release-note wording: [references/mode-release-notes.md](references/mode-release-notes.md).
 

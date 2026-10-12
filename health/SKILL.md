@@ -3,7 +3,7 @@ name: health
 description: "审计或诊断 Agent 指令、配置、Skills、Hooks、MCP 与权限问题。"
 license: MIT
 metadata:
-  version: "4.0.2"
+  version: "4.0.3"
   github_path: "skills/health"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"

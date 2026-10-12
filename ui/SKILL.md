@@ -3,7 +3,7 @@ name: ui
 description: "创建或精修产品页面、组件与视觉细节；不用于运行故障或文档排版。"
 license: MIT
 metadata:
-  version: "4.0.1"
+  version: "4.0.2"
   github_path: "skills/ui"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"

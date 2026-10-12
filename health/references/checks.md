@@ -8,6 +8,12 @@ Read each helper's help before use. Its warnings are candidate evidence and requ
 Historical analysis requires an explicit history path and opt-in to `conversation_audit.py`; never load it from the default collector. Redact output before sharing.
 Global collection, live MCP calls and deep reasoning are distinct scopes. A live probe must name its server/tool and avoid mutating tools unless separately authorized.
 
+## Runtime evidence interpretation
+For a Hook or MCP fault, inspect the authorized configuration sources and retain each source's scope and enablement. Do not infer effective configuration from one file when project, user or plugin settings can override it. Unknown plugin state, command expansion or working directory remains unverified.
+Validate Hook handlers against the installed runtime's current contract. A missing tool matcher is not an error for lifecycle events; command, prompt, agent, HTTP and MCP handlers do not share one required-field schema. Do not reject an unfamiliar handler merely because it has no command.
+Keep connected, failed, disabled, pending approval and untested MCP states distinct. Probe only an already connected server through an available harmless tool; do not start an unverified GUI executable to test connectivity. Static collection does not establish live health.
+When assessing instruction reachability or size limits, check the installed runtime's loading mode, actual file identity and effective limit. Report uninspected ancestors, nested files and overrides; root-file bytes alone do not prove the complete instruction chain fits or loads. Do not infer loading behavior from filenames alone.
+
 For a persistent Agent loop specifically, read [long-running-agents.md](long-running-agents.md).
 
 Only after delegation is authorized and useful, the scoped briefs are [context inspector](../agents/inspector-context.md) and [control inspector](../agents/inspector-control.md). They do not expand collection scope.

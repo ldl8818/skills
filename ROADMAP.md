@@ -24,7 +24,7 @@
 
 ## 当前阶段
 
-九个 Skill 已纳入仓库：`check` 为本地5.0.0冻结版，`hunt` 为本地4.2.0冻结版，`health` 为本地4.0.2冻结版，`ui`、`write` 为本地4.0.1冻结版；另有 `lookup` 1.12.0、`self-improving` 3.1.3、`skill-manager` 2.6.9，以及尚未定版的 `download-video`。lookup、self-improving、skill-manager 已有本机运行记录；self-improving 3.1.3的 doctor 当前显示 Codex 事件覆盖5／5、Claude 0／5，Claude 新版本真实客户端验证待完成；`download-video` 已完成脚本级基础验证，实际站点下载待用户提供链接后验证。
+九个 Skill 已纳入仓库：`check` 为本地5.0.0冻结版，`hunt` 为本地4.2.0冻结版，`health` 为本地4.0.3冻结版，`ui` 为本地4.0.2冻结版，`write` 为本地4.1.0冻结版；另有 `lookup` 1.12.0、`self-improving` 3.1.3、`skill-manager` 2.6.9，以及尚未定版的 `download-video`。lookup、self-improving、skill-manager 已有本机运行记录；self-improving 3.1.3的 doctor 当前显示 Codex 事件覆盖5／5、Claude 0／5，Claude 新版本真实客户端验证待完成；`download-video` 已完成脚本级基础验证，实际站点下载待用户提供链接后验证。
 
 ### Check 完整引擎验收
 
@@ -35,6 +35,8 @@ check 5.0.0采用 Alibaba 官方 Skill 主干，保留 Waza 历史和本地定�
 只读 Hook 修复与知识治理快照已在当前工作区集成。提交时必须保留 `self-improving/src/self_improving/hooks/readonly.py`、`hooks/common.py` 中的只读检测入口、`tests/test_readonly_guard.py` 及本次文档修正，不得用整文件复制覆盖 main。迁移前20文件隔离快照已完成完整验证；src 布局验证见下方最新记录。
 
 ## 最近完成
+
+- 2026-10-12 19:07：Waza 候选 `318d6c2c219894798b09c2b39d7f83d0be1a313c` 与 check／hunt 上次评估一致，核验时两者为4.1.0／4.2.0；相对来源基线 `2d1420da16d22794ba100183bbd4198fd9d0ba03`，health 4.0.3采纳运行时配置来源、Hook 类型及 MCP 状态判定，ui 4.0.2采纳换行与数据／视觉比较边界，write 4.1.0采纳技术说明消歧、现行源文对照及作者原意保护。保留冻结、原来源字段和许可；不合入默认历史扫描、自动扩大审计、固定视觉风格和强制逐句修改清单。未整体移植 health 运行时收集器或 write 标点脚本，保持本地接口与隐私边界。65项现有回归、5个冻结 Skill 结构与引用、15个客户端单跳入口及增量公私红线检查通过；语义复核覆盖生命周期 Hook、未连接 MCP、短末行、稀疏数据、允许但失败、操作顺序、译文遗漏与作者定稿。该复核为静态推演，真实新会话行为未验；本轮改动纳入此次提交交付，原迁移接力点保留。
 
 - 2026-10-02 18:55：skill-manager 2.6.9 纳入 WorkBuddy 客户端：`core.py` 客户端根矩阵加全局 `~/.workbuddy-ai/skills` 与项目级 `.codebuddy/skills`，`references/client-paths.md` 路径清单、客户端承诺表与核对日期同步，SKILL.md 状态模型与 README 客户端清单补齐，测试期望值同步；根 README 的 push 入口补 `~/.workbuddy-ai/commands/push.md` 单跳链接。test_core 34项、test_cli 19项、test_frozen 6项通过。客户端承诺标注为「本机实测」而非官方规范，项目级路径未实测。未提交。
 
