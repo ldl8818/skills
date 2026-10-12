@@ -5,7 +5,7 @@
 | Skill | 用途 |
 |---|---|
 | [`neat-freak`](neat-freak/) | 项目文档与规则对齐、任务清理及交接；自管冻结版 |
-| [`check`](check/) | 基于 Alibaba 官方 Skill 的完整代码审查；动态覆盖文档、测试和未跟踪文件 |
+| [`check`](check/) | Waza 衍生的风险分级审查；轻量直查，复杂业务审查按需使用 Alibaba OCR |
 | [`health`](health/) | Agent 指令、配置、工具与验证器健康审计 |
 | [`hunt`](hunt/) | 软件故障诊断、修复与验证；按需衔接 check 审查受影响修改 |
 | [`ui`](ui/) | 产品界面创建、视觉修改与真实渲染验证 |
@@ -17,7 +17,7 @@
 
 每个 Skill 的依赖、安装和验证命令以其目录内的 `README.md` 与 `SKILL.md` 为准。
 
-代码审查统一使用 `check`，主流程基于 [Alibaba 官方 OpenCodeReview Skill](check/NOTICE.md)，默认调用完整 `ocr review`，明确的全文或全项目审计使用 `ocr scan`。按任务动态覆盖代码、Markdown／配套文档、测试和未跟踪文件，并对 OCR 漏选或无法处理的范围补查。完整引擎需要单独安装的原生 OCR 和可用模型端点；缺少依赖时明确报告“完整 OCR 未运行”，当前 Agent 可继续已授权的补充检查、修复和验证。配置、资源预算及执行验收见 [接入说明](check/references/open-code-review.md)。排查 Bug 使用 `hunt`，必要时衔接 `check` 审查受影响修改，再验证原故障路径。
+代码审查统一使用 `check`，以 [Waza 衍生的本地 Check](check/NOTICE.md) 为主干，Alibaba OCR 作为按需工具。影响局部、预期明确的改动直接检查和验证，不要求 OCR、额外清单或整套规则；资金、权限、状态变化、共享接口及跨模块影响进入[深入审查](check/references/深入审查.md)，先核对业务预期，再沿调用关系审查、修复和验证。复杂审查按需使用 Delegate 的规则，模型工作仍由当前宿主会话完成，无需独立 API。代码、Markdown／配套文档、测试、未跟踪文件及删除影响按任务纳入，不以 OCR 筛选结果缩小范围。只有明确选择且模型通道获授权时才运行完整 OCR；命令见[接入说明](check/references/open-code-review.md)。具体故障使用 `hunt`，必要时衔接 `check`，再验证原故障路径。
 
 ## 命令
 
@@ -28,4 +28,4 @@
 - 本机 Claude Code 与 WorkBuddy 输入 `/push`；Codex CLI／IDE／桌面应用输入“执行push”。通过 chezmoi 将 `~/.claude/commands/push.md`、`~/.agents/commands/push.md`、`~/.workbuddy-ai/commands/push.md` 单跳链接到本仓库真身，全局规则提供 Codex 按需入口。新机器需先取得本仓库并部署对应链接／规则；执行只需当前客户端的终端能力及 Git 认证，不依赖另一模型或客户端。
 - [Codex 自定义 prompts](https://developers.openai.com/codex/custom-prompts/) 已弃用，本机 CLI 0.154.0 实测不识别 `/prompts:push`，因此不将它作为可用入口。Claude Code 的 [commands Markdown 格式](https://code.claude.com/docs/en/skills#where-skills-live) 仍受支持。新装后重启客户端／新开会话加载入口。
 
-五个定制 Skill 独立维护为本地冻结版，当前 `hunt` 为4.2.0，`check` 为5.0.0，`health` 为4.0.3，`ui` 为4.0.2，`write` 为4.1.0，`check` 当前主体采用 Alibaba Apache-2.0 源码，保留之前 Waza 改造历史及留用材料的 MIT 许可；其余四个保留 Waza MIT 许可与来源 commit。安装、恢复和上游选择性合并见 [冻结版本维护](skill-manager/references/冻结版本维护.md)。本仓库按独立 Skill 分发，没有 Waza 整仓的 plugin mirror 或 Desktop bundle。
+五个定制 Skill 独立维护为本地冻结版，当前 `hunt` 为4.2.0，`check` 为6.0.0，`health` 为4.0.3，`ui` 为4.0.2，`write` 为4.1.0。主干保留 Waza MIT 许可与来源 commit；`check` 另保留 Alibaba 接入材料的 Apache-2.0 许可及双来源历史，不能把本地版本号当作上游版本。安装、恢复和上游选择性合并见 [冻结版本维护](skill-manager/references/冻结版本维护.md)。本仓库按独立 Skill 分发，没有 Waza 整仓的 plugin mirror 或 Desktop bundle。

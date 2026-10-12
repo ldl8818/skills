@@ -166,8 +166,24 @@ def inventory(repo, mode="workspace", from_ref=None, to_ref=None,
 
 def reconcile(report, preview):
     """Attach selection evidence. No selection outcome means reviewed/passed."""
+    if isinstance(preview, dict) and "files" not in preview:
+        # Delegate v1 has separate selected/excluded arrays, not full-engine files.
+        selected = preview.get("reviewable_files")
+        excluded = preview.get("excluded_files")
+        if (preview.get("schema_version") != "1"
+                or not isinstance(selected, list) or not isinstance(excluded, list)):
+            raise ScopeError("Expected Delegate v1 or full-engine preview JSON")
+        files = []
+        for rows, will_review in ((selected, True), (excluded, False)):
+            for item in rows:
+                if not isinstance(item, dict):
+                    raise ScopeError("Malformed Delegate preview entry")
+                if "will_review" in item:
+                    raise ScopeError("Unexpected Delegate selection flag")
+                files.append({**item, "will_review": will_review})
+        preview = {**preview, "files": files}
     if not isinstance(preview, dict) or not isinstance(preview.get("files"), list):
-        raise ScopeError("Expected OCR review/scan --preview --format json (files array)")
+        raise ScopeError("Expected OCR preview JSON")
     by_path = {}
     for item in preview["files"]:
         if (not isinstance(item, dict) or not isinstance(item.get("path"), str)

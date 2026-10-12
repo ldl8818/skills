@@ -175,6 +175,45 @@ class ReviewScopeTests(unittest.TestCase):
         self.assertEqual({r["preview"]["disposition"] for r in report["entries"]},
                          {"deleted", "manual_layer_gap"})
 
+    def test_delegate_selection_preserves_exclusions_deletions_and_missing_paths(self):
+        self.write("README.md", "Changed documentation.\n")
+        self.write("tests/test_total.py", "def test_total():\n    assert True\n")
+        self.write("new.md", "New documentation.\n")
+        self.git("rm", "-q", "--", "replace.py")
+        preview = {"schema_version": "1", "reviewable_files": [
+            {"path": "README.md", "status": "modified"},
+            {"path": "outside.py", "status": "modified"},
+        ], "excluded_files": [
+            {"path": "tests/test_total.py", "status": "modified",
+             "exclude_reason": "default_path"},
+            {"path": "replace.py", "status": "deleted", "exclude_reason": "deleted"},
+        ]}
+        report = scope.reconcile(scope.inventory(self.repo), preview)
+        states = {r["path"]: r["preview"]["disposition"] for r in report["entries"]}
+        self.assertEqual(states, {"README.md": "selected", "tests/test_total.py": "excluded",
+                                  "new.md": "provider_missing", "replace.py": "deleted"})
+        self.assertEqual(report["preview"]["selected_outside_inventory"], 1)
+        self.assertTrue(report["preview"]["selection_only"])
+        self.assertFalse(report["preview"]["identity_verified"])
+        self.assertNotIn("files", preview)
+
+    def test_delegate_empty_and_malformed_output_cannot_hide_unreviewed_items(self):
+        self.write("new.md", "Review me.\n")
+        empty = {"schema_version": "1", "reviewable_files": [], "excluded_files": []}
+        report = scope.reconcile(scope.inventory(self.repo), empty)
+        self.assertEqual(report["preview"]["dispositions"], {"provider_missing": 1})
+        malformed = [
+            {"schema_version": "2", "reviewable_files": [], "excluded_files": []},
+            {"schema_version": "1", "reviewable_files": []},
+            {**empty, "excluded_files": ["bad"]},
+            {**empty, "reviewable_files": [{"path": "new.md"}]},
+            {**empty, "reviewable_files": [{"path": "new.md", "status": "added",
+                                            "will_review": False}]},
+        ]
+        for preview in malformed:
+            with self.subTest(preview=preview), self.assertRaises(scope.ScopeError):
+                scope.reconcile(scope.inventory(self.repo), preview)
+
     def test_cli_saves_large_report_and_prints_only_summary(self):
         self.write("docs/new.md", "Untracked documentation.\n")
         wanted = Path(self.temp.name) / "paths.json"

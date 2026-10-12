@@ -1,6 +1,6 @@
 # Dynamic review scope
 
-Local adaptation for Alibaba OpenCodeReview v1.12.13. Scope follows the task and its affected behavior, with no fixed file-category whitelist. This reference handles inventory and selection; the official OCR engine remains the reviewer.
+Local adaptation for Alibaba OpenCodeReview v1.12.13. Load for deep review with multiple layers/batches or OCR selection reconciliation, not every lightweight edit. Scope follows the task and its affected behavior, with no fixed file-category whitelist. The task inventory is authoritative; OCR selection is supporting evidence.
 
 ## 1. Establish the intended surface
 
@@ -23,9 +23,9 @@ python3 <skill-root>/scripts/review_scope.py --repo <repo> --mode scan --paths-f
 
 The helper fixes range/commit identities and preserves staged/unstaged/untracked layers, rename sides and same-path deletion/recreation. It does not choose relevance, hash file contents, enforce safe reads or prove execution coverage. Workspace/scan content can change without a different path/status inventory; record relevant diff/content identities and recheck them before accepting reusable evidence.
 
-## 2. Prepare a per-run filter
+## 2. Optional per-run OCR filter
 
-OCR defaults omit many tests and Markdown. A temporary `--rule <json>` can admit this task's relevant text:
+OCR defaults omit many tests and Markdown. Review omitted task items directly when that is simpler. When explicit inclusion makes rule retrieval or full-engine dispatch useful, a temporary `--rule <json>` can admit this task's relevant text:
 
 ```json
 {
@@ -41,7 +41,7 @@ Inspect the existing explicit rule, project `.opencodereview/rule.json` and glob
 
 Leave temporary `rules: []` unless the task already has an explicit custom rule. This allows project/global/system rule text to resolve natively. Preserve an existing explicit rule's entries and resolve relative Markdown/text rule references against their original rule-file directory before relocating it. Project-rule references resolve against the repository root. Do not copy credentials or provider configuration into a rule file.
 
-Rule text is first-match-wins by file. `merge_system_rule: true` adds the built-in system rule only; it does not merge lower project/global custom rules. Put concise task-wide local expectations in `--background` or the review engine's `--background-file` instead of adding a catch-all rule that shadows project rules.
+Rule text is first-match-wins by file. `merge_system_rule: true` adds the built-in system rule only; it does not merge lower project/global custom rules. Put concise task-wide local expectations in host review context and `--background` or supported `--background-file` instead of adding a catch-all rule that shadows project rules.
 
 **Include is not a whitelist.** Unmatched files can still pass the default filter. For a narrow diff review, exclude out-of-scope candidates as well, then verify the actual preview set. Staging selected files does not narrow workspace review. User exclusions run before include; a conflicting exclude still wins.
 
@@ -49,14 +49,23 @@ OCR patterns are case-insensitive globs and have special brace behavior. Do not 
 
 ## 3. Preview and reconcile
 
-Use the same explicit repo, engine, immutable scope arguments, temporary rule and `--max-tokens` value for preview and execution. Preview does not resolve the model's configured token limit, so relying on defaults can change coverage at runtime. Reuse preview only when scope, content and filter identities still match.
+When using Delegate for diff review, use the same explicit repo, fixed scope arguments and temporary rule (if supplied) for preview and rule retrieval. Omit `--rule` when no temporary filter is needed:
+
+```text
+ocr delegate preview --repo <repo> --rule <temporary-rule.json> --format json
+ocr delegate rule --repo <repo> --rule <temporary-rule.json> --format json -- <path-1> <path-2>
+```
+
+Capture stdout to a private file. The helper accepts Delegate v1 `reviewable_files`/`excluded_files` as well as full-engine `files` output. It reconciles selection only; keep the host's actual review ledger separately. For full-file host audits, compare inspected files directly with the `scan` inventory: Delegate preview does not list unchanged files.
+
+Only for explicit full-engine execution, use the following preview forms and the same `--max-tokens` value as the full run. Preview does not resolve the model's configured token limit, so relying on defaults can change coverage at runtime:
 
 ```text
 ocr review --repo <repo> --rule <temporary-rule.json> --preview --format json --audience agent --max-tokens <group-limit> --output <private-preview.json>
 ocr scan --repo <repo> --path <requested-roots> --rule <temporary-rule.json> --preview --format json --audience agent --max-tokens <file-limit> --output <private-preview.json>
 ```
 
-For range/commit, add the helper's fixed `ocr_args` to both review calls. To compare preview selection with the independent inventory, repeat the matching helper invocation with `--preview <private-preview.json>`. Selection is only planned dispatch, not completed review.
+For range/commit, add the helper's fixed `ocr_args` to the chosen diff commands, before any `--` path separator. To compare selection with the independent inventory, repeat the matching helper invocation with `--preview <private-preview.json>`. Reuse preview only when scope, content and filter identities still match. Selection is not completed review.
 
 Account for every intended item:
 
@@ -74,6 +83,6 @@ For a rename, retain old and new paths and verify changed references. Range sema
 
 ## 4. Close coverage gaps
 
-Let OCR perform the full review on its validated subset. Use targeted host reads only for unsupported task surfaces, affected dependencies, disputed findings and verification. This is a coverage supplement, not a second complete review pipeline.
+In Delegate mode, the host reviews the entire intended scope using resolved rules and business context. In optional full-engine mode, OCR reviews its validated subset and the host supplements unsupported surfaces, affected dependencies, disputed findings and verification. Do not run both complete review pipelines by default.
 
 Resolve missing or skipped task items before claiming complete coverage. A user-approved exclusion can be justified; an unresolved item remains a limit. If scope is large, organize coherent batches or adjust resources according to risk and budget. Preserve the complete inventory across batches and include every finding; do not silently drop docs, tests or untracked files to save tokens.

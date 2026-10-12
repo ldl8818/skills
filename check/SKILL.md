@@ -1,83 +1,56 @@
 ---
 name: check
-description: "用 Alibaba OpenCodeReview 审查代码、PR、文档、测试及项目质量；按任务动态包含未跟踪文件。具体故障排查用 hunt。"
-license: Apache-2.0
-compatibility: >
-  Requires the separately installed native ocr CLI and a configured supported
-  LLM provider for full review (Anthropic, OpenAI Chat Completions,
-  OpenAI Responses, or AWS Bedrock). Scope inventory uses Python 3.9+ and Git.
+description: "审查代码、PR、文档、测试及项目质量，按风险检查并验证修复；复杂审查按需使用 Alibaba OCR。具体故障排查用 hunt。"
+license: MIT AND Apache-2.0
 metadata:
-  version: "5.0.0"
-  author: alibaba
-  homepage: https://github.com/alibaba/open-code-review
-  github_path: "skills/open-code-review"
-  github_date: "10-08"
-  github_hash: "fabbdb296b0d97e2140ada8d54ca7d6d6d1d7ad4"
-  github_url: "https://github.com/alibaba/open-code-review"
+  version: "6.0.0"
+  author: Tw93
+  homepage: https://github.com/tw93/Waza
+  github_path: "skills/check"
+  github_date: "09-06"
+  github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
+  github_url: "https://github.com/tw93/Waza"
   update_policy: "frozen"
 ---
 
-# Open Code Review
+# Check
 
-A skill for invoking [open-code-review](https://github.com/alibaba/open-code-review) (`ocr`) — an open-source AI code review CLI that reads Git diffs and generates structured, line-level review comments.
+Locally maintained from Waza's Check, with risk-based routing and optional Alibaba OpenCodeReview (OCR) assistance. Check owns scope, business judgment and repair verification; OCR supplies review tools. Source history and file-level licenses: [NOTICE.md](NOTICE.md).
 
-Locally modified from Alibaba's official Skill at v1.12.13, retaining its English workflow and the local `check` entry. This Skill was previously adapted from Waza; retained material and local changes are credited in [NOTICE.md](NOTICE.md).
+## Establish the review
 
-## Workflow
+Review the requested changes, PR or project behavior against intended outcomes. Use `hunt` for an observed runtime failure; a generic “看看”“优化”“继续” alone does not establish a review task.
 
-### Step 1: Gather Business Context
+Read applicable project requirements and inspect staged, unstaged and untracked state. Preserve other work. Fix historical targets to exact revisions; inspect that snapshot rather than unrelated checkout contents. Scope follows the task and affected behavior, including relevant documents, tests, configuration, untracked text, deletion impact and unchanged callers. Exclude unrelated, generated or sensitive material with a concrete reason.
 
-Analyze the review target (commits, branch, or changes) to extract concise business context. Pass this context via `--background` to improve review quality.
+## Choose the depth
 
-Determine scope from the requested outcome, actual changes and affected dependencies. Code, Markdown/Skill instructions, companion documentation, tests, configuration and untracked text are normal candidates; use no fixed extension whitelist. Add unchanged callers, contracts or tests when their relationship to a change warrants it. Use `hunt` for a concrete runtime failure; a generic “看看”“优化”“继续” alone does not establish a review task.
+- **Lightweight:** impact is local, expected behavior is clear, and a focused check can establish correctness. Read the relevant diff and direct context, repair authorized defects and verify the affected behavior. No OCR call, generated inventory, separate review ledger or broad rule loading is required.
+- **Deep:** money, permissions, destructive operations, shared contracts, state transitions, concurrency, cross-module effects, broad audits or material uncertainty require connected reasoning. Follow [深入审查.md](references/深入审查.md); use OCR Delegate for applicable rule assistance and retain host review of the complete task scope.
+- Escalate when inspection reveals those risks; reuse work already done. File count, diff length and extension do not determine risk. A one-line permission change or a Markdown authorization rule can require deep review.
 
-Inspect staged, unstaged and untracked state before reviewing or writing. Preserve other work; do not stash or reset it to simplify verification. Record exact revisions and relevant content identities. Follow [review-scope.md](references/review-scope.md) to prepare the independent inventory and temporary OCR filter. The inventory helper reads Git metadata, not file bodies; task relevance and safe content selection remain the agent's responsibility.
+## Judgment and repair
 
-### Step 2: Run Code Review
+Ground findings in intended behavior, reachable code and concrete impact. Read change intent before calling a deliberate change a regression. Check static callers, dynamic registration, packaging and installed entrypoints before declaring code dead. Report simplification only when required behavior is preserved; a supported clean review is valid.
 
-Use the full OCR engine as the primary reviewer. Reuse a resolved, compatible native executable; avoid repeating installation probes for unchanged setup. Do not run a second complete host review or a delegate pipeline by default.
+Follow the user's request and standing repair authorization. Explicit read-only takes precedence. Fix confirmed in-scope defects when authorized, establish the expected result independently of the implementation, and verify the original failure plus affected normal paths. Do not invent requirements or modify tests merely to accept broken behavior. Clarify material ambiguity while continuing independent checks.
 
-Always supply concise business context when available, including intended behavior and the few relevant local constraints. Read the Commands, Resource and context controls, and Validate the actual result sections of [open-code-review.md](references/open-code-review.md) as needed for the pinned v1.12.13 CLI. Load provider/setup sections only for dependency failures or an authorized setup task; reuse unchanged reference context.
+When review is part of authorized delivery, “if clean” is a quality gate to satisfy: repair, verify and continue. Ask again only for a genuine scope or authorization gap. Review alone does not authorize external writes.
 
-| Review target | Engine and scope |
-|---|---|
-| Current changes | `ocr review` in workspace mode |
-| PR or branch comparison | `ocr review --from <fixed-base> --to <fixed-head>` |
-| A commit | `ocr review --commit <fixed-sha>` |
-| Explicit whole-file or repository audit | `ocr scan --path <requested-files-or-directories>` on the current tree |
+## Verification and completion
 
-For each new scope/content/filter combination, run `--preview --format json` without an LLM. Reconcile every task item against the preview before the full run. Include relevant documents and tests through the temporary rule; review deleted content and other unsupported surfaces with focused host inspection. A preview or empty OCR subset is not a clean review.
+Use relevant readback/static checks for prose and narrow edits, targeted tests for logic, and affected integration or installed-artifact checks for higher-risk changes. Read actual CI and runtime before trusting a documented gate. Required project checks still apply; `scripts/run-tests.sh` only discovers candidates.
 
-Run the same engine, scope, rule and per-group/file token limit with `--audience agent --format json --output <private-result.json>`, removing `--preview`. Workspace OCR combines tracked changes relative to HEAD and adds untracked files; inspect staged/worktree differences separately where that combined view loses relevant behavior.
+After repair, recheck affected behavior and invalidated evidence. Do not repeat unchanged reviews or full suites without a new failure, change or concrete uncertainty. Keep task requirements and unresolved coverage visible across batches; do not silently omit work to meet a budget.
 
-Choose concurrency, effort and token allowances from the actual scope, model context, available resources, risk and user budget. Keep native planning, review rounds and post-filtering available; adjust when evidence warrants it. `--max-tokens-budget` is a soft run threshold, not a hard billing cap. Never shrink coverage silently to meet it.
+Report confirmed findings with location, impact and repair/verification status, or a supported clean result. Name the actual scope, exclusions and remaining limits; use “not verified” where evidence is absent. Separate source, runtime, installed behavior, CI and publication. For authorized external actions, read back actual state and reconcile uncertain outcomes before retrying.
 
-If the CLI/provider is unavailable, record **full OCR not run** and continue useful authorized host checks under that explicit label. Keep OCR acceptance pending; do not silently relabel delegate or host review as full OCR. Setup requires an available authorized provider, not merely a signed-in host client. Do not install, upgrade or change credentials during ordinary review without applicable setup authorization.
+## Conditional tools and references
 
-### Step 3: Report
-
-OCR comments contain `path`, `start_line`, `end_line`, `content`, `severity`, `category` and optional `suggestion_code`/`existing_code`. Validate findings against the exact source and reachable behavior; present confirmed issues grouped by severity with location, impact and a practical repair direction. Discard unsupported findings and stylistic nitpicks. Both line numbers being zero means positioning failed: locate the issue before reporting or fixing it.
-
-Read result status, warnings, budget state, group/file outcomes and all findings in bounded batches. Omit optional `thinking`, session transcripts and duplicate raw reports from the main context. Exit zero or `files_reviewed` alone does not establish complete execution. Explain partial, failed, skipped or unresolved coverage against the original inventory.
-
-A supported clean review is valid. Before calling a deliberate change a regression, read its commit intent. Before declaring code dead, check callers, dynamic registration, packaging and installed entrypoints. Recommend simplification only when the simpler path preserves required behavior.
-
-Report the target, OCR execution state, reviewed coverage, justified exclusions, unresolved items and confirmed findings. State “no confirmed issues in the reviewed scope” only with its actual coverage limits; never convert missing evidence into a clean verdict.
-
-### Step 4: Fix
-
-Apply the user's request and applicable standing repair authorization from project instructions. An explicit read-only request takes precedence. A standalone review is report-only when repairs are not authorized; do not ask again for necessary fixes already authorized.
-
-When review is part of implementation or delivery, including “review, then commit/push if clean,” fix confirmed in-scope defects, verify them and continue the authorized delivery. “If clean” is a quality gate to satisfy. Ask only when a repair expands scope or requires a new authorization.
-
-Choose verification by affected risk: documentation needs relevant readback and static checks; module logic needs targeted tests; public APIs, permissions, migrations or release paths may need affected integration or artifact checks. Read actual CI and declared runtime before relying on a documented gate. `scripts/run-tests.sh` only prints candidates; confirm them before execution. Stop once required checks pass unless a new change, failure or unresolved risk warrants more.
-
-Verify the repairs, then complete already authorized commit/push or delivery. Do not use fallback checks to satisfy an explicitly required full-OCR or complete-review gate; keep that dependent delivery pending while continuing independent authorized work. For external mutations, prepare the concrete change, use the authorized target and read back actual state; reconcile an uncertain result before retrying. Separate source checks, runtime tests, installed behavior, CI and release acceptance. Reused evidence must identify its commit and inputs and what was rechecked.
-
-## Conditional References
-
-Load only what the affected surface needs:
-
-- Security, CI, verification logic, asynchronous state, deletion or architecture: [review-patterns.md](references/review-patterns.md).
-- Packaging, installed CLI or release changes: [release-surfaces.md](references/release-surfaces.md).
+Load only the reference relevant to the chosen depth or affected surface:
+- Deep business review and context budget: [深入审查.md](references/深入审查.md).
+- OCR Delegate commands, when used: [open-code-review.md](references/open-code-review.md). Uses the current host session; no separate model API. Unavailable OCR does not block useful host review.
+- Explicit full-engine OCR request: [OCR完整引擎.md](references/OCR完整引擎.md). Requires an authorized provider; do not substitute Delegate for an explicitly required full-engine gate.
+- Security, CI, tests, deletion, async or architecture: [review-patterns.md](references/review-patterns.md).
+- Packaging, installation or release readiness: [release-surfaces.md](references/release-surfaces.md).
 - Explicit public maintainer actions: [public-reply.md](references/public-reply.md).
