@@ -102,5 +102,17 @@
   {
     "request": "Typeset this Word document",
     "expected": null
+  },
+  {
+    "request": "用 hunt 排查安装后的 CLI 报错，源码测试都过了",
+    "expected": "hunt"
+  },
+  {
+    "request": "只诊断这个 Bug，暂时不要修改",
+    "expected": "hunt"
+  },
+  {
+    "request": "修好失败测试，再审查本次修复",
+    "expected": "hunt"
   }
 ]
