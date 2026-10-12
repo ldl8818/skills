@@ -1,9 +1,9 @@
 ---
 name: check
-description: "审查代码、PR、项目质量或发布就绪状态；不用于具体故障修复。"
+description: "审查代码、PR、项目质量或发布就绪状态；按需用 Alibaba OCR delegate 辅助。具体故障排查用 hunt。"
 license: MIT
 metadata:
-  version: "4.0.4"
+  version: "4.1.0"
   github_path: "skills/check"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
@@ -31,6 +31,14 @@ Separate source, generated files, installed packages, CI, registry and release s
 4. Choose verification by affected risk. Stop once required checks pass unless a new change, failure or unresolved risk justifies expansion.
 5. Complete the requested authorized outcome. For external mutations, prepare the concrete change, use the authorized target, and read back actual state; a tool return alone is insufficient.
 6. Report missing evidence as a limit, without substituting source checks for runtime or release acceptance.
+
+## Alibaba code review assistance
+
+Use [references/open-code-review.md](references/open-code-review.md) for nontrivial code-diff or PR reviews when the installed native OCR can help select files and resolve language rules. Prefer `delegate preview` and `delegate rule`; the current host agent owns the actual review, authorized fixes and verification without a separate OCR model endpoint.
+
+Keep the complete requested inventory and review files outside OCR's subset, including Markdown/Skill instructions, tests, deletions and untracked changes. An empty subset or successful preview is not a clean review. Whole-project audits still require the full audit scope; a Git-diff preview does not cover unchanged files.
+
+Reuse matching scope/content/rule evidence. If OCR is absent, incompatible or fails, continue the host review on the original scope. Ordinary review does not install software, request model keys or switch to the separate `review`/`scan` pipeline.
 
 ## Verification budget
 - Documentation, comments and narrow low-risk changes: relevant readback, links and static checks.

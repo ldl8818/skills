@@ -114,5 +114,21 @@
   {
     "request": "修好失败测试，再审查本次修复",
     "expected": "hunt"
+  },
+  {
+    "request": "用阿里的 OpenCodeReview 审查这个 PR",
+    "expected": "check"
+  },
+  {
+    "request": "用 check 审查所有本地改动，包括测试、Markdown 和删除的文件",
+    "expected": "check"
+  },
+  {
+    "request": "只审查这个 PR，不要修改代码",
+    "expected": "check"
+  },
+  {
+    "request": "阿里审查没发现问题，但这个崩溃还在，继续修好",
+    "expected": "hunt"
   }
 ]

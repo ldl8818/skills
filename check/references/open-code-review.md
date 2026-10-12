@@ -2,7 +2,7 @@
 
 ## Contract and source
 
-Use the unmodified, separately installed native `ocr` CLI as a deterministic helper within hunt's failure investigation or fix review. The host agent owns review judgment, diagnosis, repairs and acceptance. Do not copy the upstream Skill wholesale or create a second automatically triggered review entry.
+Use the unmodified, separately installed native `ocr` CLI as a deterministic helper within check's code-diff or PR review. The host agent owns the complete scope, review judgment, authorized repairs and verification. Do not copy the upstream Skill wholesale or create a second automatically triggered review entry.
 
 Reference version: **v1.12.13**, released 2026-10-08, tag commit `fabbdb296b0d97e2140ada8d54ca7d6d6d1d7ad4`.
 - [Official delegation Skill](https://github.com/alibaba/open-code-review/blob/v1.12.13/skills/open-code-review-delegate/SKILL.md)
@@ -10,7 +10,7 @@ Reference version: **v1.12.13**, released 2026-10-08, tag commit `fabbdb296b0d97
 - [Official release](https://github.com/alibaba/open-code-review/releases/tag/v1.12.13)
 - [Upstream Apache-2.0 license](https://github.com/alibaba/open-code-review/blob/v1.12.13/LICENSE)
 
-Keep the original Waza MIT license and provenance for hunt and its diagnostic references. This integration calls the upstream binary; it does not vendor its implementation. An upstream version number or company name does not establish better results on a user's project. Benchmark claims for the full OCR pipeline do not validate the host-delegated combination.
+Keep the original Waza MIT license and provenance for check and its review references. This integration calls the upstream binary; it does not vendor its implementation. An upstream version number or company name does not establish better results on a user's project. Benchmark claims for the full OCR pipeline do not validate the host-delegated combination.
 
 ## Resolve capability once
 
@@ -18,7 +18,7 @@ Keep the original Waza MIT license and provenance for hunt and its diagnostic re
 2. Check `ocr --version` and the needed `ocr delegate preview --help` / `ocr delegate rule --help` flags. v1.12.13 is the tested reference, not permission to update automatically.
 3. Prefer delegate mode. It performs no additional LLM inference and needs no OCR model endpoint; reasoning still uses the current host agent. The full `review`/`scan` modes have a separate provider/data-flow contract and require explicit applicable authorization.
 4. Prefer the native release over the npm wrapper, which may run an update check. Native delegate may still initialize telemetry if the user's global OCR configuration enables it; do not claim every installation is unconditionally network-free or silently change existing settings.
-5. If the binary is absent, incompatible, times out or returns invalid output, record the failure and continue hunt's host workflow on the original scope. Never interpret failure or an empty OCR subset as a clean review. Do not download or configure software during an ordinary hunt.
+5. If the binary is absent, incompatible, times out or returns invalid output, record the failure and continue check's host review on the original scope. Never interpret failure or an empty OCR subset as a clean review. Do not download or configure software during an ordinary review.
 
 ## Freeze the review scope
 
@@ -74,4 +74,4 @@ For macOS arm64 at v1.12.13:
 
 Keep the binary outside the skills Git repository, for example under `~/.local/share/open-code-review/v1.12.13/ocr`, with a non-conflicting `~/.local/bin/ocr` link. Verify the installed path with `--version`, then run preview and rule on a disposable Git fixture including source, Markdown, tests and a deletion. Do not replace an existing conflicting file/link without resolving its ownership.
 
-Future updates are deliberate: review the version diff, verify the new digest and command/schema contract, re-run the small fixture and then update this reference. An unavailable OCR installation never removes hunt's built-in diagnosis, repair and targeted review capability.
+Future updates are deliberate: review the version diff, verify the new digest and command/schema contract, re-run the small fixture and then update this reference. An unavailable OCR installation never removes check's built-in review, authorized repair and verification capability.
