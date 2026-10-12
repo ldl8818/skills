@@ -3,7 +3,7 @@ name: check
 description: "审查代码、PR、项目质量或发布就绪状态；不用于具体故障修复。"
 license: MIT
 metadata:
-  version: "4.0.3"
+  version: "4.0.4"
   github_path: "skills/check"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
@@ -27,7 +27,7 @@ Separate source, generated files, installed packages, CI, registry and release s
 ## Rules
 1. Follow the requested outcome and applicable standing repair authorization in AGENTS.md or the user's instructions. A standalone review is report-only only where repair is not authorized; standing authorization for necessary fixes applies without per-finding confirmation. When review is part of an implementation or delivery request, including “review, then commit/push if clean,” fix confirmed in-scope defects, verify the repairs, and continue to the authorized delivery. “If clean” is a quality gate to satisfy before delivery. Honor explicit read-only instructions; ask only when a repair expands scope or requires an action not already authorized.
 2. Inspect staged, unstaged and untracked state before reviewing or writing. Preserve other work; do not stash or reset it to simplify verification.
-3. Ground defects in current code and reachable behavior. Trace dynamic registration, packaging and callers before claiming something is dead. A clean review is valid.
+3. Ground defects in current code and reachable behavior. Trace dynamic registration, packaging and callers before claiming something is dead. A clean review is valid. Before calling a deliberate change a regression, read its commit message and recorded intent. Check new options, fallbacks, layers and abstractions within the requested scope; report removable complexity only when the simpler path preserves required behavior.
 4. Choose verification by affected risk. Stop once required checks pass unless a new change, failure or unresolved risk justifies expansion.
 5. Complete the requested authorized outcome. For external mutations, prepare the concrete change, use the authorized target, and read back actual state; a tool return alone is insufficient.
 6. Report missing evidence as a limit, without substituting source checks for runtime or release acceptance.
@@ -38,6 +38,8 @@ Separate source, generated files, installed packages, CI, registry and release s
 - Public APIs, permissions, money, migrations or release pipelines: affected integration, regression and artifact checks.
 - Project-required checks still apply. Do not choose reviewer count from diff size or repeat equivalent checks.
 
+Read the actual CI workflow and declared runtime before relying on a documented gate. When reusing permitted evidence, name its commit and inputs and what was rechecked; do not present reused evidence as a current run.
+
 ## Conditional references
 Load only the mode needed by the request:
 - Repository audit: [references/mode-audit.md](references/mode-audit.md).
@@ -45,7 +47,7 @@ Load only the mode needed by the request:
 - Shipping or release readiness: [references/mode-ship.md](references/mode-ship.md).
 - Public maintainer actions: [references/public-reply.md](references/public-reply.md).
 - Packaging or installed CLI changes: [references/release-surfaces.md](references/release-surfaces.md).
-- Security, asynchronous state, destructive operations or architectural changes: [references/review-patterns.md](references/review-patterns.md).
+- Security, CI permissions, verification logic, asynchronous state, destructive operations or architectural changes: [references/review-patterns.md](references/review-patterns.md).
 
 ## Helpers
 `scripts/run-tests.sh` only prints candidate verification commands. Confirm them against project instructions, manifests, lockfiles and CI before execution.

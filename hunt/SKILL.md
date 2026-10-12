@@ -3,7 +3,7 @@ name: hunt
 description: "诊断并修复报错、崩溃、测试失败、回归或性能异常；需要代码审查辅助时在同一排错流程内按需调用 Alibaba OCR delegate。"
 license: MIT
 metadata:
-  version: "4.1.0"
+  version: "4.1.1"
   github_path: "skills/hunt"
   github_date: "09-06"
   github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
@@ -29,7 +29,7 @@ Keep one hunt workflow: establish the symptom, reproduce or capture a reliable s
 1. Establish expected versus observed behavior and the affected version or environment. Apply task and standing repair authorization from the user and AGENTS.md; ordinary troubleshooting must continue through authorized repair and verification. Honor explicit diagnosis-only or read-only instructions. Existing authorization persists across status questions; production actions still require applicable authorization.
 2. Before applying a production behavior fix, establish evidence for its root cause. Temporary logs, assertions, probes, minimal tests and isolated experiments are allowed during diagnosis.
 3. Design experiments to distinguish hypotheses. When evidence contradicts the current model or repeated attempts fail, rebuild that model and continue investigating rather than guessing another patch.
-4. Change the failed behavior within the authorized scope. Inspect same-cause siblings when evidence warrants it; do not refactor unrelated neighboring logic.
+4. Change the failed behavior within the authorized scope. Necessary prerequisite changes may proceed once their need is established; file count alone is not an approval boundary. Ask only for scope expansion or an unresolved behavior tradeoff. Inspect same-cause siblings when evidence warrants it; keep unrelated refactors separate. Continue any explicitly requested feature through its appropriate workflow after diagnosis; repair authorization does not add unrequested features.
 5. Choose regression protection by recurrence probability and impact. Verify the failing path and relevant boundaries without mechanically adding a permanent test for every reversible edit.
 6. Preserve existing work. Demonstrate before/after behavior through a safe fixture or isolated copy when needed, without mandatory stash, revert or reset.
 7. Continue until the cause and authorized fix are verified. Stop only for an actual unavailable permission, device, user-only fact or irreplaceable input; state the missing evidence and what has been ruled out.
