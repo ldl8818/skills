@@ -4,6 +4,45 @@
 
 Lookup 负责把联网目标交给合适工具，并验证结果是否足够、真实且可追溯。专用官方资料和已连接服务优先；平台动作直接调用 OpenCLI 或专用 CLI；确需浏览器时，本机日常外部网页默认使用 ego lite 的正式 `ego-browser` Skill；localhost、元素标注与开发调试按实际能力选择，规则统一见 [浏览器选路.md](references/浏览器选路.md)。
 
+## 架构概览
+
+下图是任务级选路关系，并不表示四种执行路径会被同时调用。Lookup 是唯一通用检索入口；Agent Reach 本身也具备路由能力，但在此组合中只按需提供候选资料、环境诊断和已配置的转写能力，不作为第二个自动触发的总路由。
+
+```mermaid
+flowchart TB
+    agent["Codex / Claude Code / Hermes<br/>理解用户任务并推理"]
+    lookup["Lookup Skill<br/>唯一通用检索入口<br/>识别证据需求 · 授权边界 · 选路"]
+    reach["Agent Reach（可选）<br/>平台候选资料 · Doctor 诊断 · 已配置转写"]
+    choose{"按任务选择最短有效路径"}
+    official["官方 API / 已连接服务 / 搜索"]
+    adapters["OpenCLI 站点 Adapter / 专用 CLI"]
+    static["原站 HTTP / 本地静态正文提取"]
+    browser["通用 Browser Use<br/>日常默认 ego-browser<br/>按需 OpenCLI browser / 宿主 Browser"]
+    evidence["统一证据验收<br/>目标 · 来源 · 时效 · 完整性 · 证据类型"]
+    enough{"证据足以回答？"}
+    done["带来源交付已证实结论"]
+    recover["只补证据缺口，或按故障作用域<br/>选择真正独立的授权路径"]
+
+    agent --> lookup
+    reach -.-> lookup
+    lookup --> choose
+    choose --> official
+    choose --> adapters
+    choose --> static
+    choose --> browser
+    official --> evidence
+    adapters --> evidence
+    static --> evidence
+    browser --> evidence
+    evidence --> enough
+    enough -->|是| done
+    enough -->|否／部分／失败| recover
+    recover --> choose
+```
+
+路由遵循 [任务选路](references/任务选路.md)、[浏览器选路](references/浏览器选路.md) 和 [失败作用域与结果验收](references/failure-domains.md)。上游工具可用、Bridge 已连接、Doctor 报告正常，都不等于当前任务已完成；对字幕、评论、表格分页、视频画面等证据分别验收。OpenCLI Adapter 与通用 Browser Use 可能共用 Bridge，不是彼此独立的故障备份。普通读取不自动安装工具、迁移登录态或扩大数据外发权限。
+
+
 ## 职责与可移植性
 
 Lookup 是策略层，不复制平台爬取实现。它保留几类跨工具判断：
