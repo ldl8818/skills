@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.DS_Store
+dist/
+# your own image-model settings may hold API keys
+config.json
+luobo-ppt.config.json
+# work folders created while making decks
+ppt_work/
+*_work/

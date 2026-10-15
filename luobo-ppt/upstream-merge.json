@@ -1,0 +1,629 @@
+{
+  "schema": 2,
+  "repository": "https://github.com/zhouwei713/luobo-ppt",
+  "commit": "b6dcb0f325b3ea38a7ca3cd3c211bbba7fb436b2",
+  "source_path": ".",
+  "files": {
+    ".gitignore": {
+      "upstream_sha256": "f3e1856ff60e3212904842c80dcc45cabd7c3243f334d32b6e33916fd166d4ab",
+      "local_sha256": "f3e1856ff60e3212904842c80dcc45cabd7c3243f334d32b6e33916fd166d4ab",
+      "status": "identical"
+    },
+    "INSTALL.md": {
+      "upstream_sha256": "c466b2c38e750acec925d9138c093a1ef670ef714232ef19a34f1aa3a827f2de",
+      "local_sha256": "c466b2c38e750acec925d9138c093a1ef670ef714232ef19a34f1aa3a827f2de",
+      "status": "identical",
+      "sections": {
+        "# luobo-ppt 安装说明": "# luobo-ppt 安装说明",
+        "## 依赖清单": "## 依赖清单",
+        "## 卸载": "## 卸载",
+        "## 常见问题": "## 常见问题",
+        "## 方式一：Claude 应用（Cowork / claude.ai）": "## 方式一：Claude 应用（Cowork / claude.ai）",
+        "## 方式三：手动安装": "## 方式三：手动安装",
+        "## 方式二：本地 Agent 一键安装（推荐）": "## 方式二：本地 Agent 一键安装（推荐）",
+        "## 方式零：从 GitHub 安装": "## 方式零：从 GitHub 安装",
+        "## 检查结果": "## 检查结果"
+      }
+    },
+    "LICENSE": {
+      "upstream_sha256": "39f501dd58369525e03284ef93f0d4ddb1ea297af4ad8f28f144ef0a0e789e74",
+      "local_sha256": "39f501dd58369525e03284ef93f0d4ddb1ea297af4ad8f28f144ef0a0e789e74",
+      "status": "identical"
+    },
+    "README.md": {
+      "upstream_sha256": "90f1abf5200d747f0468e864910fc511697178235c3c032b431adf3b7fbcb6ab",
+      "local_sha256": "f0d13fefc1b99608aded625a7092c81a6c9d61dc34b3c45ae38be6a189aa3be5",
+      "status": "adapted",
+      "reason": [
+        "Keep the frozen single-source installation and full-reconciliation update instructions instead of running git pull over local customization."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            206,
+            209
+          ],
+          "local_lines": [
+            206,
+            207
+          ],
+          "removed_sha256": "3e5a2017f2283e4174acc8239afd8e5d9188a05ac0d38067ec62676c79bc5b54",
+          "added_sha256": "d2cf02df8234011fdcc72c910abbc98379a5f47973fab9bff07378359d0711f7"
+        }
+      ],
+      "sections": {
+        "# Claude Code": "# Claude Code",
+        "# Codex 及其他支持 SKILL.md 开放标准的 Agent": "# Codex 及其他支持 SKILL.md 开放标准的 Agent",
+        "# Cursor": "# Cursor",
+        "# Gemini CLI": "# Gemini CLI",
+        "# 萝卜 PPT.skill": "# 萝卜 PPT.skill",
+        "## 14 套风格": "## 14 套风格",
+        "## License": "## License",
+        "## 仓库结构": "## 仓库结构",
+        "## 使用方式": "## 使用方式",
+        "## 它解决什么": "## 它解决什么",
+        "## 安装": "## 安装",
+        "## 工作原理": "## 工作原理",
+        "## 效果示例": "## 效果示例",
+        "## 更新记录": "## 更新记录",
+        "## 致谢": "## 致谢",
+        "## 设计理念": "## 设计理念",
+        "## 适合什么场景": "## 适合什么场景",
+        "### 一篇文章，直接变成能讲的 PPT": "### 一篇文章，直接变成能讲的 PPT",
+        "### 依赖": "### 依赖",
+        "### 出图以后，先给自己挑一遍刺": "### 出图以后，先给自己挑一遍刺",
+        "### 参考图里有什么，封面就画什么": "### 参考图里有什么，封面就画什么",
+        "### 同一份原稿，换一张参考图就是另一套风格": "### 同一份原稿，换一张参考图就是另一套风格",
+        "### 工具教程的截图有专门的版式": "### 工具教程的截图有专门的版式",
+        "### 数据、流程、分析框架也装得下": "### 数据、流程、分析框架也装得下",
+        "### 文字一个不动，换身衣服": "### 文字一个不动，换身衣服",
+        "### 方式一：让 Agent 自己装": "### 方式一：让 Agent 自己装",
+        "### 方式三：一键安装脚本": "### 方式三：一键安装脚本",
+        "### 方式二：一行命令克隆": "### 方式二：一行命令克隆",
+        "### 方式四：Claude 应用": "### 方式四：Claude 应用",
+        "### 更新": "### 更新",
+        "### 没装 LibreOffice 也能看图自检": "### 没装 LibreOffice 也能看图自检",
+        "### 没配生图模型也能用": "### 没配生图模型也能用",
+        "### 理科课件，公式一个不丢": "### 理科课件，公式一个不丢",
+        "### 美化时少一个字，它都不交": "### 美化时少一个字，它都不交",
+        "### 装不下的内容，写大纲时就拦住": "### 装不下的内容，写大纲时就拦住"
+      }
+    },
+    "SKILL.md": {
+      "upstream_sha256": "1e1ece380ad7e2a309196088886959e063b3d5e01a9188eae2a730615e917b84",
+      "local_sha256": "1f2eb368790f84142b13b518e4844265882c940fc89b4658ac4e30e285054868",
+      "status": "adapted",
+      "upstream_fields": {
+        "description": "description: 做 PPT 和美化 PPT 的一站式 skill，输出可编辑的原生 .pptx。从零生成时，给一个题目、一篇文章或口播稿、一份大纲，产出结论式标题、带口播备注、风格统一的 PPT；按参考图美化时，给一份朴素的 .pptx 和一张参考图，文字一字不改地换上统一的配色、母版、版式、图标和插画。当用户说\"做个PPT\"\"把这篇文章做成PPT\"\"生成口播PPT\"\"美化PPT\"\"照这张图的风格改PPT\"\"套个风格\"\"make slides\"\"beautify my deck\"，或丢来 pptx、文章、大纲时，务必使用此skill。生图模型可配置，没配置时自动用程序化插画兜底。\n"
+      },
+      "reason": [
+        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            2,
+            2
+          ],
+          "local_lines": [
+            2,
+            4
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "20f7f80f5b99e5577e05b5c686b3882883c590b0e24fc21ff61f8dff041f37e8"
+        },
+        {
+          "upstream_lines": [
+            3,
+            3
+          ],
+          "local_lines": [
+            5,
+            14
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "2899bd0f3a0680da094ed079f2ee21aa0dd017e5d1d9c21b68c0b3b95622759e"
+        },
+        {
+          "upstream_lines": [
+            6,
+            6
+          ],
+          "local_lines": [
+            17,
+            19
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "7182370446ace74e94f61bdf342cdd9c00f5dee9609ee856a886bf3387f99878"
+        },
+        {
+          "upstream_lines": [
+            25,
+            26
+          ],
+          "local_lines": [
+            38,
+            39
+          ],
+          "removed_sha256": "8a28d6f3858904eac211730caeb8775e79f580b7e4778bb5eeae55a06eb4c451",
+          "added_sha256": "62c404a703053d326a17b402ab7fa6595f9518520f2d404c6d6014cf377eae1c"
+        },
+        {
+          "upstream_lines": [
+            27,
+            28
+          ],
+          "local_lines": [
+            40,
+            41
+          ],
+          "removed_sha256": "841b7741f04b274f96f10fc52b8148922bc66fa76a359b5932a345b68a126d80",
+          "added_sha256": "800ebf9b0a77bb11b2a7f000436d4137a7a72bbe734de983866ecdf5ac105548"
+        },
+        {
+          "upstream_lines": [
+            89,
+            90
+          ],
+          "local_lines": [
+            102,
+            103
+          ],
+          "removed_sha256": "68945ea2781753cb3153b7ebf830262d869c42cc883aa15b3406018c0d912c88",
+          "added_sha256": "ec39b146550c962bcbcbafcfcf1e2910d026c95b11b6c1da5572d9974ce26f6d"
+        }
+      ],
+      "sections": {
+        "# 萝卜 PPT（luobo-ppt）": "# 萝卜 PPT（luobo-ppt）",
+        "## 交付": "## 交付",
+        "## 局部修改": "## 局部修改",
+        "## 常见问题": "## 常见问题",
+        "## 开工前": "## 开工前",
+        "## 文件索引": "## 文件索引",
+        "## 版式、出图与检查（两条路线共用）": "## 版式、出图与检查（两条路线共用）",
+        "## 硬规则": "## 硬规则",
+        "## 路线 A 美化": "## 路线 A 美化",
+        "## 路线 B 生成": "## 路线 B 生成"
+      }
+    },
+    "agents/openai.yaml": {
+      "upstream_sha256": "06189ff28fe12b953966e0f695b7845f9982aac8872af5b8f98fef3f988b6d25",
+      "local_sha256": "06189ff28fe12b953966e0f695b7845f9982aac8872af5b8f98fef3f988b6d25",
+      "status": "identical"
+    },
+    "assets/LICENSE-lucide.txt": {
+      "upstream_sha256": "4225f14fa5babc9cf19c69785836a3db4a8a15f41af3e1e785c6ef78d60bf7cd",
+      "local_sha256": "4225f14fa5babc9cf19c69785836a3db4a8a15f41af3e1e785c6ef78d60bf7cd",
+      "status": "identical"
+    },
+    "assets/icon_keywords.json": {
+      "upstream_sha256": "24afac34adaeb7a90efa74fac73af8c83e5e364fe4559065d362c8c3ce9c8d83",
+      "local_sha256": "24afac34adaeb7a90efa74fac73af8c83e5e364fe4559065d362c8c3ce9c8d83",
+      "status": "identical"
+    },
+    "assets/icons.json": {
+      "upstream_sha256": "d69120b35a73890ee1af0367f940bb08a234e0e58bd196d8e0a5641d0fb0a3e7",
+      "local_sha256": "d69120b35a73890ee1af0367f940bb08a234e0e58bd196d8e0a5641d0fb0a3e7",
+      "status": "identical"
+    },
+    "assets/icons.png": {
+      "upstream_sha256": "96606e5c5f2951a4ac7be7f9b2fdb9be352c95671a5dd3fb89a491ee01c5ff52",
+      "local_sha256": "96606e5c5f2951a4ac7be7f9b2fdb9be352c95671a5dd3fb89a491ee01c5ff52",
+      "status": "identical"
+    },
+    "assets/style_gallery.jpg": {
+      "upstream_sha256": "c907c6f9bdf68b46c34fe55ce816d35967d2297c17531bed7a3fe3432b95900f",
+      "local_sha256": "c907c6f9bdf68b46c34fe55ce816d35967d2297c17531bed7a3fe3432b95900f",
+      "status": "identical"
+    },
+    "config.example.json": {
+      "upstream_sha256": "d1d1c57dfcf4f694bb5209c83a4a0c655fd9e8b39c99d0276fe3a610a082472c",
+      "local_sha256": "d1d1c57dfcf4f694bb5209c83a4a0c655fd9e8b39c99d0276fe3a610a082472c",
+      "status": "identical"
+    },
+    "docs/images/14-styles.jpg": {
+      "upstream_sha256": "f846ab336ad06c3b96fe82f9a97b5733bc1c1fe9cee8bb32c266fa441b93a7db",
+      "local_sha256": "f846ab336ad06c3b96fe82f9a97b5733bc1c1fe9cee8bb32c266fa441b93a7db",
+      "status": "identical"
+    },
+    "docs/images/article-to-deck.jpg": {
+      "upstream_sha256": "32d449305e1406dce41b501ecd051c356ad0096fe433cc0d935eeaba9672bc11",
+      "local_sha256": "32d449305e1406dce41b501ecd051c356ad0096fe433cc0d935eeaba9672bc11",
+      "status": "identical"
+    },
+    "docs/images/beautify-before-after.jpg": {
+      "upstream_sha256": "efa5fc6dd0374a5d8ee8230d285580aa96323f0dff4f7f50722373c9190680fa",
+      "local_sha256": "efa5fc6dd0374a5d8ee8230d285580aa96323f0dff4f7f50722373c9190680fa",
+      "status": "identical"
+    },
+    "docs/images/equations-kept.jpg": {
+      "upstream_sha256": "8722cf2913dcaf6a727cc95811d369272467d4e96677a1212e5ebd63ed5882fa",
+      "local_sha256": "8722cf2913dcaf6a727cc95811d369272467d4e96677a1212e5ebd63ed5882fa",
+      "status": "identical"
+    },
+    "docs/images/follow-reference-image.jpg": {
+      "upstream_sha256": "da8c2d9f5c8facfdab832e04d212d882715df44a539b988703759d1e38996afc",
+      "local_sha256": "da8c2d9f5c8facfdab832e04d212d882715df44a539b988703759d1e38996afc",
+      "status": "identical"
+    },
+    "docs/images/lite-preview.png": {
+      "upstream_sha256": "822b6fd225da8f3eb7180e57899ac05a5bb523b536e0a77e25c45d00581f9670",
+      "local_sha256": "822b6fd225da8f3eb7180e57899ac05a5bb523b536e0a77e25c45d00581f9670",
+      "status": "identical"
+    },
+    "docs/images/logo.png": {
+      "upstream_sha256": "d340c043629865daa51a9c757932beff5b1cf827321f5aaed50a5171b8660d42",
+      "local_sha256": "d340c043629865daa51a9c757932beff5b1cf827321f5aaed50a5171b8660d42",
+      "status": "identical"
+    },
+    "docs/images/math-deck-before-after.jpg": {
+      "upstream_sha256": "329c43299e56fddfc60b8e25c488dd1205ffdb08cbf9d9c178869c405199a16f",
+      "local_sha256": "329c43299e56fddfc60b8e25c488dd1205ffdb08cbf9d9c178869c405199a16f",
+      "status": "identical"
+    },
+    "docs/images/one-deck-three-styles.jpg": {
+      "upstream_sha256": "f7a61e818c61ef27966e562a681499cf79d448196514e4f42848e016f8d6f434",
+      "local_sha256": "f7a61e818c61ef27966e562a681499cf79d448196514e4f42848e016f8d6f434",
+      "status": "identical"
+    },
+    "docs/images/outline-capacity.png": {
+      "upstream_sha256": "7715b198b0bf3046d623ba9fd6a2324cfd0ed6bc31cf7890cc47617ed590880f",
+      "local_sha256": "7715b198b0bf3046d623ba9fd6a2324cfd0ed6bc31cf7890cc47617ed590880f",
+      "status": "identical"
+    },
+    "docs/images/qa-fidelity.png": {
+      "upstream_sha256": "3ac7c4c524b387e1112b826e19e85d5ee7422aac5d232405614be292b7938bf2",
+      "local_sha256": "3ac7c4c524b387e1112b826e19e85d5ee7422aac5d232405614be292b7938bf2",
+      "status": "identical"
+    },
+    "docs/images/rich-layouts.jpg": {
+      "upstream_sha256": "09ae9df734166c379ce948d54008782c11a231aa789f34f5512348c5184f549c",
+      "local_sha256": "09ae9df734166c379ce948d54008782c11a231aa789f34f5512348c5184f549c",
+      "status": "identical"
+    },
+    "docs/images/screenshot-layouts.jpg": {
+      "upstream_sha256": "7d30336520eef686f6a7807d00eb57ca7d58dae21f4706d76d1a480adace9b9d",
+      "local_sha256": "7d30336520eef686f6a7807d00eb57ca7d58dae21f4706d76d1a480adace9b9d",
+      "status": "identical"
+    },
+    "docs/images/self-review.png": {
+      "upstream_sha256": "dc387adb78d9f8f81c2f4dfeb4ec479c7d5f8ab701e88994cad88a820355b8ec",
+      "local_sha256": "dc387adb78d9f8f81c2f4dfeb4ec479c7d5f8ab701e88994cad88a820355b8ec",
+      "status": "identical"
+    },
+    "install.bat": {
+      "upstream_sha256": "cad9108ea9e623b15b208a0cc9efd418b997060770ab476decdfcbccca0d4a6d",
+      "local_sha256": "cad9108ea9e623b15b208a0cc9efd418b997060770ab476decdfcbccca0d4a6d",
+      "status": "identical"
+    },
+    "install.ps1": {
+      "upstream_sha256": "0d2f5fdcc8c0209554bf64b523e7f2446db80d61a0f2d53dd768d154763d4afb",
+      "local_sha256": "0d2f5fdcc8c0209554bf64b523e7f2446db80d61a0f2d53dd768d154763d4afb",
+      "status": "identical"
+    },
+    "install.sh": {
+      "upstream_sha256": "89d41e7d9e36b4613b2087112339cfddce03ab242e98b7bbc967d577f7eed497",
+      "local_sha256": "89d41e7d9e36b4613b2087112339cfddce03ab242e98b7bbc967d577f7eed497",
+      "status": "identical"
+    },
+    "references/critique.md": {
+      "upstream_sha256": "52b11b0fea9813e22d27edd18776c23b7b5f55f2e2eadfd3fcb2aa9da387f33a",
+      "local_sha256": "52b11b0fea9813e22d27edd18776c23b7b5f55f2e2eadfd3fcb2aa9da387f33a",
+      "status": "identical",
+      "sections": {
+        "# 出图后的五维自评": "# 出图后的五维自评",
+        "## 五个维度": "## 五个维度",
+        "## 常见的\"要修\"和改法": "## 常见的\"要修\"和改法",
+        "## 怎么做": "## 怎么做",
+        "### 1 统一": "### 1 统一",
+        "### 2 层级": "### 2 层级",
+        "### 3 细节": "### 3 细节",
+        "### 4 传达": "### 4 传达",
+        "### 5 节奏": "### 5 节奏"
+      }
+    },
+    "references/deck_schema.md": {
+      "upstream_sha256": "d9ebebb51ab5738532a31eafd307c71621a8bbc7d5b6230daf963182c92b00d0",
+      "local_sha256": "d9ebebb51ab5738532a31eafd307c71621a8bbc7d5b6230daf963182c92b00d0",
+      "status": "identical",
+      "sections": {
+        "# deck.json 字段说明": "# deck.json 字段说明",
+        "## 从原稿映射的经验": "## 从原稿映射的经验",
+        "## 几个页型的可选字段": "## 几个页型的可选字段",
+        "## 完整示例（节选）": "## 完整示例（节选）",
+        "## 每页通用字段": "## 每页通用字段",
+        "## 每页都能用的小字段": "## 每页都能用的小字段",
+        "## 页型与专属字段": "## 页型与专属字段",
+        "## 顶层": "## 顶层"
+      }
+    },
+    "references/fonts.md": {
+      "upstream_sha256": "31158b304080e3b328e77a7ad13445373f93489539e76d12fe9ed8452c333be8",
+      "local_sha256": "31158b304080e3b328e77a7ad13445373f93489539e76d12fe9ed8452c333be8",
+      "status": "identical",
+      "sections": {
+        "# 字体": "# 字体",
+        "## 可选替换": "## 可选替换",
+        "## 预览与实际的差别": "## 预览与实际的差别",
+        "## 默认配置": "## 默认配置"
+      }
+    },
+    "references/generate.md": {
+      "upstream_sha256": "00701b015885a005321bd90ec1d6bb9522b07cdd8ff90f951b7e7ad730ef7914",
+      "local_sha256": "00701b015885a005321bd90ec1d6bb9522b07cdd8ff90f951b7e7ad730ef7914",
+      "status": "identical",
+      "sections": {
+        "# 从零生成 PPT": "# 从零生成 PPT",
+        "## G1 问清需求": "## G1 问清需求",
+        "## G2 分析素材": "## G2 分析素材",
+        "## G3 写 deck.json": "## G3 写 deck.json",
+        "## G4 检查大纲": "## G4 检查大纲",
+        "## G5 定风格": "## G5 定风格",
+        "## G6 版式规划": "## G6 版式规划",
+        "## G7 出图、组装、检查": "## G7 出图、组装、检查",
+        "## G8 交付": "## G8 交付",
+        "## 流程总览": "## 流程总览",
+        "### 一页一件事": "### 一页一件事",
+        "### 从三种输入出发的要点": "### 从三种输入出发的要点",
+        "### 先搭故事线": "### 先搭故事线",
+        "### 内容形状决定页型": "### 内容形状决定页型",
+        "### 口播备注": "### 口播备注",
+        "### 标题写结论": "### 标题写结论"
+      }
+    },
+    "references/icons.md": {
+      "upstream_sha256": "349225eda60ff838de8bff4caae2097124218c32fdc145d3c8279921dd8ab8d0",
+      "local_sha256": "349225eda60ff838de8bff4caae2097124218c32fdc145d3c8279921dd8ab8d0",
+      "status": "identical",
+      "sections": {
+        "# 内置图标": "# 内置图标"
+      }
+    },
+    "references/image_prompts.md": {
+      "upstream_sha256": "a7b2371eb3d49537ad2b470651d2e1c6d083384776fd4e7f3565e0bb4dc957ff",
+      "local_sha256": "a7b2371eb3d49537ad2b470651d2e1c6d083384776fd4e7f3565e0bb4dc957ff",
+      "status": "identical",
+      "sections": {
+        "# 插画提示词": "# 插画提示词",
+        "## 单页提示词公式": "## 单页提示词公式",
+        "## 程序化兜底": "## 程序化兜底",
+        "## 自动拼接的部分（无需手写）": "## 自动拼接的部分（无需手写）",
+        "## 视觉锚点": "## 视觉锚点",
+        "## 透明底": "## 透明底"
+      }
+    },
+    "references/imagegen_config.md": {
+      "upstream_sha256": "c85d63b2ad611fc4c70ad3a2276ef64c0af68411c63e436de34ae4a0b4c1fbc8",
+      "local_sha256": "c85d63b2ad611fc4c70ad3a2276ef64c0af68411c63e436de34ae4a0b4c1fbc8",
+      "status": "identical",
+      "sections": {
+        "# 生图接口配置": "# 生图接口配置",
+        "## 各家示例": "## 各家示例",
+        "## 失败时会怎样": "## 失败时会怎样",
+        "## 字段": "## 字段",
+        "## 配置文件放哪": "## 配置文件放哪"
+      }
+    },
+    "references/layouts.md": {
+      "upstream_sha256": "03f71d80d5e830eeae3faa41e63bc33d21597285413b1109fca320bb57492730",
+      "local_sha256": "03f71d80d5e830eeae3faa41e63bc33d21597285413b1109fca320bb57492730",
+      "status": "identical",
+      "sections": {
+        "# 版式库": "# 版式库",
+        "## free 版式的元素格式": "## free 版式的元素格式",
+        "## plan.json 里每页可调的键": "## plan.json 里每页可调的键",
+        "## 每个版式装得下多少": "## 每个版式装得下多少",
+        "## 版式一览": "## 版式一览",
+        "## 选版式的经验": "## 选版式的经验",
+        "## 风格对版式的影响": "## 风格对版式的影响"
+      }
+    },
+    "references/style_extraction.md": {
+      "upstream_sha256": "2aeaea1a892ff141248dc2a54d6c39ee7de81d0788f8576970cbb0080a4e11c3",
+      "local_sha256": "2aeaea1a892ff141248dc2a54d6c39ee7de81d0788f8576970cbb0080a4e11c3",
+      "status": "identical",
+      "sections": {
+        "# 从参考图读出 style.json": "# 从参考图读出 style.json",
+        "## style.json 完整字段": "## style.json 完整字段",
+        "## 参考图是深色时": "## 参考图是深色时",
+        "## 常见误区": "## 常见误区",
+        "## 看图时回答这几个问题": "## 看图时回答这几个问题",
+        "## 预设风格": "## 预设风格",
+        "### 排版规矩字段": "### 排版规矩字段"
+      }
+    },
+    "references/styles/black-gold.json": {
+      "upstream_sha256": "b45315a1160286c0c266fe3ec1b5dcd3142e7a5e30ca6b4515a68096fe85c4fe",
+      "local_sha256": "b45315a1160286c0c266fe3ec1b5dcd3142e7a5e30ca6b4515a68096fe85c4fe",
+      "status": "identical"
+    },
+    "references/styles/business-blue.json": {
+      "upstream_sha256": "c4929e26bcaac6195d5322043410ce2ec3a302091180de26ea29baf4d0a888c9",
+      "local_sha256": "c4929e26bcaac6195d5322043410ce2ec3a302091180de26ea29baf4d0a888c9",
+      "status": "identical"
+    },
+    "references/styles/cobalt-type.json": {
+      "upstream_sha256": "01953449876aa80e557cef55ee017944ca35833720d267b58fde5fefbaa2c3c4",
+      "local_sha256": "01953449876aa80e557cef55ee017944ca35833720d267b58fde5fefbaa2c3c4",
+      "status": "identical"
+    },
+    "references/styles/dark-tech.json": {
+      "upstream_sha256": "efd5c6e921fa1cdf5d637c56335f6f5b6fb639c5a60e5bbb866bf810181b3669",
+      "local_sha256": "efd5c6e921fa1cdf5d637c56335f6f5b6fb639c5a60e5bbb866bf810181b3669",
+      "status": "identical"
+    },
+    "references/styles/geo-blocks.json": {
+      "upstream_sha256": "ce6546f367eb2f937560e5de229c8d4a40a6dd5bb3dfb86130f0c1caf11b71f0",
+      "local_sha256": "ce6546f367eb2f937560e5de229c8d4a40a6dd5bb3dfb86130f0c1caf11b71f0",
+      "status": "identical"
+    },
+    "references/styles/index.json": {
+      "upstream_sha256": "db361665c17a9faebe55ba5089467c2ae26e7c11893183020037046bfd4f17b5",
+      "local_sha256": "db361665c17a9faebe55ba5089467c2ae26e7c11893183020037046bfd4f17b5",
+      "status": "identical"
+    },
+    "references/styles/ink-lime.json": {
+      "upstream_sha256": "81d6d01853e479c08dcae035190d152effa43062dbe1f5fc3fee6e1e4aa44e04",
+      "local_sha256": "81d6d01853e479c08dcae035190d152effa43062dbe1f5fc3fee6e1e4aa44e04",
+      "status": "identical"
+    },
+    "references/styles/ink-magazine.json": {
+      "upstream_sha256": "180b978bb0d28506e512d0c8e3bfe625cb957303ffedc03d2ad4e415d56aec67",
+      "local_sha256": "180b978bb0d28506e512d0c8e3bfe625cb957303ffedc03d2ad4e415d56aec67",
+      "status": "identical"
+    },
+    "references/styles/lavender-soft.json": {
+      "upstream_sha256": "37b404c1334d5b965b84d384532fd5093d97583c675c9d1f2ac8a11896aa0bea",
+      "local_sha256": "37b404c1334d5b965b84d384532fd5093d97583c675c9d1f2ac8a11896aa0bea",
+      "status": "identical"
+    },
+    "references/styles/mint-fresh.json": {
+      "upstream_sha256": "50ea55b23bd360f0f4c79b328e8d993bc350536b49055cdc5320b4346d3b13e2",
+      "local_sha256": "50ea55b23bd360f0f4c79b328e8d993bc350536b49055cdc5320b4346d3b13e2",
+      "status": "identical"
+    },
+    "references/styles/paper-notes.json": {
+      "upstream_sha256": "d7b350eefe93c2781e11eb9ea596e94694835912c71100d404983c16891be4aa",
+      "local_sha256": "d7b350eefe93c2781e11eb9ea596e94694835912c71100d404983c16891be4aa",
+      "status": "identical"
+    },
+    "references/styles/pastel-mist.json": {
+      "upstream_sha256": "558e20ac1ae8cfe958733538973de99d976e2b0256988d8e8a01ff122496ed27",
+      "local_sha256": "558e20ac1ae8cfe958733538973de99d976e2b0256988d8e8a01ff122496ed27",
+      "status": "identical"
+    },
+    "references/styles/swiss-grid.json": {
+      "upstream_sha256": "dfc1505fde2bc0947aa0f2a414f52d2a49e4b38667de83430293895eea3bcc94",
+      "local_sha256": "dfc1505fde2bc0947aa0f2a414f52d2a49e4b38667de83430293895eea3bcc94",
+      "status": "identical"
+    },
+    "references/styles/warm-orange.json": {
+      "upstream_sha256": "e167ba9a910e4e0cd5fec26de36f5b391c0935f6c5517fb7b853706379371491",
+      "local_sha256": "e167ba9a910e4e0cd5fec26de36f5b391c0935f6c5517fb7b853706379371491",
+      "status": "identical"
+    },
+    "references/styles/wave-launch.json": {
+      "upstream_sha256": "74b9629e21b6009f5a52f9d88004b912bfe89a77517f5fa14b618ee01885ed61",
+      "local_sha256": "74b9629e21b6009f5a52f9d88004b912bfe89a77517f5fa14b618ee01885ed61",
+      "status": "identical"
+    },
+    "scripts/analyze_source.py": {
+      "upstream_sha256": "94ebd706c2f99b217a93c00d883f96377870546195dfd42f7a67fa6690cc89e2",
+      "local_sha256": "94ebd706c2f99b217a93c00d883f96377870546195dfd42f7a67fa6690cc89e2",
+      "status": "identical"
+    },
+    "scripts/build_deck.py": {
+      "upstream_sha256": "9851a10f4c0eabab6dd742ba5cce2812a5590311f2a6bb34678db0d560de2a66",
+      "local_sha256": "9851a10f4c0eabab6dd742ba5cce2812a5590311f2a6bb34678db0d560de2a66",
+      "status": "identical"
+    },
+    "scripts/capacity.py": {
+      "upstream_sha256": "89397814f27cdb79ddc159b77bd13161355b67c71380dff7596864a5db86a09e",
+      "local_sha256": "89397814f27cdb79ddc159b77bd13161355b67c71380dff7596864a5db86a09e",
+      "status": "identical"
+    },
+    "scripts/common.py": {
+      "upstream_sha256": "fb99a09c41453cd568f90f853a5d517ec5c671322a6afbfb413472dfcb20188a",
+      "local_sha256": "fb99a09c41453cd568f90f853a5d517ec5c671322a6afbfb413472dfcb20188a",
+      "status": "identical"
+    },
+    "scripts/compare_sheet.py": {
+      "upstream_sha256": "2ee63ede5e43d5cc8ac83caa8c909bdf338a09432d494ec696c8bbd71e12460a",
+      "local_sha256": "2ee63ede5e43d5cc8ac83caa8c909bdf338a09432d494ec696c8bbd71e12460a",
+      "status": "identical"
+    },
+    "scripts/extract_deck.py": {
+      "upstream_sha256": "b5efabfe8b1251ec3292b4f12fd64963cc79d596f926751d3c71dd081ef5b2f2",
+      "local_sha256": "b5efabfe8b1251ec3292b4f12fd64963cc79d596f926751d3c71dd081ef5b2f2",
+      "status": "identical"
+    },
+    "scripts/extract_style.py": {
+      "upstream_sha256": "46156b4b0e499d5e6b158ad492f1a3b38d0cfee615dc12ea9fc660cefd52f8cb",
+      "local_sha256": "46156b4b0e499d5e6b158ad492f1a3b38d0cfee615dc12ea9fc660cefd52f8cb",
+      "status": "identical"
+    },
+    "scripts/fallback_art.py": {
+      "upstream_sha256": "5f0bec2bec0f0630cbbcd6b15107e20ff1826ebd42bd0b4fa91c8be8a6b85929",
+      "local_sha256": "5f0bec2bec0f0630cbbcd6b15107e20ff1826ebd42bd0b4fa91c8be8a6b85929",
+      "status": "identical"
+    },
+    "scripts/imagegen.py": {
+      "upstream_sha256": "59a3f63bb03cb5c369158f4abd4a548afe5654724bda4a53b5cb25b32cb9615a",
+      "local_sha256": "59a3f63bb03cb5c369158f4abd4a548afe5654724bda4a53b5cb25b32cb9615a",
+      "status": "identical"
+    },
+    "scripts/layout_info.py": {
+      "upstream_sha256": "d6c91c73a67e88514cae9b34ead7c01333db82dc7db56ae0bf700fede7e70e17",
+      "local_sha256": "d6c91c73a67e88514cae9b34ead7c01333db82dc7db56ae0bf700fede7e70e17",
+      "status": "identical"
+    },
+    "scripts/layouts.py": {
+      "upstream_sha256": "9f770e1533eb5511a78cd0298cade88153ef0225b41b0406234d91575bac0df0",
+      "local_sha256": "9f770e1533eb5511a78cd0298cade88153ef0225b41b0406234d91575bac0df0",
+      "status": "identical"
+    },
+    "scripts/make_assets.py": {
+      "upstream_sha256": "7a8f072510d22776ac7b3051d6eb8f20d027beff08f50da3f13bf075d24f2c36",
+      "local_sha256": "7a8f072510d22776ac7b3051d6eb8f20d027beff08f50da3f13bf075d24f2c36",
+      "status": "identical"
+    },
+    "scripts/omml.py": {
+      "upstream_sha256": "4660173361122ca870db6fc06764dd54a2cb907df3b4193b2302368f2487b226",
+      "local_sha256": "4660173361122ca870db6fc06764dd54a2cb907df3b4193b2302368f2487b226",
+      "status": "identical"
+    },
+    "scripts/outline_check.py": {
+      "upstream_sha256": "d27f32bc11d530cb1bb6cc47629c44fc9e9bfb0d12bf52f4a6a620614eb27339",
+      "local_sha256": "d27f32bc11d530cb1bb6cc47629c44fc9e9bfb0d12bf52f4a6a620614eb27339",
+      "status": "identical"
+    },
+    "scripts/pipeline.py": {
+      "upstream_sha256": "261a3d39596a26df9738af31d2b758b5f19002e9b57688084cd71df12398f7dd",
+      "local_sha256": "261a3d39596a26df9738af31d2b758b5f19002e9b57688084cd71df12398f7dd",
+      "status": "identical"
+    },
+    "scripts/plan_deck.py": {
+      "upstream_sha256": "7393213dd61bbd597941a625f991e0fcf45bfbdd03ce99c23c7123949f6cc07e",
+      "local_sha256": "7393213dd61bbd597941a625f991e0fcf45bfbdd03ce99c23c7123949f6cc07e",
+      "status": "identical"
+    },
+    "scripts/qa_check.py": {
+      "upstream_sha256": "ac790c76090aad19e57a23fb1322a67097b9b64833519b1386ad993521a5cd97",
+      "local_sha256": "ac790c76090aad19e57a23fb1322a67097b9b64833519b1386ad993521a5cd97",
+      "status": "identical"
+    },
+    "scripts/render.py": {
+      "upstream_sha256": "163b962b61e27b413741588a6edf609e614608409cd9944041ae04ee10bc2f2b",
+      "local_sha256": "163b962b61e27b413741588a6edf609e614608409cd9944041ae04ee10bc2f2b",
+      "status": "identical"
+    },
+    "scripts/render_lite.py": {
+      "upstream_sha256": "76140360c0ccf559eb7eee6ac574b8b76df774842d6a7de872d9d9adec381130",
+      "local_sha256": "76140360c0ccf559eb7eee6ac574b8b76df774842d6a7de872d9d9adec381130",
+      "status": "identical"
+    },
+    "scripts/review.py": {
+      "upstream_sha256": "053d036f345c376504ed7355bd248f645accf56b5bd4cfc42b6b81146d17c753",
+      "local_sha256": "053d036f345c376504ed7355bd248f645accf56b5bd4cfc42b6b81146d17c753",
+      "status": "identical"
+    },
+    "scripts/setup_check.py": {
+      "upstream_sha256": "35530dfa46134ccd2621dcd072b770610da1800748f3d7916465e5787be44554",
+      "local_sha256": "35530dfa46134ccd2621dcd072b770610da1800748f3d7916465e5787be44554",
+      "status": "identical"
+    },
+    "scripts/style_card.py": {
+      "upstream_sha256": "805958d10ea54afe4dac4e09aabb73ac6c93111f3e74f8030c8f12c2c4dcc48e",
+      "local_sha256": "805958d10ea54afe4dac4e09aabb73ac6c93111f3e74f8030c8f12c2c4dcc48e",
+      "status": "identical"
+    },
+    "scripts/style_previews.py": {
+      "upstream_sha256": "98fb8eb46684c2122d9666f62b28cb06b4b3d381ca941c270c4121c81d5d5dba",
+      "local_sha256": "98fb8eb46684c2122d9666f62b28cb06b4b3d381ca941c270c4121c81d5d5dba",
+      "status": "identical"
+    }
+  },
+  "local_only": {
+    "本地定制维护.md": "eb8915bcc5c49fd578fa0826149fbf8708c3150e61018a3dca722d1e204d16e4"
+  }
+}
