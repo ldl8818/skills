@@ -1,56 +1,246 @@
 ---
 name: check
-description: "审查代码、PR、文档、测试及项目质量，按风险检查并验证修复；复杂审查按需使用 Alibaba OCR。具体故障排查用 hunt。"
+description: "Reviews diffs, PRs, release readiness, and publishing follow-through. Use when asked to review, triage issues or PRs, or ship. Not for debugging root causes or prose."
+when_to_use: "review, 看看代码, 合并前看看这段代码, 检查这个 PR 有没有漏测, 审查这次改动的风险, 发布前核对验证证据, 检查一下, 合并前, 看看issue, 看看PR, release, publish, push, 发布, 提交, close issue, 关闭issue, release reaction, 发布表情, before merge, 值得发布, code review, code-review, audit, 项目体检, 项目评分, scorecard"
+dispatch_intent: "Code review, before merge, release gates, generated artifacts, safety sinks, publish/push/reaction follow-through, triage issues/PRs, project-wide code-quality audit scorecard"
 license: MIT AND Apache-2.0
 metadata:
-  version: "6.0.0"
+  zh_description: "审查代码、PR、文档、测试及项目质量，按风险检查并验证修复；复杂审查按需使用 Alibaba OCR。具体故障排查用 hunt。"
+  github_hash: "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929"
+  github_date: "10-15"
+  github_ref: "main"
+  version: "6.1.0"
   author: Tw93
   homepage: https://github.com/tw93/Waza
   github_path: "skills/check"
-  github_date: "09-06"
-  github_hash: "2d1420da16d22794ba100183bbd4198fd9d0ba03"
   github_url: "https://github.com/tw93/Waza"
   update_policy: "frozen"
 ---
 
-# Check
+# Check: Review Before You Ship
 
-Locally maintained from Waza's Check, with risk-based routing and optional Alibaba OpenCodeReview (OCR) assistance. Check owns scope, business judgment and repair verification; OCR supplies review tools. Source history and file-level licenses: [NOTICE.md](NOTICE.md).
+Follow the user and host output conventions; do not add a mandatory Skill marker.
 
-## Establish the review
+> Note: `/review` is a built-in Anthropic plugin command for PR review. Waza uses `/check` (or the alias `code-review`) instead. Do not re-trigger `/review` from within this skill.
 
-Review the requested changes, PR or project behavior against intended outcomes. Use `hunt` for an observed runtime failure; a generic “看看”“优化”“继续” alone does not establish a review task.
+Read the diff and find the problems. Apply current task and standing necessary-repair authorization from the user and applicable instructions. Explicit read-only remains read-only; review alone does not authorize external actions. Done means the requested review surface is covered and every verification claim comes from this session.
 
-Read applicable project requirements and inspect staged, unstaged and untracked state. Preserve other work. Fix historical targets to exact revisions; inspect that snapshot rather than unrelated checkout contents. Scope follows the task and affected behavior, including relevant documents, tests, configuration, untracked text, deletion impact and unchanged callers. Exclude unrelated, generated or sensitive material with a concrete reason.
+## Outcome Contract
 
-## Choose the depth
+- Outcome: a review, release decision, or maintainer action grounded in the current diff, project context, and live evidence.
+- Done when: findings, fixes, shipped state, or blockers are stated with the commands, artifacts, or remote state that prove them.
+- Evidence: worktree status, diff, public project docs, manifests, CI, package contents, release or registry state, and current command output.
+- Output: concise findings first, then verification and shipped-state summary when applicable. Multi-step or ship-action runs, and any request with several items or screenshots, close with a numbered completion ledger (done / not applicable / remaining), never a narrative that leaves the user asking "is everything done".
+- Authorization: read-only intent may inspect the worktree and remote state but may not edit files, apply autofixes, commit, push, publish, comment, close, merge, or change branches. Apply the current request and applicable standing authorization to in-scope writes. Public actions require their applicable authorization. A later turn that asks for progress or says "continue" does not revoke it and does not have to repeat it. A new action, a wider scope, a changed goal, or a risk the original authorization did not cover needs its own. Approval of a draft is not approval to commit, push, publish, or delete.
 
-- **Lightweight:** impact is local, expected behavior is clear, and a focused check can establish correctness. Read the relevant diff and direct context, repair authorized defects and verify the affected behavior. No OCR call, generated inventory, separate review ledger or broad rule loading is required.
-- **Deep:** money, permissions, destructive operations, shared contracts, state transitions, concurrency, cross-module effects, broad audits or material uncertainty require connected reasoning. Follow [深入审查.md](references/深入审查.md); use OCR Delegate for applicable rule assistance and retain host review of the complete task scope.
-- Escalate when inspection reveals those risks; reuse work already done. File count, diff length and extension do not determine risk. A one-line permission change or a Markdown authorization rule can require deep review.
+## Durable Context Preflight
 
-## Judgment and repair
+See [references/durable-context.md](references/durable-context.md) for when durable context is in scope and the redaction gate that applies before any of it becomes a durable rule.
 
-Ground findings in intended behavior, reachable code and concrete impact. Read change intent before calling a deliberate change a regression. Check static callers, dynamic registration, packaging and installed entrypoints before declaring code dead. Report simplification only when required behavior is preserved; a supported clean review is valid.
+For `/check`: the current diff, CI, and remote state override memory. Durable memory can explain user intent and preferred follow-through, but public project rules still come from README files, manifests, CI workflows, release docs, and explicit instructions in the current thread. Never cite private memory as a public project requirement.
 
-Follow the user's request and standing repair authorization. Explicit read-only takes precedence. Fix confirmed in-scope defects when authorized, establish the expected result independently of the implementation, and verify the original failure plus affected normal paths. Do not invent requirements or modify tests merely to accept broken behavior. Clarify material ambiguity while continuing independent checks.
 
-When review is part of authorized delivery, “if clean” is a quality gate to satisfy: repair, verify and continue. Ask again only for a genuine scope or authorization gap. Review alone does not authorize external writes.
+## Worktree Safety Preflight
 
-## Verification and completion
+Before any review, triage, ship, release, or PR operation, read the current worktree with:
 
-Use relevant readback/static checks for prose and narrow edits, targeted tests for logic, and affected integration or installed-artifact checks for higher-risk changes. Read actual CI and runtime before trusting a documented gate. Required project checks still apply; `scripts/run-tests.sh` only discovers candidates.
+```bash
+git status --short --branch -uall
+```
 
-After repair, recheck affected behavior and invalidated evidence. Do not repeat unchanged reviews or full suites without a new failure, change or concrete uncertainty. Keep task requirements and unresolved coverage visible across batches; do not silently omit work to meet a budget.
+Treat modified, staged, and untracked files as user work. You may read them and include them in the review surface, but you must not move, hide, overwrite, clean, or discard them without explicit user approval in the current turn.
 
-Report confirmed findings with location, impact and repair/verification status, or a supported clean result. Name the actual scope, exclusions and remaining limits; use “not verified” where evidence is absent. Separate source, runtime, installed behavior, CI and publication. For authorized external actions, read back actual state and reconcile uncertain outcomes before retrying.
+Do not run these commands as default review or PR setup: `git switch`, `git checkout`, `git reset --hard`, `git clean`, `git stash -u`, `git stash --include-untracked`, `git stash -a`, `git stash --all`, or `gh pr checkout`. If a branch change or cleanup is genuinely required, stop and ask for that exact operation.
 
-## Conditional tools and references
+Do not "protect" user work by moving untracked files, generated files, screenshots, or local scratch files into `/tmp` or another holding directory. Moving someone else's WIP out of the checkout is the same class of interference as stashing it. If a clean tree is required for generation, packaging, or verification, use a separate worktree from a known commit and copy only the artifact or patch you own back into the current checkout.
 
-Load only the reference relevant to the chosen depth or affected surface:
-- Deep business review and context budget: [深入审查.md](references/深入审查.md).
-- OCR Delegate commands, when used: [open-code-review.md](references/open-code-review.md). Uses the current host session; no separate model API. Unavailable OCR does not block useful host review.
-- Explicit full-engine OCR request: [OCR完整引擎.md](references/OCR完整引擎.md). Requires an authorized provider; do not substitute Delegate for an explicitly required full-engine gate.
-- Security, CI, tests, deletion, async or architecture: [review-patterns.md](references/review-patterns.md).
-- Packaging, installation or release readiness: [release-surfaces.md](references/release-surfaces.md).
-- Explicit public maintainer actions: [public-reply.md](references/public-reply.md).
+For PR inspection, prefer commands that do not switch the current working tree: `gh pr view`, `gh pr diff`, `git fetch origin pull/<n>/head:refs/tmp/pr-<n>`, and `git merge-tree`. Commit and push follow-through adds the HEAD re-read in `references/mode-ship.md`.
+
+## Mode Picker
+
+Pick the mode that matches the user's intent, then read it in full before acting. Modes layer on top of the shared review surface (Scope, Hard Rules, Hard Stops, Autofix, Specialist Review, Verification, Sign-off) further down, which applies in every mode. Load a mode file only when its row matches; the default review path needs none of them.
+
+| User intent | Mode |
+|---|---|
+| "implement this plan", `/think` output handed off | [Plan Execution](#plan-execution-mode) |
+| Diff or PR ready, "review", "看看代码", "合并前" | Default review (start at [Get the Diff](#get-the-diff)) |
+| "look at issues", "review PRs", "triage", "批量处理" | load `references/mode-triage.md` |
+| "is this worth a release", "值不值得发版" | load `references/mode-ship.md` (Release Worthiness Analysis) |
+| "commit", "push", "publish", "release", "close issue", "发布表情" | load `references/mode-ship.md` (Ship / Release Follow-through) |
+| "audit", "项目体检", "项目评分", "给项目打分", "深入分析项目代码", "scorecard", "linus review" | load `references/mode-audit.md` |
+| Document, PDF, prose review | Delegate to `/write` Document Review Mode, keeping it in the same completion ledger; without `/write`, use the available prose capability and name the limitation |
+
+Before any mode, run [Project Context Extraction](#project-context-extraction) and (if memory is in scope) [Durable Context Preflight](#durable-context-preflight).
+
+## Project Context Extraction
+
+This is Waza's public, standalone code-review capability; it never depends on private machine paths or unpublished instructions. Learn the project from the diff and its public context (manifests, CI workflows, AGENTS/CLAUDE files, release notes) until you know its verification commands, generated or protected files, release artifacts, and domain risks. The shape is in `references/project-context.md`.
+
+- Where project context and this skill overlap and both can be met, satisfy the stricter one. An explicit project exception wins and the report names it; stricter is not a licence to overrule a written decision or reorder the host's instruction precedence.
+- Prefer a verification command the project names, and read the workflow rather than the sentence describing it. A doc claiming CI enforces something is a claim; a check that runs on only one side (local or CI) means a green run there predicts nothing about the other.
+
+For release readiness or publication, also fill the Release Gate 2.0 matrix from `references/project-context.md`. It covers review base, dirty/staged/untracked state, latest tag, origin sync, version fields, generated artifacts, package/archive contents, release assets, registry/appcast/CI, and public issue/PR state. Missing matrix evidence is a blocker for a "ready to release" claim. A commit/push-only task uses the source-delivery checks in `references/mode-ship.md`; unrelated release assets and registry state are out of scope.
+
+## Plan Execution Mode
+
+Activate when the message starts with "Implement the following plan", "按计划实施", "按照计划", "整", "可以干", or "直接改" followed by a plan body, or links to a `/think` output. Skip the code review: name the plan, check `git status --short --branch -uall` for drift that makes it unsafe (name the conflict and stop), execute, then run the project's verification command.
+
+Review-then-ship: when `AGENTS.md` or the current thread asks to "commit after review", "ship if green", or equivalent, load `references/mode-ship.md` after a clean review or finished plan, state "proceeding to ship", and do not ask again.
+
+## Get the Diff
+
+Derive the review baseline from the user's words and current repository state. Do not ask for commits when the scope is already inferable:
+
+- **All local or uncommitted changes**: inventory staged, unstaged, and untracked files, plus local commits ahead of the configured upstream. Being on the base branch does not make this scope ambiguous.
+- **PR or branch review**: use the merge base through the reviewed head, then add any dirty files in that checkout as a separate surface.
+- **Since the last release**: use the latest published stable tag through `HEAD`, not the local version field, then add dirty files.
+- **Recent N days or an explicit ref**: resolve that time/ref boundary through `HEAD`, then add dirty files.
+- **Known-good or previous working version**: compare that ref through `HEAD`; route to `/hunt` Bisect Mode only when the regression point itself is unknown.
+- **Whole-project audit**: use Audit Mode rather than pretending one diff is the repository.
+
+Freeze the resolved base, `HEAD`, worktree inventory, generated/distribution surfaces, and delegated scopes before review. Ask one narrow question only when two plausible baselines would materially change the verdict. If review fixes are applied or repository state moves, the old verdict expires: re-read `HEAD`, status, and the full resolved diff before signing off.
+
+## Scope
+
+Measure the diff and classify depth:
+
+| Depth | Criteria | Reviewers |
+|-------|----------|-----------|
+| **Quick** | Local impact and clear expected behavior, established by a focused check | Base review only |
+| **Standard** | Several related behaviors or material uncertainty | Base + relevant specialist reasoning |
+| **Deep** | Money, permissions, destructive state, shared contracts, concurrency or cross-module effects | Connected business review + relevant specialist and adversarial reasoning |
+
+State the depth before proceeding.
+
+Explicit depth language overrides the size thresholds. "All", "全部", "deep", "深入", or "仔细" means whole-scope coverage of the resolved inventory, even when the textual diff is small; it does not permit skipping untracked files, generated mirrors, required artifacts, or pending reviewers.
+
+Static content diffs can stay quick even when they touch several generated files: version strings, dates, release-copy mirrors, sitemap dates, or one-for-one localization copy changes usually need line-by-line readback plus grep consistency, not a specialist fleet. Escalate only when the diff changes logic, generation rules, public distribution behavior, or user-facing semantics beyond the literal text replacement.
+
+## Did We Build What Was Asked?
+
+Before reading code, check scope drift: do the diff and the stated goal match? Label: **on target** / **drift** / **incomplete**.
+
+Every changed file and new public surface must trace to the stated goal in one sentence; a file, dependency, config knob, abstraction, generated artifact, workflow permission, or release behavior that cannot is drift until proven necessary. Any one of these is enough: a file unrelated to the goal, pure refactoring or unrelated deletion inside a fix or feature, an unmentioned dependency or helper, or a cleanup that quietly adds user-visible UI, default config, workflow permissions, or release behavior. For every new public setting, flag, environment variable, command, or service, ask who will change it and why one correct default cannot serve them; with no evidenced user split, treat the knob as drift and fix the default path instead.
+
+Every review, unasked, runs an over-design pass: for each new file, option, fallback, layer, or abstraction, ask whether the change would still hold with it removed, and report each one that would as removable.
+
+## Question the Approach, Not Just the Diff
+
+Scope drift checks the diff against the stated goal; this checks the goal against the approach. Skip when the user declares the route settled or the repo's design docs record the decision -- do not re-litigate deliberate trade-offs.
+
+When findings cluster on one root cause -- the same bug class patched repeatedly, permission or state problems that follow from the architecture itself, a simple problem made complex -- stop listing patches and state the route verdict first: keep / adjust / replace / insufficient information. Compare a real alternative only when it eliminates the problem class at an acceptable migration cost; never manufacture one to fill the report. No patch list before the verdict.
+
+## Pattern-Fix Completeness
+
+When the diff fixes one instance of a class-of-bug, grep the repo for the same shape (hunt's Scope Blast Mode) and confirm the other instances were handled. List any unswept sibling: a hard stop when it carries the same risk, advisory when lower-risk.
+
+When the diff contains a recurring or hard-to-observe bug, captured output or asynchronous completion, simplification or deletion, history-sensitive normalization, non-atomic replacement of user files, broad destructive matchers, duplicated derivations, test-surface fidelity, never-shipped migrations, or unknown identifiers, load the matching section of `references/review-patterns.md`. Do not load that catalog for unrelated diffs.
+
+## Command And Install Surfaces
+
+When a diff touches a CLI entrypoint, installer, config/env handling, or a mutating command (cleanup, update, uninstall, migration, cache removal), work the CLI Command Surface section of `references/release-surfaces.md`; when it touches a skill, plugin, marketplace entry, package manifest, generated mirror, or published archive, work its Packaged Install Surface section. The lesson behind both: library tests and manifest JSON never prove installed-runtime behavior, and every mutating command is a safety sink. Terminal output is a rendered surface too; after changing CLI-facing text or layout, re-run the command and read the real output.
+
+## Hard Rules
+
+- **No unverified claims.** Do not write "I verified X", "I ran Y", "tests pass", or "this fixes Z" unless the shell output is in this turn's transcript. If you reason about behavior without running, say "based on reading the code" instead of "I verified". Every verification claim in the sign-off must point to a command that actually ran in this session, or be labelled as reused evidence naming the commit and inputs it came from and what was re-checked to confirm it still applies. Reuse the project allows is fine; presenting it as this session's run is not.
+- **Re-read source-of-truth facts.** Refresh line numbers, worktree state, fallback behavior, locale coverage, artifact state, and the identity of any issue, PR, or thread in the current turn before citing or posting to it. Earlier context and reviewer notes are leads, not evidence.
+- **Public replies**: the body follows `/write` Public Reply Mode; posting, editing, read-back, and closure follow `references/public-reply.md`.
+
+## Hard Stops (fix before merging)
+
+Examples, not exhaustive -- flag any diff that could cause irreversible harm if merged unreviewed.
+
+- **Destructive auto-execution**: any task marked "safe" or "auto-run" that modifies user-visible state (history files, config, preferences, installed software) must require explicit confirmation.
+- **Source and distribution out of sync**: everything the source change implies downstream must be regenerated, tracked, uploaded, and version-consistent before declaring done: generated or bundled outputs rebuilt and included, every artifact named in release notes or workflows actually uploaded, every new helper module, reference file, or script present in the built archive, and version fields synchronized across manifests, package metadata, changelogs, tags, and lockfiles.
+- **Verifier failure layer unclear**: if a verifier fails before assertions or due to missing optional dependencies, bootstrap noise, transient build-service crashes, unavailable simulators, or tool setup, classify setup versus product failure. Retry only with new evidence or a narrower environment. Do not call the repo broken until the intended test body or artifact check actually ran. The inverse is the same stop: a verifier that passes without running the real path -- a skipped optional-dependency job that still prints OK, a function that early-returns leaving output empty so a true-on-empty assertion passes, a render reported fixed but never opened -- is a hollow green. A pass counts only when at least one non-skipped, non-empty case exercised the path and the assertions fail on emptiness.
+- **Publishing over your own open findings**: when the same run produced review findings and then reaches a ship action, every finding must be fixed, or restated as "known, shipping anyway" with its user impact and confirmed, before the release proceeds. A standing release authorization does not cover problems discovered after it was given.
+- **Injection and validation**: SQL, command, path injection at system entry points. Credentials hardcoded, logged, committed, or copied into public docs.
+- **Dependency changes**: unexpected additions or version bumps in package.json, Cargo.toml, go.mod, requirements.txt. Flag any new dependency not obviously required by the diff. The inverse is a finding too: a declared dependency or linked SDK with zero imports across the repo gets flagged to the maintainer, not silently removed (it may be staged for an upcoming feature, and unused analytics/telemetry SDKs still drag app review and privacy manifests). Removal needs the maintainer's go-ahead in the current turn, a grep proving zero references first, and a full build after. For lockfiles, automated security PRs, or version pins, load `references/review-patterns.md` (Dependency changes).
+- **Safety sinks**: destructive file operations, shell or AppleScript construction, cwd/path/symlink traversal, approval or sandbox boundary changes, signing/appcast flows, and auth prompts need explicit review of validation, rollback, and user-confirmation behavior.
+
+## Finding Quality Gate
+
+Every finding needs the exact file:line, the specific input or state that triggers the bad outcome, a read of upstream callers and downstream consumers rather than the function in isolation, and a severity a senior reviewer would raise at that level in a real PR; missing any of these, drop it or downgrade it to advisory. Before calling a change a regression, read its commit message and author intent: a deliberate maintainer change is a decision, not a finding. Vague findings train the reader to ignore real ones.
+
+**A clean review is a valid review.** Do not manufacture findings to justify the invocation. Zero findings with a stated review surface is a complete output. Padding the report with low-confidence noise is a worse outcome than reporting nothing.
+
+**HIGH and CRITICAL** also need why existing guards (validation, type system, upstream catch, framework default) do not already prevent it. Cannot show that? Downgrade to MEDIUM, or drop. "This *might* break under some condition" is not a HIGH.
+
+## Knowledge Sync
+
+If the diff introduces an invariant the project docs do not hold yet (a safety gate, a UI constraint, a release step, a cross-file sync requirement), it belongs in the narrowest tracked guidance every intended runtime reads, usually AGENTS.md. A review report or scorecard in the diff is evidence, not a durable doc: extract its stable rule instead of committing the snapshot. Apply a clear doc update as `safe_auto` or flag it as `doc debt`; with nothing new, sign-off says `doc debt: none`.
+
+## Specialist Review (Standard and Deep only)
+
+Load `references/persona-catalog.md` for activation, parallel or sequential review, and finding verification.
+
+Before a whole-scope verdict, reconcile a completion ledger for every delegated review: assigned scope, returned status, and uncovered remainder. Wait for every active reviewer, or name its scope as unreviewed. Never say "all read", "full audit complete", or "no issues" while any reviewer or required verification is still pending.
+
+## Autofix Routing
+
+| Class | Definition | Action |
+|-------|------------|--------|
+| `safe_auto` | Unambiguous, risk-free: typos, missing imports, style inconsistencies | Apply when task or standing authorization covers it; otherwise report it |
+| `gated_auto` | Behavior fixes with a clear intended result: null checks, error handling additions | Apply within explicit repair authorization; ask only for scope expansion or an unresolved user choice |
+| `manual` | Architecture or security tradeoffs with no settled intended result | Resolve from project context; present any remaining user decision |
+| `advisory` | Informational only | Note in sign-off |
+
+Write authorization covers necessary fixes within its scope, including behavior changes needed for the requested result. A routing class does not create another approval step. Current task and standing repair authorization count as write authorization. In report-only mode, do not modify the worktree.
+
+Any fix made during review invalidates the pre-fix verdict. Re-freeze the baseline, re-run the check that exposed the finding, refresh the sibling sweep, and complete the final adversarial pass required by the review depth before declaring ready.
+
+## Adversarial Pass (Deep only)
+
+Run the four attack angles in `references/persona-catalog.md`. Convergence from independent angles raises confidence; singleton findings face the same per-finding skeptic verification as specialist claims. Suppress findings below 0.60 confidence.
+
+## Platform Operations
+
+Derive the host CLI/API from public project docs; do not force GitHub commands onto other hosts, and confirm CI passes before merging. Poll CI as structured state, not streamed text: `gh run view <id> --json status,conclusion` (or the host's equivalent). Piping `gh run watch`, test output, or build output through `tail`/`head` swallows the real exit code and can report a failed or still-running run as green.
+
+## Verification
+
+Use the project's known verification command appropriate to the changed surface. Otherwise, `bash <skill-base-dir>/scripts/run-tests.sh` from the target project root discovers candidates without running package tools; inspect the project contract first. The explicit `--execute` path retains upstream auto-execution and must be chosen only when that behavior is authorized and suitable. Report the exit status and summary, with relevant failure output rather than full passing logs.
+
+A failed check needs diagnosis; no detected command is a discovery gap, not proof of failure or of no verification surface. Inspect project docs, manifests, and CI for an appropriate check. Complete a read-only review with explicit evidence limits when no check is available. Block a fix or readiness claim only when required evidence is missing or failing, and ask for a command only if it cannot be recovered from project context.
+
+For bug fixes: a regression test that fails on the old code must exist before the fix is done, run red on that code (hunt's Regression guard rule). Establish expected behavior independently of the implementation: updating a snapshot does not prove it is correct. For agent instructions, keyword checks prove text retention only; behavior checks inspect tool actions and resulting files or artifacts, including forbidden side effects. Exercise a known-good and a known-bad case before relying on a new checker, and compare baseline and candidate under the same runtime and inputs.
+
+In a dirty or multi-agent checkout, a passing local build or test run is not proof your change is sound: unrelated WIP already in the tree can supply missing symbols, mask a break, or fail for reasons unrelated to you. Verify in isolation -- `git worktree add --detach <known-good-commit>`, `git apply` only the diff of the files you own, then build/test there. The clean isolated pass is the real signal; the contaminated local pass is not.
+
+## Gotchas
+
+| What happened | Rule |
+|---|---|
+| New file name duplicated a locale, platform, or suffix convention | Check the target directory's existing naming convention before creating or renaming files |
+| Deployed without provider runtime or env checks | Follow the project's public deployment docs and compare provider config with local required env and runtime settings |
+
+## Sign-off
+
+Open the final message with the `status` line as plain prose before any table or detail: exactly where the work stands now, with the hash, tag, or blocker. A verdict buried under verification tables reads as unfinished; the tables support the verdict, they do not replace it.
+
+```
+status:           [committed and pushed as <hash> / staged, not committed / released vX.Y.Z / blocked on <what>]
+files changed:    N (+X -Y)
+scope:            on target / drift: [what] / removable: [what]
+user-visible delta: none / [entry, UI, copy, behavior added, removed, or changed]
+review depth:     quick / standard / deep
+hard stops:       N found, N fixed, N deferred
+sibling sweep:    N same-shape sites checked, N fixed / none found / not applicable
+specialists:      [security, architecture] or none
+new tests:        N
+public actions:   replied #N, closed #N, reactions done / none pending
+doc debt:         none / AGENTS.md needs X / rules need Y
+verification:     [command] -> pass / fail
+```
+
+`public actions` lists every outward-facing step the task implied (issue replies, closures, release reactions) with its done or pending state; an external action the user has to ask about was not finished.
+
+For a whole-scope or post-fix verdict, `scope` is backed by the frozen baseline and current inventory, not by the last patch viewed. For a ship action, the status line is incomplete until every currently authorized ledger item is `done`, `not applicable`, or `blocked` with evidence.
+
+A turn that wrote files ends with the actual output of `git status --short --branch` and, when it pushed, the `status,conclusion` of the CI run for that sha; if either command was not run, the first line says which.
+
+## Local OCR integration
+
+Use [深入审查.md](references/深入审查.md) for connected business reasoning and [open-code-review.md](references/open-code-review.md) for optional Alibaba OpenCodeReview Delegate assistance. The host owns the entire requested scope, including Markdown, tests, untracked files, unchanged callers and deletion impact; OCR selection or exclusions never shrink it. Quick reviews require neither OCR nor an inventory ledger. Delegate uses the current host session and needs no independent model API. Full-engine requests follow [OCR完整引擎.md](references/OCR完整引擎.md) and their authorized provider gate. Source history and dual licenses remain in [NOTICE.md](NOTICE.md).
+
+Use [review-scope.md](references/review-scope.md) when a multi-layer scope needs an inventory. Preserve evidence already valid for unchanged inputs; do not rerun every suite or review without a change, failure or concrete uncertainty.

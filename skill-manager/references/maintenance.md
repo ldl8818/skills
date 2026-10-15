@@ -35,28 +35,28 @@ neat-freak 仍可从该仓库更新。
 ### 字段名单：MANAGED_FIELDS 与 PRESERVE_FIELDS
 - `core.MANAGED_FIELDS`：算指纹时剥掉的「skill-manager 自己写的字段」。
 - `update_skill.PRESERVE_FIELDS`：更新时从本地 SKILL.md 原样保下来的字段
-  （`zh_description` / `update_policy` / `keep_local_description`）。
+  （`zh_description` / `update_policy`）。
 
 加新元数据字段时两份名单都要过一遍。漏 PRESERVE = 每次更新悄悄回滚一次用户定制，且无声。
 > 来历（2026-07-11）：`description` 不在 PRESERVE 里，3 个本地调优过触发描述的 skill
-> 一 update 全被上游盖回去。修复 = `keep_local_description` 开关。
+> 一 update 全被上游盖回去。旧版曾增加 `keep_local_description` 开关；当前政策为完整保留上游描述、中文展示独立保存，该开关不再覆盖源字段。
 
-### keep_local_description 牵动三处，少改一处就露馅
-| 处 | 不改会怎样 |
-|----|-----------|
-| `update_skill.py::merge_skill_md` | 本地描述被上游冲掉 |
-| `core.strip_managed_fields` | 打个保留标记就多一颗假 dirty 星 |
-| `core.fingerprint` + `trace_batch` | trace 永远比不中，定不了版本 |
+`when_to_use` 与 `dispatch_intent` 是顶层路由内容，不属于管理器生成的记账字段，不加入 `MANAGED_FIELDS` 或无条件保留的 `PRESERVE_FIELDS`。更新时按旧上游／本地／新上游三方合并；非冲突改动同时保留，双方修改同一字段时报告冲突，不静默覆盖或锁死上游改进。字段用途见 [SKILL.md 的路由字段](../SKILL.md#路由字段)。
 
-不做「两边不一样就自动保留」的推断——上游改进的描述会永远拿不到，且用户不知情。
+### 上游路由字段不可由适配理由豁免
+
+以 [Skill 入口的路由字段](../SKILL.md#路由字段)为现行定义。`audit_upstream.make_receipt` 和 `verify` 共用字段检查；schema 2回执在 SKILL.md 条目中保存源 YAML 字段块，联网取得的固定源快照核验还须逐项比对这些原文。旧回执不能只改版本号或哈希迁移，必须从完整源快照重新核对。
+
+普通更新将 `description` 从正文合并中分离，再复制完整上游字段块，保留折叠／换行语义；另外两个字段做三方合并，候选写入前执行同一原文检查。冲突或字段被改写时停止替换，在隔离目录完整恢复源字段后合入本地新增条目，不先筛掉上游词句，也不通过改标点、加限定或翻译原文规避冲突。
+
+旧 `keep_local_description` 不再回注、不覆盖上游，也不从指纹或溯源比较中豁免 description；字段仍可作为旧记账数据读取。现役安装数据不因升级脚本被批量重写，实际更新在授权范围内执行。
 
 ### 版本判定是方向性比对，不是指纹相等
 「本地是哪一版」用 `core.content_matches_upstream(local, upstream)` 判：上游每个文件
 都须在本地存在且一致；**本地多出的文件不参与**——skill 运行时自生成的文件（配置、
 自学笔记）和 update 保留的本地独有文件不改变它装自哪一版。整目录指纹相等只用于
 dirty 检测（`fingerprint` + `fingerprints.json`），别拿它比上游。
-比对口径也在这里统一：`keep_local_description` 只写在本地那份 SKILL.md 里，
-剥哪些字段由本地声明决定、对两边同时生效，一边剥一边不剥就永远比不中。
+比对口径在这里统一：只剥离管理器记账字段，实际路由内容参与比较；有本地增补时不能将它冒充为与上游完全一致。
 > 来历（2026-07-11，官方 skill 评估跑出来的）：web-access 自生成的 config.env 和
 > site-patterns/ 让整目录指纹和上游哪个 tag 都对不中，trace 永远定不了版。
 > 同一次还连出两个 bug：单个 trace 不读已登记的 github_url（批量路径读、单个路径漏）；
@@ -94,7 +94,7 @@ update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有�
 
 ### User-Learned 段与本地独有文件
 `update_skill.py` 合并更新时保留目标 skill 的 `## User-Learned Best Practices` 段
-（`USER_SECTION_RE`）和本地独有文件。改合并逻辑别弄丢。
+（`USER_SECTION_RE`）和本地独有文件。同名文件通过旧上游、本地、新上游三方合并；缺少可信旧基线或有冲突时拒绝覆盖。上游删除只在本地未改动时同步，本地已改动则转人工对账。改合并逻辑别弄丢。
 
 ## 实现细节备忘
 
@@ -128,19 +128,18 @@ update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有�
 
 - 所有外部名字先过 `core.safe_component`，所有派生路径再过 `core.contained_path`；
   两层都不能省。插件登记表和上游 manifest 都是不可信输入。
-- 远端归档通过 Python 下载和解包，不允许 `shell=True`，并拒绝路径逃逸、软链接、
-  硬链接和设备文件。
+- 远端归档通过 Python 下载和解包，不允许 `shell=True`，并拒绝路径逃逸、外部链接和设备文件；只将合法的归档内链接实体化为普通文件。
 - JSON 只对“文件不存在”使用默认值；损坏、权限错误必须硬失败。写入统一走同目录
   临时文件、`fsync`、`os.replace`。
 - 直装更新先在相邻 staging 目录完成合并与校验，再原子替换在线目录；在线目录不能
   在校验完成前逐文件覆盖。
-- **直装更新流程**：frozen 拒绝 → ls-remote 比 hash → 整目录备份 → tarball 按
-  `github_path` 定位 → 合并落盘（保留 PRESERVE 字段、User-Learned 段、本地独有文件，
+- **直装更新流程**：frozen 转完整隔离合并流程 → ls-remote 定位目标（相同 hash 不代替内容核验）→ 整目录备份 → 下载旧／新源快照并按
+  `github_path` 定位 → 三方合并落盘（保留同名文件本地改造、PRESERVE 字段、User-Learned 段、本地独有文件，
   同步上游 `VERSION` 到 version 字段）→ **落盘后自检**（`validate_skill_md`：新
   `SKILL.md` 解析不出 `name`/`description` 就判定合并出坏文件，从整目录备份回滚，
-  不当成功）→ **打印变更摘要**（`summarize_change`：description 变了 / 章节增减，
+  不当成功）→ 完整源文件／本地差异回执核验及并发改动核对 → **打印变更摘要**（`summarize_change`：description 变了 / 章节增减，
   避免「hash 换了但没人知道换了什么」的静默更新）→ 失败不改本地。
-- **Claude 插件更新流程**：tarball 定位插件目录（仓库根 → `plugins/<名>` → `external_plugins/<名>` →
+- **Claude 插件更新流程**：先核对安装目录与登记旧基线，未知或存在本地差异时保持原状并转隔离对账；无差异才下载新 tarball 定位插件目录（仓库根 → `plugins/<名>` → `external_plugins/<名>` →
   浅层扫描；判据 = `.claude-plugin/plugin.json` 或 `marketplace.json`+`skills/`）→
   结构验证通过才写登记表 → 同步 `descriptions_zh.json`。
 - **删除清理**：直装清 2 处（`fingerprints.json` 的 key 是 **`global:<名>`** 不是裸名、

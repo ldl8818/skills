@@ -1,0 +1,305 @@
+{
+  "schema": 2,
+  "repository": "https://github.com/tw93/waza",
+  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "source_path": "skills/write",
+  "files": {
+    "SKILL.md": {
+      "upstream_sha256": "ed57ea5d024b9352b5fa1d4e809d288228706a28382b9fbce658cd9e95634818",
+      "local_sha256": "35132a0c4256508f6d188d6f5f81e05f8277c5460c9c48efcd874698751cb955",
+      "status": "adapted",
+      "upstream_fields": {
+        "description": "description: \"Rewrites and polishes Chinese or English prose, technical instructions, and product copy. Use when drafting, editing, localizing, or cutting AI tone. Not for code comments or commit messages.\"\n",
+        "when_to_use": "when_to_use: \"改稿, 润色, 去AI味, 帮我写文案, 审稿, 文档review, 技术说明改写, 指令消歧, clarify instructions, technical writing, 本地化文案, 多语言文案, i18n copy, localization copy, check this document, 推特, twitter, X推文, tweet, social post, draft, edit text, proofread, sound natural, polish, rewrite\"\n",
+        "dispatch_intent": "dispatch_intent: \"Writing, editing prose, clarify technical instructions, polish, release notes, launch/social copy, remove AI tone\"\n"
+      },
+      "reason": [
+        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy.",
+        "Keep the required host salutation and output format instead of the upstream marker.",
+        "Keep author voice protection without mandatory unsolicited change lists.",
+        "Respect the local final-text output convention.",
+        "Keep local punctuation precedence, literal preservation and technical ambiguity guidance."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            3,
+            4
+          ],
+          "local_lines": [
+            3,
+            4
+          ],
+          "removed_sha256": "b34ac944a341c4c8c491fdb1f88860cb86e37cce8b4307a457cb494d0f8cdfff",
+          "added_sha256": "2234d0da309da6bcc842a6267175048667f266523ea2392e190e76a3dc304d04"
+        },
+        {
+          "upstream_lines": [
+            5,
+            5
+          ],
+          "local_lines": [
+            5,
+            15
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "f2323c0644f0c3098a8cf241c8a63cdc79649233ebc805da7d8dcff570e990ce"
+        },
+        {
+          "upstream_lines": [
+            9,
+            10
+          ],
+          "local_lines": [
+            19,
+            20
+          ],
+          "removed_sha256": "0e4f97f609ed61e3adb1694cca3163f9f2bdc7e93d20166513b1b180484053f8",
+          "added_sha256": "84876eff960eac289181c8f7bde1e9c85010c5a0538fa4ffc48b82c9924db8bf"
+        },
+        {
+          "upstream_lines": [
+            30,
+            31
+          ],
+          "local_lines": [
+            40,
+            41
+          ],
+          "removed_sha256": "376d3e891c029e69a2ded00422dc2a6861930c6766b3bad9c7fca20572746ac1",
+          "added_sha256": "2b17e84a89d910beb795ae115b2dea4055b8e64245a2b45b7f23211c0a1b0eaf"
+        },
+        {
+          "upstream_lines": [
+            95,
+            96
+          ],
+          "local_lines": [
+            105,
+            106
+          ],
+          "removed_sha256": "60ecb4956452dedce4a69f5b52d331c963512ad866fcd8388b90e152d441a7eb",
+          "added_sha256": "01db66b3ae0896ca1ebb653008dc7657d3ed164ef47ca3648016f582265e6a77"
+        },
+        {
+          "upstream_lines": [
+            97,
+            98
+          ],
+          "local_lines": [
+            107,
+            108
+          ],
+          "removed_sha256": "5453bf608870c186fe410c5739d9a0687afcea3e121a9e1c29357b8901985e06",
+          "added_sha256": "84b8ccbc003ac0ee277ced15e98d1e226830b67ff51dcf22853545b777737da8"
+        },
+        {
+          "upstream_lines": [
+            128,
+            128
+          ],
+          "local_lines": [
+            138,
+            142
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "c09fa9e11413eeea7ad081601ca75a4cb5c174cf8104008a0493abe1fd820d89"
+        }
+      ],
+      "sections": {
+        "# Write: Cut the AI Taste": "# Write: Cut the AI Taste",
+        "## Core Stance": "## Core Stance",
+        "## Document Review Mode": "## Document Review Mode",
+        "## Durable Context Preflight": "## Durable Context Preflight",
+        "## Gotchas": "## Gotchas",
+        "## Hard Rules": "## Hard Rules",
+        "## Mode Picker": "## Mode Picker",
+        "## Outcome Contract": "## Outcome Contract",
+        "## Output": "## Output",
+        "## Paragraph Coherence Mode": "## Paragraph Coherence Mode",
+        "## Pre-flight": "## Pre-flight",
+        "## Punctuation Gate": "## Punctuation Gate",
+        "## Tweet / Social Post Mode": "## Tweet / Social Post Mode"
+      }
+    },
+    "references/durable-context.md": {
+      "upstream_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "local_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "status": "identical",
+      "sections": {
+        "# Durable Context Preflight": "# Durable Context Preflight",
+        "## Current state wins": "## Current state wins",
+        "## Memory is not authorization": "## Memory is not authorization",
+        "## Redaction gate": "## Redaction gate",
+        "## Scope": "## Scope"
+      }
+    },
+    "references/mode-long-form.md": {
+      "upstream_sha256": "83d80fe5f822fdbb2f3e121e58b5c5f7f61e0fa10d15c6e12a6ce3fc41600c90",
+      "local_sha256": "83d80fe5f822fdbb2f3e121e58b5c5f7f61e0fa10d15c6e12a6ce3fc41600c90",
+      "status": "identical",
+      "sections": {
+        "# Long-form Article Mode": "# Long-form Article Mode"
+      }
+    },
+    "references/mode-public-reply.md": {
+      "upstream_sha256": "98e1b7a0ae9a66801fbbaeea555fa53b1b24205f8435712b287d6b9ba4ffb4b6",
+      "local_sha256": "98e1b7a0ae9a66801fbbaeea555fa53b1b24205f8435712b287d6b9ba4ffb4b6",
+      "status": "identical",
+      "sections": {
+        "# Public Reply Mode (GitHub issue / PR)": "# Public Reply Mode (GitHub issue / PR)"
+      }
+    },
+    "references/mode-release-notes.md": {
+      "upstream_sha256": "5d60e27893ae0300bd2b95d5112c63c25ed92a706748723206033f684d60e9b1",
+      "local_sha256": "5d60e27893ae0300bd2b95d5112c63c25ed92a706748723206033f684d60e9b1",
+      "status": "identical",
+      "sections": {
+        "# Release Note Template Mode": "# Release Note Template Mode",
+        "### Release Notes Content Rules": "### Release Notes Content Rules",
+        "### Release Notes Pre-flight": "### Release Notes Pre-flight"
+      }
+    },
+    "references/write-en.md": {
+      "upstream_sha256": "409cd8478ae7e8b7b867934f5adc383d4ac006d396b74cc4bffe5ff97b2cd17c",
+      "local_sha256": "409cd8478ae7e8b7b867934f5adc383d4ac006d396b74cc4bffe5ff97b2cd17c",
+      "status": "identical",
+      "sections": {
+        "## English Scenario": "## English Scenario",
+        "### Core Rules": "### Core Rules",
+        "### Paragraph & Composition Patterns to Avoid": "### Paragraph & Composition Patterns to Avoid",
+        "### Sentence Structures to Avoid": "### Sentence Structures to Avoid",
+        "### Tone Patterns to Avoid": "### Tone Patterns to Avoid",
+        "### Word Choice": "### Word Choice"
+      }
+    },
+    "references/write-product-localization.md": {
+      "upstream_sha256": "a825ca3e9c4619c4bc2c8af3a1de975e393200c941ee7d576000bf91a703f74e",
+      "local_sha256": "a825ca3e9c4619c4bc2c8af3a1de975e393200c941ee7d576000bf91a703f74e",
+      "status": "identical",
+      "sections": {
+        "# Product Localization Copy Review": "# Product Localization Copy Review",
+        "## Core Principles": "## Core Principles",
+        "## High-Signal Failure Patterns": "## High-Signal Failure Patterns",
+        "## Output Guidance": "## Output Guidance",
+        "## Review Procedure": "## Review Procedure",
+        "## Rewrite Rules": "## Rewrite Rules",
+        "## Structural Checks Are Not Editorial Authority": "## Structural Checks Are Not Editorial Authority",
+        "## Surface Voice Defects": "## Surface Voice Defects"
+      }
+    },
+    "references/write-technical.md": {
+      "upstream_sha256": "39c360f6400decc34ef31f5a114ac40ba4e54a3599e520562be3008362edb741",
+      "local_sha256": "39c360f6400decc34ef31f5a114ac40ba4e54a3599e520562be3008362edb741",
+      "status": "identical",
+      "sections": {
+        "# Technical Writing: Ambiguous Instructions": "# Technical Writing: Ambiguous Instructions",
+        "## Ambiguity Catalog": "## Ambiguity Catalog",
+        "## Controlled-English Spillover": "## Controlled-English Spillover",
+        "## Meaning Check": "## Meaning Check",
+        "## Sources and Boundary": "## Sources and Boundary"
+      }
+    },
+    "references/write-zh-bilingual.md": {
+      "upstream_sha256": "37f24f5c9d7142f717e34c99465e59aa614f04fe5b195d85ec21068b5f505917",
+      "local_sha256": "37f24f5c9d7142f717e34c99465e59aa614f04fe5b195d85ec21068b5f505917",
+      "status": "identical",
+      "sections": {
+        "# 中英双语规则": "# 中英双语规则",
+        "## 双语一致性检查": "## 双语一致性检查",
+        "## 双语并列的排版": "## 双语并列的排版"
+      }
+    },
+    "references/write-zh-release-notes.md": {
+      "upstream_sha256": "15cc6045809409fa52b61ab5159e6176e604082cddeaebf56e406c1de5f0a749",
+      "local_sha256": "15cc6045809409fa52b61ab5159e6176e604082cddeaebf56e406c1de5f0a749",
+      "status": "identical",
+      "sections": {
+        "# 对外发文专项：release notes 和推文": "# 对外发文专项：release notes 和推文",
+        "## Release Notes 格式": "## Release Notes 格式",
+        "## 发版前检查": "## 发版前检查",
+        "## 对外发文专项检查": "## 对外发文专项检查",
+        "## 推文 / 社交发文五规则": "## 推文 / 社交发文五规则"
+      }
+    },
+    "references/write-zh.md": {
+      "upstream_sha256": "f04cd46eec3b6e2475feaa6f5be78f94e7903c5f39108edb7c2b4b4836a3f5d2",
+      "local_sha256": "f04cd46eec3b6e2475feaa6f5be78f94e7903c5f39108edb7c2b4b4836a3f5d2",
+      "status": "identical",
+      "sections": {
+        "## 中文场景": "## 中文场景",
+        "### AI 味检测：这几个模式帮你认味": "### AI 味检测：这几个模式帮你认味",
+        "### Polish 后期残留 checklist": "### Polish 后期残留 checklist",
+        "### Summary 写法": "### Summary 写法",
+        "### bold 起手 + 句号 节奏": "### bold 起手 + 句号 节奏",
+        "### 一批文档里的统一": "### 一批文档里的统一",
+        "### 专家腔": "### 专家腔",
+        "### 分号（；）": "### 分号（；）",
+        "### 列表去 list 化的渐进策略": "### 列表去 list 化的渐进策略",
+        "### 参考资料排列": "### 参考资料排列",
+        "### 句式": "### 句式",
+        "### 图片引导语": "### 图片引导语",
+        "### 图片节奏": "### 图片节奏",
+        "### 对外发文专项检查": "### 对外发文专项检查",
+        "### 开头直接": "### 开头直接",
+        "### 引号（\"\"）": "### 引号（\"\"）",
+        "### 执行流程（先后顺序）": "### 执行流程（先后顺序）",
+        "### 技术文章额外规则": "### 技术文章额外规则",
+        "### 括号（）": "### 括号（）",
+        "### 最高优先级：自然 > 风格化": "### 最高优先级：自然 > 风格化",
+        "### 术语注解不要扎堆": "### 术语注解不要扎堆",
+        "### 标题设计": "### 标题设计",
+        "### 生动化：只在原句读不懂时才换": "### 生动化：只在原句读不懂时才换",
+        "### 用词替换：报告腔、正式词和不喜欢的表达": "### 用词替换：报告腔、正式词和不喜欢的表达",
+        "### 结构级重复与表格复读（长文专项）": "### 结构级重复与表格复读（长文专项）",
+        "### 默认模式：技术长文": "### 默认模式：技术长文",
+        "### 默认禁用（举例，不完全，读起来有同样报告腔的一律适用）": "### 默认禁用（举例，不完全，读起来有同样报告腔的一律适用）"
+      }
+    },
+    "scripts/check-punctuation.sh": {
+      "upstream_sha256": "76d16ea6e421fdd7a8f39e8918f34567d49ba2baea5bad0b0dad18a463de7f7d",
+      "local_sha256": "76d16ea6e421fdd7a8f39e8918f34567d49ba2baea5bad0b0dad18a463de7f7d",
+      "status": "identical"
+    },
+    "scripts/check_punctuation.py": {
+      "upstream_sha256": "e05fa402dd5a176e9a4b5d4b9fe49a98f30de17cd51361f7dbc851dd6fdfe03f",
+      "local_sha256": "6f9d9e88e9d7074184e03b28ca70876c9140d868650d7eb3d813d13b11bd82ba",
+      "status": "adapted",
+      "reason": [
+        "Mask the wikilink target before the pipe; inspect the rendered alias after it.",
+        "Correct the comment to match Obsidian target|label syntax."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            37,
+            39
+          ],
+          "local_lines": [
+            37,
+            39
+          ],
+          "removed_sha256": "d5cadf67d525bb301566071b70391557088094fe7523b7e7a471d6172bbe4e00",
+          "added_sha256": "d5274d39ccf5dbbcd330535ed652980413609efa05b363e3a1449e6b6f91e5e8"
+        },
+        {
+          "upstream_lines": [
+            105,
+            106
+          ],
+          "local_lines": [
+            105,
+            106
+          ],
+          "removed_sha256": "8210d8eb69c73c59522781b3ba14d2ea70e8aa66675cf29183162c6b827c75f2",
+          "added_sha256": "1f00f7fce49fca3f582eafebe65ced7baabf40b362530319507f015a3f208d27"
+        }
+      ]
+    }
+  },
+  "local_only": {
+    "LICENSE": "83ef2e3caa22ff257740df8684627ef8c4e21102986cf943e3fdd31ca7b430d5",
+    "references/技术说明消歧.md": "2c221a89a63610ce59c0efbb8d242ade694566789b4d1b0a022f23f1b52bcd88",
+    "tests/test_punctuation.py": "ce8eff5c370a68b6565b1bdb26315f2a5afc8a5cbec7ab61a4ed310c61b8e9f7"
+  }
+}

@@ -16,7 +16,7 @@
 2026-07-03 重构（实战教训沉淀，事故记录见 SKILL.md「Known Fixes」）：
 - 去除 PyYAML 依赖：frontmatter 用内置轻量解析，任何 python3 可直接跑
 - 直装 skill 改为「整目录合并更新」：旧版只拉单个 SKILL.md，会漏掉上游新增的
-  scripts/ references/ 等文件；合并规则 = 上游文件覆盖同名本地文件，
+  scripts/ references/ 等文件；合并规则 = 旧上游、本地、新上游三方合并；同名本地改造不直接覆盖，
   本地独有文件（config.env、site-patterns/、descriptions_zh.json 等）一律保留
 - SKILL.md 更新后回注 github_url/github_hash/github_path 元数据，
   并保留本地「## User-Learned」定制段（skill-evolution-manager 维护的经验区）
@@ -42,6 +42,8 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import core
+from pathlib import Path
+import audit_upstream
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -230,26 +232,18 @@ def find_skill_source(extract_root, skill_name, github_path=None):
 USER_SECTION_RE = re.compile(r"^## User-Learned Best Practices.*", re.M | re.S)
 
 # 本地定制的 frontmatter 字段：上游更新时必须原样保下来，否则每更新一次就丢一次
-PRESERVE_FIELDS = ("zh_description", "update_policy", "keep_local_description")
+PRESERVE_FIELDS = ("zh_description", "update_policy")
 
 
 def merge_skill_md(upstream_content, old_content, meta_fields):
     """上游 SKILL.md + 回注元数据 + 保留本地定制。
 
-    `description` 默认跟随上游——它是上游的东西，本来就该更新。
-    但它同时是**决定 Claude 选不选这个 skill 的那句话**（注入模型的 skill 清单
-    用的就是它，不是 zh_description）。所以有人把它改写得更好触发之后，
-    update 会把这份优化悄悄冲回上游那版——没有任何提示，只在下次选错 skill 时才显形。
-
-    `keep_local_description: true` = 「这条描述我调过，别动」。显式声明才生效，
-    不做「本地和上游不一样就自动保留」的推断——那样上游改进的描述会永远拿不到，
-    而且用户根本不知道自己的描述被锁住了。
+    `description` 保留完整上游原文；中文展示由 `zh_description` 独立维护。
+    旧 `keep_local_description` 标记不能绕过上游字段完整性要求。
     """
     new = upstream_content
     old_meta = parse_frontmatter(old_content or "")
     fields = list(PRESERVE_FIELDS)
-    if str(old_meta.get("keep_local_description", "")).lower() == "true":
-        fields.append("description")
     for k in fields:
         if old_meta.get(k):
             new = set_frontmatter_field(new, k, old_meta[k])
@@ -265,6 +259,34 @@ def validate_skill_md(content):
     """落盘后自检：合并有没有把 frontmatter 搞坏。返回缺失的必需字段列表（空 = 通过）。"""
     meta = parse_frontmatter(content or "")
     return [k for k in ("name", "description") if not meta.get(k)]
+
+
+def copy_frontmatter_field(content, reference, key):
+    """Copy the original YAML field block, including folded/literal semantics."""
+    def span(lines):
+        if not lines or lines[0].strip() != '---':
+            raise ValueError('SKILL.md has no frontmatter')
+        end = next((i for i in range(1, len(lines)) if lines[i].strip() == '---'), None)
+        if end is None:
+            raise ValueError('SKILL.md frontmatter is not closed')
+        start = next((i for i in range(1, end) if lines[i].startswith(key + ':')), end)
+        stop = start + 1 if start < end else end
+        while stop < end and (not lines[stop].strip() or lines[stop].startswith((' ', '\t'))):
+            stop += 1
+        return start, stop
+
+    source = reference.splitlines(keepends=True)
+    start, stop = span(source)
+    if start == stop:
+        raise ValueError('upstream SKILL.md is missing ' + key)
+    target = content.splitlines(keepends=True)
+    a, b = span(target)
+    target[a:b] = source[start:stop]
+    return ''.join(target)
+
+
+def copy_description(content, reference):
+    return copy_frontmatter_field(content, reference, 'description')
 
 
 HEADER_RE = re.compile(r"^##\s+(.+?)\s*$", re.M)
@@ -296,38 +318,76 @@ def summarize_change(old_content, new_content):
     return lines
 
 
-def merge_skill_dir(src, dst, meta_fields, md_name="SKILL.md"):
-    """上游目录合并进本地：覆盖同名文件，保留本地独有文件。返回 (旧 SKILL.md, 新 SKILL.md)。
+def merge_bytes(local, base, upstream, name):
+    if local is None or local == upstream:
+        return upstream
+    if base is None:
+        raise ValueError(f"missing verified baseline for local differences: {name}")
+    if local == base:
+        return upstream
+    if upstream == base:
+        return local
+    if b"\x00" in local + base + upstream:
+        raise ValueError(f"binary merge conflict: {name}")
+    with tempfile.TemporaryDirectory(prefix="skill-merge-") as temp:
+        paths = [Path(temp) / label for label in ('local', 'base', 'upstream')]
+        for path, data in zip(paths, (local, base, upstream)):
+            path.write_bytes(data)
+        result = subprocess.run(['git', 'merge-file', '-p', *map(str, paths)],
+                                capture_output=True, timeout=30)
+        if result.returncode:
+            raise ValueError(f"three-way merge conflict: {name}; reconcile in isolation before updating")
+        return result.stdout
 
-    md_name 是本地入口文件的真实名字：禁用的 skill 叫 SKILL.md.disabled。
-    上游那份必须写回同一个名字，否则更新会顺手落一个 SKILL.md 下来，
-    把用户明确禁用的 skill 悄悄启用。
-    """
-    old_md = ""
-    dst_md = os.path.join(dst, md_name)
-    if os.path.isfile(dst_md):
-        with open(dst_md, encoding="utf-8") as f:
-            old_md = f.read()
-    new_md = None
-    for root, dirs, files in os.walk(src):
-        dirs[:] = [d for d in dirs if d != ".git"]
-        rel = os.path.relpath(root, src)
-        target_root = dst if rel == "." else os.path.join(dst, rel)
-        os.makedirs(target_root, exist_ok=True)
-        for fn in files:
-            if fn == ".DS_Store":
-                continue
-            s, t = os.path.join(root, fn), os.path.join(target_root, fn)
-            if rel == "." and fn == "SKILL.md":
-                with open(s, encoding="utf-8") as f:
-                    upstream = f.read()
-                new_md = merge_skill_md(upstream, old_md, meta_fields)
-                with open(os.path.join(target_root, md_name), "w",
-                          encoding="utf-8") as f:
-                    f.write(new_md)
-            else:
-                shutil.copy2(s, t)
-    return old_md, new_md
+
+def merge_skill_dir(src, dst, meta_fields, md_name="SKILL.md", baseline=None):
+    """Merge verified base, local customization and complete upstream in staging."""
+    source = audit_upstream.local_files(Path(src))
+    current = audit_upstream.local_files(Path(dst))
+    original = audit_upstream.local_files(Path(baseline)) if baseline else {}
+    old_md = (Path(dst) / md_name).read_text() if (Path(dst) / md_name).exists() else ''
+    operations = {}
+    for name, upstream in source.items():
+        local = current.get(name)
+        base = original.get(name)
+        if name == 'SKILL.md':
+            def normalized(data):
+                if data is None:
+                    return None
+                text = USER_SECTION_RE.sub('', data.decode('utf-8'))
+                return core.strip_managed_fields(text, extra=('update_policy', 'description')).encode()
+            merged = merge_bytes(normalized(local), normalized(base), normalized(upstream), name)
+            old_section = USER_SECTION_RE.search(old_md)
+            upstream_section = USER_SECTION_RE.search(upstream.decode('utf-8'))
+            if old_section and upstream_section and old_section.group() != upstream_section.group():
+                raise ValueError('three-way merge conflict: User-Learned Best Practices')
+            if upstream_section and not old_section:
+                merged += b'\n' + upstream_section.group().encode()
+            merged = merge_skill_md(merged.decode('utf-8'), old_md, meta_fields)
+            merged = copy_description(merged, upstream.decode('utf-8'))
+            errors = audit_upstream.routing_field_errors(merged,
+                audit_upstream.routing_field_blocks(upstream.decode('utf-8')))
+            if errors:
+                raise ValueError('; '.join(errors))
+            merged = merged.encode()
+        else:
+            merged = merge_bytes(local, base, upstream, name)
+        operations[name] = merged
+    for name, base in original.items():
+        if name not in source and name in current:
+            if current[name] != base:
+                raise ValueError(f'upstream deletion conflicts with local customization: {name}')
+            operations[name] = None
+    # Do not touch staging until every collision has been resolved.
+    for name, data in operations.items():
+        path = Path(dst) / (md_name if name == 'SKILL.md' else name)
+        if data is None:
+            path.unlink()
+        else:
+            path.parent.mkdir(exist_ok=True, parents=True)
+            path.write_bytes(data)
+            path.chmod((Path(src) / name).stat().st_mode & 0o777)
+    return old_md, operations.get('SKILL.md', b'').decode('utf-8')
 
 
 def update_direct_skill(skill_name, project=None, ref_arg=None):
@@ -359,7 +419,8 @@ def update_direct_skill(skill_name, project=None, ref_arg=None):
 
     if meta.get("update_policy") == "frozen":
         print(f"🧊 {skill_name} 已声明 update_policy: frozen（绝版或深度定制），按策略不更新。"
-              f"保留冻结标记，在隔离目录比较上游后选择性合并；不要直接覆盖本地版。")
+              f"保留冻结标记，按 references/冻结版本维护.md 在隔离目录完整合并上游与本地差异；"
+              f"必须通过 audit_upstream.py 的源快照覆盖验收，不能以升版或测试通过代替。")
         return False
 
     github_url = meta.get("github_url")
@@ -383,8 +444,14 @@ def update_direct_skill(skill_name, project=None, ref_arg=None):
 
     local_hash = meta.get("github_hash", "")
     if local_hash and (remote_hash.startswith(local_hash) or local_hash.startswith(remote_hash[:12])):
-        print(f"✅ {skill_name} 已是最新版本（{target_ref}）")
-        return True
+        try:
+            receipt = json.loads(Path(skill_dir, audit_upstream.RECEIPT).read_text())
+            if not audit_upstream.verify(Path(skill_dir), receipt):
+                print(f"✅ {skill_name} 上游提交相同，合并回执与现存全部文件一致（{target_ref}）")
+                return True
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        print('登记 commit 相同，但缺少有效内容验收；继续核对完整源快照。')
     print(f"📥 目标版本：{target_ref}（{remote_hash[:8]}）")
 
     # 整目录备份（回滚入口，删除请手动清理 _update_backups）
@@ -395,6 +462,7 @@ def update_direct_skill(skill_name, project=None, ref_arg=None):
     print(f"📦 已整目录备份到 {backup_dir}")
 
     tmp = tempfile.mkdtemp(prefix="skillupd_")
+    baseline_tmp = tempfile.mkdtemp(prefix="skillbase_")
     stage = tempfile.mkdtemp(prefix=f".{skill_name}.stage-", dir=os.path.dirname(skill_dir))
     try:
         print(f"📥 下载 {remote_hash[:8]} ...")
@@ -405,6 +473,17 @@ def update_direct_skill(skill_name, project=None, ref_arg=None):
         if not src:
             print(f"❌ 仓库里找不到 {skill_name} 的 SKILL.md（可在 frontmatter 用 github_path 指明子目录），本地未改动")
             return False
+        incoming_meta = core.parse_skill_md(os.path.join(src, 'SKILL.md'))
+        if incoming_meta.get('name') != meta.get('name'):
+            raise ValueError('upstream Skill identity differs from the installed Skill; reconcile a rename explicitly')
+        baseline_src = None
+        if re.fullmatch(r'[0-9a-fA-F]{40}', local_hash):
+            if not download_repo(github_url, local_hash, baseline_tmp):
+                raise ValueError('registered upstream baseline cannot be downloaded')
+            baseline_src = find_skill_source(baseline_tmp, skill_name, meta.get('github_path'))
+            if not baseline_src:
+                raise ValueError('registered upstream baseline has no matching Skill')
+        initial_content = audit_upstream.local_files(Path(skill_dir))
         fields = {"github_url": github_url, "github_hash": remote_hash}
         commit_date = get_commit_date(github_url, remote_hash)
         if commit_date:
@@ -443,12 +522,24 @@ def update_direct_skill(skill_name, project=None, ref_arg=None):
             fields["github_path"] = rel
         shutil.rmtree(stage)
         shutil.copytree(skill_dir, stage, symlinks=True)
-        old_md, new_md = merge_skill_dir(src, stage, fields, md_name)
+        old_md, new_md = merge_skill_dir(src, stage, fields, md_name, baseline=baseline_src)
 
         missing = validate_skill_md(new_md)
         if missing:
             print(f"❌ 合并后 SKILL.md 缺少必需字段 {missing}，本地未改动")
             return False
+        source_files = audit_upstream.local_files(Path(src))
+        adaptations = {name: ['Three-way merge from the registered upstream baseline, preserving local customization and managed metadata.']
+                       for name, data in source_files.items()
+                       if audit_upstream.local_files(Path(stage)).get(name) != data}
+        receipt = audit_upstream.make_receipt(Path(stage), source_files,
+            dict(repository=github_url, commit=remote_hash, source_path=fields.get('github_path', meta.get('github_path', '.'))), adaptations)
+        core.write_json(str(Path(stage) / audit_upstream.RECEIPT), receipt)
+        errors = audit_upstream.verify(Path(stage), receipt, source_files)
+        if errors:
+            raise ValueError('upstream merge coverage failed: ' + '; '.join(errors))
+        if audit_upstream.local_files(Path(skill_dir)) != initial_content:
+            raise ValueError('live Skill changed during update; preserve concurrent work and retry after reconciliation')
 
         old_live = f"{skill_dir}.old-{os.getpid()}"
         os.rename(skill_dir, old_live)
@@ -461,13 +552,14 @@ def update_direct_skill(skill_name, project=None, ref_arg=None):
 
         for line in summarize_change(old_md, new_md):
             print(f"   {line}")
-        print(f"✅ {skill_name} 已合并更新到 {remote_hash[:8]}（本地独有文件与 User-Learned 段已保留）")
+        print(f"✅ {skill_name} 已三方合并到 {remote_hash[:8]}，完整核对{len(source_files)}个上游文件并保留本地差异；回执：{audit_upstream.RECEIPT}")
         return True
     except Exception as e:
         print(f"❌ 更新失败: {e}（在线目录保持原状；备份: {backup_dir}）")
         return False
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+        shutil.rmtree(baseline_tmp, ignore_errors=True)
         shutil.rmtree(stage, ignore_errors=True)
 
 
@@ -515,8 +607,8 @@ def plugin_version_of(plugin_root, fallback):
 def update_plugin(plugin_key):
     print(f"🔍 检查插件 {plugin_key} 更新...")
 
-    with open(INSTALLED_PLUGINS_JSON, encoding="utf-8") as f:
-        registry = json.load(f)
+    registry_snapshot = Path(INSTALLED_PLUGINS_JSON).read_bytes()
+    registry = json.loads(registry_snapshot)
     if plugin_key not in registry.get("plugins", {}):
         print(f"❌ 插件 {plugin_key} 未安装")
         return False
@@ -545,8 +637,25 @@ def update_plugin(plugin_key):
         return False
     install = installs[0]
     local_hash = install.get("gitCommitSha", "")
+    # A cache registration cannot prove that its files still match that commit.
+    try:
+        if not re.fullmatch(r'[0-9a-fA-F]{40}', local_hash):
+            raise ValueError('plugin baseline is unknown; trace the installed source before updating')
+        with tempfile.TemporaryDirectory(prefix='pluginbase_') as baseline:
+            if not download_repo(github_url, local_hash, baseline):
+                raise ValueError('plugin baseline cannot be downloaded')
+            baseline_root = locate_plugin_root(baseline, plugin_name)
+            installed_root = Path(install.get('installPath', ''))
+            if not baseline_root or not installed_root.is_dir():
+                raise ValueError('plugin baseline or installed files are unavailable')
+            installed_files = audit_upstream.local_files(installed_root)
+            if installed_files != audit_upstream.local_files(Path(baseline_root)):
+                raise ValueError('plugin has local differences; reconcile the full baseline/local/upstream snapshots in isolation, preserving local-only files')
+    except (OSError, ValueError) as error:
+        print(f'❌ {error}（插件与登记表保持原状，未完成更新）')
+        return False
     if local_hash and (remote_hash.startswith(local_hash) or local_hash.startswith(remote_hash[:12])):
-        print(f"✅ {plugin_key} 已是最新版本 ({remote_hash[:8]})")
+        print(f"✅ {plugin_key} 上游提交相同且安装内容已逐文件核对 ({remote_hash[:8]})")
         return True
 
     print(f"📥 下载最新版本 {remote_hash[:8]}...")
@@ -561,6 +670,8 @@ def update_plugin(plugin_key):
             print(f"❌ 仓库里定位不到插件 {plugin_name} 的有效结构"
                   f"（需 .claude-plugin/plugin.json 或 marketplace.json + skills/），保留旧版本")
             return False
+
+        candidate_files = audit_upstream.local_files(Path(plugin_root))
 
         version = plugin_version_of(plugin_root, remote_hash[:12])
         cache_dir = os.path.join(CLAUDE_DIR, "plugins", "cache", marketplace, plugin_name)
@@ -577,7 +688,13 @@ def update_plugin(plugin_key):
             shutil.rmtree(new_dir, ignore_errors=True)
             print("❌ 落盘后结构验证失败，保留旧版本")
             return False
+        if audit_upstream.local_files(Path(new_dir)) != candidate_files:
+            raise ValueError('plugin candidate content differs after staging')
+        if audit_upstream.local_files(installed_root) != installed_files:
+            raise ValueError('installed plugin changed during update; preserve concurrent changes')
 
+        if Path(INSTALLED_PLUGINS_JSON).read_bytes() != registry_snapshot:
+            raise ValueError('plugin registry changed during update; preserve concurrent registration changes')
         registry["plugins"][plugin_key][0].update({
             "installPath": new_dir,
             "version": version,
@@ -634,19 +751,23 @@ def update_all(dry_run=False):
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
         results = list(ex.map(chk.check_one, chk.build_targets()))
 
-    outdated = sorted((r for r in results if r["status"] == "outdated"),
+    outdated = sorted((r for r in results if r["status"] == "outdated" or r.get('needs_merge_verification')),
                       key=lambda r: r["name"])
     errors = [r for r in results if r["status"] == "error"]
+    unresolved = [r for r in results if r['status'] == 'unknown' or (
+        r['status'] == 'frozen' and r.get('has_upstream') and r.get('merge_coverage') != 'verified')]
 
     if errors:
         print(f"⚠️  {len(errors)} 个连不上上游，本轮跳过：" +
               "、".join(r["name"] for r in errors) + "\n")
+    if unresolved:
+        print('⚠️  来源或完整合并仍待核验：' + '、'.join(r['name'] for r in unresolved))
 
     if not outdated:
-        print("🎉 所有可追踪的 skill 都是最新，无需更新")
-        return True
+        print('没有待执行的自动更新；冻结项未在本轮联网比较，不能据此认定全部最新版已合并。')
+        return not errors and not unresolved
 
-    print(f"🟡 {len(outdated)} 个有新版：")
+    print(f"🟡 {len(outdated)} 个待更新或待完整内容核验：")
     for r in outdated:
         tail = "" if r["enabled"] else "（未启用）"
         print(f"   {r['name']}  {r.get('local', '—')} → {r['remote']}{tail}")
@@ -673,7 +794,7 @@ def update_all(dry_run=False):
     if failed:
         print(f"❌ 失败 {len(failed)}：" + "、".join(failed) +
               f"\n   （失败的都未改动本地，备份在 {BACKUP_ROOT}/）")
-    return not failed
+    return not failed and not errors and not unresolved
 
 
 if __name__ == "__main__":

@@ -65,15 +65,33 @@ def collect(root, include_global=False, history=None):
     for relative in ('.agents/skills', '.claude/skills', '.codex/skills'):
         path = root / relative
         try:
+            if path.is_symlink() and not path.exists():
+                result['project']['skill_entries'][relative] = {'status': 'broken_link'}
+                continue
             path.resolve().relative_to(root)
             count = 0
+            broken_links = 0
             with os.scandir(path) as entries:
                 for entry in entries:
                     count += 1
                     if count > 1000:
                         break
-            result['project']['skill_entries'][relative] = {'count': min(count, 1000), 'truncated': count > 1000}
-        except (OSError, ValueError):
+                    child = Path(entry.path)
+                    if child.is_symlink() and not child.exists():
+                        broken_links += 1
+                        continue
+                    try:
+                        child.resolve().relative_to(root)
+                    except (OSError, RuntimeError, ValueError):
+                        continue
+                    skill_md = child / 'SKILL.md'
+                    if skill_md.is_symlink() and not skill_md.exists():
+                        broken_links += 1
+            result['project']['skill_entries'][relative] = {
+                'count': min(count, 1000), 'truncated': count > 1000,
+                'broken_links': broken_links,
+            }
+        except (OSError, RuntimeError, ValueError):
             result['project']['skill_entries'][relative] = {'status': 'unavailable'}
     if include_global:
         home = Path.home().resolve()

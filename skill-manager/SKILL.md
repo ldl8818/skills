@@ -1,9 +1,11 @@
 ---
 name: skill-manager
 description: "管理已安装 Skills：盘点、溯源、更新、启停、删除、定版与自检。内容编写走 skill-creator。"
+when_to_use: "列出已安装 Skill、查 Skill 来源、检查 Skill 更新、合并上游 Skill、启用或禁用 Skill、删除 Skill、冻结版本、Skill 安装状态自检、update skills"
+dispatch_intent: "已安装 Skills 的盘点、溯源、完整上游合并更新、启停、删除、定版与自检；Skill 内容编写交给 skill-creator。"
 license: MIT
 metadata:
-  version: "2.6.9"
+  version: "2.8.1"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
@@ -25,6 +27,16 @@ metadata:
 
 推论：只报告真实状态（「硬盘上有」≠「正在生效」，「本地版本」≠「上游最新」）；
 遇到歧义（同名项目、同名插件）一律列出候选让用户挑，绝不猜。
+
+## 更新的完成条件
+
+用户要求更新时，取得选定通道的完整源快照，以旧上游基线、本地现状和新上游做三方合并。保留本地功能、路由和约束；逐项处理新增、修改、删除及冲突，不得只挑选少量条款后宣布更新完成。
+
+普通直装更新由脚本合并并写入 `upstream-merge.json`；无法确定旧基线或存在冲突时保持在线目录原状。插件先核对安装内容与旧基线；存在本地差异时转入隔离合并，不直接替换。`frozen` 只禁止自动覆盖，不表示用户明确要求的合并任务已经完成；按[冻结版本维护](references/冻结版本维护.md)继续处理，无须重复请求已授权的更新。
+
+交付前必须核对完整源文件清单、Markdown 章节保留／明确改名映射、每项本地适配的原因、源文件与合并结果哈希、本地特有文件，以及相关行为验证。`audit_upstream.py --repo <仓库> --upstream <源仓库>` 验证固定源快照；省略 `--upstream` 只能证明当前文件与登记回执一致，不能证明上游最新或语义正确。哈希或版本相同、下载成功、结构／链接／测试通过均不能单独证明合并完整。
+
+上游路由字段按下文「路由字段」逐项验收。必须查看原始字段与本地结果的完整差异，分别列出原文保留情况和本地增补；不得将“保留适用表达”“本地定制”或已登记的适配理由作为删减、翻译、改写原字段的依据。schema 2回执绑定源字段原文，旧回执须使用已核实的固定源快照重新登记，不直接改 schema 或签入当前哈希冒充验收。
 
 ## 命令
 
@@ -105,6 +117,22 @@ Codex 插件由 `list` 和 `doctor` 只读盘点；其启停、更新、删除�
 - **版本号末尾 `*` = 内容改过、版本号没跟上**（`fingerprints.json` 自动监督，别手改），
   `bump` 平账；会自我改写的 skill 标 `self_mutating: true` 豁免。
 
+## 路由字段
+
+在 `SKILL.md` 的 frontmatter 顶层维护以下字段：
+
+- `description`：有 GitHub 上游时完整同步选定通道的上游原文，不另写本地摘要；中文说明存入 `metadata.zh_description`。无上游时自行维护，须独立表达适用范围。
+- `when_to_use`：上游存在时先完整复制原字段，保留词句、顺序和标点，不翻译、改写或加前置限定。本地触发词可作为独立条目插入合适位置，不限于末尾；不得以新增词替换原词，也不得重写原词后声称原意相同。
+- `dispatch_intent`：上游存在时完整保留原字段；确需增补时按独立意图条目插入，不翻译、概括、重排或改写原文。该字段不代表执行授权。
+
+上游缺少某字段时可自行编写，但须明确标为本地内容，不能伪称来自原作者。中文说明只放 `metadata.zh_description`，不覆盖上述源字段。不得先筛选“适用”部分再合入；本地执行与授权约束保留在对应规则和正文中，不通过给源字段加限定来表达。
+
+`audit_upstream.py` 对 `description` 做原始 YAML 字段块比对，对另外两个字段检查源字符与原条目有序保留，只允许独立条目增补；文件、字段缺项或原文改写时，登记与验收均失败，适配理由不能豁免。普通更新在候选写入前执行同一检查；字段冲突时在隔离目录按完整新上游和本地新增条目重新合并，不关闭检查。通过机械检查后仍须审阅增补是否为真实触发词、是否给原文附加限定；检查不证明真实客户端触发效果。
+
+Claude Code 支持将 `when_to_use` 追加到 `description` 供模型选择 Skill；Codex 官方文档未声明读取该扩展字段。`dispatch_intent` 是 Waza 调度生成器使用的自定义字段，本仓库保留意图信息，不承诺宿主会读取它。两者不属于通用 Agent Skills 标准字段，需要向仅接受标准字段的入口分发时单独适配，不修改唯一源码。
+
+依据：[Claude Code 字段说明](https://code.claude.com/docs/en/skills#frontmatter-reference)、[OpenAI Skills 文档](https://learn.chatgpt.com/docs/build-skills)、[Agent Skills 标准](https://agentskills.io/specification)。
+
 ## 元数据字段
 
 写在各 skill 自己的 SKILL.md frontmatter 的 `metadata` 中；旧版顶层字段仍可读取，
@@ -121,11 +149,9 @@ metadata:
   github_path: skills/example
   update_policy: frozen
   self_mutating: true
-  keep_local_description: true
 ```
 
-`keep_local_description` 存在的原因：`description` 是决定 Claude 选不选这个 skill 的
-那句话，被上游静默盖掉只会在下次选错 skill 时才显形。必须显式声明，不做自动推断。
+旧 `keep_local_description` 不再用于覆盖上游描述，不能绕过字段原文检查。`description` 跟随上游，中文说明通过 `zh_description` 独立维护。
 
 中文描述查找顺序：`zh_description` > `descriptions_zh.json` > 原始 description。
 `doctor` 只揪**生效中**却还是英文描述的 skill（未启用的不占上下文，不强求）。
@@ -143,7 +169,7 @@ metadata:
   连带登记（指纹、中文描述、插件缓存/登记/开关）与**各 Agent 入口软链**由脚本对称清理，
   不留断链；归档失败时目录与软链一并复原。
 - **更新前整目录备份**到 `~/.skill-manager/archive/update-backups/`；在 staging 中完成
-  合并与验证后原子替换，本地独有文件与本地定制字段保留；失败不改在线目录。
+  三方合并与完整性验证后原子替换，本地独有文件、本地同名文件改造与定制字段保留；冲突或验证失败不改在线目录。
 - **插件更新结构验证通过才写登记表**；失败保留旧版继续可用。
 
 ## 其他约定

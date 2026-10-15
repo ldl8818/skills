@@ -1,5 +1,7 @@
 ---
 name: download-video
+when_to_use: "下载这个视频、保存视频到本地、批量下载视频链接、按中文名保存视频、download video、save video locally"
+dispatch_intent: "将用户指定的视频链接单条或批量下载到本地，选择可用画质、使用中文文件名并验证文件。"
 description: 本 Skill 用于把用户提供的一个或多个视频链接直接下载到本地，自动选择最高可用画质，按“内容相关的简短中文标题_发布日期”命名并验证文件。用户说“下载这个视频”“保存视频到本地”“批量下载这些链接”“按中文名保存视频”，或直接给出 X、YouTube、TikTok、Instagram、B站等视频页链接并要求落盘时使用。
 ---
 

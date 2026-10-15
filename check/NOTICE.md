@@ -2,13 +2,13 @@
 
 ## Primary foundation: Waza-derived local Check
 
-Version 6.0.0 uses the locally maintained Waza-derived Check workflow as its primary foundation: task-based scope, evidence-based judgment, risk-proportionate verification and authorized repair/delivery. The preceding local baseline is [check 4.0.4](https://github.com/ldl8818/skills/tree/5478feb145ffdd6682f44a4607bdbb8affffdcce/check), before OCR was integrated.
+Version 6.1.0 uses the locally maintained Waza-derived Check workflow as its primary foundation: task-based scope, evidence-based judgment, risk-proportionate verification and authorized repair/delivery. The preceding local baseline is [check 4.0.4](https://github.com/ldl8818/skills/tree/5478feb145ffdd6682f44a4607bdbb8affffdcce/check), before OCR was integrated.
 
-The original registered Waza source is `2d1420da16d22794ba100183bbd4198fd9d0ba03`, path `skills/check`. Applicable updates were selectively adopted from [Tw93/Waza at 318d6c2](https://github.com/tw93/Waza/tree/318d6c2c219894798b09c2b39d7f83d0be1a313c/skills/check). The main metadata again points to that original registered source; it does not claim that local 6.0.0 is an upstream Waza release or an unchanged upstream snapshot.
+The original registered Waza source was `2d1420da16d22794ba100183bbd4198fd9d0ba03`, path `skills/check`. Version 6.1.0 reconciles the full source at [Tw93/Waza commit 2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929](https://github.com/tw93/Waza/tree/2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929/skills/check), including all upstream mode, reviewer and helper files. The metadata points to this reconciled merge base; the local version is not an upstream Waza release. `upstream-merge.json` records source hashes, local adaptations and local-only components. Earlier selective-update reports did not establish complete capability coverage.
 
 Copyright (c) 2026 Tw93. MIT terms are retained in [LICENSE](LICENSE). The Waza-derived entry, `references/深入审查.md`, `references/review-patterns.md`, `references/release-surfaces.md`, `references/public-reply.md` and `scripts/run-tests.sh` retain this foundation with local adaptations.
 
-Local changes add explicit lightweight/deep routing, requirement-and-scenario coverage, selective context loading, and OCR adapters. The old audit/triage/ship mode files and heuristic signal scripts remain retired; relevant judgment and verification contracts are retained without making broad audits or release actions part of every review.
+Local changes add explicit lightweight/deep routing, requirement-and-scenario coverage, selective context loading, and OCR adapters. The upstream audit/triage/ship modes and their helpers are restored as conditional capabilities. Risk-based routing, standing repair authorization, host output conventions and the discovery-only default verifier remain local adaptations; no mode implicitly authorizes a public action.
 
 ## Secondary integration: Alibaba OpenCodeReview
 

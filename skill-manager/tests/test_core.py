@@ -81,14 +81,42 @@ class CoreContractTests(unittest.TestCase):
                     '---\nname: demo\ndescription: "本地描述"\n'
                     'metadata:\n  category: demo\n---\n# Body\n')
 
-    def test_merge_preserves_local_description_without_upstream_block(self):
+    def test_legacy_description_flag_cannot_override_the_original_upstream_block(self):
         upstream = "---\nname: demo\ndescription: >\n  upstream text\n---\n# New body\n"
         local = ('---\nname: demo\ndescription: "本地描述"\n'
                  'metadata:\n  keep_local_description: true\n---\n# Old body\n')
         merged = update_skill.merge_skill_md(upstream, local, {})
-        self.assertNotIn("  upstream text", merged)
-        self.assertEqual(core.parse_frontmatter(merged)["description"], "本地描述")
+        self.assertIn("description: >\n  upstream text\n", merged)
+        self.assertEqual(core.parse_frontmatter(merged)["description"], "upstream text")
         self.assertTrue(merged.endswith("# New body\n"))
+
+    def test_stripping_description_removes_complete_yaml_block_only(self):
+        for header in ('>', '>-', '|', '|+'):
+            with self.subTest(header=header):
+                text = ('---\nname: demo\ndescription: ' + header + '\n'
+                        '  Full upstream purpose.\n\n  More trigger details.\n'
+                        'when_to_use: Example trigger\nmetadata:\n  category: demo\n---\n'
+                        '# Body\ndescription: body text remains\n')
+                stripped = core.strip_managed_fields(text, extra=('description',))
+                self.assertEqual(stripped,
+                    '---\nname: demo\nwhen_to_use: Example trigger\nmetadata:\n  category: demo\n---\n'
+                    '# Body\ndescription: body text remains\n')
+
+    def test_legacy_description_flag_does_not_hide_content_differences(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            local, upstream = root / 'local', root / 'upstream'
+            local.mkdir()
+            upstream.mkdir()
+            original = '---\nname: demo\ndescription: Original purpose\n---\n# Body\n'
+            (upstream / 'SKILL.md').write_text(original)
+            path = local / 'SKILL.md'
+            path.write_text(original.replace('Original purpose', 'Local summary').replace(
+                '\n---\n# Body', '\nmetadata:\n  keep_local_description: true\n---\n# Body'))
+            self.assertFalse(core.content_matches_upstream(str(local), str(upstream)))
+            old = core.fingerprint(str(local))
+            path.write_text(path.read_text().replace('Local summary', 'Another summary'))
+            self.assertNotEqual(old, core.fingerprint(str(local)))
 
     def test_writer_migrates_legacy_top_level_managed_field(self):
         with tempfile.TemporaryDirectory() as root:
@@ -298,7 +326,7 @@ class CoreContractTests(unittest.TestCase):
                     "---\nname: demo\ndescription: new\n---\n", encoding="utf-8")
                 return True
 
-            def fail_merge(_src, stage, _fields, _md_name="SKILL.md"):
+            def fail_merge(_src, stage, _fields, _md_name="SKILL.md", baseline=None):
                 Path(stage, "SKILL.md").write_text("partial", encoding="utf-8")
                 raise OSError("simulated disk failure")
 
@@ -359,6 +387,7 @@ class UpdateChannelTests(unittest.TestCase):
 
         def fake_download(_url, _ref, dest):
             Path(dest, "SKILL.md").write_text(
+                core.strip_managed_fields(original) if _ref == 'b' * 40 else
                 "---\nname: demo\ndescription: new\n---\n", encoding="utf-8")
             if upstream_version:
                 Path(dest, "VERSION").write_text(upstream_version,
@@ -382,7 +411,8 @@ class UpdateChannelTests(unittest.TestCase):
         return (live / "SKILL.md").read_text(encoding="utf-8")
 
     BASE_MD = ("---\nname: demo\ndescription: old\nmetadata:\n"
-               "  github_url: \"https://github.com/a/b\"\n---\n")
+               "  github_url: \"https://github.com/a/b\"\n"
+               "  github_hash: " + 'b' * 40 + "\n---\n")
 
     def test_release_channel_writes_no_empty_ref_field(self):
         """跟 release 的 skill 不该平白多一行 github_ref: ""，元数据只记真实状态。"""
@@ -423,8 +453,11 @@ class UpdateChannelTests(unittest.TestCase):
             Path(dst, "SKILL.md.disabled").write_text(
                 "---\nname: demo\ndescription: old\n---\n", encoding="utf-8")
 
+            baseline = Path(td, 'baseline')
+            baseline.mkdir()
+            (baseline / 'SKILL.md').write_bytes((dst / 'SKILL.md.disabled').read_bytes())
             update_skill.merge_skill_dir(str(src), str(dst), {},
-                                         "SKILL.md.disabled")
+                                         "SKILL.md.disabled", baseline=str(baseline))
 
             self.assertFalse(Path(dst, "SKILL.md").exists())
             self.assertIn("description: up",

@@ -1,5 +1,6 @@
 # Conditional evidence helpers
 Start with `collect-data.sh --root PATH`. Its output contains structural counts and file status; it never runs project code, scans sessions by default or calls MCP.
+The bounded project Skill summary reports dangling roots and broken directory or `SKILL.md` links without exposing Skill names or contents. Counts cover only inspected entries when truncated. The opt-in global context checker lists broken link paths and keeps valid aliases collapsed; neither result proves that a client loaded a Skill.
 - Instruction reachability/configuration: `check-agent-context.sh PATH summary`; global scope is excluded unless `--include-global` is explicitly supplied.
 - Local documentation references: `check-doc-refs.sh PATH`.
 - An already supplied verifier log: `check-verifier-output.sh PATH LOG`; inspect the log source before reporting a pass.

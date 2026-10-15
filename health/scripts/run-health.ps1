@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateSet("collect", "agent-context", "doc-refs", "verifier-output")]
+    [ValidateSet("collect", "agent-context", "maintainability", "doc-refs", "verifier-output")]
     [string]$Action,
 
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -347,6 +347,7 @@ function Find-Python([string]$TargetRoot) {
 $scriptNames = @{
     "collect" = "collect-data.sh"
     "agent-context" = "check-agent-context.sh"
+    "maintainability" = "check-maintainability.sh"
     "doc-refs" = "check-doc-refs.sh"
     "verifier-output" = "check-verifier-output.sh"
 }

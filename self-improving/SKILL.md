@@ -1,6 +1,8 @@
 ---
 name: self-improving
 description: "管理跨 Agent 纠错记忆与按需知识：审核、登记、版本复核、迁移和体检；普通项目规则编辑不触发。"
+when_to_use: "审核纠错记忆、登记跨 Agent 知识、复核知识版本、迁移记忆系统、检查记忆注入、记忆系统体检、cross-agent memory、review corrections"
+dispatch_intent: "跨 Agent 纠错记忆与按需知识的审核、登记、版本复核、迁移和体检；普通项目规则编辑不触发，候选记忆不等于已批准规则。"
 metadata:
   version: "3.1.3"
   zh_description: "跨 Claude Code 与 Codex 的审核制纠错与按需知识，支持版本复核、安装、迁移与体检"

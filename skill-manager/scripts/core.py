@@ -145,8 +145,7 @@ SM_DATA_FILES = {"fingerprints.json", "projects.json",
 
 # 这些 frontmatter 字段是 skill-manager 自己写进去的元数据，不是用户的实质改动。
 # 不剥掉的话，光是补一句 zh_description 就会把 skill 标成「改过了」。
-# keep_local_description 同理：它是「别让 update 冲掉我改过的 description」这条记账声明，
-# 不是内容；不剥掉的话，打个标记就会平白多出一颗 dirty 星。
+# keep_local_description 作为旧版记账字段仍可读取，但不再豁免 description 内容比对。
 MANAGED_FIELDS = ("version", "zh_description", "github_url",
                   "github_hash", "github_date", "github_path",
                   "github_ref", "keep_local_description")
@@ -376,10 +375,6 @@ def strip_managed_fields(text, extra=()):
     指纹要反映的是「用户改没改这个 skill」，而不是「skill-manager 记没记账」。
     补一句 zh_description 就把 skill 标成「改过了」，dirty 信号就成了狼来了。
 
-    `keep_local_description: true` 的 skill 还要额外剥掉 description：这条描述已经声明了
-    「本地自己管、不跟上游」，它和上游不一致就是**预期状态**，不是异常。不剥的话
-    trace 会永远判「内容对不上，可能被本地改过」，这些 skill 就永远定不了版本。
-
     extra 是给比对方用的：这条声明只写在本地那份文件里，上游那份没有。
     要拿两份内容做比较，剥哪些字段就必须**由本地的声明决定、对两边同时生效**，
     否则一边剥了一边没剥，口径不对称，永远比不中。
@@ -392,11 +387,24 @@ def strip_managed_fields(text, extra=()):
     except StopIteration:
         return text
     fields = list(MANAGED_FIELDS) + list(extra)
-    if str(parse_frontmatter(text).get("keep_local_description", "")).lower() == "true":
-        fields.append("description")
-    kept = [l for i, l in enumerate(lines)
-            if not (1 <= i < end and any(
-                re.match(rf"^\s*{re.escape(k)}:\s", l) for k in fields))]
+    excluded = set()
+    i = 1
+    while i < end:
+        line = lines[i]
+        if any(re.match(rf"^[ \t]*{re.escape(k)}:(?:\s|$)", line) for k in fields):
+            indent = len(re.match(r'^[ \t]*', line).group().expandtabs())
+            stop = i + 1
+            while stop < end:
+                following = lines[stop]
+                next_indent = len(re.match(r'^[ \t]*', following).group().expandtabs())
+                if following.strip() and next_indent <= indent:
+                    break
+                stop += 1
+            excluded.update(range(i, stop))
+            i = stop
+        else:
+            i += 1
+    kept = [line for i, line in enumerate(lines) if i not in excluded]
     for i, line in enumerate(list(kept)):
         if line.strip() == "metadata:":
             following = kept[i + 1] if i + 1 < len(kept) else "---"
@@ -452,20 +460,9 @@ def content_matches_upstream(local_dir, upstream_dir):
     上游有而本地没有（或内容不同），就不是这一版。
     整目录指纹相等做不到这一点——一个自生成的 config.env 就让所有版本永远比不中。
 
-    keep_local_description 只声明在本地那份 SKILL.md 里，剥字段的口径由本地
-    声明决定、对两边同时生效（见 strip_managed_fields 的 extra 说明）。
+    路由字段参与内容比对；旧 keep_local_description 标记不再豁免 description。
     """
     extra = ()
-    local_md = os.path.join(local_dir, "SKILL.md")
-    if not os.path.isfile(local_md):
-        local_md += ".disabled"
-    try:
-        if str(parse_skill_md(local_md).get(
-                "keep_local_description", "")).lower() == "true":
-            extra = ("description",)
-    except Exception:
-        pass
-
     is_self = os.path.basename(os.path.realpath(local_dir)) == "skill-manager"
     for root, dirs, files in os.walk(upstream_dir):
         dirs[:] = sorted(d for d in dirs if d not in FP_IGNORE_DIRS)

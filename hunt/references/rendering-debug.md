@@ -1,5 +1,34 @@
-# Renderer faults
+# Rendering Bug Debug Reference
 
-Use when generated output differs from expected runtime behavior. Reproduce with the actual renderer and version; document typesetting alone belongs to the host document tool.
-Check loaded fonts, asset paths, CORS, print styles, page dimensions, overflow and break rules. Inspect computed output rather than assuming a CSS feature has identical support across engines.
-Use a small failing artifact to distinguish content, stylesheet and renderer-version causes. Verify the corrected output in the affected renderer; browser preview does not prove PDF or print correctness.
+## Rendering Bug Mode
+
+Activate when: "PDF looks wrong", "page break issue", "font not rendering", broken PDF output, print layout wrong.
+
+Static analysis first (CSS review), then reproduce if needed.
+
+### WeasyPrint
+
+- `rgba()` causes double-rectangle bug: use solid hex colors instead
+- `page-break-inside: avoid` is often ignored: use explicit breaks
+- Float-based layouts often break at page boundaries: prefer flexbox or block
+- External font URLs blocked at render time: embed fonts as base64 or host locally
+
+### Font Loading
+
+- Check `@font-face` src paths (relative vs. absolute)
+- CORS headers must allow the render origin for external fonts
+- Format support: WeasyPrint prefers WOFF/TTF; WOFF2 support depends on version
+- Missing font fallback = invisible text or system fallback glyph
+
+### Page Overflow
+
+- Calculate content height vs. page height before debugging line-by-line
+- Reduce `line-height`, `padding`, or `margin` to reclaim space
+- Orphan/widow control: `orphans: 3; widows: 3` in `@page` body rule
+
+### Browser Print CSS
+
+- Confirm `@media print` rules are present and not overridden
+- `@page` margin must account for printer unprintable area (~6mm minimum)
+- `break-before: page` / `break-after: page` on section dividers
+- Test with `window.print()` in browser DevTools, not just visual preview

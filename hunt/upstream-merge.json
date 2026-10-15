@@ -1,0 +1,229 @@
+{
+  "schema": 2,
+  "repository": "https://github.com/tw93/waza",
+  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "source_path": "skills/hunt",
+  "files": {
+    "SKILL.md": {
+      "upstream_sha256": "8ae2315c6242a7f59a938650e398d977569831ade1346e0fceee5a12cf69d1a1",
+      "local_sha256": "5a1a48b4807eae2f7afdb3d25cfe7f3f40e6c9aa3e7a289ed3c51c51c33dca40",
+      "status": "adapted",
+      "upstream_fields": {
+        "description": "description: \"Finds root cause before any fix. Use when something errors, crashes, regresses, or used to work. Not for code review or new features.\"\n",
+        "when_to_use": "when_to_use: \"排查, 报错, 崩溃, 回归, 截图回归, 判断错误原因, 判断为什么报错, 反复修不好, debug, regression, used to work, broke after update, why broken, not working, what's wrong, fix error, stack trace, 以前是好的\"\n",
+        "dispatch_intent": "dispatch_intent: \"Error, crash, regression, screenshot-reported defect, test failure, stale cache, runtime boundary, why broken\"\n"
+      },
+      "reason": [
+        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy.",
+        "Keep the required host salutation and output format instead of the upstream marker.",
+        "Preserve the authorized diagnose-fix-verify workflow.",
+        "Recognize standing repair authorization as well as the current wording.",
+        "Retain preservation of concurrent WIP without inventing a cleanup gate.",
+        "Avoid arbitrary failure counts terminating authorized troubleshooting.",
+        "Preserve the local diagnosis-to-Check handoff and ownership of final verification."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            3,
+            4
+          ],
+          "local_lines": [
+            3,
+            4
+          ],
+          "removed_sha256": "6a9aade7c2fe7abda2e0cffe73745c7ad70346cebce17942d757371c57ae0544",
+          "added_sha256": "b9895d6a95448d7e0c03bf3a6379b553c745adc4fa523d2d124cbe6159a010a1"
+        },
+        {
+          "upstream_lines": [
+            5,
+            5
+          ],
+          "local_lines": [
+            5,
+            15
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "87aee9638502f30cbab6252d3d38fe6e79c9f1a05e3c94a3c58d76c994cd7cdf"
+        },
+        {
+          "upstream_lines": [
+            9,
+            10
+          ],
+          "local_lines": [
+            19,
+            20
+          ],
+          "removed_sha256": "0e4f97f609ed61e3adb1694cca3163f9f2bdc7e93d20166513b1b180484053f8",
+          "added_sha256": "84876eff960eac289181c8f7bde1e9c85010c5a0538fa4ffc48b82c9924db8bf"
+        },
+        {
+          "upstream_lines": [
+            19,
+            20
+          ],
+          "local_lines": [
+            29,
+            30
+          ],
+          "removed_sha256": "903ed187a43597dab07b3ad4503ff75c3e8320949b1c55873cc00d7f225eddf7",
+          "added_sha256": "a719b0939d4b11d1c93fb466a95bdec12cd147e420c89eef3552cf867cad8ff4"
+        },
+        {
+          "upstream_lines": [
+            42,
+            43
+          ],
+          "local_lines": [
+            52,
+            53
+          ],
+          "removed_sha256": "a59a34fe5f51fb830489a2446f63510aade1377e8322af7d907f4c401c6a1eb2",
+          "added_sha256": "d6e62e76070ed4d05066533a5612ef3832769b28e59e2443bc0dc2783fc58442"
+        },
+        {
+          "upstream_lines": [
+            99,
+            100
+          ],
+          "local_lines": [
+            109,
+            110
+          ],
+          "removed_sha256": "04e1803d2638d3f05d6a3b1cf6bd52d2975bbcc1059c1edf5e6c6c641e07a3ff",
+          "added_sha256": "779614f4d2803cadf78f66c63b6c08c9d0c935852e13a260426110683e4cdac9"
+        },
+        {
+          "upstream_lines": [
+            147,
+            148
+          ],
+          "local_lines": [
+            157,
+            158
+          ],
+          "removed_sha256": "6a9d2d7868e2bf66d35202e8c680f6960f782c23a10c1d4917935f548a399ea2",
+          "added_sha256": "0bcbdc8abdd23f72a578c5c918dafd64f19cae87783f1da452cea79624a5e6c2"
+        },
+        {
+          "upstream_lines": [
+            150,
+            150
+          ],
+          "local_lines": [
+            160,
+            164
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "4089daf486b3c086eaef7a7418789b64bb13e9cef3b063ad8bd689dca9188bdd"
+        }
+      ],
+      "sections": {
+        "# Hunt: Diagnose Before You Fix": "# Hunt: Diagnose Before You Fix",
+        "## Bisect Mode": "## Bisect Mode",
+        "## Confirm or Discard": "## Confirm or Discard",
+        "## Diagnosis Signals": "## Diagnosis Signals",
+        "## Durable Context Preflight": "## Durable Context Preflight",
+        "## Gotchas": "## Gotchas",
+        "## Hard Rules": "## Hard Rules",
+        "## IME / Unicode Issues": "## IME / Unicode Issues",
+        "## Native App Freeze Mode": "## Native App Freeze Mode",
+        "## Outcome Contract": "## Outcome Contract",
+        "## Output": "## Output",
+        "## Rendering Bug Mode": "## Rendering Bug Mode",
+        "## Repeated Regression / Screenshot Reference Mode": "## Repeated Regression / Screenshot Reference Mode",
+        "## Runtime Evidence Ladder": "## Runtime Evidence Ladder",
+        "## Scope Blast Mode": "## Scope Blast Mode",
+        "## Targeted Logging": "## Targeted Logging",
+        "### Handoff Format (after 3 failed hypotheses)": "### Handoff Format (when a real blocker remains)",
+        "### Success Format": "### Success Format"
+      }
+    },
+    "references/durable-context.md": {
+      "upstream_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "local_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "status": "identical",
+      "sections": {
+        "# Durable Context Preflight": "# Durable Context Preflight",
+        "## Current state wins": "## Current state wins",
+        "## Memory is not authorization": "## Memory is not authorization",
+        "## Redaction gate": "## Redaction gate",
+        "## Scope": "## Scope"
+      }
+    },
+    "references/failure-patterns.md": {
+      "upstream_sha256": "8ca151b06f8d0b0a76e53e0fd79fede70883c52b0caef97cf01ae06b2357083b",
+      "local_sha256": "8ca151b06f8d0b0a76e53e0fd79fede70883c52b0caef97cf01ae06b2357083b",
+      "status": "identical",
+      "sections": {
+        "# Failure Pattern Reference": "# Failure Pattern Reference",
+        "## Aggregation Key Variant": "## Aggregation Key Variant",
+        "## Atomic Temp Filename": "## Atomic Temp Filename",
+        "## CLI Effect Scope Drift": "## CLI Effect Scope Drift",
+        "## CLI Stream Contract Regression": "## CLI Stream Contract Regression",
+        "## CLI Wrapper Or PATH Drift": "## CLI Wrapper Or PATH Drift",
+        "## Denied Read Returns A Plausible Value": "## Denied Read Returns A Plausible Value",
+        "## Display-String Comparison": "## Display-String Comparison",
+        "## Generated Rebuild Boundary": "## Generated Rebuild Boundary",
+        "## Guard Lifetime Race": "## Guard Lifetime Race",
+        "## Interactive Stdin Or TTY Hang": "## Interactive Stdin Or TTY Hang",
+        "## Locale-Dependent Subprocess Output": "## Locale-Dependent Subprocess Output",
+        "## Multi-Sample Command Cold Start": "## Multi-Sample Command Cold Start",
+        "## Path, Cwd, Or Symlink Escape": "## Path, Cwd, Or Symlink Escape",
+        "## Recovery Gated On The Artifact It Restores": "## Recovery Gated On The Artifact It Restores",
+        "## Signal Or Partial-Failure Mapping": "## Signal Or Partial-Failure Mapping",
+        "## Single-Probe Existence Check": "## Single-Probe Existence Check",
+        "## Snapshot Rebuild Drops Carried Field": "## Snapshot Rebuild Drops Carried Field",
+        "## Stale Verifier Or Tool Cache": "## Stale Verifier Or Tool Cache",
+        "## Subprocess Pipe Backpressure": "## Subprocess Pipe Backpressure",
+        "## Watchdog Tuned To The Fast Path": "## Watchdog Tuned To The Fast Path",
+        "## Whole-Buffer Decode Collapse": "## Whole-Buffer Decode Collapse",
+        "## Worker Queue Or DB Boundary": "## Worker Queue Or DB Boundary"
+      }
+    },
+    "references/ime-unicode.md": {
+      "upstream_sha256": "8c8fa086a5b26d0cc16aa15f07c7a7fca93a663d1f42e222437ff30f9139a38a",
+      "local_sha256": "8c8fa086a5b26d0cc16aa15f07c7a7fca93a663d1f42e222437ff30f9139a38a",
+      "status": "identical",
+      "sections": {
+        "# IME / Unicode Debugging Reference": "# IME / Unicode Debugging Reference",
+        "## Cursor Position Drift After IME Commit": "## Cursor Position Drift After IME Commit",
+        "## Emoji ZWJ Sequence Splitting": "## Emoji ZWJ Sequence Splitting",
+        "## IME State Desync": "## IME State Desync",
+        "## Quick Checklist": "## Quick Checklist",
+        "## `compositionend` / `keydown` Event Ordering": "## `compositionend` / `keydown` Event Ordering",
+        "## macOS Text System vs Webview Conflict": "## macOS Text System vs Webview Conflict"
+      }
+    },
+    "references/logging-techniques.md": {
+      "upstream_sha256": "466c28d2995c8f27fc10afb89d5a8ea5bb6d41d073ec30b50100dccf1e4f2414",
+      "local_sha256": "466c28d2995c8f27fc10afb89d5a8ea5bb6d41d073ec30b50100dccf1e4f2414",
+      "status": "identical",
+      "sections": {
+        "# Logging Techniques for Debugging": "# Logging Techniques for Debugging",
+        "# xtrace-env.sh: sourced by every non-interactive bash via BASH_ENV": "# xtrace-env.sh: sourced by every non-interactive bash via BASH_ENV",
+        "## Discriminating Content": "## Discriminating Content",
+        "## Native App Freeze Mode": "## Native App Freeze Mode",
+        "## Runner-Only Failures": "## Runner-Only Failures"
+      }
+    },
+    "references/rendering-debug.md": {
+      "upstream_sha256": "6043fd14bac1b33443d96a0a1033a5cee26a8ede9914886ac443eceb489425b7",
+      "local_sha256": "6043fd14bac1b33443d96a0a1033a5cee26a8ede9914886ac443eceb489425b7",
+      "status": "identical",
+      "sections": {
+        "# Rendering Bug Debug Reference": "# Rendering Bug Debug Reference",
+        "## Rendering Bug Mode": "## Rendering Bug Mode",
+        "### Browser Print CSS": "### Browser Print CSS",
+        "### Font Loading": "### Font Loading",
+        "### Page Overflow": "### Page Overflow",
+        "### WeasyPrint": "### WeasyPrint"
+      }
+    }
+  },
+  "local_only": {
+    "LICENSE": "83ef2e3caa22ff257740df8684627ef8c4e21102986cf943e3fdd31ca7b430d5"
+  }
+}

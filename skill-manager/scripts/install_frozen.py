@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Link repository-owned frozen Skills without downloading or overwriting."""
 import argparse
+import json
 import os
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import core
+import audit_upstream
 
 NAMES = ('check', 'health', 'hunt', 'ui', 'write')
 ENTRY_ROOTS = ('.agents/skills', '.claude/skills', '.codex/skills')
@@ -26,6 +28,10 @@ def install(repo, home, clients=('claude', 'codex')):
         meta = core.parse_skill_md(str(source / 'SKILL.md'))
         if meta.get('name') != name or meta.get('update_policy') != 'frozen':
             raise ValueError(f'{name}: expected a frozen named Skill')
+        receipt = json.loads((source / audit_upstream.RECEIPT).read_text())
+        errors = audit_upstream.verify(source, receipt)
+        if errors:
+            raise ValueError(f'{name}: incomplete upstream merge: ' + '; '.join(errors))
         for relative in roots:
             entry = home / relative / name
             # A client root may be a symlink, but must remain inside the supplied HOME.

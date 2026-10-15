@@ -19,6 +19,8 @@ import concurrent.futures
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import core
+from pathlib import Path
+import audit_upstream
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -81,10 +83,12 @@ def marketplace_repo(marketplace):
 
 def check_one(target, include_frozen=False):
     kind, name, url, local_hash, extra = target
-    base = {**extra, "kind": kind, "name": name}
+    base = {**extra, "kind": kind, "name": name, 'has_upstream': bool(url)}
     if extra.get("frozen"):
         result = {**base, "status": "frozen",
                   "message": "已冻结（脱离上游，按本地版本号管）"}
+        coverage = extra.get('merge_coverage', 'unverified')
+        result['merge_coverage'] = coverage
         if include_frozen:
             ref, remote = remote_latest(url, tags_ok=extra.get("ref") != "main") if url else (None, None)
             comparison = "unknown" if not remote or not local_hash else (
@@ -94,6 +98,8 @@ def check_one(target, include_frozen=False):
             result["message"] = {"unknown": "已冻结；上游比较证据不足",
                                  "same": "已冻结；上游与登记基线相同",
                                  "different": f"已冻结；上游 {ref} 与基线不同，仅供人工评估合并"}[comparison]
+        if url and coverage != 'verified':
+            result['message'] += '；完整合并未验收，不能据此报告更新完成'
         return result
     if not url:
         return {**base, "status": "local", "message": "本地 skill，无上游可比"}
@@ -110,11 +116,16 @@ def check_one(target, include_frozen=False):
                 "message": "本地没记 commit，无法比对"}
     if rh.startswith(local_hash[:12]):
         cur = {**base, "remote": ref, "status": "current",
-               "message": f"已是最新（{ref}）"}
+               "message": f"上游提交相同（{ref}）",
+               'needs_merge_verification': extra.get('merge_coverage') != 'verified'}
         # 跟 tag 的才提示：跟 main 的本来就在最前面，没有「未发版提交」这回事
         if kind == "skill" and not follows_main and unreleased_ahead(url):
             cur["ahead"] = True
-            cur["message"] = f"已是最新（{ref}）· 上游 main 另有未发版提交"
+            cur["message"] += '· 上游 main 另有未发版提交'
+        if cur['needs_merge_verification']:
+            cur['message'] += '；本地完整合并未验收'
+        else:
+            cur['message'] += '；合并回执与现存文件一致'
         return cur
     return {**base, "remote": ref, "status": "outdated", "message": f"上游有新版 {ref}"}
 
@@ -126,10 +137,19 @@ def build_targets():
     for s in skills:
         if s.source in ("github", "frozen") and s.name not in seen:
             seen.add(s.name)
+            coverage = 'unverified'
+            if s.github_url:
+                try:
+                    root = Path(s.md_path).resolve().parent
+                    receipt = json.loads((root / audit_upstream.RECEIPT).read_text())
+                    coverage = 'verified' if not audit_upstream.verify(root, receipt) else 'drifted'
+                except (OSError, ValueError, KeyError, TypeError):
+                    coverage = 'unverified'
             targets.append((
                 "skill", s.name, s.github_url, s.github_hash,
                 {"local": s.version, "enabled": s.enabled,
                  "frozen": s.source == "frozen",
+                 "merge_coverage": coverage,
                  "ref": s.get("github_ref", "")},
             ))
 

@@ -1,9 +1,8 @@
-# Public maintainer actions
-This is the single policy reference for issue/PR messages in this Skill set.
-A request to review or draft does not authorize sending. Use explicit authorization already valid for the task.
-Read the target item and current product/release state before preparing a reply. Match the audience and project language convention.
-State whether the fix is local, merged, released or unverified accurately. Include a next step when useful; do not force a greeting, mention, sentence count or thanks.
-Do not request private logs, credentials or transcripts in public. Use minimum diagnostic facts and an existing private support channel if necessary. Choose a next step the reporter can perform while the reported failure or accessibility constraint remains present.
-Closing requires the authorized maintainer decision or the project's applicable policy. An unreleased fix alone does not imply closure authorization.
-Read back the posted/edited message and item state. If the tool result is uncertain, inspect actual state before repeating the action.
-Edit an existing own comment only while nobody has replied after it; otherwise add a new reply rather than rewriting the discussion history.
+# Public Reply Mechanics (maintainer, issue or PR)
+
+Used by Triage Mode and Ship / Release Follow-through for the actions around a reply. The reply body belongs to `/write` Public Reply Mode; without `/write`, open with `@<login>` and at most one short thanks, match the opener's language, and give one or two sentences naming the exact ship state and the reporter's next step, each true at the moment of posting. `AGENTS.md` or `CLAUDE.md` in the target repo overrides this shape.
+
+1. Resolve `@<login>` from `gh issue view` / `gh pr view --json author` before posting, and re-read the live item there rather than replying from memory. When requesting logs, crash dumps, screenshots, or local-state archives, ask only for the minimum non-sensitive public facts; use a private support channel only when the project's public context provides one. Choose a next step the reporter can perform with the reported failure or accessibility constraint still present; do not require disabling the assistive capability they need to follow it. This applies even when `/write` is unavailable.
+2. Edit your own comment in place (`PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}`) only while nobody has replied after it. Once the reporter or anyone else has replied, post a new comment instead of rewriting history; never delete and repost unless the old text must disappear.
+3. After posting or editing, re-read the comment body, author, target item, and issue/PR state. The public action is not complete without that receipt.
+4. Close only when the fix is shipped, already available in the latest release, the report is invalid, the report is a duplicate, or the maintainer explicitly asked for closure. Otherwise leave it open with the next-release acknowledgement.

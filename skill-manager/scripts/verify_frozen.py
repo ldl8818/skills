@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """Validate the repository's frozen Skill set and local Markdown references."""
 import argparse
+import json
 from pathlib import Path
 import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import core
+import audit_upstream
 from install_frozen import NAMES
 
 
 def verify(repo):
     errors = []
-    for retired in ('think', 'learn', 'read'):
+    for retired in ('learn', 'read'):
         if (repo / retired).exists():
             errors.append(f'{retired}: retired source still present')
     for name in NAMES:
@@ -24,6 +26,12 @@ def verify(repo):
             errors.append(f'{name}: missing routing or source evidence')
         if not (root / 'LICENSE').is_file():
             errors.append(f'{name}: missing upstream license')
+        try:
+            receipt = json.loads((root / audit_upstream.RECEIPT).read_text())
+            errors.extend(f'{name}: upstream coverage: {error}'
+                          for error in audit_upstream.verify(root, receipt))
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            errors.append(f'{name}: upstream coverage unavailable: {error}')
         for path in root.rglob('*.md'):
             text = path.read_text()
             for match in re.finditer(r'\[[^\]]*\]\(([^)]+)\)', text):
@@ -33,7 +41,7 @@ def verify(repo):
                 resolved = (path.parent / target).resolve()
                 if not resolved.is_relative_to(root.resolve()) or not resolved.exists():
                     errors.append(f'{path.relative_to(repo)}: missing or escaping reference {target}')
-            if '🥷' in text or 'durable-context.md' in text:
+            if '🥷' in text:
                 errors.append(f'{path.relative_to(repo)}: retired runtime instruction')
     return errors
 

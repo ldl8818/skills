@@ -1,0 +1,1211 @@
+{
+  "schema": 2,
+  "repository": "https://github.com/KKKKhazix/Khazix-Skills",
+  "commit": "322346ded8129436b3f64707789a73e732ae24d9",
+  "source_path": "neat-freak",
+  "files": {
+    "SKILL.md": {
+      "upstream_sha256": "6c0ca2236d3518ccaad710f6db8e9c4aa7af67b685dc699ad347ae42186951e1",
+      "local_sha256": "fa6f8c7c63c8c7644d7d02f6c5bc0e30f714267b1629323a52bcededfcfffd61",
+      "status": "adapted",
+      "upstream_fields": {
+        "description": "description: >-\n  Knowledge and governance closeout: reconcile project docs, rule files\n  (CLAUDE.md/AGENTS.md), authorized agent memory, and workspace residue with\n  what the code and runtime actually do, so the next session or the next\n  person starts from one current answer. Trigger when the user names\n  \"neat-freak\", \"洁癖\", or \"/neat\" — and also on clear knowledge-closeout\n  intent without the name: syncing or tidying project docs/rules/memory after\n  development (\"把文档和记忆整理一下\", \"收尾时把文档同步掉\", \"docs 和代码对不上了\"),\n  stale or conflicting CLAUDE.md/memory, a clean handoff to a teammate or a\n  fresh session, or auditing whether workspace rules are actually followed.\n  Do not trigger for pure coding/refactoring/debugging tasks, tidying data or\n  prose (JSON, 周报, changelog announcements), or a bare \"整理\" with no\n  project-knowledge context.\n"
+      },
+      "reason": [
+        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            15,
+            15
+          ],
+          "local_lines": [
+            15,
+            17
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "410eaff7927852a81bf55322049c35747d8cadfe3f237ebccfebd2873cd8f8a9"
+        },
+        {
+          "upstream_lines": [
+            17,
+            18
+          ],
+          "local_lines": [
+            19,
+            27
+          ],
+          "removed_sha256": "1e4fe26a49db3fffa61420a366971ac7d8752b1833876e75d231fa87c4772faa",
+          "added_sha256": "dfcfd593f13b0e8141788cf18ec395c5fb922f22cfaa54841ffba202ac5d47cf"
+        },
+        {
+          "upstream_lines": [
+            21,
+            22
+          ],
+          "local_lines": [
+            30,
+            31
+          ],
+          "removed_sha256": "eb58c34ba209d833aef9610cd3d0a5f36d34a497bb59c3018751f54bf653d9b4",
+          "added_sha256": "dde68705ae39f1911fe0b59d0e3585e1beb1a04df718b9ca9ce3fe46b99cf1bc"
+        },
+        {
+          "upstream_lines": [
+            51,
+            52
+          ],
+          "local_lines": [
+            60,
+            61
+          ],
+          "removed_sha256": "07bca7ce9f48a8cd97001cc8fb31623cfd3f57b7f82e7ccf753ae4e8a0661b9c",
+          "added_sha256": "b1831651f4d66d0745ac8b8bd3143085e148cd1af3e2a9ad5f4b10f6465b0e57"
+        },
+        {
+          "upstream_lines": [
+            73,
+            75
+          ],
+          "local_lines": [
+            82,
+            84
+          ],
+          "removed_sha256": "17168de3b1453bd4356bf49ed5bd66e9ebf18ebd646abe464f2a190ac0a62ab0",
+          "added_sha256": "810143e183848062d911376afc7faf492ec1d5356f3dd9e0e3659cd730edce50"
+        },
+        {
+          "upstream_lines": [
+            159,
+            161
+          ],
+          "local_lines": [
+            168,
+            170
+          ],
+          "removed_sha256": "071f93b27a6b729174f768922a93f0ea436385df8b4caea19d6b0e43440ffa08",
+          "added_sha256": "41a310c286c828f7b068af1c92a4ffee84e1579d19b5d8a5efdd52fa4da268fa"
+        },
+        {
+          "upstream_lines": [
+            183,
+            184
+          ],
+          "local_lines": [
+            192,
+            193
+          ],
+          "removed_sha256": "24acb78339bea0cf3cd7ef586c8d135832be3c4f0dda626d812855490900cea9",
+          "added_sha256": "4a05f35bb47535f062b43aeda7df52c3e3319cf197d026d9d1b333d316486d0c"
+        },
+        {
+          "upstream_lines": [
+            189,
+            190
+          ],
+          "local_lines": [
+            198,
+            199
+          ],
+          "removed_sha256": "260deab25e5263c5fc7bda0c7f59753f0518659a7f3f81f21e04ce6cc1d31091",
+          "added_sha256": "78218319f220bde3999f8021c85996d13cff2647486727e3ff64053457ff43de"
+        },
+        {
+          "upstream_lines": [
+            200,
+            203
+          ],
+          "local_lines": [
+            209,
+            212
+          ],
+          "removed_sha256": "ea3cf44bca283dff072e963f7955712916e1597047a0f4c5378eee69c9f0a06c",
+          "added_sha256": "c0ae840a4d059be6f57970ae5ea4d214e60fd0f29187e6add64f9041f3168f78"
+        }
+      ],
+      "sections": {
+        "# 洁癖 — Knowledge and Governance Closeout": "# 洁癖 -- Knowledge and Governance Closeout",
+        "## 先选路径：轻量还是完整": "## 先选路径：轻量还是完整",
+        "## 参考资料": "## 参考资料",
+        "## 完成合同": "## 完成合同",
+        "## 执行流程（完整路径）": "## 执行流程（完整路径）",
+        "## 最终自检": "## 最终自检",
+        "## 权限和范围先于洁癖": "## 权限和范围先于洁癖",
+        "## 洁癖收尾完成": "## 洁癖收尾完成",
+        "## 知识放在哪里": "## 知识放在哪里",
+        "### 0. 发现平台、规则和体量": "### 0. 发现平台、规则和体量",
+        "### 1. 建立现役事实矩阵": "### 1. 建立现役事实矩阵",
+        "### 2. 审计规则和实践": "### 2. 审计规则和实践",
+        "### 3. 路由受影响知识面": "### 3. 路由受影响知识面",
+        "### 4. 先减后加地修改": "### 4. 先减后加地修改",
+        "### 5. 谨慎处理记忆": "### 5. 谨慎处理记忆",
+        "### 6. 验证并完成发布闭环": "### 6. 验证并完成发布闭环",
+        "### 7. 分两阶段用结果汇报": "### 7. 分两阶段用结果汇报",
+        "### 完整路径": "### 完整路径",
+        "### 轻量路径（五步）": "### 轻量路径（五步）"
+      }
+    },
+    "evals/evals.json": {
+      "upstream_sha256": "05b3dee60f03ddac7c26e925700aa85f9a28872ecd8857e2c4b97ad48f5f3499",
+      "local_sha256": "1344872334267122edced0a57357e6f8dcc50b50f56effb8e891d43887f74724",
+      "status": "adapted",
+      "reason": [
+        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            8,
+            9
+          ],
+          "local_lines": [
+            8,
+            11
+          ],
+          "removed_sha256": "f0877988867d3068ee8c5fa451144763e14ee725692c9bd6eb0a156cdf665c4d",
+          "added_sha256": "ee73ddef15403e206fbb413852c806c003fafe4f7c6bd5b76da40dabb42a7d39"
+        },
+        {
+          "upstream_lines": [
+            23,
+            24
+          ],
+          "local_lines": [
+            25,
+            28
+          ],
+          "removed_sha256": "1804371bf17a19e3e9145fa1b1aa65217c9dab6c8aa79e21d2b04847b5c79316",
+          "added_sha256": "56643f7f8ea94233576d471201eedf436e46bd6830e5b1cf22b7ec55c7591825"
+        },
+        {
+          "upstream_lines": [
+            38,
+            39
+          ],
+          "local_lines": [
+            42,
+            45
+          ],
+          "removed_sha256": "571fbeed58567b541a377e14c2b80da3465656050f3eee4b080091e1b94b43ab",
+          "added_sha256": "a90e910aa2b675cd9f45924a72500d870661176ceeb2a098630493804e682b5c"
+        },
+        {
+          "upstream_lines": [
+            53,
+            54
+          ],
+          "local_lines": [
+            59,
+            62
+          ],
+          "removed_sha256": "e25f9209d91f76f285d956f308ca8e61ba728a42dd7a4d07245bfa936240a559",
+          "added_sha256": "6578c69f70ae5f843d27801f573c2e824adbd40e8e4bcb5acda39ee29b3cb7c5"
+        },
+        {
+          "upstream_lines": [
+            68,
+            69
+          ],
+          "local_lines": [
+            76,
+            79
+          ],
+          "removed_sha256": "beaecd50934a7a22644013a42640298dec17486c4f7e8ca9083c69f95919b837",
+          "added_sha256": "afa537a811514a3a03efc14dfd732eed2a6289174211b5c8c93dc9ce27166315"
+        },
+        {
+          "upstream_lines": [
+            83,
+            84
+          ],
+          "local_lines": [
+            93,
+            96
+          ],
+          "removed_sha256": "0ef6d07d717f072e692959be02eb388e9daa1ffd2f87369c5c24d173ecee2078",
+          "added_sha256": "f184c6d8647cd8054e45ab4b8aec4dc9d4cbda9a1dab2589463a32d2a846e8ca"
+        },
+        {
+          "upstream_lines": [
+            96,
+            98
+          ],
+          "local_lines": [
+            108,
+            112
+          ],
+          "removed_sha256": "ad804ef72860569fb0183b258a934e4454a781eb176e915b6b41c62dd7db97f6",
+          "added_sha256": "1d901b233a15facf036f96fea5e67e9d6357563f7c623b4b39224c02594f82d7"
+        },
+        {
+          "upstream_lines": [
+            101,
+            103
+          ],
+          "local_lines": [
+            115,
+            117
+          ],
+          "removed_sha256": "fcf74e6a0cb4eec5423e216ad937728cc33e64d680bc1c378eea8c3efd3e7e29",
+          "added_sha256": "ff7680562249ed57b776e1ede300b5b123d5aebb83f38db6ec5eae3b1bcff581"
+        },
+        {
+          "upstream_lines": [
+            112,
+            113
+          ],
+          "local_lines": [
+            126,
+            129
+          ],
+          "removed_sha256": "c73ceb07eec60d863f91f0fa9a3d0010c029d9806483830b220cd5fa7df9de59",
+          "added_sha256": "dc489832024890f9f6fa6fa1794c84b5ca44e5b1521b7e1e739f68d2ee41f31a"
+        },
+        {
+          "upstream_lines": [
+            126,
+            127
+          ],
+          "local_lines": [
+            142,
+            145
+          ],
+          "removed_sha256": "c080bb422d9d3858d63f3865932ad37705656e95159f36e1a2498f0ee6090644",
+          "added_sha256": "38fb50566774f2935d277ea4e7acdac02bfcc0785edc9f8be8b41d9dca0297d4"
+        },
+        {
+          "upstream_lines": [
+            141,
+            142
+          ],
+          "local_lines": [
+            159,
+            162
+          ],
+          "removed_sha256": "904c0cf8b73d5e4e1b7618bdb8afe992f6530fc0725dadbaf137fd552a6679d9",
+          "added_sha256": "53669b992d302e55feddb67d9ccb3c5c1633b459b30a931214f8695068a255b5"
+        },
+        {
+          "upstream_lines": [
+            155,
+            156
+          ],
+          "local_lines": [
+            175,
+            178
+          ],
+          "removed_sha256": "613fb2988965c1214b8c1afb0a7fed84408fc2d01588b94a5d77188f6c234837",
+          "added_sha256": "6f05ab8518bc1b0965169f7e73c233df19dc1bf1d0638dd5aaaa14e24b8656bc"
+        }
+      ]
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/agent-memory/taskflow/memory/MEMORY.md": {
+      "upstream_sha256": "e7397522c0aebe28386c8e20945d167dc008f1bb58833cea2b5cdde8afa7d938",
+      "local_sha256": "e7397522c0aebe28386c8e20945d167dc008f1bb58833cea2b5cdde8afa7d938",
+      "status": "identical",
+      "sections": {
+        "# TaskFlow 记忆索引": "# TaskFlow 记忆索引"
+      }
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/agent-memory/taskflow/memory/project_api-design.md": {
+      "upstream_sha256": "6d0b0618ee710ff32d01668baa62df81387d38edb32b59c3506dca04816817de",
+      "local_sha256": "6d0b0618ee710ff32d01668baa62df81387d38edb32b59c3506dca04816817de",
+      "status": "identical",
+      "sections": {}
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/agent-memory/taskflow/memory/project_deploy.md": {
+      "upstream_sha256": "f351e6d7698f571361817f8976a98889fea80a0b2acb91ab8386978b9a808e98",
+      "local_sha256": "f351e6d7698f571361817f8976a98889fea80a0b2acb91ab8386978b9a808e98",
+      "status": "identical",
+      "sections": {}
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/workspace/CLAUDE.md": {
+      "upstream_sha256": "4cb497ee29d3d91b0a4b83bb4ae6303937d7eb11b5f08871e36d83581f90664e",
+      "local_sha256": "4cb497ee29d3d91b0a4b83bb4ae6303937d7eb11b5f08871e36d83581f90664e",
+      "status": "identical",
+      "sections": {
+        "# workspace 规范": "# workspace 规范"
+      }
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/workspace/taskflow/AGENTS.md": {
+      "upstream_sha256": "45eaf06973eb1bc8a1154aee15eddfa56f4eba86771d02bcd25ec6f63526cc03",
+      "local_sha256": "45eaf06973eb1bc8a1154aee15eddfa56f4eba86771d02bcd25ec6f63526cc03",
+      "status": "identical",
+      "sections": {
+        "# taskflow": "# taskflow",
+        "## API 路由清单": "## API 路由清单",
+        "## 启动": "## 启动",
+        "## 技术栈": "## 技术栈",
+        "## 部署": "## 部署"
+      }
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/workspace/taskflow/CLAUDE.md": {
+      "upstream_sha256": "45eaf06973eb1bc8a1154aee15eddfa56f4eba86771d02bcd25ec6f63526cc03",
+      "local_sha256": "45eaf06973eb1bc8a1154aee15eddfa56f4eba86771d02bcd25ec6f63526cc03",
+      "status": "identical",
+      "sections": {
+        "# taskflow": "# taskflow",
+        "## API 路由清单": "## API 路由清单",
+        "## 启动": "## 启动",
+        "## 技术栈": "## 技术栈",
+        "## 部署": "## 部署"
+      }
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/workspace/taskflow/README.md": {
+      "upstream_sha256": "7c4a27389575b0a9e2069860fd2d7962dde2b36ce731096f374d2c621bb18e6f",
+      "local_sha256": "7c4a27389575b0a9e2069860fd2d7962dde2b36ce731096f374d2c621bb18e6f",
+      "status": "identical",
+      "sections": {
+        "# TaskFlow": "# TaskFlow",
+        "## API": "## API",
+        "## Quick Start": "## Quick Start"
+      }
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/workspace/taskflow/docs/architecture.md": {
+      "upstream_sha256": "83c895e56b3a2564a9759c307dd5e65700fd2cca70f06ad5f6e221e073aa034f",
+      "local_sha256": "83c895e56b3a2564a9759c307dd5e65700fd2cca70f06ad5f6e221e073aa034f",
+      "status": "identical",
+      "sections": {
+        "# TaskFlow 架构": "# TaskFlow 架构",
+        "## Routes": "## Routes",
+        "## 总览": "## 总览",
+        "## 部署": "## 部署"
+      }
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/workspace/taskflow/package.json": {
+      "upstream_sha256": "d24dd550021c804c48df69ea0ad1b01e1106e41f430ea4b326ad51cd87a5a763",
+      "local_sha256": "d24dd550021c804c48df69ea0ad1b01e1106e41f430ea4b326ad51cd87a5a763",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/workspace/taskflow/src/router.ts": {
+      "upstream_sha256": "19633ae67c58eb44e1e138a9a3ac59e18ca40c8dd1a5f7194f8583174f9b0f94",
+      "local_sha256": "19633ae67c58eb44e1e138a9a3ac59e18ca40c8dd1a5f7194f8583174f9b0f94",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-1-routine-dev-sync/workspace/taskflow/src/server.ts": {
+      "upstream_sha256": "a93dcf7e17cfd132d9d5f324b7cd3998ea44e7751fceee829426e4650542f11b",
+      "local_sha256": "a93dcf7e17cfd132d9d5f324b7cd3998ea44e7751fceee829426e4650542f11b",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-10-vibe-project/project/PLAN.md": {
+      "upstream_sha256": "9e8913713d940fe597a617d65f7ced7a4cffa9e451bd75eb3605fa7baf293018",
+      "local_sha256": "9e8913713d940fe597a617d65f7ced7a4cffa9e451bd75eb3605fa7baf293018",
+      "status": "identical",
+      "sections": {
+        "# QuickTodo 初始计划": "# QuickTodo 初始计划"
+      }
+    },
+    "evals/fixtures/eval-10-vibe-project/project/README.md": {
+      "upstream_sha256": "0e28f845508b50fe9fec97fc340fa20d8e30073482d75c9c6724b6c7853f3114",
+      "local_sha256": "0e28f845508b50fe9fec97fc340fa20d8e30073482d75c9c6724b6c7853f3114",
+      "status": "identical",
+      "sections": {
+        "# QuickTodo": "# QuickTodo",
+        "# 打开 http://localhost:3000": "# 打开 http://localhost:3000",
+        "## 存储": "## 存储",
+        "## 运行": "## 运行",
+        "## 进度": "## 进度"
+      }
+    },
+    "evals/fixtures/eval-10-vibe-project/project/TODO-fix-bug.md": {
+      "upstream_sha256": "baace56848966b9a64cccc5cffe12efb0ee8a11ca87dca618f28dd091f5eab52",
+      "local_sha256": "baace56848966b9a64cccc5cffe12efb0ee8a11ca87dca618f28dd091f5eab52",
+      "status": "identical",
+      "sections": {
+        "# bug：勾选完成不生效": "# bug：勾选完成不生效"
+      }
+    },
+    "evals/fixtures/eval-10-vibe-project/project/data.json": {
+      "upstream_sha256": "38d8fb975a6f51d516200e80680a31049af7c971c4e6eb3831d9dd6fa876652a",
+      "local_sha256": "38d8fb975a6f51d516200e80680a31049af7c971c4e6eb3831d9dd6fa876652a",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-10-vibe-project/project/index.html": {
+      "upstream_sha256": "963c47fce1408edd8d3e69dd14730d02bb1d0c66583ccbeea4c833ebba47fd6d",
+      "local_sha256": "963c47fce1408edd8d3e69dd14730d02bb1d0c66583ccbeea4c833ebba47fd6d",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-10-vibe-project/project/notes/debug-notes.md": {
+      "upstream_sha256": "f3aa8e80288d76fe41b25cabcabcfe7a5665cf31f3438ea5db570dd2a65f443a",
+      "local_sha256": "f3aa8e80288d76fe41b25cabcabcfe7a5665cf31f3438ea5db570dd2a65f443a",
+      "status": "identical",
+      "sections": {
+        "# 调试流水": "# 调试流水"
+      }
+    },
+    "evals/fixtures/eval-10-vibe-project/project/package.json": {
+      "upstream_sha256": "09122d5ccb05eabd93dba41977f27c056d6fc0051f27bf13a90d10adc6f7be7e",
+      "local_sha256": "09122d5ccb05eabd93dba41977f27c056d6fc0051f27bf13a90d10adc6f7be7e",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-10-vibe-project/project/server.js": {
+      "upstream_sha256": "3555495ec60f88f8c11b152d1dee6a2650c7437f1239257cc3f7b10dd2cddc33",
+      "local_sha256": "3555495ec60f88f8c11b152d1dee6a2650c7437f1239257cc3f7b10dd2cddc33",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-10-vibe-project/project/server_old.js": {
+      "upstream_sha256": "705748b1e1e0798127cab91b6491590a367d8eed8261366f618d632fbaabb209",
+      "local_sha256": "705748b1e1e0798127cab91b6491590a367d8eed8261366f618d632fbaabb209",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-11-unknown-platform/project/.agentx/memory.json": {
+      "upstream_sha256": "9054a73f5a24209d918246950c910a79e69f467faf8b9466a59fa70d7e25c441",
+      "local_sha256": "9054a73f5a24209d918246950c910a79e69f467faf8b9466a59fa70d7e25c441",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-11-unknown-platform/project/.agentx/session-log.jsonl": {
+      "upstream_sha256": "1dda377e7bf0a712f3353b7b67c183693744c0b194257b5887cedf8788fa7457",
+      "local_sha256": "1dda377e7bf0a712f3353b7b67c183693744c0b194257b5887cedf8788fa7457",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-11-unknown-platform/project/AGENTS.md": {
+      "upstream_sha256": "2796541b4449a758e374702af679d020376f6a384a1526be2e4aed7554f6cdf3",
+      "local_sha256": "2796541b4449a758e374702af679d020376f6a384a1526be2e4aed7554f6cdf3",
+      "status": "identical",
+      "sections": {
+        "# flasknotes": "# flasknotes",
+        "# http://localhost:5000": "# http://localhost:5000",
+        "## 功能": "## 功能",
+        "## 技术栈": "## 技术栈",
+        "## 约定": "## 约定",
+        "## 运行": "## 运行"
+      }
+    },
+    "evals/fixtures/eval-11-unknown-platform/project/main.py": {
+      "upstream_sha256": "ac86db5c2547c0d6516e46bfc6f35692bf99801cacbb35280fa13ea8081a6c6d",
+      "local_sha256": "ac86db5c2547c0d6516e46bfc6f35692bf99801cacbb35280fa13ea8081a6c6d",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-11-unknown-platform/project/requirements.txt": {
+      "upstream_sha256": "9c07c4225d35a82b6fb42f873d02ac383b4ac4e0aac95b536a56deac8610dfad",
+      "local_sha256": "9c07c4225d35a82b6fb42f873d02ac383b4ac4e0aac95b536a56deac8610dfad",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-2-memory-conflict/agent-memory/notesapp/memory/MEMORY.md": {
+      "upstream_sha256": "f36c20bc26a606abbd6c50d3ff15f47675e8e63882b5f53e6c3cb9d2f9303e72",
+      "local_sha256": "f36c20bc26a606abbd6c50d3ff15f47675e8e63882b5f53e6c3cb9d2f9303e72",
+      "status": "identical",
+      "sections": {
+        "# notesapp 记忆索引": "# notesapp 记忆索引"
+      }
+    },
+    "evals/fixtures/eval-2-memory-conflict/agent-memory/notesapp/memory/feedback_auth-clerk.md": {
+      "upstream_sha256": "6a73c6bad289a1ee84336c09dea6eb5fba1fae3f75e451cd928b0dbde503e02e",
+      "local_sha256": "6a73c6bad289a1ee84336c09dea6eb5fba1fae3f75e451cd928b0dbde503e02e",
+      "status": "identical",
+      "sections": {}
+    },
+    "evals/fixtures/eval-2-memory-conflict/agent-memory/notesapp/memory/feedback_auth-nextauth.md": {
+      "upstream_sha256": "30322b8171e192cfc4e82b6e35586b82017130b2107ea4334ebb929d3f25f42d",
+      "local_sha256": "30322b8171e192cfc4e82b6e35586b82017130b2107ea4334ebb929d3f25f42d",
+      "status": "identical",
+      "sections": {}
+    },
+    "evals/fixtures/eval-2-memory-conflict/agent-memory/notesapp/memory/feedback_performance.md": {
+      "upstream_sha256": "28ac20dd9b4506a5f829903c166e38a91de874d0eac4d3d912f9581d6127e857",
+      "local_sha256": "28ac20dd9b4506a5f829903c166e38a91de874d0eac4d3d912f9581d6127e857",
+      "status": "identical",
+      "sections": {}
+    },
+    "evals/fixtures/eval-2-memory-conflict/agent-memory/notesapp/memory/project_db-migration.md": {
+      "upstream_sha256": "a3df93e24d51e1a9b348882cda0176cb48411a8f627083a62a5ae06a33b6506a",
+      "local_sha256": "a3df93e24d51e1a9b348882cda0176cb48411a8f627083a62a5ae06a33b6506a",
+      "status": "identical",
+      "sections": {}
+    },
+    "evals/fixtures/eval-2-memory-conflict/workspace/CLAUDE.md": {
+      "upstream_sha256": "a9709573627f5fed68004ced1a831136264905603f7b92a1264cbe2fc7b4cf3e",
+      "local_sha256": "a9709573627f5fed68004ced1a831136264905603f7b92a1264cbe2fc7b4cf3e",
+      "status": "identical",
+      "sections": {
+        "# workspace 规范": "# workspace 规范"
+      }
+    },
+    "evals/fixtures/eval-2-memory-conflict/workspace/notesapp/AGENTS.md": {
+      "upstream_sha256": "271681cbeaa4e17f67ffad3dbb684f0a7fd6bdc4aadc5b1e9f0e5594c6693489",
+      "local_sha256": "271681cbeaa4e17f67ffad3dbb684f0a7fd6bdc4aadc5b1e9f0e5594c6693489",
+      "status": "identical",
+      "sections": {
+        "# notesapp": "# notesapp",
+        "## 启动": "## 启动",
+        "## 待办": "## 待办",
+        "## 技术栈": "## 技术栈"
+      }
+    },
+    "evals/fixtures/eval-2-memory-conflict/workspace/notesapp/CLAUDE.md": {
+      "upstream_sha256": "271681cbeaa4e17f67ffad3dbb684f0a7fd6bdc4aadc5b1e9f0e5594c6693489",
+      "local_sha256": "271681cbeaa4e17f67ffad3dbb684f0a7fd6bdc4aadc5b1e9f0e5594c6693489",
+      "status": "identical",
+      "sections": {
+        "# notesapp": "# notesapp",
+        "## 启动": "## 启动",
+        "## 待办": "## 待办",
+        "## 技术栈": "## 技术栈"
+      }
+    },
+    "evals/fixtures/eval-2-memory-conflict/workspace/notesapp/README.md": {
+      "upstream_sha256": "d43c0048297bd58fdbe8bd0199c6d608e7f75f8d18e10ada2fed583c1046c766",
+      "local_sha256": "d43c0048297bd58fdbe8bd0199c6d608e7f75f8d18e10ada2fed583c1046c766",
+      "status": "identical",
+      "sections": {
+        "# notesapp": "# notesapp"
+      }
+    },
+    "evals/fixtures/eval-2-memory-conflict/workspace/notesapp/prisma/schema.prisma": {
+      "upstream_sha256": "c5f907f99968255300376329712ebd1cb7925542f56ffc137fc1e82668f3465e",
+      "local_sha256": "c5f907f99968255300376329712ebd1cb7925542f56ffc137fc1e82668f3465e",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-2-memory-conflict/workspace/notesapp/src/auth.ts": {
+      "upstream_sha256": "7e2fea9075b81850bbfdd23b50ec6c6fd8ecc1c7d4e70f78d23366b3e08507f9",
+      "local_sha256": "7e2fea9075b81850bbfdd23b50ec6c6fd8ecc1c7d4e70f78d23366b3e08507f9",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-3-cold-start/workspace/CLAUDE.md": {
+      "upstream_sha256": "6350654c7243b0caed781a2978ecd548ff5f55cb6d7ec21606f6f22ce2a085be",
+      "local_sha256": "6350654c7243b0caed781a2978ecd548ff5f55cb6d7ec21606f6f22ce2a085be",
+      "status": "identical",
+      "sections": {
+        "# workspace 规范": "# workspace 规范"
+      }
+    },
+    "evals/fixtures/eval-3-cold-start/workspace/analytics_dashboard/.env": {
+      "upstream_sha256": "f37c3caf9bfd6efb0ba4ae2516aa2f73384e5abe1e86d0691af650a9b784234b",
+      "local_sha256": "f37c3caf9bfd6efb0ba4ae2516aa2f73384e5abe1e86d0691af650a9b784234b",
+      "status": "adapted",
+      "local_path": "evals/fixtures/eval-3-cold-start/workspace/analytics_dashboard/.env.example",
+      "reason": [
+        "Retain synthetic fixture data as an environment example, never ship a real .env configuration."
+      ],
+      "changes": []
+    },
+    "evals/fixtures/eval-3-cold-start/workspace/analytics_dashboard/.gitignore": {
+      "upstream_sha256": "790e3169bc19b046fe55ba1da6d13b976c28363c8c00462a2195fe5faf260910",
+      "local_sha256": "790e3169bc19b046fe55ba1da6d13b976c28363c8c00462a2195fe5faf260910",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-3-cold-start/workspace/analytics_dashboard/package.json": {
+      "upstream_sha256": "c3568859cca48d3e0cc7dd890b21d600b93c85ad335af7b61c044f785d7b3f43",
+      "local_sha256": "c3568859cca48d3e0cc7dd890b21d600b93c85ad335af7b61c044f785d7b3f43",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-3-cold-start/workspace/analytics_dashboard/src/App.jsx": {
+      "upstream_sha256": "eb898c855b7c34906b6aa8a28a56ea11278e53dc807d4800d97baa58cc024296",
+      "local_sha256": "eb898c855b7c34906b6aa8a28a56ea11278e53dc807d4800d97baa58cc024296",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-3-cold-start/workspace/analytics_dashboard/src/lib/supabase.js": {
+      "upstream_sha256": "bf9b22fbf60e968374de0603a19ca52403d936d94974012b0ec196700400dd63",
+      "local_sha256": "bf9b22fbf60e968374de0603a19ca52403d936d94974012b0ec196700400dd63",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-4-cross-project/agent-memory/auth-center/memory/MEMORY.md": {
+      "upstream_sha256": "c8954ab027e753bff007571e79b893df853365fd44fc6f384765ac2a2f71f0fb",
+      "local_sha256": "c8954ab027e753bff007571e79b893df853365fd44fc6f384765ac2a2f71f0fb",
+      "status": "identical",
+      "sections": {
+        "# auth-center 记忆索引": "# auth-center 记忆索引"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/agent-memory/auth-center/memory/project_device-flow.md": {
+      "upstream_sha256": "066537e0c9267725ecbd0b984b9ca3ec1f1ac3f06892f4778da574d47f7d576c",
+      "local_sha256": "066537e0c9267725ecbd0b984b9ca3ec1f1ac3f06892f4778da574d47f7d576c",
+      "status": "identical",
+      "sections": {}
+    },
+    "evals/fixtures/eval-4-cross-project/agent-memory/skills-hub/memory/MEMORY.md": {
+      "upstream_sha256": "e574434b63cf9429f4d3cfd0e8225f7530c05f7707fd1bbc602599ad356d78a6",
+      "local_sha256": "e574434b63cf9429f4d3cfd0e8225f7530c05f7707fd1bbc602599ad356d78a6",
+      "status": "identical",
+      "sections": {
+        "# skills-hub 记忆索引": "# skills-hub 记忆索引"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/CLAUDE.md": {
+      "upstream_sha256": "72a253f8f645cff6817ec7222ce188fcd71afc43f9a03549df3fd6c0ab30aadf",
+      "local_sha256": "72a253f8f645cff6817ec7222ce188fcd71afc43f9a03549df3fd6c0ab30aadf",
+      "status": "identical",
+      "sections": {
+        "# workspace 规范": "# workspace 规范"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/auth-center/.env.example": {
+      "upstream_sha256": "ae35e3b0b16218962107b5db71d879ae06b44dadaf865a6ede793746e651eefb",
+      "local_sha256": "ae35e3b0b16218962107b5db71d879ae06b44dadaf865a6ede793746e651eefb",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/auth-center/AGENTS.md": {
+      "upstream_sha256": "0e3293b95b6f96c70e638cf45d6525b917fe590151e894269805a1a1891e79c2",
+      "local_sha256": "0e3293b95b6f96c70e638cf45d6525b917fe590151e894269805a1a1891e79c2",
+      "status": "identical",
+      "sections": {
+        "# auth-center": "# auth-center",
+        "## 启动": "## 启动",
+        "## 技术栈": "## 技术栈",
+        "## 环境变量": "## 环境变量",
+        "## 路由清单": "## 路由清单"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/auth-center/CLAUDE.md": {
+      "upstream_sha256": "0e3293b95b6f96c70e638cf45d6525b917fe590151e894269805a1a1891e79c2",
+      "local_sha256": "0e3293b95b6f96c70e638cf45d6525b917fe590151e894269805a1a1891e79c2",
+      "status": "identical",
+      "sections": {
+        "# auth-center": "# auth-center",
+        "## 启动": "## 启动",
+        "## 技术栈": "## 技术栈",
+        "## 环境变量": "## 环境变量",
+        "## 路由清单": "## 路由清单"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/auth-center/docs/architecture.md": {
+      "upstream_sha256": "12461c8b8c7c65bc6f5f90af5d5726b7c26582fd5b7e9d8c03845bdeb469897c",
+      "local_sha256": "12461c8b8c7c65bc6f5f90af5d5726b7c26582fd5b7e9d8c03845bdeb469897c",
+      "status": "identical",
+      "sections": {
+        "# auth-center 架构": "# auth-center 架构",
+        "## Flow": "## Flow",
+        "## 数据模型": "## 数据模型"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/auth-center/docs/integration-guide.md": {
+      "upstream_sha256": "ffec76bbaee15ff293c7f3744d883d65821bc0caa057b3ec7092078682bfc5d2",
+      "local_sha256": "ffec76bbaee15ff293c7f3744d883d65821bc0caa057b3ec7092078682bfc5d2",
+      "status": "identical",
+      "sections": {
+        "# auth-center 接入指南": "# auth-center 接入指南",
+        "## API 速查表": "## API 速查表",
+        "## 接入流程（Authorization Code Flow）": "## 接入流程（Authorization Code Flow）",
+        "## 错误码": "## 错误码"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/auth-center/docs/operator-runbook.md": {
+      "upstream_sha256": "a056932584eeb347b9ff7c050d5320a452a03071f16cfd0be45e0444d2505083",
+      "local_sha256": "a056932584eeb347b9ff7c050d5320a452a03071f16cfd0be45e0444d2505083",
+      "status": "identical",
+      "sections": {
+        "# auth-center 运维手册": "# auth-center 运维手册",
+        "## 冒烟": "## 冒烟",
+        "## 环境变量": "## 环境变量"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/auth-center/migrations/004_device_codes.sql": {
+      "upstream_sha256": "27d8228847337d1db8d84ae948ec7a55b6bef33e91fa1207bb17b9f1f0fd7edc",
+      "local_sha256": "27d8228847337d1db8d84ae948ec7a55b6bef33e91fa1207bb17b9f1f0fd7edc",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/auth-center/src/routes/device.ts": {
+      "upstream_sha256": "1ced1c50f834f04e75d979b47d8059afc1255c14c9dd80818cb0f510495a790f",
+      "local_sha256": "1ced1c50f834f04e75d979b47d8059afc1255c14c9dd80818cb0f510495a790f",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/skills-hub/AGENTS.md": {
+      "upstream_sha256": "66c1cea8fa388d074f75325e5ba82f01e6495d9d625d366a950d4eae6183f184",
+      "local_sha256": "66c1cea8fa388d074f75325e5ba82f01e6495d9d625d366a950d4eae6183f184",
+      "status": "identical",
+      "sections": {
+        "# skills-hub": "# skills-hub",
+        "## 启动": "## 启动",
+        "## 技术栈": "## 技术栈",
+        "## 认证": "## 认证"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/skills-hub/CLAUDE.md": {
+      "upstream_sha256": "66c1cea8fa388d074f75325e5ba82f01e6495d9d625d366a950d4eae6183f184",
+      "local_sha256": "66c1cea8fa388d074f75325e5ba82f01e6495d9d625d366a950d4eae6183f184",
+      "status": "identical",
+      "sections": {
+        "# skills-hub": "# skills-hub",
+        "## 启动": "## 启动",
+        "## 技术栈": "## 技术栈",
+        "## 认证": "## 认证"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/skills-hub/docs/auth-integration.md": {
+      "upstream_sha256": "7a04d15d75ee6d4e3ed4dfe30ead32b419c96f393001b1aabb2f75a58ec64eac",
+      "local_sha256": "7a04d15d75ee6d4e3ed4dfe30ead32b419c96f393001b1aabb2f75a58ec64eac",
+      "status": "identical",
+      "sections": {
+        "# skills-hub × auth-center 集成说明": "# skills-hub × auth-center 集成说明"
+      }
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/skills-hub/setup.sh": {
+      "upstream_sha256": "5be82fe6924eeb7f5166eced0ecaed94d651dc74410f41880c83f7a920dab035",
+      "local_sha256": "5be82fe6924eeb7f5166eced0ecaed94d651dc74410f41880c83f7a920dab035",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-4-cross-project/workspace/skills-hub/web/src/DevicesPage.jsx": {
+      "upstream_sha256": "3f5eac36215e092554abfaf12fb4b58753a69024152a5d4be5869ac94f4363c0",
+      "local_sha256": "3f5eac36215e092554abfaf12fb4b58753a69024152a5d4be5869ac94f4363c0",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-5-governance/agent-memory/pdf-tools/memory/MEMORY.md": {
+      "upstream_sha256": "dfcfc45b2f88cbde9dc52f805e408ce79b15afcfee6b6f7e536f0fb3e39a6115",
+      "local_sha256": "dfcfc45b2f88cbde9dc52f805e408ce79b15afcfee6b6f7e536f0fb3e39a6115",
+      "status": "identical",
+      "sections": {
+        "# pdf-tools 记忆索引": "# pdf-tools 记忆索引"
+      }
+    },
+    "evals/fixtures/eval-5-governance/agent-memory/pdf-tools/memory/feedback_streaming.md": {
+      "upstream_sha256": "be03b0bfa00ba9bc4d1134ddb1e8577f1d19754a1584e5fcc3cd5595b463914c",
+      "local_sha256": "be03b0bfa00ba9bc4d1134ddb1e8577f1d19754a1584e5fcc3cd5595b463914c",
+      "status": "identical",
+      "sections": {}
+    },
+    "evals/fixtures/eval-5-governance/workspace/CLAUDE.md": {
+      "upstream_sha256": "4e18d43932756c880abd554a6e8db34a7b7ea83849ba8e6b694ae050be97d300",
+      "local_sha256": "4e18d43932756c880abd554a6e8db34a7b7ea83849ba8e6b694ae050be97d300",
+      "status": "identical",
+      "sections": {
+        "# workspace 规范": "# workspace 规范",
+        "## CLAUDE.md 与 AGENTS.md 同源": "## CLAUDE.md 与 AGENTS.md 同源",
+        "## 命名与结构": "## 命名与结构",
+        "## 红线": "## 红线",
+        "## 项目清单": "## 项目清单"
+      }
+    },
+    "evals/fixtures/eval-5-governance/workspace/Link_Shortener/package.json": {
+      "upstream_sha256": "efb3c4ff9fa783bb84cf503940837656e3829c704cabb45fbd1269a592c331e3",
+      "local_sha256": "efb3c4ff9fa783bb84cf503940837656e3829c704cabb45fbd1269a592c331e3",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-5-governance/workspace/Link_Shortener/src/server.js": {
+      "upstream_sha256": "f0f0b5703ddd448abe48dbfd2280b1023882570139003140bd01d625021f8b89",
+      "local_sha256": "f0f0b5703ddd448abe48dbfd2280b1023882570139003140bd01d625021f8b89",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-5-governance/workspace/deploy-notes.md": {
+      "upstream_sha256": "ad6558c52fdad19c627a0d2659ce5f53584935670bc7012eacf800667f95a076",
+      "local_sha256": "ad6558c52fdad19c627a0d2659ce5f53584935670bc7012eacf800667f95a076",
+      "status": "identical",
+      "sections": {
+        "# 部署备忘": "# 部署备忘"
+      }
+    },
+    "evals/fixtures/eval-5-governance/workspace/pdf-tools/.env": {
+      "upstream_sha256": "a1ed05e4b994a31ccc62ada5630a556079634185c9ececb15089e824c9c39628",
+      "local_sha256": "a1ed05e4b994a31ccc62ada5630a556079634185c9ececb15089e824c9c39628",
+      "status": "adapted",
+      "local_path": "evals/fixtures/eval-5-governance/workspace/pdf-tools/.env.example",
+      "reason": [
+        "Retain synthetic fixture data as an environment example, never ship a real .env configuration."
+      ],
+      "changes": []
+    },
+    "evals/fixtures/eval-5-governance/workspace/pdf-tools/.gitignore": {
+      "upstream_sha256": "20432be3c8b7a4adca6a439e4de38dc505dfd64c8e5c61f7e61f27c80619b0eb",
+      "local_sha256": "20432be3c8b7a4adca6a439e4de38dc505dfd64c8e5c61f7e61f27c80619b0eb",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-5-governance/workspace/pdf-tools/AGENTS.md": {
+      "upstream_sha256": "3f119fd55ac7282c6701f9463633a4fa1c84ecd39ab2c5206a873e21749d2532",
+      "local_sha256": "3f119fd55ac7282c6701f9463633a4fa1c84ecd39ab2c5206a873e21749d2532",
+      "status": "identical",
+      "sections": {
+        "# pdf-tools": "# pdf-tools",
+        "## 启动": "## 启动",
+        "## 约定": "## 约定"
+      }
+    },
+    "evals/fixtures/eval-5-governance/workspace/pdf-tools/CLAUDE.md": {
+      "upstream_sha256": "1c2c11484e96d91c395521b56e335dd067db6d9b68f2142534d2a55de404f334",
+      "local_sha256": "1c2c11484e96d91c395521b56e335dd067db6d9b68f2142534d2a55de404f334",
+      "status": "identical",
+      "sections": {
+        "# pdf-tools": "# pdf-tools",
+        "## 启动": "## 启动",
+        "## 技术栈": "## 技术栈"
+      }
+    },
+    "evals/fixtures/eval-5-governance/workspace/pdf-tools/src/app.py": {
+      "upstream_sha256": "fca49aaece0203705c04f5a5a836ef8f41cd61dceee1c862123ddac7f7dc0e28",
+      "local_sha256": "fca49aaece0203705c04f5a5a836ef8f41cd61dceee1c862123ddac7f7dc0e28",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-6-scope-boundary/workspace/CLAUDE.md": {
+      "upstream_sha256": "9a8c0eae2859e57ec04618f0308386a9858a25276c0aa108d97f8a3382ba9e7d",
+      "local_sha256": "9a8c0eae2859e57ec04618f0308386a9858a25276c0aa108d97f8a3382ba9e7d",
+      "status": "identical",
+      "sections": {
+        "# Workspace rules": "# Workspace rules"
+      }
+    },
+    "evals/fixtures/eval-6-scope-boundary/workspace/Legacy_App/README.md": {
+      "upstream_sha256": "6ee0293ec8093704ceb23beb8c294ebfa4a0fe77faa81cf5d7af6e17ce163c75",
+      "local_sha256": "6ee0293ec8093704ceb23beb8c294ebfa4a0fe77faa81cf5d7af6e17ce163c75",
+      "status": "identical",
+      "sections": {
+        "# Legacy sibling": "# Legacy sibling"
+      }
+    },
+    "evals/fixtures/eval-6-scope-boundary/workspace/current-app/AGENTS.md": {
+      "upstream_sha256": "b0437346332efb99343c1d4eb57446099bd0c0b38c047fc31d49deefa140cd56",
+      "local_sha256": "b0437346332efb99343c1d4eb57446099bd0c0b38c047fc31d49deefa140cd56",
+      "status": "identical",
+      "sections": {
+        "# Current App": "# Current App"
+      }
+    },
+    "evals/fixtures/eval-6-scope-boundary/workspace/current-app/CLAUDE.md": {
+      "upstream_sha256": "b0437346332efb99343c1d4eb57446099bd0c0b38c047fc31d49deefa140cd56",
+      "local_sha256": "b0437346332efb99343c1d4eb57446099bd0c0b38c047fc31d49deefa140cd56",
+      "status": "identical",
+      "sections": {
+        "# Current App": "# Current App"
+      }
+    },
+    "evals/fixtures/eval-6-scope-boundary/workspace/current-app/README.md": {
+      "upstream_sha256": "8a0562eb9021d376b5950d8259b7be3f9bd3f5181076f79c8e09d15b93cefa32",
+      "local_sha256": "8a0562eb9021d376b5950d8259b7be3f9bd3f5181076f79c8e09d15b93cefa32",
+      "status": "identical",
+      "sections": {
+        "# Current App": "# Current App"
+      }
+    },
+    "evals/fixtures/eval-6-scope-boundary/workspace/current-app/package.json": {
+      "upstream_sha256": "2629d42fef1693873d86dad1079b4ecfa0357f89baa0584f2e99ec8c1d02f4b4",
+      "local_sha256": "2629d42fef1693873d86dad1079b4ecfa0357f89baa0584f2e99ec8c1d02f4b4",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-6-scope-boundary/workspace/current-app/src/server.ts": {
+      "upstream_sha256": "46467524d95b5d46b60b73668ec3d8b96e35f1c90dad7b3a8e879e3bd2848383",
+      "local_sha256": "46467524d95b5d46b60b73668ec3d8b96e35f1c90dad7b3a8e879e3bd2848383",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-7-release-terminal/project/.cleanup-candidate/UNIQUE.md": {
+      "upstream_sha256": "dfa8bd4cc315cf43ceed14f6114ca464cc530608c54212d2f8c46b1b3e0b0916",
+      "local_sha256": "dfa8bd4cc315cf43ceed14f6114ca464cc530608c54212d2f8c46b1b3e0b0916",
+      "status": "identical",
+      "sections": {
+        "# Unique lane evidence": "# Unique lane evidence"
+      }
+    },
+    "evals/fixtures/eval-7-release-terminal/project/CLAUDE.md": {
+      "upstream_sha256": "15a7bdcb8d8857afacac78295d4e30a863f1973c4ed20df9bb2a8b27cd73034f",
+      "local_sha256": "15a7bdcb8d8857afacac78295d4e30a863f1973c4ed20df9bb2a8b27cd73034f",
+      "status": "identical",
+      "sections": {
+        "# Release rules": "# Release rules"
+      }
+    },
+    "evals/fixtures/eval-7-release-terminal/project/release-state.json": {
+      "upstream_sha256": "d423d9c2dad2ca89b7804fa0b0fb0112f7a287b4dc3e30dfa5b19919e30731fa",
+      "local_sha256": "d423d9c2dad2ca89b7804fa0b0fb0112f7a287b4dc3e30dfa5b19919e30731fa",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-8-generated-memory/codex-memories/MEMORY.md": {
+      "upstream_sha256": "49892d139b52d83f064512ca61246629a5caeb69c2bd638fd85c50f9fd4cb5b5",
+      "local_sha256": "49892d139b52d83f064512ca61246629a5caeb69c2bd638fd85c50f9fd4cb5b5",
+      "status": "identical",
+      "sections": {
+        "# GENERATED FILE - DO NOT EDIT": "# GENERATED FILE - DO NOT EDIT"
+      }
+    },
+    "evals/fixtures/eval-8-generated-memory/codex-memories/extensions/ad_hoc/notes/.gitkeep": {
+      "upstream_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "local_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-8-generated-memory/codex-memories/memory_summary.md": {
+      "upstream_sha256": "476bf396f1a5b84f6d314aaeff328486c8c9f957707a0cab2f6af5fa3c004836",
+      "local_sha256": "476bf396f1a5b84f6d314aaeff328486c8c9f957707a0cab2f6af5fa3c004836",
+      "status": "identical",
+      "sections": {
+        "# GENERATED SUMMARY - DO NOT EDIT": "# GENERATED SUMMARY - DO NOT EDIT"
+      }
+    },
+    "evals/fixtures/eval-8-generated-memory/codex-memories/rollout_summaries/session.jsonl": {
+      "upstream_sha256": "94c8216cbe8befab8a6fb1f9aea89ae5b3dfe9dbaa457f87b601e9b659a17ddb",
+      "local_sha256": "94c8216cbe8befab8a6fb1f9aea89ae5b3dfe9dbaa457f87b601e9b659a17ddb",
+      "status": "identical"
+    },
+    "evals/fixtures/eval-8-generated-memory/project/README.md": {
+      "upstream_sha256": "5b0148f026e750b4acfc79ada710363c200fb8afe2310483a798fc834b54f83f",
+      "local_sha256": "5b0148f026e750b4acfc79ada710363c200fb8afe2310483a798fc834b54f83f",
+      "status": "identical",
+      "sections": {
+        "# Generated Memory Fixture": "# Generated Memory Fixture"
+      }
+    },
+    "evals/fixtures/eval-8-generated-memory/project/docs/ARCHITECTURE.md": {
+      "upstream_sha256": "e9ce0451708ab79f42957dabc99c1cf3dab34bfdbe4a387af853ec4361a7e6ae",
+      "local_sha256": "e9ce0451708ab79f42957dabc99c1cf3dab34bfdbe4a387af853ec4361a7e6ae",
+      "status": "identical",
+      "sections": {
+        "# Architecture": "# Architecture"
+      }
+    },
+    "evals/fixtures/eval-8-generated-memory/project/runtime.txt": {
+      "upstream_sha256": "ddfec30b57b1c3422bb4fbff2454a948cb375a03e38316a6180f62338a3ff85c",
+      "local_sha256": "ddfec30b57b1c3422bb4fbff2454a948cb375a03e38316a6180f62338a3ff85c",
+      "status": "identical"
+    },
+    "evals/trigger-eval.json": {
+      "upstream_sha256": "6ab08e40158ab69f552485c4a3b4ef75d10de7dfed238ce29c12da3f9dea7324",
+      "local_sha256": "6ab08e40158ab69f552485c4a3b4ef75d10de7dfed238ce29c12da3f9dea7324",
+      "status": "identical"
+    },
+    "evals/validate.py": {
+      "upstream_sha256": "6ddd014bd7e30ecf11007174029a4a3de4d49eae192701791c55c1b9a152598b",
+      "local_sha256": "454c9bd554f0b69cc4b7755beaf31d44d27f40755af50b8f6bedd6e9b9d2cc75",
+      "status": "adapted",
+      "reason": [
+        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            18,
+            22
+          ],
+          "local_lines": [
+            18,
+            19
+          ],
+          "removed_sha256": "d804318048ed4e25341ce97ee4d73e4a299a7b465b487feb7647d206f577b1a3",
+          "added_sha256": "094e1e03f3c8703f27415050fcbb8ea230d0cadf1fd1ca1a8358449903bacce7"
+        },
+        {
+          "upstream_lines": [
+            23,
+            30
+          ],
+          "local_lines": [
+            20,
+            22
+          ],
+          "removed_sha256": "22602fe10c5b5b5d4279deb4f574966ab48d9cc46ee4699b8c67541569df3b72",
+          "added_sha256": "4e1edf801d93a659672b646e709f345a30ce0b2bf3cfe3964f4e4b0a2f200612"
+        },
+        {
+          "upstream_lines": [
+            44,
+            67
+          ],
+          "local_lines": [
+            36,
+            37
+          ],
+          "removed_sha256": "855dddb6c29e9fb455b85aa6b403478807e9f1ef95ff50b9fc100384d99fbf7a",
+          "added_sha256": "821f5cbaca3d7feeb19d3fe3c8b9f6d1b0a81210fa70711df87b6b31cd306695"
+        },
+        {
+          "upstream_lines": [
+            138,
+            139
+          ],
+          "local_lines": [
+            108,
+            109
+          ],
+          "removed_sha256": "d8da87542313c95da26fc52d32c968a27d3ea029393b1103b7ca9fd0b0b60fcd",
+          "added_sha256": "0d9ef8fcb5914d74c58bbde3821429f0e73015c61d4dde44a99c531bd0407b48"
+        }
+      ]
+    },
+    "references/agent-paths.md": {
+      "upstream_sha256": "8210a3cc1211283f71f068de99fd17e62fb9ce269ca6e693879ce6c30e31aff6",
+      "local_sha256": "8210a3cc1211283f71f068de99fd17e62fb9ce269ca6e693879ce6c30e31aff6",
+      "status": "identical",
+      "sections": {
+        "# Claude / Codex 路径、加载和体量速查": "# Claude / Codex 路径、加载和体量速查",
+        "## Claude Code": "## Claude Code",
+        "## OpenAI Codex": "## OpenAI Codex",
+        "## 共存检查": "## 共存检查",
+        "## 其他 Agent Skills 平台（Qoder、Kimi Code、iFlow、CodeBuddy、Cursor、Gemini CLI 等）": "## 其他 Agent Skills 平台（Qoder、Kimi Code、iFlow、CodeBuddy、Cursor、Gemini CLI 等）",
+        "## 官方复核入口": "## 官方复核入口",
+        "## 通用原则": "## 通用原则"
+      }
+    },
+    "references/governance.md": {
+      "upstream_sha256": "6bf4bbf171864f2c82a5f8b8cf441df043362e8790c69ddca38f207c38bb5f72",
+      "local_sha256": "0866be52b4ed95244ff54f0b87695f455f8d071c5de96908f4c1bcf443e2d23e",
+      "status": "adapted",
+      "reason": [
+        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            16,
+            17
+          ],
+          "local_lines": [
+            16,
+            17
+          ],
+          "removed_sha256": "4874b34ae7f9c3c1133e8926ef7466836bd9665e883406996cd39f5a1fea6051",
+          "added_sha256": "c23f2fdf4c07cbf406b88db7ff5428187e5cebdf37678b8529974b2a4b54e758"
+        }
+      ],
+      "sections": {
+        "# 规范执行审计细则": "# 规范执行审计细则",
+        "## 处置等级": "## 处置等级",
+        "## 报告要求": "## 报告要求",
+        "## 提取可机械核验约定": "## 提取可机械核验约定",
+        "## 核验范围": "## 核验范围",
+        "## 确定实际规则链": "## 确定实际规则链",
+        "## 规则本身的质量": "## 规则本身的质量",
+        "### 先报告再决定": "### 先报告再决定",
+        "### 只读报告": "### 只读报告",
+        "### 可直接修": "### 可直接修"
+      }
+    },
+    "references/sync-matrix.md": {
+      "upstream_sha256": "5c771ba2695a0d0dc54ef636531d61c916ed7f0f39db39827bbb330268f7648d",
+      "local_sha256": "2e5ca8c8313f10e2cec8bdc2deb4f29bb0a53817ac23fba7571b292e18a53b0c",
+      "status": "adapted",
+      "reason": [
+        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            15,
+            16
+          ],
+          "local_lines": [
+            15,
+            16
+          ],
+          "removed_sha256": "7c62b2a789498a20c6f6db16333c19b31a9aa67e8aaf9086e94fb18eb3cd6b06",
+          "added_sha256": "c8a3fe1d2d29ce0cf2ba4aadcaf315547ea7f4fcb60ee710b08917a7c7d5ca5b"
+        },
+        {
+          "upstream_lines": [
+            61,
+            62
+          ],
+          "local_lines": [
+            61,
+            62
+          ],
+          "removed_sha256": "b3532ac3dcf753f37c7194bf4073e23e7b858d79cd2c3ffdb981bf2bb8e3c2ce",
+          "added_sha256": "bb45776a615d4cf9a7200777d79abb5b3816c6f4228e474b7e9a74d3f9c605fd"
+        }
+      ],
+      "sections": {
+        "# 变更影响矩阵": "# 变更影响矩阵",
+        "## 代码或运行态变化 → 知识面": "## 代码或运行态变化 → 知识面",
+        "## 先删哪些噪音": "## 先删哪些噪音",
+        "## 受众职责": "## 受众职责",
+        "## 规则违规 → 动作": "## 规则违规 → 动作",
+        "## 记忆路由": "## 记忆路由",
+        "## 跨项目检查": "## 跨项目检查"
+      }
+    },
+    "references/verification.md": {
+      "upstream_sha256": "cd3f4bf5cdc59c3aa51db868801f7461563a4b4a58b72799a6753c1f863c4126",
+      "local_sha256": "bff54d43ea1013346419fdbc105b07e12a364540fd456ca06724f952c5085e75",
+      "status": "adapted",
+      "reason": [
+        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            12,
+            14
+          ],
+          "local_lines": [
+            12,
+            14
+          ],
+          "removed_sha256": "d739b95a042daba9227003dc49643a6b40afb4d50e289fe0c2c73559556e0011",
+          "added_sha256": "f320877474ebf197d0f9cdf342db44b95397737ad2d5e92c430d8094c21cf656"
+        },
+        {
+          "upstream_lines": [
+            47,
+            49
+          ],
+          "local_lines": [
+            47,
+            49
+          ],
+          "removed_sha256": "246b027ca5b424002e9bc303ef34d4854307a9d3162e3cf19f127dffd440b493",
+          "added_sha256": "2b7593104b080c3476715f5e68c9e37be8de91fcc98f86470a36969223634c26"
+        },
+        {
+          "upstream_lines": [
+            54,
+            55
+          ],
+          "local_lines": [
+            54,
+            55
+          ],
+          "removed_sha256": "fb31dcfefa6086578a245f4b180435f294c386454c0d3257c92c2c342e26a324",
+          "added_sha256": "ae1a3f8d91d6d5bf5cdc2939206503ef1ca63fa2f297c2ef210a249abbb6cddd"
+        },
+        {
+          "upstream_lines": [
+            70,
+            71
+          ],
+          "local_lines": [
+            70,
+            71
+          ],
+          "removed_sha256": "a33cd15e1bb4d3e15bb73b7dc1465879fb296dd2a863cd5400a71e0f66229eb4",
+          "added_sha256": "35c43f6de2e5fd31887883beb654015086d2da2f91d1417f6f47b89ed5e143d6"
+        },
+        {
+          "upstream_lines": [
+            72,
+            73
+          ],
+          "local_lines": [
+            72,
+            73
+          ],
+          "removed_sha256": "822c34109bfc763494779dfccbb1bb318668fa52ee88f245465105db54d091b1",
+          "added_sha256": "8aafa225285d793bc5711c06acbe858b668d93870dfc53e45c8f55d751a49e74"
+        },
+        {
+          "upstream_lines": [
+            77,
+            79
+          ],
+          "local_lines": [
+            77,
+            79
+          ],
+          "removed_sha256": "66fd0f1ed391417e5a26f4f68d7d9e9e84c13d86847a416a220bc2538c58c84d",
+          "added_sha256": "a11cf011205ef4fe5139aa6ea59a6dce9fa6ca202e2a76517951e72bb1b32195"
+        },
+        {
+          "upstream_lines": [
+            82,
+            83
+          ],
+          "local_lines": [
+            82,
+            83
+          ],
+          "removed_sha256": "ce49cb18929d2a0643eba423341ba7d19d079c8ef0fc9e7273efe4d036f1b5bc",
+          "added_sha256": "a0e38925dada4ae2f3607cf8b521798d5ab5a905ec04b3f5992d7eb5e124525b"
+        }
+      ],
+      "sections": {
+        "# 证据层级与发布终态": "# 证据层级与发布终态",
+        "## 发布状态机": "## 发布状态机",
+        "## 清场前 gate": "## 清场前 gate",
+        "## 真相矩阵": "## 真相矩阵",
+        "## 缓存和多表面产品": "## 缓存和多表面产品",
+        "## 风险决定证据深度": "## 风险决定证据深度",
+        "## 验证失败时": "## 验证失败时"
+      }
+    },
+    "scripts/audit-inventory.sh": {
+      "upstream_sha256": "260315d659f19e63a12065f9cadd9b57f9c1ddc867457f6c0f6fd87c003a7325",
+      "local_sha256": "260315d659f19e63a12065f9cadd9b57f9c1ddc867457f6c0f6fd87c003a7325",
+      "status": "identical"
+    }
+  },
+  "local_only": {
+    "LICENSE": "b7f53d07ea4ae2eef26a4f8b28cb7d4df95586e2aa713df408f1ffde9f5a0fea"
+  }
+}
