@@ -4,7 +4,7 @@
 
 ## 使用正式 Skill
 
-先从当前 Agent 的 Skill 目录／发现工具加载正式安装的 `ego-browser` Skill，完整遵循它声明的启动、任务空间、快照、执行、接管和收尾接口。本文件不复制浏览器 API，也不维护旧 heredoc 片段。
+先从当前 Agent 的 Skill 目录／发现工具加载正式安装的 `ego-browser` Skill，使用它声明的启动、任务空间、快照、执行、接管和收尾接口。普通业务错误的 finally 收尾按下文执行；控制权或权限错误必须停止。本文件不复制浏览器 API，也不维护旧 heredoc 片段。
 
 - 浏览器选择统一遵循 [浏览器选路.md](浏览器选路.md)。本机日常外部网页默认 ego-browser；开发、指定环境与技术降级按实际任务处理。
 - 只操作本任务实际创建或明确接管的页面／空间。追问可复用同一目标的资源，页面变化后重新观察。
@@ -21,3 +21,32 @@
 当前会话无法证明某个空间归属时只报告，不自动回收。全局 `last-touch` 超过阈值不能证明空间已无人使用，尤其不能推断其他 Agent 会话的资源已过期。
 
 升级旧配置时移除依赖全局闲置时间批量回收的假设；保留用户有意留下的页面与并行会话。不要在此文档复制用户设置、真实会话或 transcript。
+
+## 本任务生命周期入口
+
+整轮只读浏览器脚本优先通过 `scripts/ego-run.mjs` 执行。为每个用户目标指定独立的 lease 文件和任务标签；同一 lease 同时只允许一个执行者。工作文件导出 `async function(task)`，只通过传入的 TaskSpace 操作页面，不自行创建其他空间。
+
+```js
+// work.mjs
+export default async function(task) {
+  const page = task.page('p1');
+  await page.goto('https://example.com', {timeout: 15000});
+  return {title: await page.title()};
+}
+```
+
+```bash
+node scripts/ego-run.mjs run /absolute/task/lease.json "Read example" /absolute/task/work.mjs
+node scripts/ego-run.mjs finish /absolute/task/lease.json
+node tests/test_ego_task.mjs
+```
+
+`run` 在创建前记录随机唯一名字，创建后记录编号；成功、页面错误及导航超时都进入 finally。`finish` 只读取指定 lease，逐一核对精确名字、编号、创建者和当前控制权，再调用一次原生 `finish`；等待回执与有界列表读回确认。用户创建或未知来源标签由浏览器原生保护，不逐页强关。
+
+多轮交互在 ego 的 Node runtime 动态导入安装目录的 `scripts/ego-task.mjs`。首轮调用 `openOwnedTask({taskSpace, listTaskSpaces}, {leasePath, label})`，以后仅复用该记录的编号；目标结束调用 `finishOwnedTask`。需要用户操作时按正式 Skill 交接并停止，不能因为页面还在就继续控制。显式指定浏览器 Profile 时，可向首轮传入已核实的 `profileId`。
+
+CLI 等待上限为60秒，超时不证明浏览器执行已取消。进程被杀或创建回执丢失时保留 lease；后续 `finish` 仅核对该记录，不扫描其他空间。`run` 遇到未结束的记录只做该记录的恢复收尾，本轮不开始新业务；若确认关闭，下一轮可重新执行。收尾已发出但回执丢失时不得重复调用 `finish`。
+
+`user_control`、`denied`、`protected_tabs` 和 `uncertain` 均保留记录并暂停自动操作，不以新空间绕过。维护者须核对实际空间及原操作是否结束；只有用户明确恢复控制，或原空间已确认消失且没有迟到操作，才可归档旧 lease 并开始新目标。不得仅按标题、域名、`ownership=agent` 或闲置时长猜测归属。
+
+整轮脚本的收尾只覆盖本入口实际创建的空间；旧空间没有 lease 时须由原任务的创建记录证明归属，再按正式接口单独收尾。没有关闭回执和列表确认时，交付说明必须写明空间尚未确认释放。

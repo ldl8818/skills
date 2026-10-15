@@ -588,6 +588,49 @@ print('@@LOOKUP_SPACES@@'+json.dumps([
         self.assertFalse((self.base / 'ego-script').exists())
 
 
+class EgoRunnerTests(Fixture):
+    def setUp(self):
+        super().setUp()
+        self.command = [REAL_NODE, str(ROOT / 'scripts/ego-run.mjs')]
+        self.env['FAKE_BASE'] = str(self.base)
+        self.env['EGO_BROWSER_BIN'] = str(self.bin / 'ego-fixture')
+        write(self.bin / 'ego-fixture', '#!' + sys.executable + """
+import json,os,pathlib,sys
+base=pathlib.Path(os.environ['FAKE_BASE'])
+(base/'ego-script').write_text(sys.stdin.read())
+if os.environ.get('FAKE_NO_RECEIPT') == '1': print('no structured result');sys.exit(0)
+result={'ok':os.environ.get('FAKE_FAILED') != '1','cleanup':{'status':'closed'}}
+if os.environ.get('FAKE_FINISH') == '1': result={'status':'closed'}
+print('@@LOOKUP_TASK@@'+json.dumps(result),file=sys.stderr)
+""", True)
+
+    def test_run_uses_json_arguments_and_stderr_receipt(self):
+        label = 'synthetic `touch sentinel` $(touch sentinel)'
+        code, out, err = self.run_cmd(self.command + ['run', str(self.base / 'lease.json'), label, str(self.base / 'work.mjs')])
+        self.assertEqual((code, err), (0, ''))
+        self.assertTrue(json.loads(out)['ok'])
+        script = (self.base / 'ego-script').read_text()
+        self.assertIn(json.dumps(label), script)
+        self.assertIn('runOwnedTask', script)
+        self.assertFalse((self.base / 'sentinel').exists())
+
+    def test_work_failure_keeps_cleanup_result(self):
+        code, out, _ = self.run_cmd(self.command + ['run', str(self.base / 'lease.json'), 'fixture', str(self.base / 'work.mjs')], FAKE_FAILED='1')
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(out)['cleanup']['status'], 'closed')
+
+    def test_finish_only_passes_requested_lease(self):
+        code, out, err = self.run_cmd(self.command + ['finish', str(self.base / 'lease.json')], FAKE_FINISH='1')
+        self.assertEqual((code, err), (0, ''))
+        self.assertEqual(json.loads(out)['status'], 'closed')
+        self.assertIn('await finishOwnedTask(api, options)', (self.base / 'ego-script').read_text())
+
+    def test_missing_receipt_fails_and_does_not_claim_cleanup(self):
+        code, out, err = self.run_cmd(self.command + ['finish', str(self.base / 'lease.json')], FAKE_NO_RECEIPT='1')
+        self.assertEqual((code, out), (1, ''))
+        self.assertIn('EGO_TASK_RECEIPT_MISSING', err)
+
+
 class SelftestTests(Fixture):
     def setUp(self):
         super().setUp()

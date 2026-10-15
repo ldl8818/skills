@@ -1,23 +1,23 @@
 # lookup
 
-> One general entry point for web lookup, content retrieval and source-backed research. Skill instructions are in Chinese.
+> One routing entry point for web search, content retrieval and browser tasks. Skill instructions are in Chinese.
 
-Lookup 负责把联网目标交给合适工具，并验证结果是否足够、真实且可追溯。专用官方资料和已连接服务优先；平台动作直接调用 OpenCLI 或专用 CLI；确需浏览器时，本机日常外部网页默认使用 ego lite 的正式 `ego-browser` Skill；localhost、元素标注与开发调试按实际能力选择，规则统一见 [浏览器选路.md](references/浏览器选路.md)。
+Lookup 是联网搜索、网页访问与浏览器任务的统一选路入口，包含本地 UI 验收；选定后交给专用 Skill、连接器、CLI 或宿主浏览器执行。工具随附的通用优先声明不重做选路。专用来源和浏览器候选统一见 [任务选路](references/任务选路.md) 与 [浏览器选路](references/浏览器选路.md)。
 
 ## 架构概览
 
-下图是任务级选路关系，并不表示四种执行路径会被同时调用。Lookup 是唯一通用检索入口；Agent Reach 本身也具备路由能力，但在此组合中只按需提供候选资料、环境诊断和已配置的转写能力，不作为第二个自动触发的总路由。
+下图是任务级选路关系，并不表示四种执行路径会被同时调用。Lookup 是唯一通用检索与浏览器选路入口；Agent Reach 本身也具备路由能力，但在此组合中只按需提供候选资料、环境诊断和已配置的转写能力，不作为第二个自动触发的总路由。
 
 ```mermaid
 flowchart TB
     agent["Codex / Claude Code / Hermes<br/>理解用户任务并推理"]
-    lookup["Lookup Skill<br/>唯一通用检索入口<br/>识别证据需求 · 授权边界 · 选路"]
+    lookup["Lookup Skill<br/>统一检索与浏览器选路<br/>识别证据需求 · 授权边界 · 选路"]
     reach["Agent Reach（可选）<br/>平台候选资料 · Doctor 诊断 · 已配置转写"]
     choose{"按任务选择最短有效路径"}
     official["官方 API / 已连接服务 / 搜索"]
     adapters["OpenCLI 站点 Adapter / 专用 CLI"]
     static["原站 HTTP / 本地静态正文提取"]
-    browser["通用 Browser Use<br/>日常默认 ego-browser<br/>按需 OpenCLI browser / 宿主 Browser"]
+    browser["浏览器执行接口<br/>Ego / 宿主 Browser / DevTools"]
     evidence["统一证据验收<br/>目标 · 来源 · 时效 · 完整性 · 证据类型"]
     enough{"证据足以回答？"}
     done["带来源交付已证实结论"]
@@ -99,7 +99,7 @@ test ! -e ~/.codex/skills/lookup && test ! -L ~/.codex/skills/lookup && \
   ln -s ~/.agents/skills/lookup ~/.codex/skills/lookup
 ```
 
-只给一个客户端使用时，可直接安装到该客户端发现的 Skill 目录。新开或重启客户端会话后，用「搜一下」「读这个链接」「这个视频讲了什么」触发。Skill 只能路由实际加载它的 Agent，不替未加载的客户端强制拦截联网操作。共享全局规则应与 [浏览器选路.md](references/浏览器选路.md) 一致：专用来源优先，日常外部网页默认 ego-browser，开发与调试按任务选择；保留用户指定环境和独立技术降级。默认选择不等于强制所有 Agent、账号和任务使用同一个浏览器。
+只给一个客户端使用时，可直接安装到该客户端发现的 Skill 目录。新开或重启客户端会话后，用「搜一下」「读这个链接」「这个视频讲了什么」触发。Skill 只能路由实际加载它的 Agent，不替未加载的客户端强制拦截联网操作。共享全局规则将浏览器与联网检索选路指向 Lookup，场景默认项只在 [浏览器选路.md](references/浏览器选路.md) 维护；用户指定环境、授权与安全边界保留。默认选择不等于强制所有 Agent、账号和任务使用同一个浏览器。
 
 ### OpenCLI Profile
 
@@ -112,7 +112,7 @@ opencli profile rename <contextId> ego-lite
 
 默认别名是 `ego-lite`。需要另一明确配置的 Profile 时，给 health 与 runner 使用同一 `LOOKUP_OPENCLI_PROFILE` 环境变量。helper 不替用户登录，也不注入或导出 Cookie。
 
-ego 不是必装前提；需要它时加载当前正式 `ego-browser` Skill。旧空间辅助脚本只做保守检查，普通安装不自动写 hook、不按全局闲置时间回收未知空间，见 [ego-space-hooks.md](references/ego-space-hooks.md)。
+ego 不是必装前提；需要它时加载当前正式 `ego-browser` Skill。任务脚本使用 `scripts/ego-run.mjs` 的本任务 lease 与 finally 收尾，多轮交互通过 `scripts/ego-task.mjs` 复用该 lease；只关闭有本任务创建证据的空间。旧空间辅助脚本仍只做保守检查，普通安装不自动写 hook、不按全局闲置时间回收未知空间，见 [ego-space-hooks.md](references/ego-space-hooks.md)。
 
 ## 验证
 
