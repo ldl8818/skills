@@ -26,7 +26,7 @@
 `commands/` 保存显式调用的普通命令文档，不注册为 Skill。
 
 - [push](commands/push.md)：统一由主 Agent 直接提交并推送，不启动执行子 Agent。低风险走最低必要检查，标准档定向检查受影响部分，复用已有验证。指定范围时遵循指定；省略范围时，待提交任务全部完成则按任务分批提交，存在未完成或状态不明任务则仅处理本次任务。完成判断、最低检查及按需场景表见命令正文。
-- 普通文案提交只做局部检查与 Git 结果核验，复用已有上下文和验证；无明确适用门禁时不跑全仓检查。普通 push 不等待 CI 终态、不自动修复 CI；推送、本地检查与 CI 结果分别报告，项目明确要求的门禁仍保留。
+- 普通文案提交只做局部检查与 Git 结果核验，复用已有上下文和验证；无明确适用门禁时不跑全仓检查。无关 WIP 不默认触发隔离，正常 Hook 覆盖的同输入检查不手动重复。普通 push 不主动触发、查询或等待远端 CI，不自动修复 CI；远端收到即交付，项目明确要求的门禁及用户指定的 CI 任务仍保留。执行路径与例外以命令正文为准。
 - 本机 Claude Code 与 WorkBuddy 输入 `/push`；Codex CLI／IDE／桌面应用输入“执行push”。通过 chezmoi 将 `~/.claude/commands/push.md`、`~/.agents/commands/push.md`、`~/.workbuddy-ai/commands/push.md` 单跳链接到本仓库真身，全局规则提供 Codex 按需入口。新机器需先取得本仓库并部署对应链接／规则；执行只需当前客户端的终端能力及 Git 认证，不依赖另一模型或客户端。
 - [Codex 自定义 prompts](https://developers.openai.com/codex/custom-prompts/) 已弃用，本机 CLI 0.154.0 实测不识别 `/prompts:push`，因此不将它作为可用入口。Claude Code 的 [commands Markdown 格式](https://code.claude.com/docs/en/skills#where-skills-live) 仍受支持。新装后重启客户端／新开会话加载入口。
 
