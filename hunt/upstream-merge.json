@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "8ae2315c6242a7f59a938650e398d977569831ade1346e0fceee5a12cf69d1a1",
-      "local_sha256": "5a1a48b4807eae2f7afdb3d25cfe7f3f40e6c9aa3e7a289ed3c51c51c33dca40",
+      "local_sha256": "affbe36416239adfe34cc4f5589dabf815260e3bd17ff27a640f0e5298886607",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Finds root cause before any fix. Use when something errors, crashes, regresses, or used to work. Not for code review or new features.\"\n",
@@ -20,7 +20,8 @@
         "Recognize standing repair authorization as well as the current wording.",
         "Retain preservation of concurrent WIP without inventing a cleanup gate.",
         "Avoid arbitrary failure counts terminating authorized troubleshooting.",
-        "Preserve the local diagnosis-to-Check handoff and ownership of final verification."
+        "Preserve the local diagnosis-to-Check handoff and ownership of final verification.",
+        "Honor user-authorized necessary, reversible corrections to existing external objects while retaining separate authorization for new publications, new messages and destructive actions."
       ],
       "changes": [
         {
@@ -69,7 +70,7 @@
             30
           ],
           "removed_sha256": "903ed187a43597dab07b3ad4503ff75c3e8320949b1c55873cc00d7f225eddf7",
-          "added_sha256": "a719b0939d4b11d1c93fb466a95bdec12cd147e420c89eef3552cf867cad8ff4"
+          "added_sha256": "74ea29b8f914e5af0ac870cf5504de1543dfa0530acc8b58cd3f30812fffa31b"
         },
         {
           "upstream_lines": [

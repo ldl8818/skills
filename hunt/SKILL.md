@@ -27,7 +27,7 @@ A patch applied to a symptom creates a new bug somewhere else.
 - Done when: one sentence explains the cause, every observed symptom fits it, and the fix or handoff is verified against a reproducible check.
 - Evidence: source trace, repro command or UI path, logs or state, targeted test/build output, and runtime evidence for UI or native defects.
 - Output: root cause, fix or handoff, verification result, and any unswept sibling risks.
-- Authorization: apply task and standing necessary-repair authorization from the user and applicable instructions; explicit diagnosis-only or read-only remains report-only. Apply a fix when that authorization covers it; root-cause proof is still required first. A fix authorization never carries commit, push, publish, or any destructive action with it.
+- Authorization: apply task and standing necessary-repair authorization from the user and applicable instructions; explicit diagnosis-only or read-only remains report-only. Apply a fix when that authorization covers it; root-cause proof is still required first. Honor standing authorization for necessary corrections to existing external objects. A fix request does not by itself grant permission to commit, push, create new publications or messages, or perform destructive actions.
 
 **Do not touch code until you can state the root cause in one sentence:**
 > "I believe the root cause is [X] because [evidence]."
