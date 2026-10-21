@@ -65,6 +65,15 @@ bash scripts/selftest.sh --search
 
 Exa 可在 CLI 退出0且未设置 `isError` 时，用 `_meta` 中的 `ai.exa/rateLimited: true` 返回限流提示；这不是搜索结果。自检将其报告为 `EXA_RATE_LIMITED`。固定样本成功不保证下一条不同查询可用，实际请求仍须单独验收，不能用自检结果覆盖真实限流回执。
 
+#### 额度与恢复条件
+
+以下为2026-10-22核对的官方说明与源码，服务端配置可能变化：
+
+- 免 Key MCP 与免费账户额度分开计算。[账户计费说明](https://exa.ai/docs/admin/billing#free-tier-credits) 当前为首个团队每月10美元额度、完成 onboarding 后另有一次性10美元奖励；月额度在每月1日重置且不累积。现行说明不承诺每月20,000次搜索，账户额度也不自动分配给匿名入口。
+- [托管端源码](https://github.com/exa-labs/exa-mcp-server/blob/0b499f095c4ca145eee07b09137641c037d58449/api/mcp.ts#L155) 的匿名限流默认按服务端识别的出口 IP 统计：每秒2次滑动窗口、每天50次固定窗口，可由服务端环境变量覆盖。只统计 `tools/call`，不统计初始化或 `tools/list`；`numResults=3` 不等于3次工具调用。共享出口可能共用计数，源码默认值不是线上额度保证。
+- 托管端 IP 限流返回 HTTP 429及 `Retry-After`（秒）、`X-RateLimit-Reset`（Unix 毫秒）；按实际响应等待相应窗口。日窗口是固定边界，不是首次查询后滚动24小时；不得自行承诺某个本地时间恢复。`X-RateLimit-Limit: 0` 是源码有意隐藏限流维度，不能解读为免费额度为零。
+- 下游 Exa API 的429可被[错误处理器](https://github.com/exa-labs/exa-mcp-server/blob/0b499f095c4ca145eee07b09137641c037d58449/src/utils/errorHandler.ts#L85) 包装为 HTTP 200的 MCP 限流提示，只保留上述 `_meta` 标记，不透传具体原因或重置时间。此时报告恢复时间未知，不能认定日额度耗尽、已经付费或必须添加 Key；也不能用固定样本成功证明缓存或其他查询必然可用。
+
 ### 豆包可选入口
 
 当前参考路径是 [huashu-doubao-search](https://github.com/alchaincyf/huashu-doubao-search)，需要搜索专用 `DOUBAO_SEARCH_API_KEY`，不能用普通模型 Key 代替。先只读核对当前进程和已授权的搜索／Agent 配置是否已有该 Key；只报告存在与来源，不回显值、不扩大为全盘凭据扫描。
@@ -83,6 +92,8 @@ npx 会按需获取上游包，执行安装与首次运行前核对其当前来�
 mcporter list huashu-doubao-search --schema --json --no-oauth
 mcporter call huashu-doubao-search.doubao_search query="<词>" count=5 max_age_days=7 --no-oauth
 ```
+
+桌面 Agent 未继承 Shell 环境变量时，可把 Key 存在本机独立的600权限文件，由支持 `--env-file` 的 Node 直接加载后启动已安装 MCP；只在 mcporter 配置中保存文件与程序路径。目录和启动参数按本机生成，凭据可通过使用者自己的加密 dotfiles 恢复；其他机器还需恢复运行依赖并完成 schema 与业务验收，复制配置不代表可用。恢复入口须保留其他 MCP 服务，遇到不同账号的同名配置时停止，不把本机绝对路径或明文 Key 固化进共享模板。此方案与上方环境变量注入二选一，不叠加安装两个搜索入口。
 
 `--search` 只报告豆包配置是否可读取，始终不发豆包查询；即便已找到 Key，也不能把“已配置”当业务验证通过或免费额度已确认。
 
