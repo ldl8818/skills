@@ -96,430 +96,124 @@ class Fixture(unittest.TestCase):
             self.temp.cleanup()
 
 
-MOCK_DAEMON = r"""
-import atexit, json, os, pathlib, signal, time
-base = pathlib.Path(os.environ['FAKE_BASE'])
-(base / ('mock-pid-' + str(os.getpid()))).write_text(str(os.getpid()))
-atexit.register(lambda: (base / ('mock-exited-' + str(os.getpid()))).write_text('yes'))
-with (base / 'starts').open('a') as log: log.write(str(os.getpid()) + '\n')
-(base / 'spawned-pid').write_text(str(os.getpid()))
-def stop(_sig, _frame):
-    (base / 'term-seen').write_text('yes')
-    if os.environ.get('FAKE_IGNORE_TERM') != '1':
-        raise SystemExit(0)
-signal.signal(signal.SIGTERM, stop)
-signal.signal(signal.SIGINT, stop)
-if os.environ.get('FAKE_START_FAIL') == '1':
-    raise SystemExit(1)
-started = time.monotonic()
-delay = float(os.environ.get('FAKE_START_DELAY', '0'))
-reconnect_delay = float(os.environ.get('FAKE_RECONNECT_DELAY', '0'))
-lifetime = float(os.environ.get('FAKE_DAEMON_LIFETIME', '8'))
-while time.monotonic() - started < lifetime:
-    if (base / 'stop-request').exists(): break
-    if time.monotonic() - started >= delay:
-        (base / 'ready-pid').write_text(str(os.getpid()))
-    if time.monotonic() - started >= reconnect_delay:
-        (base / 'extension-ready').touch()
-    if os.environ.get('FAKE_EXIT_AFTER_STATUS') == '1' and (base / 'disconnected-seen').exists():
-        raise SystemExit(1)
-    time.sleep(.02)
+MOCK_OPENCLI = r"""
+import json,os,pathlib,sys,time
+base=pathlib.Path(os.environ['FAKE_BASE'])
+if sys.argv[1:]==['--version']:
+    print(os.environ.get('FAKE_VERSION','2.0.2'));raise SystemExit(0)
+with (base/'dispatch').open('a') as log: log.write(json.dumps(sys.argv[1:])+'\n')
+if os.environ.get('FAKE_NEVER')=='1': time.sleep(10)
+time.sleep(float(os.environ.get('FAKE_DELAY','0')))
+if sys.argv[1:]==['doctor']:
+    print(os.environ.get('FAKE_DOCTOR','{"ok":true,"data":{"daemonRunning":true,"extensionConnected":true,"connectivity":{"ok":true}}}'))
+elif os.environ.get('FAKE_PROFILE')=='1':
+    print(json.dumps({'profile':os.environ.get('OPENCLI_PROFILE'),'cleanup':os.environ.get('OPENCLI_CLOSE_OWNED_TAB')}))
+else:
+    print('{"ok":true,"data":[{"text":"late result"}]}')
+    print('upstream diagnostic',file=sys.stderr)
+raise SystemExit(int(os.environ.get('FAKE_EXIT','0')))
 """
 
-MOCK_CURL = r"""
-import atexit, json, os, pathlib, sys, time
-from urllib.parse import urlparse, parse_qs
-base = pathlib.Path(os.environ['FAKE_BASE'])
-(base / ('mock-pid-' + str(os.getpid()))).write_text(str(os.getpid()))
-atexit.register(lambda: (base / ('mock-exited-' + str(os.getpid()))).write_text('yes'))
-url = sys.argv[-1]
-with (base / 'calls').open('a') as log: log.write(url + '\n')
-mode = os.environ.get('FAKE_MODE', 'ready')
-count = len((base / 'calls').read_text().splitlines())
-if mode == 'hang' or (mode == 'blocked-second' and count >= 2):
-    (base / 'probe-blocked').write_text(str(os.getpid()))
-    deadline = time.monotonic() + 8
-    while time.monotonic() < deadline and not (base / 'stop-request').exists(): time.sleep(.02)
-    raise SystemExit(28)
-if mode in ('refused', 'blocked-second'):
-    raise SystemExit(7)
-if mode == 'invalid':
-    print('not-json')
-    raise SystemExit(0)
-pid = int(os.environ.get('FAKE_EXISTING_PID', str(os.getppid())))
-if mode.startswith('cold') or mode == 'reconnect':
-    try:
-        ready_pid = int((base / 'ready-pid').read_text())
-        pid = int(os.environ.get('FAKE_REPLACEMENT_PID') or ready_pid)
-        os.kill(pid, 0)
-    except (OSError, ValueError):
-        raise SystemExit(7)
-    if os.environ.get('FAKE_REPLACEMENT_PID'):
-        pid = int(os.environ['FAKE_REPLACEMENT_PID'])
-context = parse_qs(urlparse(url).query).get('contextId', [''])[0]
-status = dict(ok=True, pid=pid, daemonVersion='1.8.8', extensionVersion='fixture',
-              extensionConnected=True, contextId=context)
-if mode in ('disconnected', 'cold-disconnected'):
-    status.update(extensionConnected=False)
-if mode in ('required', 'cold-required'):
-    status.update(profileRequired=True)
-if mode == 'profile-disconnected':
-    status.update(extensionConnected=False, profileDisconnected=True)
-if mode == 'cold-delayed-profile' and not (base / 'extension-ready').exists():
-    # Read a daemon-owned marker: macOS Python 3.9 monotonic clocks are
-    # process-local, so separate fixture processes must not compare them.
-    status.update(extensionConnected=False, profileDisconnected=True)
-    (base / 'disconnected-seen').touch()
-if mode == 'wrong-profile':
-    status.update(contextId='unrelated-context')
-if mode == 'reconnect':
-    ready_count = base / 'ready-count'
-    n = int(ready_count.read_text()) + 1 if ready_count.exists() else 1
-    ready_count.write_text(str(n))
-    if n == 1:
-        status.update(extensionConnected=False, profileDisconnected=True)
-print(json.dumps(status))
-"""
+class RunnerTests(Fixture):
+    def setUp(self):
+        super().setUp()
+        write(self.bin/'opencli', '#!'+sys.executable+'\n'+MOCK_OPENCLI, True)
+        self.env['FAKE_BASE']=str(self.base)
+        self.command=[REAL_NODE,str(ROOT/'scripts/opencli-run.mjs')]
+
+    def test_native_delayed_result_and_exit_are_preserved(self):
+        code,out,err=self.run_cmd(self.command+['example','read'],FAKE_DELAY='0.2',FAKE_EXIT='7')
+        self.assertEqual(code,7)
+        self.assertEqual(json.loads(out)['data'][0]['text'],'late result')
+        self.assertIn('upstream diagnostic',err)
+        self.assertEqual(len((self.base/'dispatch').read_text().splitlines()),1)
+
+    def test_literal_arguments_are_not_shell_source(self):
+        args=['example','read','a b; $(touch never) & "quoted"']
+        code,_,_=self.run_cmd(self.command+args)
+        self.assertEqual(code,0)
+        self.assertEqual(json.loads((self.base/'dispatch').read_text()),args)
+
+    def test_profile_and_owned_cleanup_are_explicit(self):
+        code,out,_=self.run_cmd(self.command+['--profile','work','example','read'],
+            LOOKUP_OPENCLI_PROFILE='work',OPENCLI_PROFILE='unrelated',FAKE_PROFILE='1')
+        self.assertEqual(code,0)
+        self.assertEqual(json.loads(out),{'profile':'work','cleanup':'1'})
+
+    def test_conflicting_profile_and_transport_fail_before_dispatch(self):
+        cases=[(['--profile','chrome'],{}),(['--profile=chrome','--profile=ego-lite'],{}),
+               (['--profile'],{}),([] ,{'OPENCLI_CDP_ENDPOINT':'http://127.0.0.1:9222'}),
+               ([],{'OPENCLI_DAEMON_PORT':'19825'})]
+        for args,env in cases:
+            with self.subTest(args=args,env=env):
+                code,_,err=self.run_cmd(self.command+args,**env)
+                self.assertEqual(code,78)
+                self.assertFalse(json.loads(err)['outcome_unknown'])
+                self.assertFalse((self.base/'dispatch').exists())
+
+    def test_old_and_unknown_major_versions_fail_closed(self):
+        for version in ['1.8.8','2.0.1','3.0.0','2.0.2-beta','garbage']:
+            code,_,err=self.run_cmd(self.command,FAKE_VERSION=version)
+            self.assertEqual(code,78)
+            self.assertIn('OPENCLI_VERSION_UNSUPPORTED',err)
+        self.assertFalse((self.base/'dispatch').exists())
+
+    def test_auth_requires_explicit_sites(self):
+        for args in [['auth','status'],['--profile','ego-lite','auth','refresh'],['--','auth','status'],
+                     ['auth','status','--site','example','--site= , ']]:
+            code,_,err=self.run_cmd(self.command+args)
+            self.assertEqual(code,78)
+            self.assertIn('OPENCLI_AUTH_SITE_REQUIRED',err)
+        code,_,_=self.run_cmd(self.command+['auth','status','--site','example'])
+        self.assertEqual(code,0)
+
+    def test_interrupt_reports_unknown_and_stops_owned_child(self):
+        child=self.spawn(self.command+['example','read'],env=dict(self.env,FAKE_NEVER='1'))
+        self.assertTrue(wait_for(lambda:(self.base/'dispatch').exists()))
+        child.send_signal(signal.SIGTERM)
+        code,_,err=self.collect(child)
+        self.assertEqual(code,143)
+        self.assertTrue(json.loads(err)['outcome_unknown'])
+        self.assertEqual(len((self.base/'dispatch').read_text().splitlines()),1)
+
+    def test_deadline_does_not_redispatch(self):
+        code,_,err=self.run_cmd(self.command+['example','read'],FAKE_NEVER='1',LOOKUP_OPENCLI_TIMEOUT_MS='1200')
+        self.assertEqual(code,75)
+        self.assertTrue(json.loads(err)['outcome_unknown'])
+        self.assertFalse(json.loads(err)['retryable'])
+        self.assertEqual(len((self.base/'dispatch').read_text().splitlines()),1)
+
+    def test_invalid_budget_rejected(self):
+        code,_,err=self.run_cmd(self.command,LOOKUP_OPENCLI_TIMEOUT_MS='NaN')
+        self.assertEqual(code,78)
+        self.assertFalse((self.base/'dispatch').exists())
 
 
 class HealthTests(Fixture):
     def setUp(self):
         super().setUp()
-        self.env.update(FAKE_BASE=str(self.base), OPENCLI_CONFIG_DIR=str(self.base / 'config'))
-        self.config = self.base / 'config' / 'browser-profiles.json'
-        write(self.config, json.dumps({'aliases': {'ego-lite': 'ego', 'work': 'work-context'}}))
-        write(self.bin / 'opencli', '#!/bin/sh\nexit 99\n', True)
-        write(self.bin / 'node', '#!' + sys.executable + '\nimport os,sys\nos.execv(sys.executable,[sys.executable,*sys.argv[1:]])\n', True)
-        write(self.bin / 'daemon.js', MOCK_DAEMON)
-        write(self.bin / 'curl', '#!' + sys.executable + '\n' + MOCK_CURL, True)
-        self.command = ['bash', str(ROOT / 'scripts/opencli-health.sh')]
+        write(self.bin/'opencli', '#!'+sys.executable+'\n'+MOCK_OPENCLI, True)
+        self.env['FAKE_BASE']=str(self.base)
+    def health(self,report):
+        return self.run_cmd(['bash',str(ROOT/'scripts/opencli-health.sh')],FAKE_DOCTOR=json.dumps(report))
 
-    def health(self, mode='ready', timeout=6, **env):
-        start = time.monotonic()
-        code, out, err = self.run_cmd(self.command, timeout=timeout, FAKE_MODE=mode, **env)
-        self.wall = time.monotonic() - start
-        self.assertFalse(err, err)
-        return code, json.loads(out)
+    def test_native_doctor_success(self):
+        code,out,_=self.health({'ok':True,'data':{'daemonRunning':True,'extensionConnected':True,'connectivity':{'ok':True}}})
+        self.assertEqual(code,0)
+        self.assertEqual(json.loads(out)['state'],'ready')
+        self.assertEqual(json.loads((self.base/'dispatch').read_text()),['doctor'])
 
-    def lock_available(self):
-        lock = self.home / 'tmp/lookup-runtime/opencli-health-daemon.v2.flock'
-        with lock.open('a') as handle:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    def test_zero_exit_does_not_mean_connected(self):
+        for data in [{}, {'daemonRunning':True,'extensionConnected':True,'connectivity':{'ok':False}},
+                     {'daemonRunning':True,'extensionConnected':True,'connectivity':{'ok':True},'daemonStale':True}]:
+            code,out,_=self.health({'ok':True,'data':data})
+            self.assertEqual(code,78)
+            self.assertFalse(json.loads(out)['ok'])
 
-    def daemon_alive(self):
-        if not (self.base / 'spawned-pid').exists():
-            return False
-        pid = int((self.base / 'spawned-pid').read_text())
-        return pid_exists(pid) and not (self.base / ('mock-exited-' + str(pid))).exists()
-
-    def test_ready_is_status_only_and_profile_scoped(self):
-        code, result = self.health()
-        self.assertEqual(code, 0)
-        self.assertTrue(result['ok'])
-        self.assertFalse(result['started_daemon'])
-        self.assertEqual(result['profile'], 'ego-lite')
-        self.assertEqual(result['fault_scope'], 'bridge_profile')
-        self.assertEqual(len((self.base / 'calls').read_text().splitlines()), 1)
-
-    def test_cold_start_retains_healthy_daemon_and_releases_lock(self):
-        code, result = self.health('cold-ready')
-        self.assertEqual(code, 0)
-        self.assertTrue(result['started_daemon'])
-        self.assertFalse(result['restored_daemon'])
-        self.assertTrue(self.daemon_alive())
-        self.lock_available()
-
-    def test_cold_start_waits_for_profile_reconnect(self):
-        code, result = self.health('reconnect')
-        self.assertEqual(code, 0)
-        self.assertTrue(result['ok'])
-        self.assertGreaterEqual(int((self.base / 'ready-count').read_text()), 2)
-
-    def test_cold_start_waits_through_extension_backoff(self):
-        # Installed extension retry can take 15s plus jitter. A 16s fixture
-        # verifies the real cold-start failure without a browser or network.
-        code, result = self.health('cold-delayed-profile', timeout=21,
-                                   FAKE_RECONNECT_DELAY='16', FAKE_DAEMON_LIFETIME='24')
-        self.assertEqual((code, result['state']), (0, 'ready'))
-        self.assertTrue(result['started_daemon'])
-        self.assertFalse(result['restored_daemon'])
-        self.assertTrue(self.daemon_alive())
-        self.assertLess(self.wall, 21)
-        self.lock_available()
-
-    def test_cold_reconnect_timeout_remains_bounded_and_cleans_own_daemon(self):
-        code, result = self.health('cold-delayed-profile', timeout=23,
-                                   FAKE_RECONNECT_DELAY='60', FAKE_DAEMON_LIFETIME='24')
-        self.assertEqual((code, result['state']), (78, 'profile_disconnected'))
-        self.assertGreaterEqual(self.wall, 17)
-        self.assertLess(self.wall, 22)
-        self.assertTrue(result['restored_daemon'])
-        self.assertFalse(self.daemon_alive())
-        self.lock_available()
-
-    def test_daemon_exit_during_reconnect_does_not_reuse_old_profile_status(self):
-        code, result = self.health('cold-delayed-profile', FAKE_RECONNECT_DELAY='60',
-                                   FAKE_EXIT_AFTER_STATUS='1')
-        self.assertTrue((self.base / 'disconnected-seen').exists())
-        self.assertEqual((code, result['state']), (69, 'daemon_start_failed'))
-        self.assertEqual(result['daemon'], 'stopped')
-        self.assertLess(self.wall, 3)
-        self.assertTrue(result['restored_daemon'])
-        self.assertFalse(self.daemon_alive())
-
-    def test_existing_disconnected_daemon_is_not_touched(self):
-        existing = self.spawn([sys.executable, '-c', 'import time; time.sleep(8)'])
-        code, result = self.health('disconnected', FAKE_EXISTING_PID=str(existing.pid))
-        self.assertEqual(code, 69)
-        self.assertEqual(result['state'], 'extension_disconnected')
-        self.assertFalse(result['started_daemon'])
-        self.assertIsNone(existing.poll())
-
-    def test_existing_profile_errors_do_not_start_daemon(self):
-        for mode, state in [('required', 'profile_required'), ('profile-disconnected', 'profile_disconnected'),
-                            ('wrong-profile', 'profile_mismatch')]:
-            with self.subTest(mode=mode):
-                code, result = self.health(mode)
-                self.assertEqual((code, result['state']), (78, state))
-                self.assertFalse(result['started_daemon'])
-
-    def test_unbound_profile_fails_before_probe(self):
-        self.config.unlink()
-        code, result = self.health()
-        self.assertEqual((code, result['state']), (78, 'profile_unbound'))
-        self.assertFalse((self.base / 'calls').exists())
-
-    def test_custom_profile_and_port_override_inherited_profile(self):
-        code, result = self.health(LOOKUP_OPENCLI_PROFILE='work', OPENCLI_PROFILE='unrelated',
-                                   OPENCLI_DAEMON_PORT='19833')
-        self.assertEqual(code, 0)
-        self.assertEqual(result['profile'], 'work')
-        self.assertEqual(result['daemon_port'], 19833)
-        self.assertIn('127.0.0.1:19833/status?contextId=work-context', (self.base / 'calls').read_text())
-
-    def test_invalid_transport_profile_and_port_do_not_probe(self):
-        for env, state in [({'OPENCLI_CDP_ENDPOINT': 'http://127.0.0.1:9222'}, 'unsupported_transport'),
-                           ({'LOOKUP_OPENCLI_PROFILE': ''}, 'invalid_profile'),
-                           ({'OPENCLI_DAEMON_PORT': '0'}, 'invalid_daemon_port')]:
-            with self.subTest(state=state):
-                code, result = self.health(**env)
-                self.assertEqual((code, result['state']), (78, state))
-                self.assertFalse((self.base / 'calls').exists())
-
-    def test_case9_real_wall_clock_timeout_and_exact_child_cleanup(self):
-        code, result = self.health('cold-ready', FAKE_START_DELAY='6', FAKE_IGNORE_TERM='1')
-        self.assertEqual((code, result['state']), (75, 'daemon_timeout'))
-        self.assertLess(self.wall, 5.0)
-        self.assertLess(result['elapsed_ms'], 5000)
-        self.assertTrue(result['restored_daemon'])
-        self.assertFalse(self.daemon_alive())
-        print('\nhealth_case9_wall_ms=' + str(round(self.wall * 1000)), flush=True)
-
-    def test_cold_failure_does_not_kill_replacement_daemon(self):
-        existing = self.spawn([sys.executable, '-c', 'import time; time.sleep(8)'])
-        code, result = self.health('cold-required', FAKE_REPLACEMENT_PID=str(existing.pid), FAKE_IGNORE_TERM='1')
-        self.assertEqual((code, result['state']), (78, 'profile_required'))
-        self.assertTrue(result['restored_daemon'])
-        self.assertFalse(self.daemon_alive())
-        self.assertIsNone(existing.poll())
-        self.assertEqual(result['daemon'], 'running')
-
-    def test_failed_start_is_reaped(self):
-        code, result = self.health('cold-ready', FAKE_START_FAIL='1')
-        self.assertEqual((code, result['state']), (69, 'daemon_start_failed'))
-        self.assertTrue(result['restored_daemon'])
-        self.assertFalse(self.daemon_alive())
-
-    def test_invalid_existing_status_is_not_claimed(self):
-        code, result = self.health('invalid')
-        self.assertEqual((code, result['state']), (75, 'daemon_unresponsive'))
-        self.assertFalse(result['started_daemon'])
-
-    def test_hanging_curl_has_external_subprocess_deadline(self):
-        code, result = self.health('hang')
-        self.assertEqual((code, result['state']), (75, 'daemon_unresponsive'))
-        self.assertLess(self.wall, 2)
-        pid = int((self.base / 'probe-blocked').read_text())
-        self.assertFalse(pid_exists(pid))
-
-    def test_concurrent_cold_starts_have_one_owner(self):
-        first = self.spawn(self.command, env=dict(self.env, FAKE_MODE='cold-ready', FAKE_START_DELAY='.2'))
-        second = self.spawn(self.command, env=dict(self.env, FAKE_MODE='cold-ready', FAKE_START_DELAY='.2'))
-        results = [self.collect(first), self.collect(second)]
-        self.assertEqual([row[0] for row in results], [0, 0])
-        self.assertEqual(len((self.base / 'starts').read_text().splitlines()), 1)
-        self.assertEqual(sum(json.loads(row[1])['started_daemon'] for row in results), 1)
-        self.lock_available()
-
-    def test_repeated_signal_restores_only_spawned_daemon(self):
-        child = self.spawn(self.command, env=dict(self.env, FAKE_MODE='cold-ready',
-                                                 FAKE_START_DELAY='6', FAKE_IGNORE_TERM='1'))
-        self.assertTrue(wait_for(lambda: (self.base / 'spawned-pid').exists()))
-        child.send_signal(signal.SIGTERM)
-        time.sleep(.04)
-        if child.poll() is None:
-            child.send_signal(signal.SIGTERM)
-        code, _, _ = self.collect(child, 2)
-        self.assertEqual(code, 130)
-        self.assertFalse(self.daemon_alive())
-        self.lock_available()
-
-    def test_sigkill_releases_lock_while_child_is_alive(self):
-        child = self.spawn(self.command, env=dict(self.env, FAKE_MODE='cold-ready', FAKE_START_DELAY='6'))
-        self.assertTrue(wait_for(lambda: (self.base / 'spawned-pid').exists()))
-        child.kill()
-        self.collect(child, 2)
-        self.lock_available()
-        self.assertTrue(self.daemon_alive())  # teardown owns this exact mock.
-
-    def test_probe_child_cannot_extend_kernel_lock(self):
-        child = self.spawn(self.command, env=dict(self.env, FAKE_MODE='blocked-second'))
-        self.assertTrue(wait_for(lambda: (self.base / 'probe-blocked').exists()))
-        child.kill()
-        self.collect(child, 2)
-        self.lock_available()
-
-    def test_symlink_runtime_parent_fails_closed(self):
-        target = self.base / 'unrelated'
-        target.mkdir()
-        (self.home / 'tmp').symlink_to(target)
-        code, result = self.health('refused')
-        self.assertEqual(code, 78)
-        self.assertEqual(result['state'], 'lock_unavailable')
-        self.assertFalse((self.base / 'starts').exists())
-
-
-COMMANDER = r"""
-import fs from 'node:fs'
-export class Command {
-  parseAsync() {
-    fs.appendFileSync(process.env.FAKE_DISPATCH_LOG, 'dispatch\n')
-    if (process.env.FAKE_NEVER === '1') return new Promise(() => {})
-    if (process.env.FAKE_DELAY_MS) return new Promise(resolve => setTimeout(() => {
-      process.stdout.write('delayed-result\n'); resolve()
-    }, Number(process.env.FAKE_DELAY_MS)))
-    return { then(resolve) { process.stdout.write('async-result\n'); resolve() } }
-  }
-  parse() { this.parseAsync(); return this }
-}
-"""
-CLI = """import { Command } from 'commander'
-function createProgram() { return new Command() }
-export function runCli(BUILTIN_CLIS, USER_CLIS) {
-    createProgram(BUILTIN_CLIS, USER_CLIS).parse();
-}
-"""
-MAIN = """import { runCli } from './cli.js'
-import fs from 'node:fs'
-fs.writeFileSync(process.env.FAKE_ENTRY_LOG, 'entered')
-if (process.env.FAKE_IMPORT_NEVER === '1') await new Promise(() => {})
-if (process.env.FAKE_PRINT_PROFILE === '1') console.log('profile=' + process.env.OPENCLI_PROFILE)
-runCli()
-"""
-
-
-class RunnerTests(Fixture):
-    def setUp(self):
-        super().setUp()
-        self.package = self.base / 'package'
-        self.manifest = {'name': '@jackwener/opencli', 'version': '1.8.8', 'type': 'module',
-                         'bin': {'opencli': 'main.js'}}
-        write(self.package / 'package.json', json.dumps(self.manifest))
-        write(self.package / 'node_modules/commander/package.json',
-              json.dumps({'type': 'module', 'exports': './index.js'}))
-        write(self.package / 'node_modules/commander/index.js', COMMANDER)
-        write(self.package / 'cli.js', CLI)
-        write(self.package / 'main.js', MAIN, True)
-        (self.bin / 'opencli').symlink_to(self.package / 'main.js')
-        self.env.update(FAKE_DISPATCH_LOG=str(self.base / 'dispatch'), FAKE_ENTRY_LOG=str(self.base / 'entry'))
-        self.command = [REAL_NODE, str(ROOT / 'scripts/opencli-run.mjs')]
-
-    def test_awaits_action_result_that_direct_parse_loses(self):
-        direct = self.run_cmd([REAL_NODE, str(self.package / 'main.js')])
-        wrapped = self.run_cmd(self.command)
-        self.assertEqual(direct[:2], (0, ''))
-        self.assertEqual(wrapped[:2], (0, 'async-result\n'))
-
-    def test_import_timeout_does_not_cut_off_dispatched_action(self):
-        code, out, err = self.run_cmd(self.command, FAKE_DELAY_MS='350',
-                                      OPENCLI_RUN_IMPORT_TIMEOUT_MS='200', LOOKUP_OPENCLI_TIMEOUT_MS='2000')
-        self.assertEqual((code, out, err), (0, 'delayed-result\n', ''))
-
-    def test_import_timeout_covers_pending_top_level_import(self):
-        code, _, err = self.run_cmd(self.command, FAKE_IMPORT_NEVER='1', OPENCLI_RUN_IMPORT_TIMEOUT_MS='100')
-        self.assertEqual(code, 75)
-        self.assertIn('OPENCLI_RUN_IMPORT_TIMEOUT', err)
-        self.assertIn('no automatic redispatch', err)
-        self.assertEqual(json.loads(err)['error']['code'], 'OUTCOME_UNKNOWN')
-        self.assertEqual(json.loads(err)['phase'], 'entry')
-        self.assertFalse((self.base / 'dispatch').exists())
-
-    def test_legacy_import_timeout_alias_remains_supported(self):
-        code, _, err = self.run_cmd(self.command, FAKE_IMPORT_NEVER='1', OPENCLI_RUN_HARD_TIMEOUT_MS='100')
-        self.assertEqual(code, 75)
-        self.assertIn('OPENCLI_RUN_IMPORT_TIMEOUT', err)
-
-    def test_business_deadline_reports_unknown_and_dispatches_once(self):
-        code, out, err = self.run_cmd(self.command, FAKE_NEVER='1', LOOKUP_OPENCLI_TIMEOUT_MS='200')
-        self.assertEqual((code, out), (75, ''))
-        self.assertIn('OPENCLI_RUN_DEADLINE_EXCEEDED', err)
-        self.assertIn('phase=action; outcome=unknown', err)
-        envelope = json.loads(err)
-        self.assertEqual(envelope['error']['code'], 'OUTCOME_UNKNOWN')
-        self.assertTrue(envelope['outcome_unknown'])
-        self.assertFalse(envelope['retryable'])
-        self.assertEqual((self.base / 'dispatch').read_text(), 'dispatch\n')
-
-    def test_profile_override_is_explicit_and_consistent(self):
-        code, out, _ = self.run_cmd(self.command + ['--profile', 'work'], LOOKUP_OPENCLI_PROFILE='work',
-                                    OPENCLI_PROFILE='unrelated', FAKE_PRINT_PROFILE='1')
-        self.assertEqual(code, 0)
-        self.assertIn('profile=work', out)
-
-    def test_mismatched_or_duplicate_profile_is_rejected_before_entry(self):
-        for args in [['--profile', 'chrome'], ['--profile=chrome', '--profile=ego-lite'], ['--profile']]:
-            with self.subTest(args=args):
-                code, _, err = self.run_cmd(self.command + args)
-                self.assertEqual(code, 78)
-                self.assertIn('OPENCLI_PROFILE_REJECTED', err)
-                self.assertFalse((self.base / 'entry').exists())
-
-    def test_cdp_endpoint_cannot_bypass_profile_gate(self):
-        code, _, err = self.run_cmd(self.command, OPENCLI_CDP_ENDPOINT='http://127.0.0.1:9222')
-        self.assertEqual(code, 78)
-        self.assertIn('OPENCLI_TRANSPORT_REJECTED', err)
-        self.assertEqual(json.loads(err)['error']['code'], 'OPENCLI_TRANSPORT_REJECTED')
-        self.assertFalse(json.loads(err)['outcome_unknown'])
-        self.assertFalse((self.base / 'entry').exists())
-
-    def test_changed_version_or_sync_feature_requires_requalification(self):
-        self.manifest['version'] = '1.9.0'
-        write(self.package / 'package.json', json.dumps(self.manifest))
-        code, _, err = self.run_cmd(self.command)
-        self.assertEqual(code, 78)
-        self.assertIn('OPENCLI_RUN_COMPAT_UNVERIFIED', err)
-        self.assertFalse((self.base / 'entry').exists())
-        self.manifest['version'] = '1.8.8'
-        write(self.package / 'package.json', json.dumps(self.manifest))
-        write(self.package / 'cli.js', CLI.replace('.parse()', '.parseAsync()'))
-        code, _, err = self.run_cmd(self.command)
-        self.assertEqual(code, 78)
-        self.assertIn('retire the workaround', err)
-        self.assertFalse((self.base / 'entry').exists())
-
-    def test_auth_batch_always_requires_explicit_sites(self):
-        for args in [['auth', 'status'], ['--profile', 'ego-lite', '--', 'auth', 'status'],
-                     ['--profile', 'ego-lite', 'auth', '--', 'status'], ['auth', '--', 'refresh']]:
-            with self.subTest(args=args):
-                code, _, err = self.run_cmd(self.command + args)
-                self.assertEqual(code, 78)
-                self.assertIn('OPENCLI_AUTH_SITE_REQUIRED', err)
-                self.assertFalse((self.base / 'entry').exists())
-
-    def test_invalid_timeout_configuration_fails_before_entry(self):
-        code, _, err = self.run_cmd(self.command, LOOKUP_OPENCLI_TIMEOUT_MS='NaN')
-        self.assertEqual(code, 78)
-        self.assertIn('OPENCLI_RUN_CONFIG_INVALID', err)
+    def test_malformed_report_fails(self):
+        code,out,_=self.run_cmd(['bash',str(ROOT/'scripts/opencli-health.sh')],FAKE_DOCTOR='not json')
+        self.assertEqual(code,78)
+        self.assertEqual(json.loads(out)['state'],'invalid_health_report')
 
 
 class EgoTests(Fixture):
@@ -659,11 +353,21 @@ class SelftestTests(Fixture):
         write(self.bin / 'opencli', '#!/bin/sh\nexit 0\n', True)
         write(scripts / 'opencli-run.mjs', """
 import fs from 'node:fs'
-const arg=process.argv[2]
-if(arg==='--version') console.log('1.8.8')
-else if(arg==='list') { console.log(fs.readFileSync(process.env.FAKE_REGISTRY,'utf8'));console.error('Update available: fixture') }
-else if(arg==='verify') process.exit(0)
-else process.exit(99)
+const args=process.argv.slice(2)
+if(args[0]==='--version') console.log('2.0.2')
+else if(args.includes('--help')) {
+  const rows=JSON.parse(fs.readFileSync(process.env.FAKE_REGISTRY,'utf8'))
+  const row=rows.find(r=>r.site===args[0] && r.name===args[1])
+  if(!row){
+    const commands=rows.filter(r=>r.site===args[0]);const sites=[...new Set(rows.map(r=>r.site))]
+    console.log(JSON.stringify(commands.length?{site:args[0],command_count:commands.length,commands}:{name:'opencli',site_adapters:{count:sites.length,sites}}));process.exit(0)
+  }
+  console.log(JSON.stringify({...row,positionals:row.args.filter(a=>a.positional),command_options:row.args.filter(a=>!a.positional),browser_common_options:[]}))
+  console.error('Update available: fixture')
+} else if(args[0]==='bilibili' && args[1]==='search') {
+  console.log(JSON.stringify({ok:true,data:[{title:'fixture'}]}))
+  console.error('Cleanup could not be confirmed: fixture')
+} else process.exit(99)
 """)
         write(scripts / 'opencli-health.sh', '#!/bin/sh\nprintf \'%s\\n\' \'{"ok":true,"state":"ready","profile":"ego-lite"}\'\n', True)
         self.command = ['bash', str(scripts / 'selftest.sh')]
@@ -676,13 +380,26 @@ else process.exit(99)
         self.assertIn('schema 与 OpenCLI 合约字段完整', out)
         self.assertNotIn('schema 错误', out)
 
-    def test_optional_providers_skip_and_stderr_does_not_pollute_registry(self):
+    def test_optional_providers_skip_and_stderr_does_not_pollute_help(self):
         code, out, _ = self.run_cmd(self.command, timeout=12)
         self.assertEqual(code, 0, out[-1800:])
-        self.assertIn('opencli list 返回 1 条结构化命令', out)
+        self.assertIn('example/search 只读参数、策略取值与字段合约通过', out)
         self.assertIn('optional/search', out)
         self.assertIn('lookup-fixture-uninstalled', out)
         self.assertEqual((self.home / 'tmp/lookup-runtime').stat().st_mode & 0o777, 0o700)
+
+    def test_live_cleanup_warning_remains_visible(self):
+        code,out,err=self.run_cmd(self.command+['--live'],timeout=12)
+        self.assertEqual(code,0,out[-1800:])
+        self.assertIn('返回有效内容',out)
+        self.assertIn('Cleanup could not be confirmed: fixture',err)
+
+    def test_missing_optional_command_in_existing_namespace_skips(self):
+        self.registry.append({'site':'optional','name':'another','access':'read','args':[],'columns':[]})
+        write(self.base/'registry.json',json.dumps(self.registry))
+        code,out,_=self.run_cmd(self.command,timeout=12)
+        self.assertEqual(code,0,out[-1800:])
+        self.assertIn('optional/search conditional 候选未注册',out)
 
     def test_unknown_schema_and_missing_contract_are_rejected(self):
         for mutation in ('version', 'required_access'):

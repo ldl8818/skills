@@ -9,7 +9,7 @@
 #   bash scripts/selftest.sh --auth
 #   bash scripts/selftest.sh --live
 #
-# --live 会发真实查询、消耗额度并可能留下容器窗口，只在明确排障时使用。
+# --live 会发真实查询，按授权运行；收尾警告须单独核对，不重派已完成动作。
 
 set -uo pipefail
 
@@ -199,14 +199,14 @@ TEMP_FILES+=("$runner_stderr")
 runner_version=$(node "$SELF_DIR/opencli-run.mjs" --version 2>"$runner_stderr")
 runner_status=$?
 if [[ "$runner_status" -eq 0 ]] && [[ "$runner_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  ok "OpenCLI 兼容入口可执行（${runner_version}）"
+  ok "OpenCLI 策略入口可执行（${runner_version}）"
 else
   runner_error=$(<"$runner_stderr")
-  bad "OpenCLI 兼容入口运行失败：${runner_version:0:100} ${runner_error:0:180}"
+  bad "OpenCLI 策略入口运行失败：${runner_version:0:100} ${runner_error:0:180}"
 fi
 
 # ---------- 2. OpenCLI L3 健康门禁 ----------
-head_ "OpenCLI 连通性（零业务请求健康门禁）"
+head_ "OpenCLI 原生 doctor（无平台业务查询）"
 L3_OK=0
 if [[ -x "$SELF_DIR/opencli-health.sh" ]] && command -v jq >/dev/null 2>&1; then
   health_output=$(bash "$SELF_DIR/opencli-health.sh")
@@ -216,104 +216,53 @@ if [[ -x "$SELF_DIR/opencli-health.sh" ]] && command -v jq >/dev/null 2>&1; then
     L3_OK=1
   else
     state=$(jq -r '.state // "invalid_health_output"' <<<"$health_output" 2>/dev/null || printf 'invalid_health_output')
-    next=$(jq -r '.next // "check_opencli_health"' <<<"$health_output" 2>/dev/null || printf 'check_opencli_health')
+    next=$(jq -r '.state // "inspect_native_doctor_report"' <<<"$health_output" 2>/dev/null || printf 'check_opencli_health')
     bad "OpenCLI 门禁未就绪：${state}；下一步：${next}"
   fi
 else
   bad "scripts/opencli-health.sh 缺失、不可执行或 jq 不可用"
 fi
 
-# ---------- 3. OpenCLI 实时注册表与策略合约 ----------
-head_ "OpenCLI 注册表合约"
-REGISTRY_JSON=""
-if command -v opencli >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-  registry_stderr=$(mktemp "$TEMP_ROOT/lookup-selftest-registry.XXXXXX")
-  TEMP_FILES+=("$registry_stderr")
-  if REGISTRY_JSON=$(node "$SELF_DIR/opencli-run.mjs" list -f json 2>"$registry_stderr") && jq -e '(type == "array") and (length > 0)' >/dev/null 2>&1 <<<"$REGISTRY_JSON"; then
-    registry_count=$(jq 'length' <<<"$REGISTRY_JSON")
-    ok "opencli list 返回 $registry_count 条结构化命令"
-  else
-    bad "opencli list 未返回非空 JSON 数组"
-    printf '      返回：%s\n' "${REGISTRY_JSON:0:160}"
-    REGISTRY_JSON=""
-  fi
-  unlink "$registry_stderr"
-else
-  skip "opencli 或 jq 缺失，跳过注册表合约"
-fi
-
-if [[ -n "$REGISTRY_JSON" ]] && [[ "$PROVIDERS_OK" -eq 1 ]]; then
-  expected_contracts=$(jq '[.actions[] | .providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional"))] | length' "$PROVIDERS_JSON")
-  checked_contracts=0
-
+# ---------- 3. OpenCLI 公开帮助与策略合约 ----------
+head_ "OpenCLI 命令合约（按动作读取公开帮助）"
+if command -v opencli >/dev/null 2>&1 && [[ "$PROVIDERS_OK" -eq 1 ]]; then
   while IFS= read -r spec; do
-    checked_contracts=$((checked_contracts + 1))
     command_id=$(jq -r '.command' <<<"$spec")
     provider_status=$(jq -r '.status' <<<"$spec")
     site=${command_id%%/*}
     name=${command_id#*/}
-    if [[ "$provider_status" == conditional ]] && ! jq -e --arg site "$site" --arg name "$name" 'any(.[]; .site == $site and .name == $name)' >/dev/null <<<"$REGISTRY_JSON"; then
-      skip "$command_id conditional 候选在此版本未注册；当前任务不得调用"
+    help_output=$(node "$SELF_DIR/opencli-run.mjs" "$site" "$name" --help -f json)
+    help_status=$?
+    if [[ "$help_status" -ne 0 ]]; then
+      bad "$command_id 帮助不可读；未完成合约检查"
       continue
     fi
-    required_access=$(jq -r '.required_access // "read"' <<<"$spec")
-    required_args=$(jq -c '.required_args // []' <<<"$spec")
-    required_columns=$(jq -c '.required_columns // []' <<<"$spec")
-    policy_args=$(jq -c '.policy_args // []' <<<"$spec")
-
-    if jq -e \
-      --arg site "$site" \
-      --arg name "$name" \
-      --arg access "$required_access" \
-      --argjson required_args "$required_args" \
-      --argjson required_columns "$required_columns" \
-      --argjson policy_args "$policy_args" '
-        ([.[] | select(.site == $site and .name == $name)] | first) as $cmd
-        | ($cmd != null)
-          and ($cmd.access == $access)
-          and (($required_args - ($cmd.args | map(.name))) | length == 0)
-          and (($required_columns - ($cmd.columns // [])) | length == 0)
-          and (all($policy_args[];
-            . as $policy
-            | any($cmd.args[];
-                .name == $policy.name
-                and (.positional == false)
-                and (((.choices // []) | index($policy.value)) != null)
-              )
-          ))
-      ' >/dev/null <<<"$REGISTRY_JSON"; then
-      ok "$command_id 仍满足只读参数、策略取值与字段合约"
+    if [[ "$provider_status" == conditional ]] && jq -e --arg site "$site" --arg name "$name" '
+      (.site == $site and (.commands | type == "array") and all(.commands[]; .name != $name))
+      or (.name == "opencli" and (.site_adapters.sites | type == "array")
+          and .site_adapters.count == (.site_adapters.sites | length)
+          and (.site_adapters.sites | index($site)) == null)
+    ' >/dev/null 2>&1 <<<"$help_output"; then
+      skip "$command_id conditional 候选未注册；当前任务不得调用"
+      continue
+    fi
+    if jq -e --argjson spec "$spec" --arg site "$site" --arg name "$name" '
+      ([.positionals[], .command_options[], .browser_common_options[]?]) as $args
+      | .site == $site and .name == $name and .access == $spec.required_access
+      and ((($spec.required_args // []) - ($args | map(.name))) | length == 0)
+      and ((($spec.required_columns // []) - (.columns // [])) | length == 0)
+      and all(($spec.policy_args // [])[];
+        . as $policy | any($args[];
+          .name == $policy.name and (.positional != true)
+          and (((.choices // []) | index($policy.value)) != null)))
+    ' >/dev/null 2>&1 <<<"$help_output"; then
+      ok "$command_id 只读参数、策略取值与字段合约通过"
     else
       bad "$command_id 缺失、变为写操作或参数／策略／字段合约漂移"
     fi
-  done < <(jq -c '.actions[] | .providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional")) | {command, status, required_access, required_args, required_columns, policy_args}' "$PROVIDERS_JSON")
-
-  if [[ "$expected_contracts" -gt 0 ]] && [[ "$checked_contracts" -eq "$expected_contracts" ]]; then
-    ok "实际检查 $checked_contracts 条 OpenCLI 合约，与策略台账一致"
-  else
-    bad "OpenCLI 合约检查数异常：应检查 ${expected_contracts}，实际 ${checked_contracts}"
-  fi
-
-  expected_sites=$(jq '[.actions[] | .providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional")) | .command | split("/")[0]] | unique | length' "$PROVIDERS_JSON")
-  checked_sites=0
-  verified_sites=0
-  while IFS= read -r site; do
-    checked_sites=$((checked_sites + 1))
-    if verify_output=$(node "$SELF_DIR/opencli-run.mjs" verify "$site" 2>&1); then
-      ok "opencli verify $site"
-      verified_sites=$((verified_sites + 1))
-    else
-      skip "opencli verify $site 的站点级检查失败，不覆盖上方精确只读合约：${verify_output:0:120}"
-    fi
-  done < <(jq -r '[.actions[] | .providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional")) | .command | split("/")[0]] | unique[]' "$PROVIDERS_JSON")
-
-  if [[ "$expected_sites" -gt 0 ]] && [[ "$checked_sites" -eq "$expected_sites" ]]; then
-    ok "已逐项发起 $checked_sites 个站点 verify，其中 $verified_sites 个成功"
-  else
-    bad "OpenCLI 站点 verify 数异常：应检查 ${expected_sites}，实际 ${checked_sites}"
-  fi
+  done < <(jq -c '.actions[].providers[] | select(.type == "opencli" and (.status == "active" or .status == "conditional"))' "$PROVIDERS_JSON")
 else
-  skip "注册表或策略台账不可用，跳过合约验证"
+  skip "OpenCLI 或策略台账不可用，跳过合约验证"
 fi
 
 # ---------- 4. --auth 有界登录态检查 ----------
@@ -331,7 +280,8 @@ elif [[ "$L3_OK" -eq 1 ]] && [[ "$PROVIDERS_OK" -eq 1 ]] && command -v jq >/dev/
     TEMP_FILES+=("$auth_stderr")
     auth_output=$(node "$SELF_DIR/opencli-run.mjs" auth status --site "$auth_sites" --timeout 8 --concurrency 1 -f json 2>"$auth_stderr")
     auth_status=$?
-    if [[ "$auth_status" -eq 0 ]] && jq -e 'type == "array"' >/dev/null 2>&1 <<<"$auth_output"; then
+    if [[ "$auth_status" -eq 0 ]] && jq -e '.ok == true and (.data | type == "array")' >/dev/null 2>&1 <<<"$auth_output"; then
+      auth_output=$(jq -c '.data' <<<"$auth_output")
       actual_auth=$(jq 'length' <<<"$auth_output")
       actual_auth_set=$(jq -c '[.[].site] | unique | sort' <<<"$auth_output")
       if [[ "$actual_auth" -eq "$expected_auth" ]] && [[ "$actual_auth_set" == "$expected_auth_set" ]]; then
@@ -352,9 +302,10 @@ elif [[ "$L3_OK" -eq 1 ]] && [[ "$PROVIDERS_OK" -eq 1 ]] && command -v jq >/dev/
         esac
       done < <(jq -c '.[]' <<<"$auth_output")
     else
-      bad "opencli auth status 未返回 JSON 数组"
+      bad "opencli auth status 未返回成功 JSON 信封与数组"
       printf '      返回：%s\n' "${auth_output:0:160}"
     fi
+    cat "$auth_stderr" >&2
     unlink "$auth_stderr"
   fi
 else
@@ -363,7 +314,7 @@ fi
 
 # ---------- 5. --live 真实最小查询 ----------
 if [[ "$LIVE" -eq 1 && "$L3_OK" -eq 1 ]]; then
-  head_ "真实查询（可能留下 automation 容器）"
+  head_ "真实查询（使用原生 owned tab 收尾）"
   probe_word="ai"
   export OPENCLI_BROWSER_COMMAND_TIMEOUT=15
 
@@ -371,7 +322,7 @@ if [[ "$LIVE" -eq 1 && "$L3_OK" -eq 1 ]]; then
     local validator="$1"
     local out="$2"
     case "$validator" in
-      json-list) jq -e '(type == "array") and (length > 0)' >/dev/null 2>&1 <<<"$out" ;;
+      json-list) jq -e '.ok == true and (.data | type == "array" and length > 0)' >/dev/null 2>&1 <<<"$out" ;;
       text) [[ -n "${out//[[:space:]]/}" ]] ;;
       *) return 2 ;;
     esac
@@ -401,6 +352,7 @@ if [[ "$LIVE" -eq 1 && "$L3_OK" -eq 1 ]]; then
       stderr=$(<"$stderr_file")
       bad "$label 查询失败：${stderr:0:120}"
     fi
+    cat "$stderr_file" >&2
     rm -f -- "$stderr_file"
   }
 

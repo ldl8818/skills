@@ -13,17 +13,9 @@
 ## 发现与执行
 
 1. 用户明确指定的服务、专用官方能力或已连接只读工具先用。已有结果足以支持问题时不额外抓取。
-2. 需要 OpenCLI 时按站点裁剪注册表，选择 `access: read`，再读取匹配命令帮助：
-
-   ```bash
-   opencli list -f json | jq --arg site "<site>" \
-     '[.[] | select(.site == $site and .access == "read") | {site,name,strategy,browser,domain,args,columns}]'
-   opencli <site> <command> --help -f yaml
-   ```
-
-3. 用 `strategy / browser / domain` 判断是否依赖浏览器；browser-backed 命令先过 `scripts/opencli-health.sh`，再经 `node scripts/opencli-run.mjs ...`。纯 API／本地命令不承担无关浏览器探测。
-4. 保留命令的 exit code、stdout、stderr；结构化结果按任务裁字段。download/export 即便标为 read 仍可能写本地文件，任务所需的字幕、音频等临时素材可存于独立临时目录并仅清理本任务文件；长期归档按用户保存需求执行，均限定输出范围。
-5. `references/providers.json` 只供 Agent 选择和验收，并非自动执行器。不要把台账模板直接拼成 shell 命令，也不要复制完整注册表。
+2. 需要 OpenCLI 时按 [执行与升级边界](opencli-windows.md) 发现只读动作、读取当前帮助并执行；命令与参数只维护这一入口。
+3. 保留 exit code、stdout、stderr；按任务裁字段。download/export 即便标为 read 仍可能落盘，仅保存任务所需素材并限定输出目录。临时素材使用本任务独立目录，结束时只清理本任务不再需要的文件；长期归档按用户保存要求执行。
+4. `providers.json` 只保留必要合约与证据边界，不复制完整注册表，也不自动执行降级。
 
 ## 平台速查
 
@@ -34,16 +26,18 @@
 | 小红书 | OpenCLI `xiaohongshu/search / note / comments` | 保留搜索结果中的完整可访问 URL、`xsec_token`／`xsec_source`；不能删参数后用裸 ID 盲读 |
 | B站 | bili-cli 搜索／详情；OpenCLI 搜索／字幕；按需音频转写 | 搜索、字幕、音频是不同动作；实际结果缺时间时不能证明最新 |
 | 公众号 | 专用工具或 OpenCLI `weixin/search` 发现；浏览器解析跳转与正文 | 搜狗中转链不是文章地址；按 [weixin-article.md](weixin-article.md) 核对落地页 |
-| Douyin | OpenCLI `douyin/search`；有需要再发现 `user-videos` 等动作 | 搜索卡片不等于视频全文；缺少发布时间不证明最近；不可见互动数保持未知 |
+| Douyin | OpenCLI `douyin/search / detail`；有需要再发现 `user-videos` 等动作 | 详情或播放地址不等于转写；完整口播按 [字幕与音频参考](youtube-subtitles.md#完整音频转写)；缺少发布时间不证明最近；不可见互动数保持未知 |
 
 具体参数从当前命令帮助读取；必要合约由台账与 selftest 核对，不在本文重复保存平台命令清单。
+
+平台有适配器只证明注册了部分动作。按用户实际需要分别核对搜索、排序、正文、字幕、转写和下载；记录实际使用的执行工具与换路原因，不以浏览器取得内容证明该平台的 OpenCLI 已通过。OpenCLI 的扩展路径和 ego-browser 都可以使用 Ego Lite，浏览器名称不能用来区分这两条执行路径。
 
 `LOOKUP_OPENCLI_PROFILE` 统一选择已配置的 OpenCLI Profile，默认 `ego-lite`；不要暗中换到另一账号。`--window background` 控制焦点，不等于所有命令都不创建窗口。
 
 ## 时效与内容
 
 - X 的热门与实时排序不同。用户问最近时，使用支持的实时参数并核对逐条时间；某人最近发帖选用户帖子动作，不把首页推荐流当该用户时间线。
-- B站或Douyin的注册表没有最新排序参数、实际结果没有发布时间时，按 [浏览器选路.md](浏览器选路.md) 用浏览器检查页面可见时间与排序；本机日常平台页面默认 ego-browser。缺失就明确说明，不能用播放量、热度或搜索窗口猜发布时间。
+- B站或 Douyin 的当前命令不支持所需排序／时间范围，或实际结果没有发布时间时，按 [浏览器选路.md](浏览器选路.md) 检查页面可见筛选与时间。展开实际筛选菜单，核对排序和时间选中状态，并按 [目标内容等待](动态页面读取.md#目标内容与等待) 等待结果刷新；悬停／点击回执、选中标签或仍显示的旧卡片不能证明筛选完成。逐条核对返回项时间；声称取全还须检查分页或结束标记。综合结果可能包含图文，不一概当视频；缺少日期时不能用热度或搜索窗口猜发布时间。
 - 小红书优先保留完整访问 URL 到 `access_url`；用于显示或去重的 URL 不能覆盖它。仅有裸 ID 时通过搜索／feed／原始分享链接恢复合法定位信息。
 - 用户只要几个讨论观点，完整短帖即可构成证据；需要整串讨论、长文、上下文或评论时才追加对应动作。截断片段与搜索摘要不能代表全文。
 - 视频结果先标明 `metadata / subtitles / asr / visual`。字幕或 ASR 能支持口播摘要；讲解界面、演示结果或画面细节需要实际画面证据。拿不到时只完成可证明的部分，不换成另一个视频冒充原目标。
@@ -52,7 +46,7 @@
 
 ## 失败与浏览器降级
 
-首次使用同一 browser bridge/Profile 时探活，后续复用该任务内结果。连接失败只暂停共享 bridge/Profile 的 browser-backed 命令；站点动作失败只暂停相同 `site+action`；认证失败只影响相同站点／账号；合法空结果和部分证据不触发全局故障。精确规则见 [failure-domains.md](failure-domains.md)。
+连接有疑点时使用原生诊断，后续复用同任务结果。连接失败只暂停共享 bridge/Profile 的 browser-backed 命令；站点动作失败只暂停相同 `site+action`；认证失败只影响相同站点／账号；合法空结果和部分证据不触发全局故障。精确规则见 [failure-domains.md](failure-domains.md)。
 
 同一失败路径不循环尝试；业务超时先确认旧动作结束，不自动重派。需要补救时先考虑已可用的专用 API／CLI；仍需浏览器时按 [浏览器选路.md](浏览器选路.md) 选择，本机日常外部网页默认正式 ego-browser。必须核对候选是否绕开失败依赖，不能用 `opencli browser` 绕过同一失效 bridge。
 
@@ -60,12 +54,4 @@
 
 ## Agent Reach 与维护
 
-Agent Reach 与 Lookup 的平台路由职责重叠。本组合按需复用其对应平台的候选资料、诊断和已配置转写，最终按任务证据选择实际工具，见 [任务选路.md](任务选路.md)。常用查询直接调用上游工具，无需经过 Agent Reach；陌生平台也不另建完整目录。
-
-```bash
-agent-reach doctor --json
-```
-
-doctor 主要说明配置和探测范围；`active_backend: null` 可能是缺工具或刻意跳过实时验证，结合 status/message 判断，不直接宣称平台可用或不可用。已核对的 [Twitter backend 选择代码](https://github.com/Panniantong/Agent-Reach/blob/94f06c1969dfc1834001269d79d3ad0972d9dee6/agent_reach/channels/twitter.py#L44-L77) 仅在 `ok` 时设置 active backend。它也不证明 Lookup 选定的 Profile、账号或具体目标内容可用。
-
-只保留 Lookup 自动接管通用联网检索，Agent Reach 和 OpenCLI `smart-search` 的通用路由 Skill 不同时抢触发；具体平台说明可以按需引用。查询失败不自动升级或重装；维护时记录工具版本与来源 commit，更新后复核必要合约和受影响动作。Agent Reach 的持续维护不等于本机实时更新；已核对的 [`check-update` 实现](https://github.com/Panniantong/Agent-Reach/blob/94f06c1969dfc1834001269d79d3ad0972d9dee6/agent_reach/cli.py#L2271-L2332) 主要比较 Release 版本号，版本号相同也不证明 main 修复已安装。
+职责、加载与诊断边界统一见 [任务选路.md](任务选路.md#职责与加载边界)。按需读取对应平台 reference，命令以安装版本帮助和真实输出为准；不再维护第二套平台目录。

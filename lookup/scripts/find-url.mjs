@@ -139,6 +139,11 @@ export function searchHistory(profileDir, profileName, browserLabel, keywords, s
       stdio: ['ignore', 'pipe', 'pipe'],
     });
   } catch (error) {
+    // Chromium may hold an exclusive rollback-journal lock while it is open.
+    // Do not ignore locks or copy a live database: either can lose committed data.
+    if (/database (?:table )?is locked|database is busy|database locked/i.test(String(error.stderr || ''))) {
+      throw new LookupError('HISTORY_LOCKED', '历史库正被浏览器锁定；在同一 Ego Lite Profile 的 chrome://history/ 搜索原关键词并核对日期。不要关闭用户浏览器、复制数据库或忽略锁；这不是无匹配');
+    }
     const code = error.code === 'ENOENT' ? 'DEPENDENCY_UNAVAILABLE'
       : error.code === 'ETIMEDOUT' ? 'HISTORY_TIMEOUT'
       : error.code === 'ENOBUFS' ? 'OUTPUT_LIMIT' : 'HISTORY_UNREADABLE';

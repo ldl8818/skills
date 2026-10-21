@@ -106,6 +106,17 @@ class ResultTests(unittest.TestCase):
         self.assertEqual(result["error"]["code"], "PARSE")
         self.assertEqual(result["error"]["scope"], "site_action")
 
+    def test_security_block_pauses_the_site_profile(self):
+        for stdout, exit_code in [
+            ({"ok": False, "error": {"code": "SECURITY_BLOCK", "message": "Security controls blocked search"}}, 1),
+            ({"ok": True, "data": {"error": {"code": "SECURITY_BLOCK"}}}, 0),
+        ]:
+            with self.subTest(stdout=stdout):
+                result = RESULTS.normalize(self.capture(stdout, exit_code=exit_code))
+                self.assertEqual(result["status"], "error")
+                self.assertEqual(result["error"]["code"], "SECURITY_BLOCK")
+                self.assertEqual(result["error"]["scope"], "site_profile")
+
     def test_yaml_code_is_parsed_without_interpreting_message(self):
         result = RESULTS.normalize(self.capture("", exit_code=1, stderr="error:\n  code: AUTH_REQUIRED\n  message: |\n    code: BROWSER_CONNECT\n"))
         self.assertEqual(result["error"]["code"], "AUTH_REQUIRED")
@@ -226,6 +237,51 @@ class ResultTests(unittest.TestCase):
                         self.capture("text", empty_confirmed="yes")):
             with self.assertRaises(ValueError):
                 RESULTS.normalize(capture)
+
+    def test_opencli_envelope_unwraps_content_and_empty(self):
+        result = RESULTS.normalize(self.capture({"ok": True, "data": [{"text": "article"}]}))
+        self.assertEqual(result["items"], [{"text": "article"}])
+        self.assertEqual(RESULTS.normalize(self.capture({"ok": True, "data": []}))["status"], "partial")
+        self.assertEqual(RESULTS.normalize(self.capture({"ok": True, "data": []}, empty_confirmed=True))["status"], "empty")
+
+    def test_opencli_unknown_outcome_and_invalid_success(self):
+        result = RESULTS.normalize(self.capture({"ok": False, "error": {"code": "COMMAND_FAILED", "outcome": "unknown"}}, exit_code=1))
+        self.assertTrue(result["error"]["outcome_unknown"])
+        self.assertEqual(RESULTS.normalize(self.capture({"ok": True}))["status"], "error")
+        self.assertEqual(RESULTS.normalize(self.capture({"ok": False}))["status"], "error")
+
+    def test_opencli_wrapper_preserves_payload_verdict(self):
+        cases = [
+            ({"text": "complete article"}, {}, "ok", None),
+            ([{"title": "result"}], {}, "ok", None),
+            ([], {}, "partial", None),
+            ([], {"empty_confirmed": True}, "empty", None),
+            ({"items": [{"text": "preview"}], "truncated": True}, {}, "partial", None),
+            ({"items": [{"text": "preview"}], "status": "partial"}, {}, "partial", None),
+            ({"status": "error"}, {}, "error", "UNKNOWN"),
+            ({"error": {"code": "AUTH_REQUIRED"}}, {}, "error", "AUTH_REQUIRED"),
+            ({"error": {"code": "COMMAND_FAILED", "outcome": "unknown"}}, {}, "error", "OUTCOME_UNKNOWN"),
+        ]
+        for payload, options, status, code in cases:
+            with self.subTest(payload=payload, options=options):
+                bare = RESULTS.normalize(self.capture(payload, **options))
+                wrapped = RESULTS.normalize(self.capture({"ok": True, "data": payload}, **options))
+                self.assertEqual(bare["status"], status)
+                self.assertEqual(wrapped["status"], status)
+                self.assertEqual(wrapped, bare)
+                if code:
+                    self.assertEqual(wrapped["error"]["code"], code)
+
+    def test_opencli_outer_error_cannot_be_hidden_by_data(self):
+        for envelope in (
+            {"ok": False, "error": {"code": "AUTH_REQUIRED"}, "data": [{"text": "stale"}]},
+            {"ok": True, "error": {"code": "AUTH_REQUIRED"}, "data": [{"text": "stale"}]},
+        ):
+            with self.subTest(envelope=envelope):
+                result = RESULTS.normalize(self.capture(envelope))
+                self.assertEqual(result["status"], "error")
+                self.assertEqual(result["error"]["code"], "AUTH_REQUIRED")
+                self.assertNotIn("items", result)
 
     def test_cli_returns_structured_error_for_malformed_input(self):
         run = subprocess.run([sys.executable, str(SCRIPTS / "normalize-result.py")],

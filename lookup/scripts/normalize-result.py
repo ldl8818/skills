@@ -166,14 +166,25 @@ def normalize(capture, budget=40000):
     error = metadata.get("error", {})
     code = error.get("code", "UNKNOWN") if isinstance(error, dict) else "UNKNOWN"
     code = code if isinstance(code, str) and CODE.fullmatch(code) else "UNKNOWN"
+    opencli_envelope = provider.startswith("opencli/") and isinstance(output, dict) and "ok" in output
+    envelope_failed = opencli_envelope and (
+        output.get("ok") is not True or bool(output.get("error")) or output.get("status") == "error"
+    )
+    if opencli_envelope and not envelope_failed:
+        if "data" in output:
+            output = output["data"]
+        else:
+            parse_failed = True
     upstream_error = output.get("error") if isinstance(output, dict) else None
     upstream_failed = bool(upstream_error) or (isinstance(output, dict) and output.get("status") == "error")
+    upstream_failed = upstream_failed or envelope_failed
     if code == "UNKNOWN" and isinstance(upstream_error, dict):
         upstream_code = upstream_error.get("code")
         if isinstance(upstream_code, str) and CODE.fullmatch(upstream_code):
             code = upstream_code
     unknown = exit_code is None or capture.get("outcome_unknown") is True or metadata.get("outcome_unknown") is True
     unknown = unknown or code in {"TIMEOUT", "COMMAND_TIMEOUT", "OUTCOME_UNKNOWN"}
+    unknown = unknown or (isinstance(upstream_error, dict) and upstream_error.get("outcome") == "unknown")
     local_partial = (
         provider in {"lookup/fetch", "lookup/subtitles", "lookup/find-url"}
         and exit_code == 3 and metadata.get("status") == "partial"
@@ -184,7 +195,7 @@ def normalize(capture, budget=40000):
             result.update(status="empty", items=[], empty_confirmed=True)
             return result
         scope = ("transport_profile" if code == "BROWSER_CONNECT" else
-                 "site_profile" if code == "AUTH_REQUIRED" else "site_action")
+                 "site_profile" if code in {"AUTH_REQUIRED", "SECURITY_BLOCK"} else "site_action")
         result["error"] = {"code": "OUTCOME_UNKNOWN" if unknown else code,
                            "scope": scope, "outcome_unknown": unknown}
         return result

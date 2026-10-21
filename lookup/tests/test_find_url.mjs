@@ -267,3 +267,42 @@ test('read-only SQLite query includes committed WAL rows without copying the his
     });
   }
 });
+
+test('an exclusive browser lock is actionable and never reported as empty', { skip: !hasSqlite || !hasPython }, async t => {
+  const directory = fixture(t);
+  const profile = path.join(directory, 'Default');
+  createHistory(profile, [{ title: 'locked fixture', url: 'https://locked.example/' }]);
+  const writer = spawn('python3', ['-c', [
+    'import sqlite3, sys',
+    'connection = sqlite3.connect(sys.argv[1])',
+    'connection.execute("BEGIN EXCLUSIVE")',
+    'print("ready", flush=True)',
+    'sys.stdin.read()',
+    'connection.rollback()',
+    'connection.close()',
+  ].join('\n'), path.join(profile, 'History')], { stdio: ['pipe', 'pipe', 'pipe'] });
+  try {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('lock fixture did not become ready')), 5000);
+      writer.once('error', error => { clearTimeout(timer); reject(error); });
+      writer.once('exit', code => { clearTimeout(timer); reject(new Error('lock fixture exited early: ' + code)); });
+      writer.stdout.once('data', () => { clearTimeout(timer); resolve(); });
+    });
+    const result = cli(directory, ['locked', '--only', 'history', '--json']);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    const metadata = JSON.parse(result.stderr);
+    assert.equal(metadata.status, 'error');
+    assert.equal(metadata.error.code, 'HISTORY_LOCKED');
+    assert.match(metadata.error.message, /chrome:\/\/history\//);
+    assert.equal(metadata.empty_confirmed, undefined);
+  } finally {
+    await new Promise(resolve => {
+      if (writer.exitCode !== null) { resolve(); return; }
+      const timer = setTimeout(() => writer.kill('SIGKILL'), 2000);
+      writer.once('exit', () => { clearTimeout(timer); resolve(); });
+      writer.stdin.end();
+    });
+  }
+  assert.equal(searchHistory(profile, 'Fixture', 'ego', ['locked'], null, 5, 'recent')[0].title, 'locked fixture');
+});

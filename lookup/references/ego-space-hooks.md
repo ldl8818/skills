@@ -24,7 +24,7 @@
 
 ## 本任务生命周期入口
 
-整轮只读浏览器脚本优先通过 `scripts/ego-run.mjs` 执行。为每个用户目标指定独立的 lease 文件和任务标签；同一 lease 同时只允许一个执行者。工作文件导出 `async function(task)`，只通过传入的 TaskSpace 操作页面，不自行创建其他空间。
+整轮只读浏览器脚本通过 `scripts/ego-run.mjs` 执行。为每个用户目标指定独立的 lease 文件和任务标签；同一 lease 同时只允许一个执行者。工作文件导出 `async function(task)`，只通过传入的 TaskSpace 操作页面，不自行创建其他空间。
 
 ```js
 // work.mjs
