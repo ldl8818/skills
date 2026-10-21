@@ -580,54 +580,46 @@
       "desc": "英文语义搜索",
       "providers": [
         {
-          "id": "host-search-en",
-          "type": "manual",
-          "status": "conditional",
-          "failure_domain": "remote-http",
-          "evidence_type": "excerpt",
-          "validator": "task_sufficient_with_provenance",
-          "requires": [
-            "宿主已提供合适的搜索能力"
-          ],
-          "_note": "按覆盖范围/时间参数选择，不假设固定工具名"
-        },
-        {
           "id": "exa-mcp",
           "type": "mcp-cli",
           "status": "conditional",
           "failure_domain": "remote-http",
-          "auth": "none",
+          "auth": "oauth_or_none",
           "bin": "mcporter",
           "requires": [
-            "已配置 exa 别名，指向官方免 Key MCP；无付费认证配置"
+            "优先已授权的宿主 Exa 连接器或 exa-account OAuth 别名；没有账号入口时才用官方免 Key exa 别名"
           ],
-          "_note": "接入与真实搜索自检见 search-routing.md；CLI 存在不证明后端可用，不承诺固定免费次数",
+          "_note": "账号和免 Key 额度分别核对，接入与回执验收见 search-routing.md；免 Key 自检不证明账号可用",
           "validator": "task_sufficient_with_provenance",
           "evidence_type": "excerpt"
-        }
-      ]
-    },
-    "web/search/zh": {
-      "desc": "中文全网搜索",
-      "providers": [
+        },
         {
-          "id": "host-search-zh",
-          "type": "manual",
+          "id": "tavily-mcp",
+          "type": "mcp-cli",
           "status": "conditional",
           "failure_domain": "remote-http",
-          "evidence_type": "excerpt",
-          "validator": "task_sufficient_with_provenance",
+          "auth": "oauth_or_keyless_header",
+          "bin": "mcporter",
           "requires": [
-            "宿主已提供合适的搜索能力"
+            "优先已授权账号入口 tavily-account；没有账号入口时才用官方带 Keyless Header 的 tavily 别名"
           ],
-          "_note": "按覆盖范围/时间参数选择，不假设固定工具名"
+          "policy_args": [
+            {
+              "name": "search_depth",
+              "value": "basic",
+              "when": "普通搜索"
+            }
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt",
+          "_note": "按 search-routing.md 的免费顺序与切换规则执行；工具名以当前 schema 为准"
         },
         {
           "id": "doubao-web-search",
           "type": "mcp-cli",
           "status": "conditional",
           "failure_domain": "remote-http",
-          "auth": "key_in_mcporter_env",
+          "auth": "protected_search_key",
           "bin": "mcporter",
           "conditional_args": [
             "需要时效时添加 max_age_days: {freshness_days}"
@@ -640,9 +632,101 @@
             "source"
           ],
           "validator": "task_sufficient_with_provenance",
-          "evidence_type": "excerpt"
+          "evidence_type": "excerpt",
+          "requires": [
+            "已配置搜索专用 Key，已确认免费余额与超额停用边界"
+          ]
+        },
+        {
+          "id": "host-search-en",
+          "type": "manual",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "evidence_type": "excerpt",
+          "validator": "task_sufficient_with_provenance",
+          "requires": [
+            "宿主已提供合适的搜索能力"
+          ],
+          "_note": "按覆盖范围/时间参数选择，不假设固定工具名"
         }
-      ]
+      ],
+      "_note": "英文查国内主题仍优先豆包；具体顺序与切换见 search-routing.md。"
+    },
+    "web/search/zh": {
+      "desc": "中文全网搜索",
+      "providers": [
+        {
+          "id": "doubao-web-search",
+          "type": "mcp-cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "protected_search_key",
+          "bin": "mcporter",
+          "conditional_args": [
+            "需要时效时添加 max_age_days: {freshness_days}"
+          ],
+          "keep_fields": [
+            "title",
+            "url",
+            "snippet",
+            "published_at",
+            "source"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt",
+          "requires": [
+            "已配置搜索专用 Key，已确认免费余额与超额停用边界"
+          ]
+        },
+        {
+          "id": "tavily-mcp",
+          "type": "mcp-cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "oauth_or_keyless_header",
+          "bin": "mcporter",
+          "requires": [
+            "优先已授权账号入口 tavily-account；没有账号入口时才用官方带 Keyless Header 的 tavily 别名"
+          ],
+          "policy_args": [
+            {
+              "name": "search_depth",
+              "value": "basic",
+              "when": "普通搜索"
+            }
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt",
+          "_note": "按 search-routing.md 的免费顺序与切换规则执行；工具名以当前 schema 为准"
+        },
+        {
+          "id": "exa-mcp",
+          "type": "mcp-cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "oauth_or_none",
+          "bin": "mcporter",
+          "requires": [
+            "优先已授权的宿主 Exa 连接器或 exa-account OAuth 别名；没有账号入口时才用官方免 Key exa 别名"
+          ],
+          "_note": "账号和免 Key 额度分别核对，接入与回执验收见 search-routing.md；免 Key 自检不证明账号可用",
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt"
+        },
+        {
+          "id": "host-search-zh",
+          "type": "manual",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "evidence_type": "excerpt",
+          "validator": "task_sufficient_with_provenance",
+          "requires": [
+            "宿主已提供合适的搜索能力"
+          ],
+          "_note": "按覆盖范围/时间参数选择，不假设固定工具名"
+        }
+      ],
+      "_note": "国内主题优先豆包；查询语言不决定来源，中文查国外内容按 search-routing.md 的其他普通搜索顺序执行。"
     },
     "web/ai-news": {
       "desc": "AI 圈资讯聚合",

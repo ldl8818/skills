@@ -7,8 +7,9 @@
 | 目标 | 路径 |
 |---|---|
 | 已指定服务、产品文档、代码仓库 | 专用官方资料／已连接服务／对应 Skill；对版本敏感信息核对当前来源 |
-| 普通全网搜索 | 当前 Agent 已有搜索能力；按语言与覆盖范围选择已接入的 Exa、豆包等 |
-| 中文实时话题 | 能提供可核验时间的搜索服务；已有豆包配置时可用其时效参数 |
+| 国内内容为主 | 豆包 → Tavily → Exa；按主题与目标来源判断，不以查询语言单独判断 |
+| 其他普通全网搜索 | Exa → Tavily → 豆包；各路径仅选已接入且费用边界满足的服务，均不可用时用宿主搜索 |
+| 国内实时话题 | 优先豆包，并核对实际发布时间；按需使用其时效参数 |
 | 英文、全球、技术出处 | 已有 Exa 或宿主搜索，回到必要的第一手资料 |
 | AI 圈动态 | aihot 等聚合源发现候选，再核对相关原始出处 |
 | 已知静态网页 | 随包 `scripts/fetch.sh` 本地提取 |
@@ -34,6 +35,73 @@
 - 浏览器原生结构化提取已满足需求时直接使用；没有合适接口再观察目标 DOM，布局或画布内容用视觉证据。新工具是否值得接入见 [任务选路.md](任务选路.md)。
 
 ## 搜索服务接入与验证
+
+### 免费顺序与切换
+
+每项服务优先使用已授权的账号入口：宿主已连接且账号归属已确认的连接器，或 `tavily-account`／`exa-account` 别名。没有账号入口时才选择对应免 Key 入口 `tavily`／`exa`；两者的额度不混算。明确月额度耗尽时跳过该服务，不在同一服务内改匿名入口重复试探。
+
+没有指定搜索服务或专用来源时，主要涉及国内新闻、政策、平台、企业或其他国内来源的查询，优先按豆包 → Tavily → Exa 选择；其他普通全网搜索按 Exa → Tavily → 豆包选择。按主题与目标来源判断，中文查询国外产品仍走其他普通搜索路径，英文查询国内政策仍优先豆包。优先复用已取得的足够证据，不为了用完额度重复搜索。宿主搜索作为独立后备，用户指定来源与浏览器的要求仍优先。
+
+- 收到明确月额度耗尽回执时，本会话后续查询跳过该服务，改用下一项；按服务实际重置时间或新的余额证据恢复，不猜月初按哪个时区重置。跨会话只有可核对的余额／额度记录才沿用耗尽判断。
+- 临时限流按服务提供的重试时间暂停该服务，当前任务可继续下一项；不得把429一律写成月额度耗尽。网络错误按有界恢复处理，无匹配和结果不足按内容缺口换路，不修改余额判断。
+- 每项服务在一次切换中至多尝试一次，不在多个服务间循环；权限拒绝、账号挑战或用户接管时停止相关操作，不以换服务绕过限制。超时保留结果未知，不重发同一请求来猜是否扣额。
+- 账户模式必须确认免费余额与超额停用／硬限额；未确认时仅用明确免 Key 模式或其他符合费用边界的候选。不自动开通后付费、充值、绑定支付方式或启用高成本研究动作。本地成功次数不能代表账户剩余额度，其他客户端和不同动作也会消耗额度。
+
+以下是2026-10-22核对的官方公开方案，不代表账户实际余额，后续按当前官方页面及控制台回执更新：
+
+| 服务 | 免费口径 | 默认成本控制 |
+|---|---|---|
+| [Tavily](https://docs.tavily.com/documentation/api-credits) | 账户每月1000 credits；basic 一次1 credit、advanced 一次2 credits；免 Key 另有服务端限流 | 普通搜索显式使用 basic，不自动启用 advanced／crawl／research |
+| [Exa](https://exa.ai/pricing) | 当前账户每月10美元 credits，按接口及结果计价；官方免 Key MCP 有独立限流 | 免 Key 不加认证；不能按每月1000次或按账户美元余额推断免 Key 配额 |
+| [豆包](https://docs.volcengine.com/docs/Networkedsearch/Networkedsearch-2?lang=zh) | 每个火山账号每月500次，Global／Custom 共用 | 搜索专用 Key，确认超额边界；不启用额外模型加工 |
+
+### 账号入口接入与验证
+
+账号授权只属于实际完成登录的客户端。宿主 Exa 连接器和本机 mcporter 的 OAuth 缓存分别核对，不能把一处连接成功当另一处也已授权。不将令牌复制进仓库或其他客户端。
+
+保留免 Key 别名，新建独立账号别名；已存在时先核对官方 URL、认证模式和来源，不覆盖其他账号。以下登录在浏览器由使用者完成，普通检索只复用现有授权，不重新发起登录：
+
+```bash
+mcporter config add exa-account 'https://mcp.exa.ai/mcp?login' --auth oauth --scope home
+mcporter auth exa-account
+mcporter config add tavily-account https://mcp.tavily.com/mcp/ --auth oauth --scope home
+mcporter auth tavily-account
+```
+
+Exa 的 [OAuth 说明](https://exa.ai/docs/get-started/exa-mcp#authentication) 明确请求计入授权团队；[Tavily 官方 MCP](https://docs.tavily.com/documentation/mcp) 使用 OAuth 登录。账号别名不得添加 Keyless Header，不导出或在 URL 中附加真实令牌。
+
+先发现当前工具与必填字段，再执行一次最小真实搜索；以下查询参数应替换为任务所需内容：
+
+```bash
+mcporter list exa-account --schema --json --no-oauth --timeout 15000
+mcporter call exa-account.web_search_exa --args '{"query":"Model Context Protocol official specification","objective":"Find original specification content from modelcontextprotocol.io.","numResults":1}' --no-oauth --timeout 30000 --output json
+mcporter list tavily-account --schema --json --no-oauth --timeout 15000
+mcporter call tavily-account.tavily_search --args '{"query":"Model Context Protocol official specification","search_depth":"basic","max_results":1}' --no-oauth --timeout 30000 --output json
+```
+
+这里的 `--no-oauth` 禁止自动发起新登录，仍复用已有 OAuth 凭据，不表示免 Key。核对相关正文、原始 URL 与错误回执；Exa 可返回 `_meta.ai.exa/usage.costDollars`，Tavily 可返回 `auth_mode: keyed`。这些字段与经过验证的账号入口共同证明请求归属，不证明余额，也不能单独区分扣的是免费赠额还是预付余额。需要确认实际剩余额度时读对应控制台，不从成功次数推算。
+
+同一服务只选一条账号路径，不为了比较宿主连接器与 CLI 重复发相同查询。仅配置完成或工具列表正常不算真实搜索通过；`selftest.sh --search` 仍只验证原免 Key Exa 别名，不能代替这里的账号验收。普通检索不调用 `agent_run`、crawl 或 research，不自动切换其他账号补额度。
+
+### Tavily 官方 MCP
+
+已有 `mcporter` 时先检查同名配置；没有 `tavily` 才新增用户级官方免 Key 入口：
+
+```bash
+mcporter config get tavily --json
+mcporter config add tavily https://mcp.tavily.com/mcp/ --header X-Tavily-Access-Mode=keyless --scope home
+mcporter list tavily --schema --json --no-oauth --timeout 15000
+```
+
+官方 [免 Key 说明](https://docs.tavily.com/documentation/keyless) 要求 `X-Tavily-Access-Mode: keyless`；不带此 Header 会要求登录。有 Authorization 或 URL Key 时可能优先使用账户额度，不能称免 Key。已有配置时核对 URL、认证及来源，不覆盖其他账号。
+
+从当前 schema 确认真实工具名与参数后调用；官方接口可能将名称暴露为 `tavily_search` 或 `tavily-search`，使用发现的名称：
+
+```bash
+mcporter call tavily.tavily_search --args '{"query":"Model Context Protocol official specification","search_depth":"basic","max_results":3}' --no-oauth --timeout 30000 --output json
+```
+
+必须取得相关正文和可追溯原始 URL，不能把 HTTP 成功、登录说明、限流提示或只有链接当搜索通过。无 Key 入口的成功不证明账户每月1000 credits 已启用。需要使用账户额度时，通过官方控制台／OAuth 连接现有免费账号，核对余额和超额行为；真实 Key 由本机受保护凭据机制注入，不放入聊天、命令历史或仓库。
 
 ### Exa 免 Key 入口
 
