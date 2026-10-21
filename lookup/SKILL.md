@@ -4,7 +4,7 @@ description: "联网搜索、网页访问与浏览器任务的统一选路入口
 when_to_use: "联网搜索、查官方资料、读这个链接、总结网页、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation"
 dispatch_intent: "联网检索、网页阅读与操作、浏览器选路和本地 UI 验收，按任务选择执行工具并核验内容；指定视频链接落盘交给 download-video。"
 metadata:
-  version: "1.18.1"
+  version: "1.18.2"
   source: local
 ---
 

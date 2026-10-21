@@ -587,7 +587,7 @@
           "auth": "oauth_or_none",
           "bin": "mcporter",
           "requires": [
-            "优先已授权的宿主 Exa 连接器或 exa-account OAuth 别名；没有账号入口时才用官方免 Key exa 别名"
+            "优先已授权且归属、免费余额和超额边界均已确认的宿主 Exa 连接器或 exa-account；账号条件未确认时可用已核对无认证的官方 exa 入口；明确额度耗尽或权限阻断时不在同服务换入口"
           ],
           "_note": "账号和免 Key 额度分别核对，接入与回执验收见 search-routing.md；免 Key 自检不证明账号可用",
           "validator": "task_sufficient_with_provenance",
@@ -601,7 +601,7 @@
           "auth": "oauth_or_keyless_header",
           "bin": "mcporter",
           "requires": [
-            "优先已授权账号入口 tavily-account；没有账号入口时才用官方带 Keyless Header 的 tavily 别名"
+            "优先已授权且归属、免费余额和超额边界均已确认的 tavily-account；账号条件未确认时可用已核对无认证且带 Keyless Header 的 tavily；明确额度耗尽或权限阻断时不在同服务换入口"
           ],
           "policy_args": [
             {
@@ -686,7 +686,7 @@
           "auth": "oauth_or_keyless_header",
           "bin": "mcporter",
           "requires": [
-            "优先已授权账号入口 tavily-account；没有账号入口时才用官方带 Keyless Header 的 tavily 别名"
+            "优先已授权且归属、免费余额和超额边界均已确认的 tavily-account；账号条件未确认时可用已核对无认证且带 Keyless Header 的 tavily；明确额度耗尽或权限阻断时不在同服务换入口"
           ],
           "policy_args": [
             {
@@ -707,7 +707,7 @@
           "auth": "oauth_or_none",
           "bin": "mcporter",
           "requires": [
-            "优先已授权的宿主 Exa 连接器或 exa-account OAuth 别名；没有账号入口时才用官方免 Key exa 别名"
+            "优先已授权且归属、免费余额和超额边界均已确认的宿主 Exa 连接器或 exa-account；账号条件未确认时可用已核对无认证的官方 exa 入口；明确额度耗尽或权限阻断时不在同服务换入口"
           ],
           "_note": "账号和免 Key 额度分别核对，接入与回执验收见 search-routing.md；免 Key 自检不证明账号可用",
           "validator": "task_sufficient_with_provenance",
