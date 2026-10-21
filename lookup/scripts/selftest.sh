@@ -3,11 +3,13 @@
 #
 # 默认模式不查登录态，也不发平台搜索/正文请求。--auth 才使用有界
 # quickCheck；--live 包含 --auth，并额外发一条最小真实查询。
+# --search 独立执行 Exa 免 Key 真实搜索验收，不检查浏览器、不调用豆包搜索。
 #
 # 用法：
 #   bash scripts/selftest.sh
 #   bash scripts/selftest.sh --auth
 #   bash scripts/selftest.sh --live
+#   bash scripts/selftest.sh --search
 #
 # --live 会发真实查询，按授权运行；收尾警告须单独核对，不重派已完成动作。
 
@@ -19,8 +21,11 @@ case "${1:-}" in
   "") ;;
   --auth) AUTH=1 ;;
   --live) AUTH=1; LIVE=1 ;;
+  --search)
+    exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/search-check.py"
+    ;;
   *)
-    printf '用法：bash scripts/selftest.sh [--auth|--live]\n'
+    printf '用法：bash scripts/selftest.sh [--auth|--live|--search]\n'
     exit 2
     ;;
 esac
@@ -363,6 +368,7 @@ else
 fi
 
 # ---------- 汇总 ----------
+skip "Exa／豆包搜索未在本模式验证；--search 单独验证 Exa 免 Key 搜索"
 printf '\n\033[1m结果\033[0m  通过 %d  失败 %d  跳过 %d\n' "$PASS" "$FAIL" "$SKIP"
 if [[ "$FAIL" -gt 0 ]]; then
   printf '失败项按 references/failure-domains.md 定位到 provider/site/action 或 bridge/profile；结果未知时先观察原任务，再决定下一步。\n'

@@ -4,7 +4,7 @@ description: "联网搜索、网页访问与浏览器任务的统一选路入口
 when_to_use: "联网搜索、查官方资料、读这个链接、总结网页、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation"
 dispatch_intent: "联网检索、网页阅读与操作、浏览器选路和本地 UI 验收，按任务选择执行工具并核验内容；指定视频链接落盘交给 download-video。"
 metadata:
-  version: "1.16.0"
+  version: "1.17.0"
   source: local
 ---
 
@@ -49,3 +49,5 @@ Lookup 决定使用哪条路径、允许怎样换路，以及证据是否足够�
 ## 维护自检
 
 `bash scripts/selftest.sh` 检查依赖、所选 Profile 的原生 doctor 报告和必要命令帮助；`--auth` 增加有界认证检查，`--live` 再执行一条最小业务查询。诊断通过不证明所有平台或任务通过，结果与版本范围分别报告。
+
+`bash scripts/selftest.sh --search` 独立验证 Exa 免 Key 真实搜索，不检查浏览器、不调用豆包。搜索服务的接入、凭据与费用边界见 [搜索服务接入与验证](references/search-routing.md#搜索服务接入与验证)。

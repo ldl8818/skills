@@ -372,6 +372,15 @@ else if(args.includes('--help')) {
         write(scripts / 'opencli-health.sh', '#!/bin/sh\nprintf \'%s\\n\' \'{"ok":true,"state":"ready","profile":"ego-lite"}\'\n', True)
         self.command = ['bash', str(scripts / 'selftest.sh')]
 
+    def test_search_mode_checks_search_without_browser_or_auth(self):
+        write(self.fixture / 'scripts/search-check.py',
+              'import sys\nprint("search checker fixture")\nraise SystemExit(7)\n')
+        code, out, err = self.run_cmd(self.command + ['--search'])
+        self.assertEqual(code, 7)
+        self.assertEqual(out.strip(), 'search checker fixture')
+        self.assertEqual(err, '')
+        self.assertFalse((self.home / 'tmp').exists())
+
     def test_shipped_provider_schema_is_accepted(self):
         shutil.copyfile(ROOT / 'references/providers.json', self.providers_file)
         _, out, _ = self.run_cmd(self.command, timeout=12)
