@@ -4,7 +4,7 @@ description: "联网搜索、网页访问与浏览器任务的统一选路入口
 when_to_use: "联网搜索、查官方资料、读这个链接、总结网页、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation"
 dispatch_intent: "联网检索、网页阅读与操作、浏览器选路和本地 UI 验收，按任务选择执行工具并核验内容；指定视频链接落盘交给 download-video。"
 metadata:
-  version: "1.14.1"
+  version: "1.15.0"
   source: local
 ---
 
@@ -19,6 +19,7 @@ metadata:
 3. **按需读参考**：
    - 多后端选择、陌生平台或健康报告与任务不一致：[任务选路.md](references/任务选路.md)。
    - 浏览器选择、指定环境与技术降级：[浏览器选路.md](references/浏览器选路.md)；只有需要浏览器时加载。
+   - 页面仍在加载、登录提示、iframe 或 Shadow DOM：[动态页面读取.md](references/动态页面读取.md)；图片、视频画面或嵌入媒体：[媒体读取.md](references/媒体读取.md)。
    - 全网搜索、网页、历史：[search-routing.md](references/search-routing.md)。
    - X、小红书、YouTube、B站、Douyin、公众号等：[platform-routing.md](references/platform-routing.md)。
    - 字幕：[youtube-subtitles.md](references/youtube-subtitles.md)；公众号：[weixin-article.md](references/weixin-article.md)。
@@ -58,6 +59,7 @@ opencli <site> <command> --help -f yaml
 
 - `ok` 需要相关、够用的真实内容；已证实无匹配才是 `empty`；截断、缺字段、未证实的空结果是 `partial`；请求失败或验证页是 `error`。不得用哨兵值或未知指标补齐事实。
 - 按任务判断正文是否足够，不使用统一字数门槛。短帖可完整，长文片段只支持它实际覆盖的部分；已声明的缺失不影响独立、已证实结论时可交付部分结果。
+- 浏览器导航或点击成功后，以目标内容和实际状态变化验收；内容尚未出现时按 [动态页面读取.md](references/动态页面读取.md) 有界观察，不把文档加载完成当作任务完成。
 - 浏览器切换前比较实际进程、Profile、账号、网络和桥接依赖。换同一登录态不能修复认证失效；宿主浏览器有独立可用会话时也不能仅因 ego 故障判全网不可用。
 - 按当前宿主或正式安装的浏览器 Skill 读取操作、快照、接管与收尾接口；不使用本文猜 API，不批量回收未知归属空间。ego 的入口与兼容辅助见 [ego-space-hooks.md](references/ego-space-hooks.md)，OpenCLI 窗口版本差异见 [opencli-windows.md](references/opencli-windows.md)。
 

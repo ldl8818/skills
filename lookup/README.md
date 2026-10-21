@@ -59,6 +59,8 @@ Agent Reach 与 Lookup 都包含检索路由。此组合保留 Lookup 一个通�
 
 动态文章和表格复用当前浏览器的提取能力，分别核对正文、分页和可见行范围。轻舟可作为专项候选；只有证明当前 MCP 接口、会话生命周期与收尾适合任务后才接入，不作为默认依赖，也不假定共享模型登录。
 
+页面读取按目标内容而非导航回执验收；等待预算、登录提示、完整访问上下文、iframe 与 Shadow DOM 见 [动态页面读取](references/动态页面读取.md)。需要图片细节或视频画面时再读 [媒体读取](references/媒体读取.md)，核对懒加载、实际资源、采样时间与新帧。两份参考吸收 web-access 2.6.0 的有效策略并补充技术边界；不引入其 Proxy、CDP 前置检查或第二个自动路由。
+
 ## 按需依赖
 
 | 依赖 | 用途与边界 |
@@ -139,7 +141,7 @@ python3 -m unittest discover -s tests -p 'test_result_helpers.py'
 
 ## 行为评估
 
-`evals/evals.json` 保留原有场景并补充故障作用域、已有足够正文、人工字幕、浏览器选择、未知指标与空间归属等边界。用例是评估规范，不是已完成的跑分。
+`evals/evals.json` 保留原有场景并补充故障作用域、已有足够正文、人工字幕、浏览器选择、未知指标与空间归属，以及动态等待、frame／组件、访问上下文和媒体证据等边界。用例是评估规范，不是已完成的跑分。
 
 从实际 transcript 和交付内容检查是否满足目标、授权、时效、来源与证据标准；工具名只在能力或契约本身是测试目标时限定。不要求无意义的固定二次请求，不以运行了某个命令替代内容验收。离线单元测试、场景评估和真实平台验证分别报告。
 
@@ -160,6 +162,8 @@ node scripts/find-url.mjs "<关键词>" --since 7d
 |---|---|
 | [任务选路.md](references/任务选路.md) | 多后端筛选、复用上游资料及区分环境可用与任务完成 |
 | [浏览器选路.md](references/浏览器选路.md) | 需要浏览器时的默认选择、开发场景、指定环境与技术降级 |
+| [动态页面读取.md](references/动态页面读取.md) | 内容就绪与有界等待、登录提示、访问上下文、iframe／Shadow DOM |
+| [媒体读取.md](references/媒体读取.md) | 图片懒加载与实际资源、视频定位／采帧、证据覆盖范围 |
 | [search-routing.md](references/search-routing.md) | 全网搜索、网页、历史与站点经验 |
 | [platform-routing.md](references/platform-routing.md) | 平台动作、命令发现与维护边界 |
 | [failure-domains.md](references/failure-domains.md) | 失败作用域、结果信封与有界降级 |
