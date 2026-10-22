@@ -50,8 +50,8 @@
 
 同一失败路径不循环尝试；业务超时先确认旧动作结束，不自动重派。需要补救时先考虑已可用的专用 API／CLI；仍需浏览器时按 [浏览器选路.md](浏览器选路.md) 选择，本机日常外部网页默认正式 ego-browser。必须核对候选是否绕开失败依赖，不能用 `opencli browser` 绕过同一失效 bridge。
 
-宿主浏览器功能名、操作 API、快照和收尾机制按其实际工具／Skill 文档发现，不假设所有 Agent 都有名为 BrowserUse 的工具。ego 只按正式安装 Skill 使用；不复制它的旧 API，见 [ego-space-hooks.md](ego-space-hooks.md)。
+宿主浏览器功能名、操作 API、快照和收尾机制按其实际工具／Skill 文档发现，不假设所有 Agent 都有名为 BrowserUse 的工具。ego 选中后通过 `ego-browser skill` 读取完整执行指南；不重新注册自动入口，不复制旧 API，见 [ego-space-hooks.md](ego-space-hooks.md)。
 
 ## Agent Reach 与维护
 
-职责、加载与诊断边界统一见 [任务选路.md](任务选路.md#职责与加载边界)。按需读取对应平台 reference，命令以安装版本帮助和真实输出为准；不再维护第二套平台目录。
+16个上游渠道及全部配置、诊断、转写和维护流程统一见 [Agent Reach 融合](Agent-Reach融合.md)，按需读取压缩快照中的完整分类，不要求独立安装或注册其 Skill。本文保留 Lookup 特有的平台证据边界，不复制另一套完整命令目录。职责与诊断边界见 [任务选路.md](任务选路.md#职责与加载边界)；实际参数以执行版本帮助和真实输出为准。

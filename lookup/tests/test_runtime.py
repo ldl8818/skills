@@ -53,7 +53,9 @@ class Fixture(unittest.TestCase):
         self.home = self.base / 'home'
         self.bin.mkdir()
         self.home.mkdir()
-        self.env = dict(BASE_ENV, HOME=str(self.home), PATH=str(self.bin) + os.pathsep + os.environ['PATH'])
+        self.env = dict(BASE_ENV, HOME=str(self.home), CI='1',
+                        XDG_STATE_HOME=str(self.base/'state'),
+                        PATH=str(self.bin) + os.pathsep + os.environ['PATH'])
         self.children = []
 
     def spawn(self, args, **kwargs):
@@ -149,6 +151,23 @@ class RunnerTests(Fixture):
                 code,_,err=self.run_cmd(self.command+args,**env)
                 self.assertEqual(code,78)
                 self.assertFalse(json.loads(err)['outcome_unknown'])
+                self.assertFalse((self.base/'dispatch').exists())
+
+    def test_explicit_cdp_route_forwards_literal_arguments(self):
+        args = ['boss', 'search', 'a b; $(touch never)']
+        code, _, _ = self.run_cmd(self.command + args, LOOKUP_OPENCLI_TRANSPORT='cdp',
+                                  OPENCLI_CDP_ENDPOINT='http://127.0.0.1:9222')
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads((self.base/'dispatch').read_text()), args)
+
+    def test_invalid_explicit_transport_never_dispatches(self):
+        for mode, endpoint in [('unknown',''), ('cdp',''), ('cdp','file:///tmp/browser'),
+                                ('cdp','https://user:secret@example.com')]:
+            with self.subTest(mode=mode):
+                code, _, err = self.run_cmd(self.command, LOOKUP_OPENCLI_TRANSPORT=mode,
+                                            OPENCLI_CDP_ENDPOINT=endpoint)
+                self.assertEqual(code, 78)
+                self.assertIn('OPENCLI_TRANSPORT_REJECTED', err)
                 self.assertFalse((self.base/'dispatch').exists())
 
     def test_old_and_unknown_major_versions_fail_closed(self):

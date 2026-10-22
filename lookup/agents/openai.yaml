@@ -1,7 +1,7 @@
 interface:
   display_name: "Lookup"
-  short_description: "统一路由联网搜索、网页读取、本机历史检索与有出处的研究综合"
-  default_prompt: "使用 $lookup 搜索并读取目标信息，选择合适通道，核验来源，并按请求完成摘要或研究综合。"
+  short_description: "融合 Agent Reach 与 OpenCLI 全部能力的联网和浏览器统一入口"
+  default_prompt: "使用 $lookup 选择合适路径，按需加载平台或浏览器指南，获取并核验目标信息，完成所需阅读、交互或环境诊断。"
 
 policy:
   allow_implicit_invocation: true

@@ -1,8 +1,10 @@
 # lookup
 
-> One routing entry point for web search, content retrieval and browser tasks. Skill instructions are in Chinese.
+> Complete Agent Reach and OpenCLI capabilities in one entry point for web, browser and execution-tool tasks. Skill instructions are in Chinese.
 
-Lookup 是联网搜索、网页访问与浏览器任务的统一选路入口，包含本地 UI 验收；选定后交给专用 Skill、连接器、CLI 或宿主浏览器执行。工具随附的通用优先声明不重做选路。专用来源和浏览器候选统一见 [任务选路](references/任务选路.md) 与 [浏览器选路](references/浏览器选路.md)。
+Lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 全部执行能力，以及联网搜索、媒体和本地 UI 验收。只将 Lookup 注册为自动入口，由当前 Agent 按需读取平台／工具指南并执行；工具随附的通用优先声明不重做选路。完整能力、依赖和适配见 [Agent Reach 融合](references/Agent-Reach融合.md) 与 [OpenCLI 融合](references/OpenCLI融合.md)，选路分别见 [任务选路](references/任务选路.md) 与 [浏览器选路](references/浏览器选路.md)。
+
+Lookup 2.1.0完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件、16个渠道、11类 CLI、7类参考、5份设置指南、MCP 和公开 Python 接口；同时纳入 OpenCLI 正式版2.0.2的170个站点、1,223条站点命令和66条内置命令，以及全部5套 Skill。Agent Reach 来源随压缩快照保存；OpenCLI 完整源码／发布包以逐文件回执固定，完整源码可校验后按需缓存，原始 Skill 不进入自动发现。平台可用性仍取决于本机工具、账号和当前真实结果；完整融合不表示所有站点已逐项实测。
 
 ## 可以怎样使用
 
@@ -38,26 +40,26 @@ Lookup 是联网搜索、网页访问与浏览器任务的统一选路入口，�
 | YouTube：总结这个视频，列出关键观点的时间点。 | yt-dlp、OpenCLI transcript；无可靠字幕时按需转写 | 同一视频的117段字幕读取通过，另有跨语言字幕核对 | 依赖字幕轨道、网络和工具运行时；自动字幕与人工字幕均需质量核对。无字幕视频需要可用 ASR，字幕结论不覆盖全片视觉。 |
 | Douyin：筛选最近一天的内容；完整转写这条视频的口播。 | OpenCLI search／detail／user-videos；Ego Lite 页面筛选与媒体读取；独立 ASR | detail、最新发布加一周内／一天内筛选通过；62.9秒完整音轨送入本地 ASR，得到30段并定向校对 | 当前已验 CLI 没有日期筛选参数或完整 ASR 动作。临时转写环境已清理，常备 ASR 尚未配置；短音轨通过不代表长视频或逐字人工听审。近期结果可能含图文，不能冒充视频内容。 |
 
-Ego Lite 是基于 Chromium 的浏览器，OpenCLI 是独立项目。两条路径分别为 **OpenCLI CLI → OpenCLI Chrome 扩展 → Ego Lite** 和 **ego-browser Skill → Ego Lite 自身接口**。`ego-lite` 也可被配置成 OpenCLI 的 Profile 别名，但别名本身不能证明目标浏览器或登录账号一致。需登录的动作使用用户指定的已登录环境；出现账号挑战时交还控制。
+Ego Lite 是基于 Chromium 的浏览器，OpenCLI 是独立项目。两条路径分别为 **OpenCLI CLI → OpenCLI Chrome 扩展 → Ego Lite** 和 **ego-browser 执行接口 → Ego Lite**。后者选中后通过 `ego-browser skill` 读取完整指南。`ego-lite` 也可被配置成 OpenCLI 的 Profile 别名，但别名本身不能证明目标浏览器或登录账号一致。需登录的动作使用用户指定的已登录环境；出现账号挑战时交还控制。
 
 ## 能力边界
 
 - **视频内容必须有内容证据。** 标题和简介只能说明发布者如何介绍视频。口播摘要依据可靠字幕或实际音轨转写；操作、图表和演示结论需对应画面。时长、覆盖范围和未读取部分按 [字幕与转写](references/youtube-subtitles.md)、[媒体读取](references/媒体读取.md) 核验。
 - **ASR 不是随包常备服务。** 本地或已配置服务商的转写能力可接入，但需要可访问的音轨、ffmpeg／ffprobe、模型或服务环境。普通查询不会自动安装大模型、启用付费服务或导出 Cookie。
 - **覆盖仍有边界。** 长视频、多说话人、方言、噪声、多语言、直播及连续画面尚未系统验收；多视频与评论的近期综合研究也不能由一次筛选成功代替。
-- **运行环境需要匹配。** 其他机器、宿主 Agent、操作系统和 Profile 未全部验收；Agent Reach、轻舟等可选路径缺环境时只列为候选。web-access 仅提供方法参考，未引入其 Proxy。
+- **运行环境需要匹配。** 其他机器、宿主 Agent、操作系统和 Profile 未全部验收；Agent Reach 原始资料随包分发，Python 引擎和具体平台工具按需准备，资料存在不证明真实账号可用。轻舟仍需独立环境；web-access 仅提供方法参考，未引入其 Proxy。
 - **补救成功不等于故障消失。** 原生历史页可找回目标，不代表 SQLite 锁已解除；另一条授权路径读取成功，也不代表原适配器已修好。
 - **持续监控、大批量采集和自动发布需要单独工作流。** Lookup 提供查询与执行选路、证据核验和换路边界；定时调度、长期存储、账号运营及真实写入授权由对应系统和任务负责。
 
 ## 架构概览
 
-下图是任务级选路关系，并不表示四种执行路径会被同时调用。Lookup 是唯一通用检索与浏览器选路入口；Agent Reach 本身也具备路由能力，但在此组合中只按需提供候选资料、环境诊断和已配置的转写能力，不作为第二个自动触发的总路由。
+下图是任务级选路关系，并不表示四种执行路径会被同时调用。Agent Reach 的完整能力已成为 Lookup 的基础，主 Agent 只从 Lookup 进入；按需加载平台知识和工具接口，不将上游注册为第二个总路由。
 
 ```mermaid
 flowchart TB
     agent["Codex / Claude Code / Hermes<br/>理解用户任务并推理"]
     lookup["Lookup Skill<br/>统一检索与浏览器选路<br/>识别证据需求 · 授权边界 · 选路"]
-    reach["Agent Reach（可选）<br/>平台候选资料 · Doctor 诊断 · 已配置转写"]
+    reach["完整 Agent Reach 基础<br/>16渠道 · 配置安装 · Doctor · 转写"]
     choose{"按任务选择最短有效路径"}
     official["官方 API / 已连接服务 / 搜索"]
     adapters["OpenCLI 站点 Adapter / 专用 CLI"]
@@ -69,7 +71,8 @@ flowchart TB
     recover["只补证据缺口，或按故障作用域<br/>选择真正独立的授权路径"]
 
     agent --> lookup
-    reach -.-> lookup
+    lookup --> reach
+    reach --> choose
     lookup --> choose
     choose --> official
     choose --> adapters
@@ -94,6 +97,30 @@ flowchart TB
 
 OpenCLI 独立于 Agent，当前验证基线为正式版2.0.2；入口版本范围、本机升级与执行接口见 [执行与升级边界](references/opencli-windows.md)。Lookup 不再修改 Commander 或自行管理 daemon；薄入口只保留明确 Profile、总等待预算、认证范围与原生清理选项。版本升级须核对实际命令与受影响场景。
 
+## 上游更新
+
+Lookup 在使用相关依赖时启动有界检查，跨会话缓存24小时，同一新版只提醒一次；查询先继续执行，检查失败不阻断业务。默认只提醒。用户明确开启 OpenCLI 托管后，Agent 在当前任务结束时按同一维护流程处理，更新前后告知结果。缓存、原生维护边界与恢复方式统一见 [上游更新.md](references/上游更新.md)。
+
+安装终端入口，不覆盖已有同名命令：
+
+```bash
+python3 ~/.agents/skills/lookup/scripts/install-cli.py
+lookup update
+lookup update opencli
+lookup update agent-reach
+lookup update ego-browser
+```
+
+从当前 Skill 目录也可运行 `python3 scripts/install-cli.py`。入口是 `~/.local/bin/lookup` 到唯一源码的单跳链接；该目录需已在 PATH。重复安装保持同一链接；其他来源的同名文件或断链会拒绝覆盖。
+
+`lookup update` 默认依次更新已安装的 OpenCLI、Agent Reach 与 Ego；指定名称只更新该项。缺失依赖跳过，不自动新增安装。OpenCLI 候选在本机状态目录验证后才切换 Lookup 的有效版本，原系统安装保留；命令发现、帮助和实际执行统一走 `opencli-run.mjs`。Agent Reach 使用已识别的 uv、pipx 或原虚拟环境更新，保留原安装来源并备份环境；版本或随包 Skill 验证失败时恢复。Ego 调用 `ego-browser upgrade`，可能重启浏览器或等待界面确认；完成后核对版本与完整官方指南，未确认时保存状态，不冒充更新成功或自动重复升级。
+
+更新会检查包内补丁、adapter、plugin 及独立 Skill。由维护 Agent 比较旧上游、本地与新上游，确认新版已支持的定制采用上游实现，尚未支持的定制继续保留。命令、自然语言和托管使用相同机制；独立终端需要语义判断时返回可接续材料，由 Agent 完成合并并核验后继续，不直接覆盖。回执用法及未知基线的处理见 [定制核对与合并](references/上游更新.md#定制核对与合并)。
+
+Ego 原操作已完成或取消后，可用 `lookup update ego-browser --retry` 显式重试；结果未知时先核对原操作。web-access 当前只提供方法参考，不列为已接入的可更新运行依赖。Ego 暂无已核实的只读新版查询接口，普通查询只检测本机版本变化，不调用包含安装的升级命令来探测。
+
+当前检查及维护脚本的锁机制支持 macOS／Linux，依赖 Python ≥ 3.9；托管安装另需已有 Node.js 和 npm。CI 不自动发起远端更新检查；显式 `lookup update` 仍按用户请求执行。真实浏览器、所有平台和其他系统的验收范围分别报告。
+
 动态等待、iframe 与媒体是跨工具验收条件，分别见 [动态页面读取](references/动态页面读取.md) 与 [媒体读取](references/媒体读取.md)。它们参考 web-access 的有效方法，不引入 Proxy 或另一套调度入口。
 
 ## 按需依赖
@@ -109,9 +136,9 @@ Tavily／Exa 用户级账号／免 Key 接入、豆包配置与额度切换见 [
 | ffmpeg／ffprobe 与可用 ASR | 按需核对、转换媒体和转写音轨；模型或服务需另行配置 |
 | bili-cli | B站搜索／详情／音频的可选直接路径 |
 | mcporter 与已配置的 Tavily／Exa／豆包 | 可选搜索来源，额度和费用边界分别核对，不要求每个人都安装 |
-| agent-reach | 可选环境诊断与转写；转写另需 ffmpeg／ffprobe 和配置好的服务商 |
+| Agent Reach 融合引擎 | 完整原始资料随包；需要时用 `scripts/reach.py prepare` 准备私有 Python 环境，诊断、配置和转写通过同一来源执行；不注册额外 Skill |
 | python3、curl、jq | 正文提取、结果处理和 OpenCLI 门禁／合约检查 |
-| ego lite 与正式 ego-browser Skill | 本机日常外部网页的默认浏览器；按当前正式接口操作 |
+| ego lite 与随包执行指南 | 本机日常外部网页的默认浏览器；选中后用 `ego-browser skill` 读取当前正式接口，不注册额外自动入口 |
 | 当前 Agent Browser／DevTools | 按开发、标注、调试、指定环境及技术降级需求选择 |
 
 静态正文脚本 `scripts/fetch.sh` 随 Skill 分发，默认只请求原站、本地提取，不自动安装依赖或转发第三方。支持 HTTP(S) HTML、纯文本与 Markdown，保留最终来源 URL；拒绝凭据 URL、非文本响应和超出大小限制的内容。`--prefer` 选择提取器，`--max-output-chars` 默认 40,000；stdout 保持正文，stderr 给机器可读状态。exit 3 表示有正文但截断，仍可按任务使用已证实部分。已有 `readability-lxml`／`html2text` 时可提升提取质量。
@@ -139,7 +166,7 @@ test ! -e ~/.codex/skills/lookup && test ! -L ~/.codex/skills/lookup && \
   ln -s ~/.agents/skills/lookup ~/.codex/skills/lookup
 ```
 
-只给一个客户端使用时，可直接安装到该客户端发现的 Skill 目录。新开或重启客户端会话后，用「搜一下」「读这个链接」「这个视频讲了什么」触发。Skill 只能路由实际加载它的 Agent，不替未加载的客户端强制拦截联网操作。共享全局规则将浏览器与联网检索选路指向 Lookup，场景默认项只在 [浏览器选路.md](references/浏览器选路.md) 维护；用户指定环境、授权与安全边界保留。默认选择不等于强制所有 Agent、账号和任务使用同一个浏览器。
+只给一个客户端使用时，可直接安装到该客户端发现的 Skill 目录。安装后按 [客户端发现与恢复](references/Agent-Reach融合.md#客户端发现与恢复) 检查并迁出竞争入口；脚本保留原始来源与恢复记录，不修改上游触发原文。新开或重启客户端会话后，用「搜一下」「读这个链接」「这个视频讲了什么」「帮我配某个平台」触发。Skill 只能路由实际加载它的 Agent，不替未加载的客户端强制拦截联网操作。共享全局规则将浏览器与联网检索选路指向 Lookup，场景默认项只在 [浏览器选路.md](references/浏览器选路.md) 维护；用户指定环境、授权与安全边界保留。
 
 ### OpenCLI Profile
 
@@ -152,7 +179,7 @@ opencli profile rename <contextId> ego-lite
 
 Lookup 默认选择名为 `ego-lite` 的 OpenCLI Profile；这是用户配置的连接别名。需要另一明确配置的 Profile 时，给 health 与 runner 使用同一 `LOOKUP_OPENCLI_PROFILE` 环境变量。helper 不替用户登录，也不注入或导出 Cookie。
 
-ego 不是必装前提；需要它时加载当前正式 `ego-browser` Skill。任务脚本使用 `scripts/ego-run.mjs` 的本任务 lease 与 finally 收尾，多轮交互通过 `scripts/ego-task.mjs` 复用该 lease；只关闭有本任务创建证据的空间。旧空间辅助脚本仍只做保守检查，普通安装不自动写 hook、不按全局闲置时间回收未知空间，见 [ego-space-hooks.md](references/ego-space-hooks.md)。
+ego 不是必装前提；需要它时用 `ego-browser skill` 按需读取当前正式执行指南。任务脚本使用 `scripts/ego-run.mjs` 的本任务 lease 与 finally 收尾，多轮交互通过 `scripts/ego-task.mjs` 复用该 lease；只关闭有本任务创建证据的空间。旧空间辅助脚本仍只做保守检查，普通安装不自动写 hook、不按全局闲置时间回收未知空间，见 [ego-space-hooks.md](references/ego-space-hooks.md)。
 
 ## 验证
 
@@ -163,6 +190,10 @@ bash scripts/selftest.sh
 bash scripts/selftest.sh --auth
 bash scripts/selftest.sh --live
 bash scripts/selftest.sh --search
+python3 scripts/reach.py verify
+python3 scripts/entrypoints.py audit --lookup-root /absolute/lookup
+python3 -m unittest discover -s tests -p 'test_reach.py'
+python3 -m unittest discover -s tests -p 'test_entrypoints.py'
 bash tests/test_opencli_health.sh
 bash tests/test_find_url.sh
 bash tests/test_match_site.sh
@@ -198,6 +229,7 @@ node scripts/find-url.mjs "<关键词>" --since 7d
 | 文件 | 读取时机 |
 |---|---|
 | [任务选路.md](references/任务选路.md) | 多后端筛选、复用上游资料及区分环境可用与任务完成 |
+| [OpenCLI融合.md](references/OpenCLI融合.md) | 全部站点与内置命令、5套指南、CDP、插件及适配器开发维护 |
 | [浏览器选路.md](references/浏览器选路.md) | 需要浏览器时的默认选择、开发场景、指定环境与技术降级 |
 | [动态页面读取.md](references/动态页面读取.md) | 内容就绪与有界等待、登录提示、访问上下文、iframe／Shadow DOM |
 | [媒体读取.md](references/媒体读取.md) | 图片懒加载与实际资源、视频定位／采帧、证据覆盖范围 |
@@ -209,6 +241,7 @@ node scripts/find-url.mjs "<关键词>" --since 7d
 | [weixin-article.md](references/weixin-article.md) | 公众号跳转与正文 |
 | [ego-space-hooks.md](references/ego-space-hooks.md) | 正式 ego-browser 入口与空间归属 |
 | [opencli-windows.md](references/opencli-windows.md) | OpenCLI 执行、原生诊断／清理、升级契约 |
+| [上游更新.md](references/上游更新.md) | 使用时提醒、`lookup update`、托管授权与失败恢复 |
 | [研究综合.md](references/研究综合.md) | 多来源分析；普通搜索不加载 |
 
 ## License

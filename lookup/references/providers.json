@@ -3,9 +3,9 @@
   "_doc": "Lookup 的必要合约与任务边界，不是完整后端目录或自动执行器。候选按数组顺序列出，仅在条件相当时参考；实际选择见 references/任务选路.md。命令参数来自当前注册表／帮助；active/conditional 是登记状态，不表示当前健康。",
   "failure_domains": {
     "_model": "分别判断浏览器进程、站点账号、bridge+Profile、site+action；只有共享实际依赖才共享故障。",
-    "opencli-browser": "已选定的 browser/Profile + 站点会话 + OpenCLI bridge + 具体 adapter；按 LOOKUP_OPENCLI_PROFILE 配置，默认 ego-lite",
+    "opencli-browser": "浏览器进程 + 目标账号 + 具体 adapter；默认 Browser Bridge 与 LOOKUP_OPENCLI_PROFILE=ego-lite，显式 CDP 路线按实际 endpoint 判断共享依赖",
     "host-browser-api": "当前 Agent 实际发现的浏览器能力；是否与其他候选共享进程/Profile/账号需现场核对",
-    "ego-browser-api": "正式 ego-browser Skill；仍依赖 ego lite 与其对应会话，不依赖 OpenCLI bridge/adapter",
+    "ego-browser-api": "ego-browser 原生执行接口；仍依赖 ego lite 与其对应会话，不依赖 OpenCLI bridge/adapter",
     "direct-http": "本机直连或已配置网络路径，不依赖浏览器；仍受原站/账号/网络限制",
     "sogou": "搜狗微信搜索/跳转上游",
     "remote-http": "第三方服务，受配额、数据外发和原站可用性约束",
@@ -24,7 +24,7 @@
   "ego_browser": {
     "provider_id": "ego-browser",
     "failure_domain": "ego-browser-api",
-    "invocation": "load-installed-official-skill",
+    "invocation": "read-current-ego-browser-skill-guide",
     "use_when": [
       "无合适专用来源且本机日常外部网页需要浏览器",
       "用户明确指定ego环境",
@@ -35,7 +35,7 @@
       "同一站点账号认证失效或风控"
     ],
     "requires": [
-      "加载与安装版本匹配的正式ego-browser Skill",
+      "通过 ego-browser skill 读取与安装版本匹配的完整指南",
       "只操作本任务已证明归属的空间",
       "用户接管或权限拒绝后停止相关操作"
     ]
@@ -220,16 +220,18 @@
           "status": "conditional",
           "failure_domain": "remote-http",
           "auth": "configured-transcription-provider",
-          "bin": "agent-reach",
+          "bin": "python3",
+          "entry": "scripts/reach.py run transcribe",
           "evidence_type": "asr",
           "local_effect": "temporary-audio",
           "validator": "task_sufficient_with_provenance",
           "requires": [
+            "scripts/reach.py status确认融合运行时已准备；普通查询不自动prepare",
             "已有ffmpeg/ffprobe与转写配置",
             "音频外发/费用在任务授权范围内",
             "音频可获取"
           ],
-          "_note": "默认只使用已选服务商；不自动配置Key、跨服务商或把ASR称为原始字幕"
+          "_note": "使用随包融合引擎，不要求独立agent-reach命令；默认只使用已选服务商，不自动配置Key、跨服务商或把ASR称为原始字幕"
         }
       ]
     },
@@ -455,7 +457,7 @@
           },
           "validator": "task_sufficient_with_provenance",
           "evidence_type": "full_text",
-          "_note": "本机日常外部网页的默认浏览器，加载正式ego-browser Skill；用户指定环境优先；历史selector失效时重新观察"
+          "_note": "本机日常外部网页的默认浏览器，选中后用 ego-browser skill 读取指南；用户指定环境优先；历史selector失效时重新观察"
         },
         {
           "id": "host-browser-weixin-dom",
