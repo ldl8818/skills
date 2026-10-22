@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Lookup policy boundary; execution and async lifecycle belong to OpenCLI.
 import { spawn, spawnSync } from 'node:child_process'
+import { opencliExecutable, supervisedCommand, checkUpdates, reportUpdates } from './upstream-client.mjs'
 
 function fail(code, message) {
   console.error(JSON.stringify({error: {code, message}, phase: 'entry', outcome_unknown: false, retryable: false}))
@@ -40,7 +41,10 @@ if (!/^[0-9]+$/.test(budget) || !Number.isSafeInteger(Number(budget))
 }
 const env = {...process.env, OPENCLI_PROFILE: profile, OPENCLI_CLOSE_OWNED_TAB: '1'}
 const started = Date.now()
-const version = spawnSync('opencli', ['--version'], {
+let selected
+try { selected = opencliExecutable() }
+catch (error) { fail('LOOKUP_UPSTREAM_STATE_INVALID', error.message) }
+const version = spawnSync(selected.binary, ['--version'], {
   env, encoding: 'utf8', timeout: Math.min(5000, Number(budget)), maxBuffer: 65536,
 })
 if (version.error || version.status !== 0) {
@@ -50,9 +54,13 @@ const match = /^2\.(\d+)\.(\d+)\s*$/.exec(version.stdout)
 if (!match || (Number(match[1]) === 0 && Number(match[2]) < 2)) {
   fail('OPENCLI_VERSION_UNSUPPORTED', 'Requires OpenCLI >=2.0.2 <3; qualify changed contracts before upgrading')
 }
+if (!options.some(arg => ['--version', '--help', '-h'].includes(arg))) {
+  checkUpdates('opencli', version.stdout.trim())
+}
 const remaining = Number(budget) - (Date.now() - started)
 if (remaining <= 0) fail('OPENCLI_ENTRY_TIMEOUT', 'Budget exhausted before dispatch')
-const child = spawn('opencli', args, {env, stdio: 'inherit', shell: false})
+const [executable, dispatchArgs] = supervisedCommand(selected, args)
+const child = spawn(executable, dispatchArgs, {env, stdio: 'inherit', shell: false})
 let stoppedCode
 let killTimer
 function stop(signal, code, reason) {
@@ -76,5 +84,6 @@ child.on('error', error => {
 child.on('close', (code, signal) => {
   clearTimeout(timer)
   clearTimeout(killTimer)
+  if (!process.env.CI && !options.some(arg => ['--version', '--help', '-h'].includes(arg))) reportUpdates('opencli')
   process.exitCode = stoppedCode ?? code ?? (signal === 'SIGINT' ? 130 : signal === 'SIGHUP' ? 129 : 143)
 })

@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import core
 from pathlib import Path
 import audit_upstream
+import lifecycle
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -84,6 +85,8 @@ def marketplace_repo(marketplace):
 def check_one(target, include_frozen=False):
     kind, name, url, local_hash, extra = target
     base = {**extra, "kind": kind, "name": name, 'has_upstream': bool(url)}
+    if extra.get('maintenance_root'):
+        return {**base, **lifecycle.check(extra['maintenance_root'])}
     if extra.get("frozen"):
         result = {**base, "status": "frozen",
                   "message": "已冻结（脱离上游，按本地版本号管）"}
@@ -135,6 +138,12 @@ def build_targets():
     targets, seen = [], set()
 
     for s in skills:
+        owner = lifecycle.lookup_root(Path(s.md_path).parent) if s.name == 'lookup' else None
+        if owner and s.name not in seen:
+            seen.add(s.name)
+            targets.append(('skill', s.name, '', '', {'local': s.version,
+                'enabled': s.enabled, 'maintenance_root': str(owner)}))
+            continue
         if s.source in ("github", "frozen") and s.name not in seen:
             seen.add(s.name)
             coverage = 'unverified'

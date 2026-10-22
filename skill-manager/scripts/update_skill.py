@@ -5,6 +5,9 @@
   python3 update_skill.py                更新所有有新版的（先 check 再逐个更新）
   python3 update_skill.py --dry-run      只列出将要更新的，不动手
   python3 update_skill.py <名字>          更新单个；插件可只写裸名（自动补 @市场名）
+  python3 update_skill.py lookup          总更新 Lookup 本体与已安装上游
+  python3 update_skill.py lookup --self-only       只更新 Lookup 本体
+  python3 update_skill.py lookup --upstream-only   只更新 Lookup 上游
 
 2026-07-11 增强：
 - 裸名字自动解析（`core.resolve_target`，与 delete 共用）：市场名是安装来源的内部
@@ -44,6 +47,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import core
 from pathlib import Path
 import audit_upstream
+import lifecycle
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -390,7 +394,7 @@ def merge_skill_dir(src, dst, meta_fields, md_name="SKILL.md", baseline=None):
     return old_md, operations.get('SKILL.md', b'').decode('utf-8')
 
 
-def update_direct_skill(skill_name, project=None, ref_arg=None):
+def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False, upstream_only=False):
     core.safe_component(skill_name, "skill 名")
     resolved, error = core.resolve_direct_path(skill_name, project)
     if error:
@@ -416,6 +420,16 @@ def update_direct_skill(skill_name, project=None, ref_arg=None):
     with open(skill_md, encoding="utf-8") as f:
         content = f.read()
     meta = parse_frontmatter(content)
+
+    owner = lifecycle.lookup_root(skill_dir)
+    if owner:
+        if ref_arg:
+            print('❌ Lookup 的本体通道由其维护入口管理，不通过通用 --ref 切换。')
+            return False
+        return lifecycle.update(owner, self_only, upstream_only)
+    if upstream_only:
+        print('❌ 该 Skill 没有已接入的上游依赖维护入口。')
+        return False
 
     if meta.get("update_policy") == "frozen":
         print(f"🧊 {skill_name} 已声明 update_policy: frozen（绝版或深度定制），按策略不更新。"
@@ -722,19 +736,22 @@ def update_plugin(plugin_key):
 
 # ── 单个更新（名字解析走 core.resolve_target，update / delete 共用） ──
 
-def update_one(name, project=None, ref_arg=None):
+def update_one(name, project=None, ref_arg=None, self_only=False, upstream_only=False):
     if project:
-        return update_direct_skill(name, project, ref_arg)
+        return update_direct_skill(name, project, ref_arg, self_only, upstream_only)
     kind, key, err = core.resolve_target(name)
     if err:
         print(f"❌ {err}")
         return False
     if kind == "plugin":
+        if self_only or upstream_only:
+            print('❌ 插件不支持 Lookup 的本体／上游范围参数。')
+            return False
         if ref_arg:
             print("❌ --ref 只对直装 skill 有效：插件按 commit 装，本来就跟 HEAD")
             return False
         return update_plugin(key)
-    return update_direct_skill(key, None, ref_arg)
+    return update_direct_skill(key, None, ref_arg, self_only, upstream_only)
 
 
 # ── 批量更新：不给名字就把有新版的全更了 ───────────────────
@@ -751,9 +768,10 @@ def update_all(dry_run=False):
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
         results = list(ex.map(chk.check_one, chk.build_targets()))
 
-    outdated = sorted((r for r in results if r["status"] == "outdated" or r.get('needs_merge_verification')),
+    outdated = sorted((r for r in results if r["status"] == "outdated" or r.get('needs_merge_verification')
+                       or r.get('managed_update')),
                       key=lambda r: r["name"])
-    errors = [r for r in results if r["status"] == "error"]
+    errors = [r for r in results if r["status"] == "error" and not r.get('managed_update')]
     unresolved = [r for r in results if r['status'] == 'unknown' or (
         r['status'] == 'frozen' and r.get('has_upstream') and r.get('merge_coverage') != 'verified')]
 
@@ -770,7 +788,7 @@ def update_all(dry_run=False):
     print(f"🟡 {len(outdated)} 个待更新或待完整内容核验：")
     for r in outdated:
         tail = "" if r["enabled"] else "（未启用）"
-        print(f"   {r['name']}  {r.get('local', '—')} → {r['remote']}{tail}")
+        print(f"   {r['name']}  {r.get('local', '—')} → {r.get('remote', '本体与上游分项维护')}{tail}")
     print()
 
     if dry_run:
@@ -781,8 +799,10 @@ def update_all(dry_run=False):
     for i, r in enumerate(outdated, 1):
         print(f"── [{i}/{len(outdated)}] {r['name']} " + "─" * 30)
         try:
-            ok = update_plugin(r["name"]) if r["kind"] == "plugin" \
-                else update_direct_skill(r["name"])
+            if r.get('managed_update'):
+                ok = lifecycle.update(r['maintenance_root'])
+            else:
+                ok = update_plugin(r["name"]) if r["kind"] == "plugin" else update_direct_skill(r["name"])
         except Exception as e:          # 单个炸了不能中断整批
             print(f"❌ 更新失败: {e}")
             ok = False
@@ -792,8 +812,8 @@ def update_all(dry_run=False):
     print("═" * 46)
     print(f"✅ 成功 {len(done)}：" + "、".join(done) if done else "✅ 成功 0")
     if failed:
-        print(f"❌ 失败 {len(failed)}：" + "、".join(failed) +
-              f"\n   （失败的都未改动本地，备份在 {BACKUP_ROOT}/）")
+        print(f"❌ 未全部完成 {len(failed)}：" + "、".join(failed) +
+              f"\n   （逐项核对实际结果；普通 Skill 备份在 {BACKUP_ROOT}/，Lookup 另有维护回执。）")
     return not failed and not errors and not unresolved
 
 
@@ -820,8 +840,11 @@ if __name__ == "__main__":
         del argv[i:i + 2]
     names = [a for a in argv if not a.startswith("-")]
     flags = {a for a in argv if a.startswith("-")}
+    if len(names) > 1:
+        print('❌ 单项更新只接受一个 Skill 名称；不能忽略多余对象扩大更新范围。')
+        sys.exit(1)
 
-    unknown = flags - {"--dry-run"}
+    unknown = flags - {"--dry-run", "--self-only", "--upstream-only"}
     if unknown:
         print(f"❌ 不认识的参数: {'、'.join(sorted(unknown))}")
         print("用法: python3 update_skill.py [名字] [--project <路径>] "
@@ -835,6 +858,11 @@ if __name__ == "__main__":
         print("❌ --ref 要指定 skill 名：批量更新不整体切换跟随通道")
         sys.exit(1)
 
+    if ('--self-only' in flags and '--upstream-only' in flags) or (
+            not names and flags & {'--self-only', '--upstream-only'}):
+        print('❌ 本体／上游范围参数须指定单个 Skill，且不能同时使用。')
+        sys.exit(1)
+
     if not names:
         if project:
             print("❌ --project 只能用于更新单个项目级 skill")
@@ -845,9 +873,21 @@ if __name__ == "__main__":
         # 只解析目标，不联网查新版（批量 dry-run 才做真实比对）——如实说清，别让人
         # 把「将更新」误读成「确认有新版」
         kind, key, err = ("skill", names[0], None) if project else core.resolve_target(names[0])
+        if not err and kind == 'skill':
+            path, resolution_error = core.resolve_direct_path(key, project)
+            owner = lifecycle.lookup_root(path) if path and not resolution_error else None
+            if owner:
+                if ref_arg:
+                    print('❌ Lookup 不通过通用 --ref 切换通道。')
+                    sys.exit(1)
+                payload, code = lifecycle.invoke(owner, self_only='--self-only' in flags,
+                    upstream_only='--upstream-only' in flags, dry_run=True)
+                print(json.dumps(payload, ensure_ascii=False, indent=2))
+                sys.exit(code)
         print(f"❌ {err}" if err else
               f"（--dry-run）目标解析为{'插件' if kind == 'plugin' else 'skill'}：{key}"
               f"（是否有新版以实际执行时的比对为准）")
         sys.exit(1 if err else 0)
 
-    sys.exit(0 if update_one(names[0], project, ref_arg) else 1)
+    sys.exit(0 if update_one(names[0], project, ref_arg, '--self-only' in flags,
+                            '--upstream-only' in flags) else 1)

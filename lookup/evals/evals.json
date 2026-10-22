@@ -783,6 +783,157 @@
         "不支付、不注册、不提交问卷、不切同服务账号试探；保留服务返回的恢复信息",
         "已有原始 URL 时不必穷举搜索服务或启动浏览器；核对正文再回答"
       ]
+    },
+    {
+      "id": 80,
+      "prompt": "用 Lookup 读取指定的小红书笔记；OpenCLI 的后台检查发现新版，默认通知策略，当前查询已返回完整正文。",
+      "expected_output": "先完成正文任务，简短提醒可用 lookup upgrade opencli 更新该依赖，不把检查升级为自动安装。",
+      "expectations": [
+        "检查有跨会话缓存，未等待远端版本请求拖住业务",
+        "同一新版只提醒一次，结果原始 stdout 不混入通知",
+        "未安装依赖不新增；检查失败不写成已是最新版"
+      ]
+    },
+    {
+      "id": 81,
+      "prompt": "执行 lookup update。已有 OpenCLI，Ego 已安装，Agent Reach 未安装。",
+      "expected_output": "通过真实终端入口维护 Lookup 本体及已安装的 OpenCLI 和 Ego；Agent Reach 缺失跳过，各项分别核验并报告。",
+      "expectations": [
+        "lookup update 与 lookup update opencli 进入同一流程",
+        "不新增 Agent Reach、不把 Ego 原生升级伪报为已执行",
+        "保留旧版及回执，合约与真实平台验证分别报告",
+        "本体只处理选定源的完整 lookup 目录，不推进所属仓库 HEAD 或更新其他 Skill；源头落后本地时不降级"
+      ]
+    },
+    {
+      "id": 82,
+      "prompt": "OpenCLI 已明确开启托管，发现稳定新版，但另一个 Lookup 调用还在执行。",
+      "expected_output": "当前查询完成后检查维护条件，有并发使用则延后切换，后续可接续。",
+      "expectations": [
+        "开启托管来自明确用户授权，非默认",
+        "候选准备不替换正在执行的版本，不杀共享 daemon",
+        "已通知版本仍可接续延后任务，不重复播报发现新版"
+      ]
+    },
+    {
+      "id": 83,
+      "prompt": "已授权的 OpenCLI 托管安装发生超时或命令权限变为写入，候选没有通过验证。",
+      "expected_output": "保留当前可用版本，记录失败，不重复自动尝试同一失败版本。",
+      "expectations": [
+        "未弱化命令权限或字段检查",
+        "中断后先查实际事务和版本指针，不盲目重装",
+        "需要重载指南和真实业务验收时如实保留范围"
+      ]
+    },
+    {
+      "id": 84,
+      "prompt": "执行 lookup update opencli。本地有空值保留补丁；新版分页实现已变化，仍没有保留空值。",
+      "expected_output": "比较完整旧源、本地和新源，在新分页实现上保留空值能力，验证原失败路径与正常分页后接续更新。",
+      "expectations": [
+        "不直接覆盖，也不把备份、文本无冲突或安装成功当作语义判断",
+        "逐项记录保留理由、源文件依据和实际验证；完整新上游内容保留",
+        "当前 Agent 连续处理待判断材料，不把 manual_review 当维护完成"
+      ]
+    },
+    {
+      "id": 85,
+      "prompt": "已授权 OpenCLI 托管。新版已用不同代码完整支持本地 adapter 的修复，包括原来的失败场景。",
+      "expected_output": "验证等价行为后采用新版原生实现，移除重复覆盖，登记依据并核对回退。",
+      "expectations": [
+        "依据行为及边界判断支持情况，不要求实现逐字相同",
+        "托管与手动维护采用同一定制规则，不扩大授权",
+        "移除覆盖前后验证实际生效路径，回滚可恢复原定制"
+      ]
+    },
+    {
+      "id": 86,
+      "prompt": "更新 Agent Reach。原生包升级完成，但独立 Skill 含旧指南和本地能力，安装器没有改写这个目录。",
+      "expected_output": "仍比较独立 Skill 的旧上游、本地和新上游，判断本地能力是否已被新版支持，完成合并后再报告维护完成。",
+      "expectations": [
+        "安装器未改写不表示定制无需审查",
+        "不把包版本成功当独立 Skill 已更新，也不覆盖本地能力",
+        "合并中保留上游路由字段原文及必要的本地新增条目"
+      ]
+    },
+    {
+      "id": 87,
+      "prompt": "Ego 原生升级等待界面确认，版本没有增加；安装器改写了独立 Skill，本地还有定制。",
+      "expected_output": "保留原生待确认状态和本地内容，不因 Skill 合并或某个命令退出0宣布升级完成。",
+      "expectations": [
+        "运行程序与 Skill 合并分别核对，原生 pending 不被覆盖为 updated",
+        "保存已观察到的安装器内容，未知来源不当纯上游",
+        "先查原操作结果，不盲目重发升级或自动点击确认"
+      ]
+    },
+    {
+      "id": 88,
+      "prompt": "在另一个会话接续 Lookup 更新。已有定制判断回执，但本地文件在判断后又被用户修改。",
+      "expected_output": "拒绝套用旧判断，保留最新本地内容，重新核对差异和相应验证后再切换。",
+      "expectations": [
+        "核对目标、完整输入和合并结果的指纹，不仅检查版本或主程序文件",
+        "不修改依据快照或回执哈希来绕过并发检查",
+        "无法确认原始来源时保留旧定制并说明具体缺口"
+      ]
+    },
+    {
+      "id": 89,
+      "prompt": "用 Skill Manager 更新一下 Lookup 这个 Skill。环境有已安装的 OpenCLI、Agent Reach 和 Ego。",
+      "expected_output": "调用解析到的 Lookup 总更新入口，包含本体和三个已安装上游，不因 local 来源或 Skill 字样缩小范围。",
+      "expectations": [
+        "不使用缺 github_url 的通用路径作为任务终点",
+        "自然语言、Skill Manager 与 lookup update 使用同一维护器及回执",
+        "本体、各上游与业务验收分别报告，不以委派成功代替完成"
+      ]
+    },
+    {
+      "id": 90,
+      "prompt": "只更新 Lookup 本体，不更新上游。",
+      "expected_output": "执行 lookup update --self-only 或等价的 Skill Manager 本体委派，不调用任何上游安装器。",
+      "expectations": [
+        "不运行 OpenCLI 安装、Agent Reach 升级或 Ego upgrade",
+        "遇到定制比较完整旧源、本地和新源后接续",
+        "禁用状态和本地运行文件保持有效"
+      ]
+    },
+    {
+      "id": 91,
+      "prompt": "执行 lookup upgrade agent-reach。",
+      "expected_output": "仅维护所选实际环境中的 Agent Reach，不更新 Lookup 本体或其他依赖。",
+      "expectations": [
+        "update 与 upgrade 的范围按当前接口，不沿用旧命名推断",
+        "未安装时报告缺失，不新增安装",
+        "失败或原生状态未知不冒充升级完成"
+      ]
+    },
+    {
+      "id": 92,
+      "prompt": "更新 Lookup。本地 Git HEAD 含已提交定制，还没有合并进官方；新版修改了同一实现。",
+      "expected_output": "从官方可达的共同历史恢复旧源，保留已提交定制并进行三方判断。",
+      "expectations": [
+        "官方 origin 字符串和本地 HEAD 不能单独证明纯上游",
+        "完整新源与本地改动均进入材料，不能直接覆盖",
+        "保留其他 Skill、仓库 HEAD 和必要定制"
+      ]
+    },
+    {
+      "id": 93,
+      "prompt": "继续 Lookup 总更新。上次本体切换后出现另一个会话的编辑，恢复状态未知。",
+      "expected_output": "先核对本体事务和两份内容，保留并发编辑；本体状态未确认前延后上游切换。",
+      "expectations": [
+        "不覆盖新编辑或盲目重发升级",
+        "分项标记本体未知与上游延后，不报告全部完成",
+        "恢复材料保留且可被接续会话找到"
+      ]
+    },
+    {
+      "id": 94,
+      "prompt": "用 Skill Manager 批量更新 Skills，其中 Lookup 是没有维护脚本的旧 local 安装。",
+      "expected_output": "Lookup 仍进入维护目标并明确报告接口缺失；Agent 在授权内恢复完整源与定制材料后迁移。",
+      "expectations": [
+        "不因 local 来源而静默跳过",
+        "不能报告全部已是最新版或仅输出通用缺来源错误后宣布完成",
+        "其他 Skill 的结果保留，Lookup 未完成状态单列"
+      ]
     }
   ]
 }

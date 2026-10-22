@@ -53,7 +53,9 @@ class Fixture(unittest.TestCase):
         self.home = self.base / 'home'
         self.bin.mkdir()
         self.home.mkdir()
-        self.env = dict(BASE_ENV, HOME=str(self.home), PATH=str(self.bin) + os.pathsep + os.environ['PATH'])
+        self.env = dict(BASE_ENV, HOME=str(self.home), CI='1',
+                        XDG_STATE_HOME=str(self.base/'state'),
+                        PATH=str(self.bin) + os.pathsep + os.environ['PATH'])
         self.children = []
 
     def spawn(self, args, **kwargs):

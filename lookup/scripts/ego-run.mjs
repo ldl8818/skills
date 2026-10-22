@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { checkUpdates, reportUpdates } from './upstream-client.mjs';
 
 const [action, leasePath, label, workFile, profileId, ...extra] = process.argv.slice(2);
 try {
@@ -13,6 +14,7 @@ try {
       || (action === 'run' && (!label || !workFile))
       || (action === 'finish' && label)) throw new Error('Usage: ego-run.mjs run <lease> <label> <work.mjs> [profileId] | finish <lease>');
   const options = { leasePath: resolve(leasePath), label, profileId };
+  if (action === 'run') checkUpdates('ego-browser');
   const moduleUrl = new URL('./ego-task.mjs', import.meta.url).href;
   const marker = '@@LOOKUP_TASK@@';
   const script = `const { runOwnedTask, finishOwnedTask } = await import(${JSON.stringify(moduleUrl)});
@@ -38,4 +40,6 @@ console.log(${JSON.stringify(marker)} + JSON.stringify(result));`;
 } catch (error) {
   console.error(error?.killed ? 'EGO_TASK_TIMEOUT: lease retained; late browser effects are unknown. Finish only this lease before another round.' : error.message);
   process.exitCode = 1;
+} finally {
+  if (action === 'run') reportUpdates('ego-browser');
 }

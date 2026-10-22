@@ -5,13 +5,14 @@
 ## 发现能力与执行
 
 ```bash
-opencli list "<动作关键词>" --site "<site>" --limit 25
-opencli <site> <command> --help -f json
+node scripts/opencli-run.mjs list "<动作关键词>" --site "<site>" --limit 25
+node scripts/opencli-run.mjs <site> <command> --help -f json
 node scripts/opencli-run.mjs <site> <command> ...
 ```
 
 - `list` 的 JSON 为 `{ok,data:{commands,total,nextOffset?}}`，只返回当前页；需要更多候选时沿 `nextOffset` 分页，不把首屏当完整注册表。选择 `access: read`，从单个命令帮助核对 `browser`、`positionals`、`command_options`、`browser_common_options` 和 `columns`。
 - `opencli-run.mjs` 原样调用公开 CLI，不导入包内模块、不修改 Commander。它固定 `LOOKUP_OPENCLI_PROFILE`（默认 `ego-lite`）、拒绝冲突 Profile／隐式 CDP transport、限定认证检查站点，并设置 `OPENCLI_CLOSE_OWNED_TAB=1`。需改用另一 Profile 时先确认任务授权与实际别名。
+- 该入口优先使用 [托管维护](上游更新.md) 已验收的 Lookup 专用版本，否则使用原系统安装。能力发现、帮助与业务执行都通过同一入口；上游指南中的裸 `opencli` 命令也经此入口调用，不混用系统旧版帮助与托管新版执行。没有 Python 或更新提醒不可用时保留原执行能力；有效版本指针异常则先核实，不静默改用其他版本。
 - `OPENCLI_CONFIG_DIR` 可指定已有 OpenCLI 配置目录；health 与 runner 必须使用同一环境。切目录或 Profile 不能作为绕过失败依赖的证明。
 - Ego Lite 是基于 Chromium 的浏览器，可安装 OpenCLI 的 Chrome 扩展；OpenCLI 通过该扩展执行，`ego-browser` Skill 通过浏览器自身接口执行。两者可使用同一个 Ego Lite 浏览器，无需另开原版 Chrome。换执行接口仍须核对共同的进程、Profile 与站点登录态。
 - Profile 是 OpenCLI 的连接别名，不是浏览器产品或 Skill 名称。默认别名 `ego-lite` 本身不证明实际连接与登录态；有环境疑点时核对当前连接和目标站点会话，不根据别名推断。
@@ -23,8 +24,8 @@ node scripts/opencli-run.mjs <site> <command> ...
 选路确定使用 OpenCLI Browser 后，直接读取安装包匹配的执行文档：
 
 ```bash
-opencli skills read opencli-browser -f plain
-opencli browser <command> --help -f json
+node scripts/opencli-run.mjs skills read opencli-browser -f plain
+node scripts/opencli-run.mjs browser <command> --help -f json
 ```
 
 不为读取执行文档再安装一个自动触发的通用路由 Skill。页面会话、frame、等待、截图与动作参数以上述当前文档为准；Lookup 不复制另一份 API 手册。
@@ -42,6 +43,8 @@ opencli browser <command> --help -f json
 正常读取不强制先做全环境体检；有连接疑点或执行 selftest 时再调用。必须同时核对 `daemonRunning`、`extensionConnected`、`connectivity.ok` 及 stale／flaky 状态，doctor 的退出0与外层 `ok:true` 只说明报告生成成功。通过仍不证明站点登录、动作能力或正文完整。
 
 ## 升级验收
+
+使用时提醒、`lookup update`、按依赖授权及隔离维护见 [上游更新.md](上游更新.md)。本节维护 OpenCLI 特有执行契约，不另建更新策略。
 
 维护时先核对正式发布包、安装版本、扩展及公开帮助。在隔离目录检查变化，再测试明确 Profile、延迟结果、业务失败、超时结果未知与原生清理；需要换服务时先核对是否有其他任务使用，不能用杀共享进程解决。
 
