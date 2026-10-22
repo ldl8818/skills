@@ -5,7 +5,7 @@ when_to_use: "列出已安装 Skill、查 Skill 来源、检查 Skill 更新、�
 dispatch_intent: "已安装 Skills 的盘点、溯源、完整上游合并更新、启停、删除、定版与自检；Skill 内容编写交给 skill-creator。"
 license: MIT
 metadata:
-  version: "2.8.1"
+  version: "2.10.0"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
@@ -30,9 +30,11 @@ metadata:
 
 ## 更新的完成条件
 
-用户要求更新时，取得选定通道的完整源快照，以旧上游基线、本地现状和新上游做三方合并。保留本地功能、路由和约束；逐项处理新增、修改、删除及冲突，不得只挑选少量条款后宣布更新完成。
+用户要求更新时，取得选定通道的完整源快照，以旧上游基线、本地现状和新上游做三方合并。逐项判断新版是否已支持本地定制：已支持时采用新上游实现，尚未支持时保留必要定制，并验证原用途、失败边界和新版新增能力。有效路由与约束仍须满足；逐项处理新增、修改、删除及冲突，不得只挑选少量条款后宣布更新完成。
 
-普通直装更新由脚本合并并写入 `upstream-merge.json`；无法确定旧基线或存在冲突时保持在线目录原状。插件先核对安装内容与旧基线；存在本地差异时转入隔离合并，不直接替换。`frozen` 只禁止自动覆盖，不表示用户明确要求的合并任务已经完成；按[冻结版本维护](references/冻结版本维护.md)继续处理，无须重复请求已授权的更新。
+普通直装更新的脚本负责机械合并、完整性检查和写入 `upstream-merge.json`；语义判断由维护 Agent 完成。有执行或业务定制时先在隔离目录完成判断与相称验证，再应用结果，不能以文本无冲突或脚本成功代替判断。无法确定旧基线或存在未解决冲突时保持在线目录原状。插件先核对安装内容与旧基线；存在本地差异时转入隔离合并，不直接替换。
+
+命令、自然语言及已授权托管遵循同一要求，具体流程、当前脚本能力和提醒／接续机制的接入要求见[升级与定制合并](references/升级与定制合并.md)。脚本返回待判断或拒绝覆盖时，Agent 在已有授权内继续处理；`frozen` 只禁止自动覆盖，不表示用户明确要求的合并任务已经完成。冻结集合的来源、许可及登记按[冻结版本维护](references/冻结版本维护.md)，无须重复请求已授权的更新。
 
 交付前必须核对完整源文件清单、Markdown 章节保留／明确改名映射、每项本地适配的原因、源文件与合并结果哈希、本地特有文件，以及相关行为验证。`audit_upstream.py --repo <仓库> --upstream <源仓库>` 验证固定源快照；省略 `--upstream` 只能证明当前文件与登记回执一致，不能证明上游最新或语义正确。哈希或版本相同、下载成功、结构／链接／测试通过均不能单独证明合并完整。
 
@@ -40,12 +42,14 @@ metadata:
 
 ## 命令
 
+Lookup 的更新由其实际安装目录内的维护器执行。“更新／升级 Lookup”或 `update lookup` 默认包含本体与已安装上游；`update lookup --self-only` 只更新本体，`--upstream-only` 只维护上游。检查和批量更新同样识别本地来源的 Lookup，不因没有 `github_url` 而跳过。缺少维护接口的旧安装先按完整来源与定制流程迁移；定制待判断时由当前 Agent 连续合并、验证并接续，不能把委派或退出码当作完成。命令与结果协议见 [Lookup 更新入口](../lookup/references/上游更新.md#命令与范围)。
+
 | 用户意图 | 命令 | 脚本 |
 |---------|------|------|
 | 列出技能 | `list`（全局 + 当前项目）；`list <项目>`；`list --all [-n N]` 全景，展开最近活跃前 3 个、其余折叠 | `list_skills.py` |
 | 检查更新 | `check [--include-frozen]`（冻结项只读比较，不解冻） | `scan_and_check.py` |
 | 溯源 | `trace <名字> [--repo <URL>] [--write]`；`trace --all --write` 批量 | `trace_source.py` |
-| 更新 | `update <名字> [--project <路径>] [--ref main\|release]`；直装或 Claude 插件；无参 = 批量；`--dry-run` 只列不做 | `update_skill.py` |
+| 更新 | `update <名字> [--project <路径>] [--ref main\|release]`；Lookup 另支持 `--self-only`／`--upstream-only`，不通过 `--ref` 切换通道；无参 = 批量；`--dry-run` 只列不做 | `update_skill.py` |
 | 启用 / 禁用 | `enable\|disable <名字> [--project <路径>]`；直装或 Claude 插件 | `toggle_skill.py` |
 | 升版本号 | `bump <名字> [patch\|minor\|major] [--project <路径>]` | `bump_skill.py` |
 | 体检 | `doctor [--fix]`（`--fix` 只做有依据的补录，绝不发明数据） | `doctor.py` |

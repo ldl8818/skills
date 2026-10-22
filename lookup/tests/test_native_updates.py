@@ -496,7 +496,7 @@ elif outcome=='missing-skill':
             return {'status':'up_to_date','current':'1.5.0'}
         output = io.StringIO()
         with patch.object(upstream, 'update', side_effect=result) as update, redirect_stdout(output):
-            self.assertEqual(upstream.main(['update']), 1)
+            self.assertEqual(upstream.main(['upgrade']), 1)
         self.assertEqual([c.args[1] for c in update.call_args_list],list(upstream.UPDATE_DEPENDENCIES))
         self.assertEqual(len(json.loads(output.getvalue())['results']), 3)
 

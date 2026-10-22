@@ -32,6 +32,12 @@ ROOT = Path(__file__).resolve().parents[1]
 _review_spec = importlib.util.spec_from_file_location('lookup_customization', Path(__file__).with_name('customization.py'))
 customization = importlib.util.module_from_spec(_review_spec)
 _review_spec.loader.exec_module(customization)
+_self_spec = importlib.util.spec_from_file_location('lookup_self_update', Path(__file__).with_name('self_update.py'))
+self_update = importlib.util.module_from_spec(_self_spec)
+_self_spec.loader.exec_module(self_update)
+_process_spec = importlib.util.spec_from_file_location('lookup_owned_process', Path(__file__).with_name('owned_process.py'))
+owned_process = importlib.util.module_from_spec(_process_spec)
+_process_spec.loader.exec_module(owned_process)
 PACKAGE = '@jackwener/opencli'
 REGISTRY = 'https://registry.npmjs.org/'
 SOURCES = {
@@ -128,7 +134,7 @@ class Store:
             os.close(fd)
 
 
-def command(argv, timeout=10, env=None):
+def command(argv, timeout=10, env=None, include_stderr=False):
     """Timeouts terminate only the process group created for this command."""
     process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                env=env, start_new_session=True, text=True)
@@ -154,11 +160,14 @@ def command(argv, timeout=10, env=None):
             signal.signal(signum, handler)
     if process.returncode:
         raise MaintenanceError('COMMAND_FAILED')
-    return stdout
+    return '\n'.join(part for part in (stdout, stderr) if part.strip()) if include_stderr else stdout
 
 
 def read_version(binary, dependency):
-    output = command([str(binary), '--version'], timeout=4).splitlines()[0].strip()
+    lines = command([str(binary), '--version'], timeout=4, include_stderr=True).splitlines()
+    if not lines:
+        raise MaintenanceError('VERSION_OUTPUT_EMPTY')
+    output = lines[0].strip()
     if dependency == 'opencli':
         version_tuple(output)
         return output.removeprefix('v')
@@ -336,7 +345,7 @@ def notices(store, dependencies):
                          'already_notified': key in reported,
                          'message': f'{dependency} 有新的稳定版本：{observation["current"]} → {target}。'
                                     + ('已开启托管，将在当前任务结束后检查更新条件。' if auto else
-                                       '可运行 lookup update' + ('' if dependency == 'opencli' else ' ' + dependency) + ' 维护。')}
+                                       '可运行 lookup upgrade ' + dependency + ' 维护。')}
                 if pending_auto:
                     state['auto_requested_at'] = time.time()
             messages.append(event)
@@ -1252,6 +1261,77 @@ def update_all(store, automatic=False, retry=False):
     return {'status': 'batch', 'results': results}
 
 
+def source_state(store):
+    identity = hashlib.sha256(str(ROOT.resolve()).encode()).hexdigest()[:24]
+    return Store(store.root / 'self' / identity)
+
+
+def maintain(store, self_only=False, automatic=False, retry=False):
+    """One total-update dispatcher, shared by CLI and Skill Manager."""
+    if automatic:
+        if self_only:
+            raise MaintenanceError('AUTOMATION_NOT_SUPPORTED')
+        return update_all(store, automatic=True, retry=retry)
+    try:
+        with store.lock('maintenance', blocking=False), store.lock('usage', blocking=False):
+            own = self_update.update(source_state(store), ROOT, customization)
+    except (MaintenanceError, OSError, ValueError, subprocess.SubprocessError) as error:
+        own = {'dependency': 'lookup', 'status': 'failed',
+               'error': str(error) if isinstance(error, (MaintenanceError, self_update.SourceError,
+                                                         customization.ReviewError)) else type(error).__name__}
+        transaction = source_state(store).read('self-transaction.json')
+        if transaction.get('status') == 'failed':
+            own.update({key: transaction[key] for key in ('restored', 'current_preserved', 'recovery')
+                        if key in transaction})
+    if self_only:
+        return own
+    if own['status'] == 'outcome_unknown' or own.get('current_preserved') is False:
+        return {'status': 'batch', 'results': [own, *[
+            {'dependency': name, 'status': 'deferred', 'reason': 'LOOKUP_SOURCE_STATE_UNCONFIRMED'}
+            for name in UPDATE_DEPENDENCIES]]}
+    if own['status'] == 'updated':
+        # Load the newly installed executor, including its new dependency contracts.
+        # The source switch has already released its maintenance lock.
+        try:
+            child = owned_process.run([sys.executable, str(ROOT / 'scripts/upstream.py'), 'upgrade',
+                                       *(['--retry'] if retry else [])], timeout=900)
+            dependencies = json.loads(child.stdout)
+            items = dependencies.get('results') if isinstance(dependencies, dict) else None
+            names = [item.get('dependency') for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+            if (not isinstance(dependencies, dict) or dependencies.get('status') != 'batch'
+                    or not isinstance(items, list) or len(names) != len(items)
+                    or any(not isinstance(name, str) or not name for name in names)
+                    or len(set(names)) != len(names) or 'lookup' in names
+                    or any(not isinstance(item.get('status'), str) for item in items)):
+                raise ValueError('invalid child result')
+            if child.returncode and not result_failed(dependencies):
+                raise ValueError('child exit/result mismatch')
+        except (ValueError, TypeError, KeyError, OSError, subprocess.SubprocessError):
+            dependencies = {'status': 'batch', 'results': [
+                {'dependency': name, 'status': 'outcome_unknown', 'error': 'NEW_EXECUTOR_RESULT_UNAVAILABLE',
+                 'retry_safe': False}
+                for name in UPDATE_DEPENDENCIES]}
+    else:
+        dependencies = update_all(store, retry=retry)
+    return {'status': 'batch', 'results': [own, *dependencies['results']]}
+
+
+def inspect_all(store, force=False):
+    results = []
+    try:
+        results.append(self_update.inspect(source_state(store), ROOT, customization))
+    except (OSError, ValueError, MaintenanceError, subprocess.SubprocessError) as error:
+        results.append({'dependency': 'lookup', 'status': 'check_failed',
+                        'error': str(error) if isinstance(error, (self_update.SourceError, MaintenanceError)) else type(error).__name__})
+    for dependency in UPDATE_DEPENDENCIES:
+        try:
+            results.append({'dependency': dependency, **check(store, dependency, force=force)})
+        except (OSError, ValueError, MaintenanceError) as error:
+            results.append({'dependency': dependency, 'status': 'check_failed',
+                            'error': str(error) if isinstance(error, MaintenanceError) else type(error).__name__})
+    return {'status': 'batch', 'results': results}
+
+
 def rollback(store):
     with store.lock('maintenance', blocking=False), store.lock('usage', blocking=False):
         active = store.read('active.json')
@@ -1314,8 +1394,23 @@ def human_result(result):
     if status == 'batch':
         return '\n'.join(human_result(item) for item in result['results'])
     if status == 'up_to_date':
+        if dependency == 'lookup':
+            return f'Lookup 本体{result["current"]}已核对 {result.get("channel", "main")} 通道；本地内容保留。'
         return f'{dependency} 当前有效版本{result["current"]}，已是最新稳定版。'
+    if status == 'local_ahead':
+        return f'Lookup 本体{result["current"]}领先源头{result["latest"]}，已保留，不执行降级。'
+    if status == 'native_updater':
+        return f'{dependency} 本机版本{result["current"]}；未检查远端版本，更新由原生升级器确认。'
+    if status == 'update_available':
+        if dependency == 'lookup':
+            return (f'Lookup 源头有新内容待合并；本地版本{result.get("current", "未知")}，'
+                    f'源版本{result.get("latest", "未知")}；可运行 lookup update。')
+        return f'{dependency} 当前版本{result.get("current", "未知")}，发现新版{result.get("latest", "未知")}；可运行 lookup upgrade {dependency}。'
+    if status == 'check_failed':
+        return dependency + ' 更新检查未完成：' + str(result.get('error') or result.get('reason') or 'UNKNOWN')
     if status == 'updated':
+        if dependency == 'lookup':
+            return f'Lookup 本体已更新为{result["current"]}；原目录备份：{result["recovery"]}。'
         if dependency == 'ego-browser':
             return f'ego-browser 已更新为{result["current"]}，官方指南完整性已核对；浏览器业务未重验。'
         if dependency == 'agent-reach':
@@ -1330,14 +1425,17 @@ def human_result(result):
         preserved = ('原生运行程序已更新，本地 Skill 保留旧内容，合并尚未完成。'
                      if result.get('native_runtime_updated') else '当前版本已保留。')
         return (f'{dependency} 检测到本地定制，{preserved}由当前 Agent 按上游更新指南完成三方判断：'
-                f'{result["request"]}；核验并登记后再次运行 lookup update {dependency} 接续。')
+                f'{result["request"]}；核验并登记后再次运行 '
+                + ('lookup update --self-only' if dependency == 'lookup' else f'lookup upgrade {dependency}') + ' 接续。')
     if status == 'deferred':
-        return '更新已延后，当前版本继续可用：' + str(result.get('reason') or result.get('error'))
+        return dependency + ' 更新已延后，当前版本继续可用：' + str(result.get('reason') or result.get('error'))
     if status == 'failed':
         return dependency+' 更新失败：' + str(result.get('error')) + ('；原环境已恢复。' if result.get('restored') else '；恢复状态请核对本机维护回执。')
     if status in ('pending', 'outcome_unknown'):
+        if dependency == 'lookup':
+            return 'Lookup 本体切换结果待核实；保留维护回执，先核对实际目录与恢复材料。'
         return (f'{dependency} 原生升级尚未确认完成；请在浏览器完成或取消原操作。'
-                f'确认后可用 lookup update {dependency} --retry 显式重试。')
+                f'确认后可用 lookup upgrade {dependency} --retry 显式重试。')
     return json.dumps(result, ensure_ascii=False)
 
 
@@ -1353,7 +1451,7 @@ def main(argv=None, human=False):
     sub = parser.add_subparsers(dest='action', required=True)
     for name in ('check', '_refresh'):
         item = sub.add_parser(name)
-        item.add_argument('dependency', choices=DEPENDENCIES)
+        item.add_argument('dependency', choices=DEPENDENCIES, **({'nargs': '?'} if name == 'check' else {}))
         item.add_argument('--background', action='store_true')
         item.add_argument('--force', action='store_true')
         item.add_argument('--current')
@@ -1362,14 +1460,18 @@ def main(argv=None, human=False):
     item = sub.add_parser('policy')
     item.add_argument('dependency', choices=DEPENDENCIES)
     item.add_argument('mode', choices=('notify', 'auto'))
-    item = sub.add_parser('update', help='Update installed dependencies; default: OpenCLI, Agent Reach and Ego')
-    item.add_argument('dependency', nargs='?', choices=UPDATE_DEPENDENCIES)
-    item.add_argument('--auto', action='store_true')
-    item.add_argument('--retry', action='store_true', help='Explicitly retry a previously uncertain native update')
+    for name in ('update', 'upgrade'):
+        item = sub.add_parser(name, help=('Update Lookup and installed upstream dependencies' if name == 'update'
+                                         else 'Upgrade installed upstream dependencies only'))
+        item.add_argument('dependency', nargs='?', choices=UPDATE_DEPENDENCIES)
+        if name == 'update':
+            item.add_argument('--self-only', action='store_true', help='Update Lookup source only')
+        item.add_argument('--auto', action='store_true')
+        item.add_argument('--retry', action='store_true', help='Explicitly retry a previously uncertain native update')
     item = sub.add_parser('rollback')
     item.add_argument('dependency', choices=('opencli',))
     item = sub.add_parser('review', help='Inspect or seal a host Agent customization review')
-    item.add_argument('dependency', choices=UPDATE_DEPENDENCIES)
+    item.add_argument('dependency', choices=('lookup', *UPDATE_DEPENDENCIES))
     item.add_argument('--accept', metavar='DECISIONS_JSON')
     item.add_argument('--restart', action='store_true', help='Replan changed local inputs, retaining previous evidence')
     item.add_argument('--baseline', metavar='SOURCE_DIRECTORY')
@@ -1381,6 +1483,10 @@ def main(argv=None, human=False):
     item.add_argument('--expected', required=True)
     item.add_argument('args', nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
+    if args.action == 'update' and args.self_only and (args.dependency or args.auto or args.retry):
+        parser.error('--self-only cannot be combined with a dependency, --auto or --retry')
+    if args.action == 'check' and args.dependency is None and (args.background or args.current):
+        parser.error('--background and --current require a dependency')
     try:
         try:
             store = Store()
@@ -1394,14 +1500,20 @@ def main(argv=None, human=False):
                     print(json.dumps({'binary': shutil.which('opencli'), 'supervised': False}))
                     return 0
             raise
-        if human and args.action == 'update':
-            print('正在维护已安装的依赖；Ego 原生升级可能重启浏览器或等待界面确认。', file=sys.stderr)
+        if human and args.action in ('update', 'upgrade'):
+            own = args.action == 'update' and not args.dependency and not args.auto
+            scope = ('Lookup 本体' if getattr(args, 'self_only', False) else
+                     'Lookup 本体与已安装上游' if own else args.dependency or '已安装上游')
+            print('正在更新' + (' ' if scope[0].isascii() else '') + scope + '。', file=sys.stderr)
+            if not getattr(args, 'self_only', False) and args.dependency in (None, 'ego-browser') and not args.auto:
+                print('Ego 原生升级可能重启浏览器或等待界面确认。', file=sys.stderr)
         if args.action == 'use':
             return use(store, args.expected, args.args[1:] if args.args[:1] == ['--'] else args.args)
         if args.action == 'resolve':
             result = {'binary': resolve_opencli(store), 'supervised': fcntl is not None}
         elif args.action == 'check':
-            result = check(store, args.dependency, args.background, args.force, args.current)
+            result = (inspect_all(store, args.force) if args.dependency is None else
+                      check(store, args.dependency, args.background, args.force, args.current))
         elif args.action == '_refresh':
             result = refresh(store, args.dependency, args.current, args.force)
         elif args.action == 'notices':
@@ -1412,21 +1524,24 @@ def main(argv=None, human=False):
             result = rollback(store)
         elif args.action == 'review':
             with store.lock('maintenance', blocking=False):
+                review_store = source_state(store) if args.dependency == 'lookup' else store
                 if args.restart:
                     if args.accept or args.baseline or args.upstream:
                         raise MaintenanceError('REVIEW_ACTIONS_ARE_EXCLUSIVE')
-                    result = customization.restart(store, args.dependency)
+                    result = customization.restart(review_store, args.dependency)
                 elif args.baseline or args.upstream:
                     if args.accept or (args.baseline and args.upstream) or not args.scope or not args.source:
                         raise MaintenanceError('BASELINE_SCOPE_AND_SOURCE_REQUIRED')
-                    result = customization.recover_baseline(store, args.dependency, args.scope,
+                    result = customization.recover_baseline(review_store, args.dependency, args.scope,
                                                             args.baseline or args.upstream, args.source,
                                                             label='base' if args.baseline else 'upstream')
                 else:
-                    result = (customization.accept(store, args.dependency, args.accept) if args.accept
-                              else customization.pending(store, args.dependency))
+                    result = (customization.accept(review_store, args.dependency, args.accept) if args.accept
+                              else customization.pending(review_store, args.dependency))
         else:
-            if args.dependency is None:
+            if args.action == 'update' and args.dependency is None:
+                result = maintain(store, args.self_only, args.auto, args.retry)
+            elif args.dependency is None:
                 result = update_all(store, args.auto, args.retry)
             elif args.retry:
                 result = update(store, args.dependency, args.auto, retry=True)
@@ -1434,8 +1549,8 @@ def main(argv=None, human=False):
                 result = update(store, args.dependency, args.auto)
         print(human_result(result) if human else json.dumps(result, ensure_ascii=False))
         return 1 if result_failed(result) else 0
-    except (MaintenanceError, OSError, ValueError, KeyError, TypeError) as error:
-        code = str(error) if isinstance(error, (MaintenanceError, customization.ReviewError)) else type(error).__name__
+    except (MaintenanceError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+        code = str(error) if isinstance(error, (MaintenanceError, customization.ReviewError, self_update.SourceError)) else type(error).__name__
         print(json.dumps({'status': 'error', 'error': code}), file=sys.stderr)
         return 75 if code == 'DEPENDENCY_BUSY' else 78
 

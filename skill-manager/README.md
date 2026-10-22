@@ -26,11 +26,16 @@ Codex 或希望多个兼容客户端共用时，推荐装到共享全局目录�
 ```bash
 git clone https://github.com/ldl8818/skills.git
 mkdir -p ~/.agents/skills
-rsync -a --delete \
-  --exclude '.DS_Store' --exclude '__pycache__' --exclude '*.pyc' \
-  --exclude 'fingerprints.json' --exclude 'projects.json' \
-  --exclude 'evolution.json' --exclude 'descriptions_zh.json' \
-  skills/skill-manager/ ~/.agents/skills/skill-manager/
+if test -e ~/.agents/skills/skill-manager || test -L ~/.agents/skills/skill-manager; then
+  printf '%s\n' 'Target exists; follow the update workflow.' >&2
+  false
+else
+  rsync -a \
+    --exclude '.DS_Store' --exclude '__pycache__' --exclude '*.pyc' \
+    --exclude 'fingerprints.json' --exclude 'projects.json' \
+    --exclude 'evolution.json' --exclude 'descriptions_zh.json' \
+    skills/skill-manager/ ~/.agents/skills/skill-manager/
+fi
 ```
 
 Claude Code 单独使用时，可把上面的目标目录换成 `~/.claude/skills/skill-manager/`；需要共享同一份实体时，也可只给 Claude 建单 Skill 软链接：
@@ -40,7 +45,7 @@ mkdir -p ~/.claude/skills
 ln -s ~/.agents/skills/skill-manager ~/.claude/skills/skill-manager
 ```
 
-不熟 `rsync` 的话，用 `cp -R skills/skill-manager ~/.agents/skills/` 也可以。命令里排除的几个 json 是老版本可能残留在 Skill 目录里的本机数据；2.4.0 起运行数据统一住 `~/.skill-manager/data/`，代码目录随便覆盖重装都碰不到它。
+以上步骤用于首次安装；已有目录、正确或错误目标的软链及断链均转入更新或恢复核对，不直接覆盖。手工复制同样先确认目标尚未安装。命令里排除的几个 json 是老版本可能残留在 Skill 目录里的本机数据；2.4.0 起运行数据统一住 `~/.skill-manager/data/`，源码与本地定制按下文更新流程维护。
 
 装好后新开或重启客户端会话才会加载。之后说「列出我的技能」「检查更新」即可触发；Claude Code 也可以直接用斜杠命令。
 
@@ -79,6 +84,14 @@ Codex 插件由 `list` 和 `doctor` 只读盘点；启停、更新和删除仍�
   绝不用「上游最新版」倒推本地版本（那必错）。
 - **Claude 插件名不用记市场名**。`codex` 会自动补全成 `codex@openai-codex`；撞名则列候选让你挑，不猜。
 
+## 更新与本地定制
+
+“更新 Lookup”默认更新本体与已安装的上游；`/skill-manager update lookup` 调用同一流程，追加 `--self-only` 或 `--upstream-only` 可限定范围。扫描和批量更新同样包含本地来源的 Lookup；缺少维护接口的旧版会明确报告，不冒充无需更新。完整命令、来源与接续见 [Lookup 更新说明](../lookup/references/上游更新.md#命令与范围)。
+
+更新时比较完整旧上游、本地与新上游。新版已满足定制用途和失败边界时，采用新版原生实现并退出重复覆盖；尚未满足时，把必要定制合入新上游，验证定制和新增能力。来源不明、冲突或并发变更时保留内容和依据，在授权范围内继续核对，不能凭安装成功宣布完成。
+
+判断、提醒与托管边界、候选上下文、原生状态和恢复要求统一见[升级与定制合并](references/升级与定制合并.md)。现有脚本提供机械合并与完整性检查，语义判断由维护 Agent 完成；使用时后台提醒和托管执行以各执行器实际接入为准。具体命令仍以上表和脚本帮助为准。
+
 ## 本机数据文件（仓库里没有，首次运行自动生成）
 
 新机恢复使用 `scripts/install_frozen.py --repo <Skills仓库> --home <目标HOME>` 建立5个冻结 Skill 的单跳入口。默认兼容 Claude／Codex；仅需要 Codex 时追加 `--clients codex`，只创建共用 Agent 和 Codex 入口，不创建 `.claude`。已有冲突先停止，不覆盖目录。
@@ -113,7 +126,7 @@ python3 -m compileall -q scripts
 
 ## 设计文档
 
-`SKILL.md` 是给 Claude 读的行为定义，只写「怎么用」；每条规则背后的事故与权衡在
+`SKILL.md` 是给 Agent 读的行为定义，只写「怎么用」；每条规则背后的事故与权衡在
 `references/maintenance.md`（数据层契约、实现细节、事故簿）。客户端目录单源在
 `references/client-paths.md`。想改这个 skill，先读对应文档。
 
@@ -125,6 +138,6 @@ MIT
 
 `python3 scripts/scan_and_check.py --include-frozen` 只读比较冻结版的登记来源与上游发布点；状态始终保持 frozen，不进入自动更新列表。比较结果表示 commit 相同或不同，不表示本地改造版落后。查询失败明确显示证据不足。
 
-普通直装更新采用旧上游、本地、新上游三方合并，完整核对源文件后写入 `upstream-merge.json`；同名本地改造不再被直接覆盖。冲突或基线不明时保留在线目录，插件存在本地差异时同样拒绝直接替换。
+普通直装更新采用旧上游、本地、新上游三方合并，完整核对源文件后写入 `upstream-merge.json`；同名本地改造按前述语义判断处理。冲突或基线不明时保留在线目录，插件存在本地差异时同样转隔离合并。
 
 定制冻结版必须完成完整源快照合并与验收；冻结只禁止自动覆盖，不能替代用户授权的合并任务。`python3 scripts/audit_upstream.py --repo <仓库> --upstream <上游Git仓库>` 核对固定源快照，省略 `--upstream` 仅核对离线回执，不能证明最新版或语义完整。本仓库的五项定制版采用独立本地版本，另有保留完整上游原版的 think；六项来源核验与各自安装流程见 [冻结版本维护](references/冻结版本维护.md)。

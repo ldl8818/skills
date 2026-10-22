@@ -97,27 +97,31 @@ flowchart TB
 
 OpenCLI 独立于 Agent，当前验证基线为正式版2.0.2；入口版本范围、本机升级与执行接口见 [执行与升级边界](references/opencli-windows.md)。Lookup 不再修改 Commander 或自行管理 daemon；薄入口只保留明确 Profile、总等待预算、认证范围与原生清理选项。版本升级须核对实际命令与受影响场景。
 
-## 上游更新
+## 本体与上游更新
 
-Lookup 在使用相关依赖时启动有界检查，跨会话缓存24小时，同一新版只提醒一次；查询先继续执行，检查失败不阻断业务。默认只提醒。用户明确开启 OpenCLI 托管后，Agent 在当前任务结束时按同一维护流程处理，更新前后告知结果。缓存、原生维护边界与恢复方式统一见 [上游更新.md](references/上游更新.md)。
+Lookup 2.1.0统一自然语言、终端和 Skill Manager 的更新入口。“更新／升级 Lookup”默认维护本体和已安装上游。使用相关依赖时仍启动有界检查，缓存24小时，同一新版只提醒一次；默认只提醒，检查失败不阻断业务。明确开启 OpenCLI 托管后，Agent 在任务结束时维护并前后告知。命令范围、本体来源、定制接续与恢复统一见 [上游更新.md](references/上游更新.md)。
 
 安装终端入口，不覆盖已有同名命令：
 
 ```bash
 python3 ~/.agents/skills/lookup/scripts/install-cli.py
 lookup update
-lookup update opencli
-lookup update agent-reach
-lookup update ego-browser
+lookup update --self-only
+lookup upgrade
+lookup upgrade opencli
+lookup upgrade agent-reach
+lookup upgrade ego-browser
 ```
 
 从当前 Skill 目录也可运行 `python3 scripts/install-cli.py`。入口是 `~/.local/bin/lookup` 到唯一源码的单跳链接；该目录需已在 PATH。重复安装保持同一链接；其他来源的同名文件或断链会拒绝覆盖。
 
-`lookup update` 默认依次更新已安装的 OpenCLI、Agent Reach 与 Ego；指定名称只更新该项。缺失依赖跳过，不自动新增安装。OpenCLI 候选在本机状态目录验证后才切换 Lookup 的有效版本，原系统安装保留；命令发现、帮助和实际执行统一走 `opencli-run.mjs`。Agent Reach 使用已识别的 uv、pipx 或原虚拟环境更新，保留原安装来源并备份环境；版本或随包 Skill 验证失败时恢复。Ego 调用 `ego-browser upgrade`，可能重启浏览器或等待界面确认；完成后核对版本与完整官方指南，未确认时保存状态，不冒充更新成功或自动重复升级。
+`lookup update` 维护本体和已安装的 OpenCLI、Agent Reach 与 Ego；`--self-only` 只更新本体，`lookup upgrade` 只更新上游，指定名称只更新该项。旧 `lookup update <dependency>` 保留兼容。缺失依赖跳过，不自动新增安装。本体仅处理官方选定通道的完整 `lookup/`，保留其他 Skill、Git HEAD、禁用状态和本机运行文件；无法核实旧源或发现定制时先生成比较材料。源码切换后加载新维护器，再验证上游。Skill Manager 的 `update lookup`、单项和批量检查调用同一维护入口；它不是运行终端命令的必装依赖。
+
+OpenCLI 候选验证后才切换有效版本；Agent Reach 使用原管理器或虚拟环境，保留来源并备份；Ego 调用原生 `ego-browser upgrade`，可能重启浏览器或等待界面确认。各项分别报告，部分完成或结果未知不算总更新成功。
 
 更新会检查包内补丁、adapter、plugin 及独立 Skill。由维护 Agent 比较旧上游、本地与新上游，确认新版已支持的定制采用上游实现，尚未支持的定制继续保留。命令、自然语言和托管使用相同机制；独立终端需要语义判断时返回可接续材料，由 Agent 完成合并并核验后继续，不直接覆盖。回执用法及未知基线的处理见 [定制核对与合并](references/上游更新.md#定制核对与合并)。
 
-Ego 原操作已完成或取消后，可用 `lookup update ego-browser --retry` 显式重试；结果未知时先核对原操作。web-access 当前只提供方法参考，不列为已接入的可更新运行依赖。Ego 暂无已核实的只读新版查询接口，普通查询只检测本机版本变化，不调用包含安装的升级命令来探测。
+Ego 原操作已完成或取消后，可用 `lookup upgrade ego-browser --retry` 显式重试；结果未知时先核对原操作。web-access 当前只提供方法参考，不列为已接入的可更新运行依赖。Ego 暂无已核实的只读新版查询接口，普通查询只检测本机版本变化，不调用包含安装的升级命令来探测。
 
 当前检查及维护脚本的锁机制支持 macOS／Linux，依赖 Python ≥ 3.9；托管安装另需已有 Node.js 和 npm。CI 不自动发起远端更新检查；显式 `lookup update` 仍按用户请求执行。真实浏览器、所有平台和其他系统的验收范围分别报告。
 

@@ -94,6 +94,19 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(fetch.call_count, 1)
         self.assertEqual(upstream.notices(self.store, ['opencli']), [])
 
+    def test_empty_version_output_is_a_reported_failure_not_an_index_error(self):
+        with patch.object(upstream, 'command', return_value=''):
+            for dependency in upstream.UPDATE_DEPENDENCIES:
+                with self.assertRaisesRegex(upstream.MaintenanceError, 'VERSION_OUTPUT_EMPTY'):
+                    upstream.read_version('synthetic', dependency)
+
+    def test_native_version_on_stderr_does_not_select_embedded_runtime_versions(self):
+        binary = self.bin / 'stderr-ego'
+        binary.write_text('#!' + sys.executable + '\nimport sys\n'
+                          'print("ego-browser 0.6.0.16\\n  chromium 154.0.8037.44\\n  node v24.21.0", file=sys.stderr)\n')
+        binary.chmod(0o700)
+        self.assertEqual(upstream.read_version(binary, 'ego-browser'), '0.6.0.16')
+
     def test_absent_and_reference_only_dependencies_do_not_fetch_or_notify(self):
         with patch.object(upstream.shutil, 'which', return_value=None), patch.object(upstream, 'latest') as fetch:
             self.assertEqual(upstream.check(self.store, 'agent-reach')['status'], 'not_installed')
@@ -123,7 +136,7 @@ class UpdateTests(unittest.TestCase):
             self.assertEqual(process.returncode, 0, stderr)
             notices.extend(json.loads(stdout)['notices'])
         self.assertEqual(len(notices), 1)
-        self.assertIn('lookup update', notices[0]['message'])
+        self.assertIn('lookup upgrade opencli', notices[0]['message'])
         self.assertEqual(notices[0]['action'], 'notify')
 
     def test_ego_only_reports_local_change_without_running_native_upgrade(self):
@@ -315,10 +328,10 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertEqual(json.loads(process.stdout)['args'], args)
 
-    def test_lookup_update_defaults_to_all_supported_dependencies(self):
+    def test_lookup_upgrade_defaults_to_all_supported_dependencies(self):
         output = io.StringIO()
         with patch.object(upstream, 'update', return_value={'status': 'up_to_date', 'current': '1.0.0'}) as update, redirect_stdout(output):
-            self.assertEqual(upstream.main(['update']), 0)
+            self.assertEqual(upstream.main(['upgrade']), 0)
         self.assertEqual([call.args[1] for call in update.call_args_list], list(upstream.UPDATE_DEPENDENCIES))
         self.assertEqual(json.loads(output.getvalue())['status'], 'batch')
 

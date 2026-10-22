@@ -1,8 +1,8 @@
 ---
 name: lookup
-description: "联网搜索、平台内容、网页操作与本地 UI 验收的统一入口；融合 Agent Reach 和 OpenCLI 全部能力，按需配置、诊断、开发适配器及维护执行工具。"
-when_to_use: "联网搜索、查官方资料、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、更新 Lookup 上游"
-dispatch_intent: "统一承接联网与浏览器任务，按需加载 Agent Reach、OpenCLI 和浏览器执行资料，选择路线并核验证据；指定视频链接落盘交给 download-video。"
+description: "联网搜索、平台内容、网页操作与本地 UI 验收的统一入口；融合 Agent Reach 和 OpenCLI 全部能力，按需配置、诊断、开发适配器及维护 Lookup 本体与上游工具。"
+when_to_use: "联网搜索、查官方资料、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、lookup upgrade、更新 Lookup、升级 Lookup、更新 Lookup 上游"
+dispatch_intent: "统一承接联网与浏览器任务，按需加载 Agent Reach、OpenCLI 和浏览器执行资料，选择路线并核验证据；指定视频链接落盘交给 download-video；Lookup 本体与上游更新按自身维护入口执行。"
 metadata:
   version: "2.1.0"
   source: local
@@ -19,6 +19,10 @@ Lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 的全部站�
 Agent Reach 的16个渠道、7类完整参考、配置、诊断、转写、安装与维护流程统一见 [Agent Reach 融合与能力映射](references/Agent-Reach融合.md)。平台任务、环境配置或诊断先读该入口的对应项；普通网页与已有搜索接入仍使用下文的直接路径，不强制体检或安装。原始上游触发说明只作来源记录，不作为第二套当前选路规则。
 
 OpenCLI 的全部站点／内置命令、浏览器与原生 Chrome 接口、CDP、认证／Profile、插件、适配器开发与修复统一见 [OpenCLI 完整能力](references/OpenCLI融合.md)。现有 providers.json 只登记常用动作合约，不限制可发现能力的范围；其他动作从当前原生注册表与帮助选取，按任务核对读写授权。
+
+## Lookup 更新
+
+未限定范围的“更新／升级 Lookup”或“更新 Lookup 这个 Skill”执行 `lookup update`，维护本体及已安装的 OpenCLI、Agent Reach、ego-browser。明确只更新本体时用 `lookup update --self-only`；只更新上游时用 `lookup upgrade`，指定一项用 `lookup upgrade <dependency>`。自然语言、终端和 Skill Manager 委派使用同一维护器；定制待判断时，当前 Agent 比较完整三方材料、验证并接续。命令、来源与结果范围见[更新提醒与维护](references/上游更新.md)。
 
 ## 工作流程
 

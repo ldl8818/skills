@@ -107,9 +107,22 @@ def create(store, dependency, target, scopes):
     try:
         for index, scope in enumerate(scopes):
             area = root / str(index)
+            live_state = files(scope['live'])
+            local_state = files(scope.get('local', scope['live']))
             for label in ('local', 'base', 'upstream', 'merged'):
                 (area / label).mkdir(parents=True)
             copy_source(scope.get('local', scope['live']), area / 'local')
+            if scope.get('normalize_disabled') and (area / 'local/SKILL.md.disabled').is_file():
+                if (area / 'local/SKILL.md').exists():
+                    raise ReviewError('CUSTOMIZATION_AMBIGUOUS_SKILL_ENTRY')
+                (area / 'local/SKILL.md.disabled').rename(area / 'local/SKILL.md')
+            expected_local = dict(local_state)
+            if scope.get('normalize_disabled') and 'SKILL.md.disabled' in expected_local:
+                expected_local['SKILL.md'] = expected_local.pop('SKILL.md.disabled')
+            if (files(scope['live']) != live_state
+                    or files(scope.get('local', scope['live'])) != local_state
+                    or files(area / 'local') != expected_local):
+                raise ReviewError('CUSTOMIZATION_CHANGED_DURING_SNAPSHOT')
             if scope.get('base') is not None:
                 copy_source(scope['base'], area / 'base')
             if scope.get('upstream') is not None:
@@ -128,11 +141,13 @@ def create(store, dependency, target, scopes):
                     target_path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(area / 'local' / name, target_path)
             records.append({'name': scope['name'], 'live': str(Path(scope['live']).absolute()),
-                            'live_state': files(scope['live']),
+                            'live_state': live_state,
                             'base_known': scope.get('base') is not None,
                             'upstream_known': scope.get('upstream') is not None,
                             'local': local, 'base': base, 'upstream': files(area / 'upstream'),
                             'customizations': custom})
+            if scope.get('normalize_disabled'):
+                records[-1]['normalize_disabled'] = True
             if scope.get('observed') is not None:
                 records[-1]['observed-after-install'] = files(area / 'observed-after-install')
         request = {'schema': 1, 'dependency': dependency, 'target': target, 'scopes': records,
@@ -255,6 +270,8 @@ def restart(store, dependency):
         item = {'name': scope['name'], 'live': scope['live'],
                 'base': area / 'base' if scope['base_known'] else None,
                 'upstream': area / 'upstream' if scope['upstream_known'] else None}
+        if scope.get('normalize_disabled'):
+            item['normalize_disabled'] = True
         if 'observed-after-install' in scope:
             item['observed'] = area / 'observed-after-install'
         if scope['name'] == 'clis' and dependency == 'opencli':
