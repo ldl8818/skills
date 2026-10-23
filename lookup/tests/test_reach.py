@@ -274,6 +274,101 @@ class SourceTests(unittest.TestCase):
                     reach.prepare(self.manifest, self.files)
             self.assertEqual((directory / 'unknown').read_text(), 'keep')
 
+    def test_preparation_lock_is_released_after_process_is_killed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            script = '''import importlib.util, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('reach_child', sys.argv[1])
+reach = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(reach)
+with reach.preparation_lock(Path(sys.argv[2])):
+    print('locked', flush=True)
+    sys.stdin.readline()
+'''
+            child = subprocess.Popen([sys.executable, '-c', script, str(ROOT / 'scripts/reach.py'), str(root)],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            try:
+                self.assertEqual(child.stdout.readline().strip(), 'locked')
+                with self.assertRaisesRegex(reach.IntegrationError, 'preparation_in_progress'):
+                    with reach.preparation_lock(root):
+                        self.fail('concurrent preparation acquired the lock')
+            finally:
+                child.kill()
+                child.communicate(timeout=5)
+            with reach.preparation_lock(root):
+                pass
+
+    def test_runtime_receipt_cannot_escape_through_parent_paths_or_symlinks(self):
+        for escaped in ('parent', 'symlink'):
+            with self.subTest(escaped=escaped), tempfile.TemporaryDirectory() as temporary, \
+                 patch.dict(os.environ, XDG_DATA_HOME=temporary):
+                directory = reach.runtime_dir(self.manifest)
+                directory.mkdir(parents=True)
+                outside = directory.parent / 'outside'
+                package = outside / 'agent_reach'
+                for name, content in reach.adapted_files(self.manifest, self.files).items():
+                    if name.startswith('agent_reach/'):
+                        target = package / name.removeprefix('agent_reach/')
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(content)
+                python = reach.python_path(directory)
+                python.parent.mkdir(parents=True)
+                python.write_text('synthetic interpreter')
+                if escaped == 'parent':
+                    saved_package = '../outside/agent_reach'
+                else:
+                    (directory / 'linked').symlink_to(outside, target_is_directory=True)
+                    saved_package = 'linked/agent_reach'
+                (directory / 'receipt.json').write_text(json.dumps({
+                    'commit': self.manifest['commit'], 'source_sha256': self.manifest['archive_sha256'],
+                    'integration_id': reach.integration_id(self.manifest), 'package': saved_package}))
+                with self.assertRaisesRegex(reach.IntegrationError, 'runtime_package_path_changed'):
+                    reach.runtime_status(self.manifest, self.files)
+
+    def test_runtime_verification_accepts_original_files_and_rejects_later_changes(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, XDG_DATA_HOME=temporary):
+            directory = reach.runtime_dir(self.manifest)
+            package = directory / 'venv/lib/site-packages/agent_reach'
+            for name, content in reach.adapted_files(self.manifest, self.files).items():
+                if name.startswith('agent_reach/'):
+                    target = package / name.removeprefix('agent_reach/')
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(content)
+            python = reach.python_path(directory)
+            python.parent.mkdir(parents=True, exist_ok=True)
+            python.write_text('synthetic interpreter')
+            (directory / 'receipt.json').write_text(json.dumps({
+                'commit': self.manifest['commit'], 'source_sha256': self.manifest['archive_sha256'],
+                'integration_id': reach.integration_id(self.manifest),
+                'package': str(package.relative_to(directory))}))
+            self.assertTrue(reach.runtime_status(self.manifest, self.files)['ready'])
+            (package / 'cli.py').write_text('changed after preparation')
+            with self.assertRaisesRegex(reach.IntegrationError, 'runtime_package_changed'):
+                reach.runtime_status(self.manifest, self.files)
+            (package / 'cli.py').write_bytes(reach.adapted_files(self.manifest, self.files)['agent_reach/cli.py'])
+            outside = directory.parent / 'outside-channels'
+            (package / 'channels').rename(outside)
+            (package / 'channels').symlink_to(outside, target_is_directory=True)
+            with self.assertRaisesRegex(reach.IntegrationError, 'runtime_package_changed'):
+                reach.runtime_status(self.manifest, self.files)
+
+    def test_malformed_runtime_receipt_returns_a_structured_error(self):
+        valid = {'commit': self.manifest['commit'], 'source_sha256': self.manifest['archive_sha256'],
+                 'integration_id': reach.integration_id(self.manifest)}
+        for saved in ([], valid, {**valid, 'package': []}):
+            with self.subTest(saved=saved), tempfile.TemporaryDirectory() as temporary, \
+                 patch.dict(os.environ, XDG_DATA_HOME=temporary):
+                directory = reach.runtime_dir(self.manifest)
+                directory.mkdir(parents=True)
+                receipt = directory / 'receipt.json'
+                original = json.dumps(saved)
+                receipt.write_text(original)
+                with contextlib.redirect_stderr(io.StringIO()) as error:
+                    self.assertEqual(reach.main(['status']), 78)
+                self.assertEqual(json.loads(error.getvalue())['error'], 'runtime_receipt_invalid')
+                self.assertEqual(receipt.read_text(), original)
+
     def test_arguments_remain_single_argv_values(self):
         status = {'ready': True, 'python': '/synthetic/python'}
         query = 'https://example.com/?q=$(touch unsafe);echo hidden'

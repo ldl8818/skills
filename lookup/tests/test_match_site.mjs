@@ -24,6 +24,32 @@ test('natural-language aliases work with literal characters and ASCII boundaries
   assert.equal(matchesSite('anything', 'example.com', ['.*']), false);
 });
 
+test('mixed full URLs and bare domains retain every target without reading hosts from URL data', () => {
+  for (const query of [
+    '比较 https://one.example/article 与 two.example 的内容',
+    '比较 one.example 与 https://two.example/article 的内容',
+  ]) {
+    assert.equal(matchesSite(query, 'one.example'), true, query);
+    assert.equal(matchesSite(query, 'two.example'), true, query);
+  }
+  for (const query of [
+    'https://one.example/?redirect=two.example',
+    'https://one.example/two.example',
+    'https://two.example@one.example/',
+  ]) {
+    assert.equal(matchesSite(query, 'two.example'), false, query);
+    assert.equal(matchesSite(query, 'one.example'), true, query);
+  }
+});
+
+test('prose punctuation around a full URL does not change the target host', () => {
+  for (const query of ['Read (https://one.example), then compare two.example.',
+    'Read https://one.example, please.', '[source](https://one.example)']) {
+    assert.equal(matchesSite(query, 'one.example'), true, query);
+  }
+  assert.equal(matchesSite('Read (https://evil.invalid/?next=one.example), please.', 'one.example'), false);
+});
+
 test('inline frontmatter parses quoted, unquoted, comma-containing and escaped aliases', () => {
   const raw = '---\naliases: [例子, "Example Site", \'示例\', "comma, name", \'someone\'\'s site\']\n---\nKeep this body.\n';
   const record = parseSitePattern(raw);

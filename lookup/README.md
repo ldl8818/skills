@@ -4,7 +4,7 @@
 
 Lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 全部执行能力，以及联网搜索、媒体和本地 UI 验收。只将 Lookup 注册为自动入口，由当前 Agent 按需读取平台／工具指南并执行；工具随附的通用优先声明不重做选路。完整能力、依赖和适配见 [Agent Reach 融合](references/Agent-Reach融合.md) 与 [OpenCLI 融合](references/OpenCLI融合.md)，选路分别见 [任务选路](references/任务选路.md) 与 [浏览器选路](references/浏览器选路.md)。
 
-Lookup 2.3.0完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件、16个渠道、11类 CLI、7类参考、5份设置指南、MCP 和公开 Python 接口；同时纳入 OpenCLI 正式版2.0.2的170个站点、1,223条站点命令和66条内置命令，以及全部5套 Skill。Agent Reach 来源随压缩快照保存；OpenCLI 完整源码／发布包以逐文件回执固定，完整源码可校验后按需缓存，原始 Skill 不进入自动发现。平台可用性仍取决于本机工具、账号和当前真实结果；完整融合不表示所有站点已逐项实测。
+Lookup 2.3.1完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件、16个渠道、11类 CLI、7类参考、5份设置指南、MCP 和公开 Python 接口；同时纳入 OpenCLI 正式版2.0.2的170个站点、1,223条站点命令和66条内置命令，以及全部5套 Skill。Agent Reach 来源随压缩快照保存；OpenCLI 完整源码／发布包以逐文件回执固定，完整源码可校验后按需缓存，原始 Skill 不进入自动发现。平台可用性仍取决于本机工具、账号和当前真实结果；完整融合不表示所有站点已逐项实测。
 
 平台抓取优先发现并实测 OpenCLI 动作，保留 yt-dlp 等更合适的专用 CLI；网站改版导致适配失效时先修复，经过3轮有效修复仍未完成目标才允许 Ego 等通用浏览器抓取兜底。轮次、记录与停止条件统一见 [适配器修复与浏览器兜底](references/failure-domains.md#适配器修复与浏览器兜底)，普通重跑不算修复，成功即停。连接探针不能代替业务调用；用户指定、视觉／交互目标和账号／权限边界分别判断。全网搜索顺序只用于全网搜索。小红书新版布局的定向修复见[执行与诊断](references/opencli-windows.md#小红书新版搜索适配)。
 
@@ -214,6 +214,8 @@ bash tests/test_match_site.sh
 python3 -m unittest discover -s tests -p 'test_fetch.py'
 python3 -m unittest discover -s tests -p 'test_result_helpers.py'
 ```
+
+全量离线回归使用 `python3 -m unittest discover -s tests` 与 `node --test tests/*.mjs`。它们使用合成数据和隔离环境，不证明真实站点、登录交接或客户端自动触发已通过。
 
 默认自检查本地依赖、明确 Profile 的原生 doctor 和必要命令帮助；`--auth` 增加有界认证检查，`--live` 再执行一条最小业务查询并使用原生 owned tab 清理。可选候选缺失、合约漂移和真实业务失败分别报告。
 

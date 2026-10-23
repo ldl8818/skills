@@ -175,6 +175,22 @@ class SourceUpdateTests(unittest.TestCase):
         self.assertTrue(self.store.read('self-transaction.json')['restored'])
         self.assertEqual(self.store.read('self-source.json'), {})
 
+    def test_partial_candidate_copy_failure_preserves_complete_original(self):
+        (self.live / '.env').write_text('SYNTHETIC_ONLY=retained\n')
+        before = own.complete_state(self.live)
+        original = audit.copy_source
+        def partial_copy(source, destination):
+            if Path(destination).name == 'next':
+                (Path(destination) / 'scripts/read.py').write_text('incomplete candidate\n')
+                raise OSError('synthetic copy failure')
+            return original(source, destination)
+        with self.remote(), patch.object(audit, 'copy_source', side_effect=partial_copy):
+            with self.assertRaises(OSError):
+                own.update(self.store, self.live, audit)
+        self.assertEqual(own.complete_state(self.live), before)
+        self.assertEqual(self.store.read('self-transaction.json'), {})
+        self.assertEqual(list(self.store.root.glob('self-exchange-*')), [])
+
     def test_retained_customization_keeps_new_upstream_capability(self):
         preserved = 'def read(value):\n    return value\n'
         (self.live / 'scripts/read.py').write_text(preserved)

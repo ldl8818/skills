@@ -219,6 +219,8 @@ node scripts/match-site.mjs "<域名或任务>"
 
 `--json` 返回 `profile / bookmarks / history / more_available`；stderr 的 `provider: lookup/find-url` 状态区分 `ok / empty / partial / error`。默认 `--limit 20` 是两个集合共享的总额度，书签优先、历史占用剩余额度；只需历史时显式用 `--only history`。普通 top-N 成功仍可带 `more_available`，`--limit 0` 总共最多返回 1,000 项，触及该上限且仍有结果才是 partial / exit 3。关键词按字面 AND 匹配；ASCII 大小写不敏感，非 ASCII 字符按原字面匹配。数据库读取失败或文件缺失不是无匹配；按实际状态说明范围，不猜地址、不把内部关键词发送公网。其他浏览器的历史要发现独立的已授权能力。
 
+`--since YYYY-MM-DD` 从该日北京时间零点筛选，历史时间按 `Asia/Shanghai` 显示；`7d` 等相对窗口按实际经过时长计算，不随 Shell 时区改变。
+
 `match-site.mjs` 对真实 URL 按主机／子域边界匹配，真实主机优先于文本别名；不要因相似域名或查询参数里的别名命中就套用站点规则。站点经验在 `~/.agents/data/site-patterns/`，只保存验证过的公开结构和版本／日期。先匹配已有经验即可，不把一次失败写成永久封禁，不记录私人正文或凭据。
 
 出现 `HISTORY_LOCKED` 时，在同一 Ego Lite Profile 的本任务标签打开 `chrome://history/`，通过浏览器原生历史搜索查原关键词，核对结果日期与链接；按正式 ego-browser 接口执行及收尾。历史页的排序、关键词和日期范围须与用户目标核对，不能把首屏当全量。不得关闭用户浏览器、复制整份私人库，或用 `immutable=1`／`nolock=1` 忽略活动数据库的锁与日志；该错误不影响独立的书签读取，也不表示没有历史记录。原生历史页仍不可用时，保留具体缺口。

@@ -1351,16 +1351,37 @@ def rollback(store):
         for entry in active.get('customization_recovery', []):
             if customization.files(entry['live']) != entry.get('expected'):
                 raise MaintenanceError('CUSTOMIZATION_CHANGED_BEFORE_ROLLBACK')
-        for entry in active.get('customization_recovery', []):
-            customization.replace_source(entry['backup'], entry['live'])
-        store.write('active.json', before)
+        area = Path(tempfile.mkdtemp(prefix='rollback-exchange-', dir=store.root))
+        restores, applied = [], []
         try:
+            for index, entry in enumerate(active.get('customization_recovery', [])):
+                snapshot = area / str(index)
+                customization.copy_source(entry['live'], snapshot)
+                if (customization.files(snapshot) != entry['expected']
+                        or customization.files(entry['live']) != entry['expected']):
+                    raise MaintenanceError('CUSTOMIZATION_CHANGED_BEFORE_ROLLBACK')
+                restores.append({'live': entry['live'], 'snapshot': snapshot})
+            if any(customization.files(entry['live']) != entry['expected']
+                   for entry in active.get('customization_recovery', [])):
+                raise MaintenanceError('CUSTOMIZATION_CHANGED_BEFORE_ROLLBACK')
+            for entry, restore in zip(active.get('customization_recovery', []), restores):
+                applied.append(restore)
+                customization.replace_source(entry['backup'], entry['live'])
+            store.write('active.json', before)
             current = installed(store, 'opencli')
             if current['status'] != 'installed':
                 raise MaintenanceError('ROLLBACK_VERSION_UNAVAILABLE')
         except BaseException:
-            store.write('active.json', active)
+            try:
+                if store.read('active.json') != active:
+                    store.write('active.json', active)
+                for entry in applied:
+                    customization.replace_source(entry['snapshot'], entry['live'])
+            except BaseException as error:
+                raise MaintenanceError('ROLLBACK_RECOVERY_FAILED:' + str(area)) from error
+            shutil.rmtree(area)
             raise
+        shutil.rmtree(area)
         store.write('transaction.json', {'status': 'rolled_back', 'version': active['version'],
                                          'current': current['current']})
         observe(store, 'opencli', current)

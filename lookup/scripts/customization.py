@@ -63,8 +63,25 @@ def replace_source(source, destination):
     """Apply an approved complete tree, keeping ignored runtime artifacts outside its scope."""
     source, destination = Path(source), Path(destination)
     incoming, current = files(source), files(destination)
-    for name in current.keys() - incoming.keys():
+    obsolete = current.keys() - incoming.keys()
+    replaced_directories = []
+    for name in incoming:
+        target = destination / name
+        if not target.is_dir():
+            continue
+        # A new upstream file may replace an old source directory. Refuse
+        # before deleting source if that directory still owns runtime data.
+        for directory, directories, names in os.walk(target, followlinks=False):
+            for child_name in directories + names:
+                child = Path(directory) / child_name
+                if (child.is_symlink() or child_name in IGNORED
+                        or (not child.is_dir() and child.relative_to(destination).as_posix() not in obsolete)):
+                    raise ReviewError('CUSTOMIZATION_RUNTIME_PATH_CONFLICT:' + name)
+            replaced_directories.append(Path(directory))
+    for name in obsolete:
         (destination / name).unlink()
+    for directory in sorted(replaced_directories, key=lambda p: len(p.parts), reverse=True):
+        directory.rmdir()
     copy_source(source, destination)
     if files(destination) != incoming:
         raise ReviewError('CUSTOMIZATION_APPLY_FAILED')
@@ -190,13 +207,21 @@ def accept(store, dependency, decision_file):
     root, request = load(store, dependency)
     assert_inputs(root, request)
     decision = json.loads(Path(decision_file).read_text())
+    if not isinstance(decision, dict):
+        raise ReviewError('CUSTOMIZATION_REVIEW_INCOMPLETE')
     if decision.get('target') != request['target']:
         raise ReviewError('CUSTOMIZATION_REVIEW_TARGET_CHANGED')
     expected = {(scope['name'], name) for scope in request['scopes'] for name in scope['customizations']}
     items = decision.get('decisions', [])
+    if not isinstance(items, list) or any(
+            not isinstance(item, dict)
+            or any(not isinstance(item.get(key), str) for key in ('scope', 'path'))
+            for item in items):
+        raise ReviewError('CUSTOMIZATION_REVIEW_INCOMPLETE')
     keys = [(item.get('scope'), item.get('path')) for item in items]
     if len(keys) != len(set(keys)) or set(keys) != expected:
         raise ReviewError('CUSTOMIZATION_REVIEW_INCOMPLETE')
+    merged_states = [files(root / str(i) / 'merged') for i in range(len(request['scopes']))]
     for item in items:
         if (item.get('disposition') not in ('absorbed', 'preserved')
                 or not isinstance(item.get('reason'), str) or not item['reason'].strip()
@@ -204,16 +229,20 @@ def accept(store, dependency, decision_file):
                 or not isinstance(item.get('validation'), str) or not item['validation'].strip()):
             raise ReviewError('CUSTOMIZATION_DECISION_EVIDENCE_REQUIRED')
         index = next(i for i, s in enumerate(request['scopes']) if s['name'] == item['scope'])
-        area = root / str(index)
-        merged = files(area / 'merged')
+        merged = merged_states[index]
         upstream = request['scopes'][index]['upstream']
         if item['disposition'] == 'absorbed' and merged.get(item['path']) != upstream.get(item['path']):
             raise ReviewError('ABSORBED_CUSTOMIZATION_MUST_USE_UPSTREAM')
     # Every adaptation to the new upstream also needs a decision, including
     # cross-file fixes made while resolving a customization.
     adaptations = decision.get('adaptations', [])
+    if not isinstance(adaptations, list) or any(
+            not isinstance(item, dict)
+            or any(not isinstance(item.get(key), str) for key in ('scope', 'path'))
+            for item in adaptations):
+        raise ReviewError('CUSTOMIZATION_ADAPTATIONS_INCOMPLETE')
     actual = {(s['name'], name) for i, s in enumerate(request['scopes'])
-              for name in differences(s['upstream'], files(root / str(i) / 'merged'))}
+              for name in differences(s['upstream'], merged_states[i])}
     adaptation_keys = [(a.get('scope'), a.get('path')) for a in adaptations]
     if (len(adaptation_keys) != len(set(adaptation_keys)) or set(adaptation_keys) != actual
             or any(not isinstance(a.get('reason'), str) or not a['reason'].strip() for a in adaptations)):
@@ -224,12 +253,14 @@ def accept(store, dependency, decision_file):
             if Path(name).name == 'SKILL.md':
                 validate_skill_routing(area / 'upstream' / name, area / 'merged' / name)
     receipt = {'target': request['target'], 'decisions': items, 'adaptations': adaptations,
-               'merged': [files(root / str(i) / 'merged') for i in range(len(request['scopes']))]}
+               'merged': merged_states}
     # Unknown baselines cannot be converted to known by an approval flag.
     if any(not s['base_known'] for s in request['scopes']):
         raise ReviewError('CUSTOMIZATION_BASELINE_UNKNOWN')
     if any(not s['upstream_known'] for s in request['scopes']):
         raise ReviewError('CUSTOMIZATION_NEW_SOURCE_UNKNOWN')
+    if merged_states != [files(root / str(i) / 'merged') for i in range(len(request['scopes']))]:
+        raise ReviewError('CUSTOMIZATION_APPROVED_RESULT_CHANGED')
     (root / 'accepted.json').write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + '\n')
     return {'status': 'reviewed', 'dependency': dependency, 'directory': str(root)}
 

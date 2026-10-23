@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Keep Lookup as the sole generic web Skill; preserve displaced sources."""
 import argparse
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -51,6 +52,20 @@ def inventory(home, lookup):
 
 
 def migrate(home, lookup, storage):
+    # All callers for this HOME share an inode lock, including maintenance and
+    # direct CLI invocations. A crash releases it without a stale lock file.
+    fd = os.open(home, os.O_RDONLY)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise EntryError('migration_in_progress_no_changes') from error
+        return _migrate(home, lookup, storage)
+    finally:
+        os.close(fd)
+
+
+def _migrate(home, lookup, storage):
     relative_storage = storage.relative_to(home)
     home, lookup = home.resolve(), lookup.resolve()
     storage = home / relative_storage
@@ -77,9 +92,12 @@ def migrate(home, lookup, storage):
     if receipt_path.is_symlink():
         raise EntryError('execution_receipt_symlink')
     receipt = json.loads(receipt_path.read_text()) if receipt_path.is_file() else {'schema_version': 1, 'entries': []}
-    if not isinstance(receipt, dict) or receipt.get('schema_version') != 1 or not isinstance(receipt.get('entries'), list):
+    if (not isinstance(receipt, dict) or receipt.get('schema_version') != 1
+            or not isinstance(receipt.get('entries'), list)
+            or any(not isinstance(record, dict) or not isinstance(record.get('preserved'), str)
+                   or not record['preserved'] for record in receipt['entries'])):
         raise EntryError('execution_receipt_invalid')
-    managed = {record.get('preserved') for record in receipt['entries'] if isinstance(record, dict)}
+    managed = {record['preserved'] for record in receipt['entries']}
     moves = []
     for row in rows:
         for name in row['competing']:

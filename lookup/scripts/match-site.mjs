@@ -74,12 +74,15 @@ function hostname(value) {
 }
 
 function queryHosts(query) {
-  const explicit = query.match(/https?:\/\/[^\s<>"'，。！？；）]+/gi);
-  if (explicit) return explicit.map(hostname).filter(Boolean);
+  const explicit = [];
+  const remainder = query.replace(/https?:\/\/[^\s<>"'，。！？；）]+/gi, value => {
+    explicit.push(hostname(value.replace(/[),;!]+$/, '')));
+    return ' ';
+  });
   // Consume a whole host and its optional path, so x.com.evil.invalid and
   // evil.invalid/?next=x.com cannot become an x.com match.
-  const bare = query.match(/(?<![\p{L}\p{N}_@.-])(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,63}(?::\d+)?(?:[/?#][^\s<>"'，。！？；）]*)?(?![\p{L}\p{N}_@.-])/giu);
-  return bare ? bare.map(hostname).filter(Boolean) : [];
+  const bare = remainder.match(/(?<![\p{L}\p{N}_@.-])(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,63}(?::\d+)?(?:[/?#][^\s<>"'，。！？；）]*)?(?![\p{L}\p{N}_@.-])/giu);
+  return [...explicit, ...(bare || []).map(hostname)].filter(Boolean);
 }
 
 export function matchesSite(query, domain, aliases = []) {

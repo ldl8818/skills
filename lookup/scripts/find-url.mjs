@@ -15,6 +15,10 @@ const MAX_ROWS = 1000;
 const QUERY_TIMEOUT_MS = 5000;
 const QUERY_MAX_BYTES = 5 * 1024 * 1024;
 const WEBKIT_EPOCH_DIFF_US = 11644473600000000n;
+const historyTime = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+});
 // Match SQLite's built-in lower(): ASCII case-insensitive, non-ASCII literal.
 const asciiLower = value => value.replace(/[A-Z]/g, char => char.toLowerCase());
 
@@ -52,10 +56,14 @@ export function parseArgs(argv) {
 
 function parseSince(value) {
   const window = value.match(/^(\d+)([dhm])$/);
+  const calendarDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
   const date = window
     ? new Date(Date.now() - Number(window[1]) * { d: 86400000, h: 3600000, m: 60000 }[window[2]])
-    : new Date(value);
-  if (!Number.isFinite(date.getTime())) throw new LookupError('INVALID_ARGUMENT', '无效 --since 值');
+    : new Date(calendarDate ? `${value}T00:00:00+08:00` : value);
+  if (!Number.isFinite(date.getTime())
+      || (calendarDate && new Date(value).toISOString().slice(0, 10) !== value)) {
+    throw new LookupError('INVALID_ARGUMENT', '无效 --since 值');
+  }
   return date;
 }
 
@@ -129,7 +137,7 @@ export function searchHistory(profileDir, profileName, browserLabel, keywords, s
   const boundedLimit = Math.max(1, Math.min(Number(limit) || MAX_ROWS, MAX_ROWS + 1));
   const orderBy = sort === 'visits' ? 'visit_count DESC, last_visit_time DESC' : 'last_visit_time DESC';
   const sql = "SELECT coalesce(title, '') AS title, url, "
-    + "datetime((last_visit_time - 11644473600000000)/1000000, 'unixepoch', 'localtime') AS visit, "
+    + "datetime((last_visit_time - 11644473600000000)/1000000, 'unixepoch') AS visit, "
     + 'visit_count FROM urls WHERE ' + conds.join(' AND ')
     + ' ORDER BY ' + orderBy + ' LIMIT ' + boundedLimit + ';';
   let raw;
@@ -157,7 +165,8 @@ export function searchHistory(profileDir, profileName, browserLabel, keywords, s
       || !Number.isInteger(row.visit_count) || row.visit_count < 0)) {
     throw new LookupError('HISTORY_INVALID_RESULT', '历史查询缺少必要字段');
   }
-  return rows.map(row => ({ browser: browserLabel, profile: profileName, ...row }));
+  return rows.map(row => ({ browser: browserLabel, profile: profileName, ...row,
+    visit: historyTime.format(new Date(row.visit.replace(' ', 'T') + 'Z')) }));
 }
 
 // Human-readable output cannot let a page title create another result line.

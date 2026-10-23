@@ -46,6 +46,32 @@ class SubtitleTests(unittest.TestCase):
         self.assertEqual(malformed, 0)
         self.assertEqual([cue["text"] for cue in SUBTITLES.clean_cues(cues)], ["你好世界", "朋友"])
 
+    def test_cjk_rolling_suffix_is_removed_but_separate_speech_survives(self):
+        for rolling, expected in ((True, ["你好世界", "朋友"]),
+                                  (False, ["你好世界", "世界朋友"])):
+            with self.subTest(rolling=rolling):
+                cues = [
+                    {"start": 0, "end": 2000, "text": "你好世界", "rolling": rolling},
+                    {"start": 1500, "end": 3000, "text": "世界朋友", "rolling": rolling},
+                ]
+                self.assertEqual([cue["text"] for cue in SUBTITLES.clean_cues(cues)], expected)
+
+    def test_word_overlap_uses_longest_suffix_and_keeps_new_speech(self):
+        cases = (("a b a b", "a b a b c", "c"),
+                 ("a b a", "a b c", "b c"),
+                 ("a a a", "a a b", "b"),
+                 ("before ends", "different beginning", "different beginning"))
+        for old, new, expected in cases:
+            with self.subTest(old=old, new=new):
+                cues = [{"start": 0, "end": 2000, "text": old, "rolling": True},
+                        {"start": 1500, "end": 3000, "text": new, "rolling": True}]
+                self.assertEqual([cue["text"] for cue in SUBTITLES.clean_cues(cues)], [old, expected])
+
+    def test_single_latin_words_do_not_deduplicate_shared_letters(self):
+        cues = [{"start": 0, "end": 2000, "text": "shell", "rolling": True},
+                {"start": 1500, "end": 3000, "text": "hello", "rolling": True}]
+        self.assertEqual([cue["text"] for cue in SUBTITLES.clean_cues(cues)], ["shell", "hello"])
+
     def test_entity_text_is_decoded_once(self):
         cues, _ = SUBTITLES.parse_cues("00:00:00.000 --> 00:00:01.000\n&lt;script&gt; &amp;lt;\n")
         self.assertEqual(cues[0]["text"], "<script> &lt;")

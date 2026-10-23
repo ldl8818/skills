@@ -63,35 +63,46 @@ def source_files(payload, manifest, kind='source'):
     return files
 
 
-def cached_archive(manifest):
+def cached_files(manifest):
     root = Path(os.environ.get('XDG_CACHE_HOME', str(Path.home() / '.cache')))
     if not root.is_absolute():
         raise SourceError('cache_home_must_be_absolute')
+    root = root.resolve()
     directory = root / 'lookup/opencli' / manifest['commit']
-    if directory.is_symlink():
-        raise SourceError('source_cache_symlink')
+    current = root
+    for part in directory.relative_to(root).parts:
+        current /= part
+        if current.is_symlink():
+            raise SourceError('source_cache_symlink')
     target = directory / 'source.tar.gz'
     if target.is_symlink():
         raise SourceError('source_cache_symlink')
     if target.is_file():
         payload = target.read_bytes()
-        source_files(payload, manifest)
-        return payload
+        return source_files(payload, manifest)
     request = urllib.request.Request(manifest['archive_url'], headers={'User-Agent': 'Lookup-source-reader'})
     with urllib.request.urlopen(request, timeout=30) as response:
         payload = response.read(32 * 1024 * 1024 + 1)
     if len(payload) > 32 * 1024 * 1024:
         raise SourceError('source_download_too_large')
-    source_files(payload, manifest)
+    files = source_files(payload, manifest)
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(dir=directory, delete=False) as stream:
-        temporary = Path(stream.name)
-        stream.write(payload)
+    temporary = None
     try:
-        temporary.replace(target)
+        with tempfile.NamedTemporaryFile(dir=directory, delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(payload)
+        try:
+            # Publish without replacing a file created by another invocation.
+            os.link(temporary, target)
+        except FileExistsError:
+            if target.is_symlink():
+                raise SourceError('source_cache_symlink')
+            return source_files(target.read_bytes(), manifest)
     finally:
-        temporary.unlink(missing_ok=True)
-    return payload
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return files
 
 
 def contract(binary, capabilities=None, env=None):
@@ -172,8 +183,8 @@ def main(argv=None):
                 env = dict(os.environ, HOME=temporary, OPENCLI_CONFIG_DIR=str(Path(temporary) / 'config'), CI='1')
                 result = contract(args.binary, env=env)
         else:
-            payload = args.archive.read_bytes() if args.action == 'verify' else cached_archive(manifest)
-            files = source_files(payload, manifest, args.kind if args.action == 'verify' else 'source')
+            files = (source_files(args.archive.read_bytes(), manifest, args.kind)
+                     if args.action == 'verify' else cached_files(manifest))
             if args.action == 'reference':
                 if args.path not in files or not args.path.endswith('.md'):
                     raise SourceError('unknown_reference')

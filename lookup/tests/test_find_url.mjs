@@ -38,11 +38,11 @@ function writeBookmarks(profileDir, entries) {
   }));
 }
 
-function cli(directory, args) {
+function cli(directory, args, env = process.env) {
   return spawnSync(process.execPath, ['--input-type=module', '-e',
     'import { main } from ' + JSON.stringify(moduleUrl) + '; process.exitCode = main(JSON.parse(process.argv[1]), JSON.parse(process.argv[2]));',
     JSON.stringify(args), JSON.stringify([{ id: 'ego', label: 'fixture ego', dir: directory }])],
-  { encoding: 'utf8', timeout: 10000 });
+  { encoding: 'utf8', timeout: 10000, env });
 }
 
 test('arguments bound queries and reject unsupported browsers or ambiguous values', () => {
@@ -53,6 +53,34 @@ test('arguments bound queries and reject unsupported browsers or ambiguous value
     assert.throws(() => parseArgs(args), { code: 'INVALID_ARGUMENT' });
   }
   assert.throws(() => parseArgs(['--browser', 'chrome']), { code: 'BROWSER_UNSUPPORTED' });
+});
+
+test('calendar dates use Shanghai midnight and reject normalized invalid dates', () => {
+  assert.equal(parseArgs(['--since', '2026-10-23']).since.toISOString(), '2026-10-22T16:00:00.000Z');
+  assert.throws(() => parseArgs(['--since', '2026-02-30']), { code: 'INVALID_ARGUMENT' });
+});
+
+test('history dates and date filters stay in Shanghai across shell timezones', { skip: !hasSqlite }, t => {
+  const directory = fixture(t);
+  const database = path.join(directory, 'Default', 'History');
+  createHistory(path.dirname(database));
+  const records = [
+    ['before', '2026-10-22T15:59:59Z'],
+    ['midnight', '2026-10-22T16:00:00Z'],
+    ['morning', '2026-10-22T23:00:00Z'],
+  ];
+  for (const [title, date] of records) {
+    const stamp = BigInt(Date.parse(date)) * 1000n + 11644473600000000n;
+    execFileSync('sqlite3', [database, `INSERT INTO urls VALUES ('${title}', 'https://${title}.example/', ${stamp}, 1);`]);
+  }
+  for (const timezone of ['America/New_York', 'UTC', 'Asia/Shanghai']) {
+    const result = cli(directory, ['--only', 'history', '--since', '2026-10-23', '--json'], { ...process.env, TZ: timezone });
+    assert.equal(result.status, 0, result.stderr);
+    const rows = JSON.parse(result.stdout).history;
+    assert.deepEqual(rows.map(row => [row.title, row.visit]), [
+      ['morning', '2026-10-23 07:00:00'], ['midnight', '2026-10-23 00:00:00'],
+    ], timezone);
+  }
 });
 
 test('selects one current or explicitly registered profile without probing others', t => {

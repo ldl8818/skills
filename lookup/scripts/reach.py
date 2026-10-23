@@ -3,6 +3,7 @@
 import argparse
 import ast
 from contextlib import contextmanager
+import fcntl
 import hashlib
 import io
 import json
@@ -163,18 +164,22 @@ def runtime_status(manifest, files):
     if not receipt.is_file():
         return {'ready': False, 'reason': 'runtime_not_prepared', 'commit': manifest['commit']}
     saved = json.loads(receipt.read_text())
+    if not isinstance(saved, dict) or not isinstance(saved.get('package'), str) or not saved['package']:
+        raise IntegrationError('runtime_receipt_invalid')
     if (saved.get('commit') != manifest['commit'] or saved.get('source_sha256') != manifest['archive_sha256']
             or saved.get('integration_id') != integration_id(manifest)):
         raise IntegrationError('runtime_source_mismatch')
     package = directory / saved['package']
-    if not package.is_relative_to(directory) or package.is_symlink():
+    package_root = package.resolve()
+    if not package_root.is_relative_to(directory.resolve()) or package.is_symlink():
         raise IntegrationError('runtime_package_path_changed')
     expected = {name.removeprefix('agent_reach/'): sha256(content)
                 for name, content in adapted_files(manifest, files).items()
                 if name.startswith('agent_reach/')}
     for name, digest in expected.items():
         target = package / name
-        if not target.is_file() or target.is_symlink() or sha256(target.read_bytes()) != digest:
+        if (not target.is_file() or target.is_symlink() or not target.resolve().is_relative_to(package_root)
+                or sha256(target.read_bytes()) != digest):
             raise IntegrationError('runtime_package_changed')
     if not python_path(directory).is_file():
         raise IntegrationError('runtime_python_missing')
@@ -186,17 +191,17 @@ def runtime_status(manifest, files):
 @contextmanager
 def preparation_lock(root):
     private_directory(root)
-    lock = root / 'prepare.lock'
+    # Lock the directory inode: the kernel releases it even after SIGKILL, and
+    # no unlink/recreate window can give concurrent callers different locks.
+    fd = os.open(root, os.O_RDONLY)
     try:
-        fd = os.open(lock, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError as error:
-        raise IntegrationError('runtime_preparation_in_progress') from error
-    try:
-        os.write(fd, str(os.getpid()).encode())
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise IntegrationError('runtime_preparation_in_progress') from error
         yield
     finally:
         os.close(fd)
-        lock.unlink()
 
 
 def prepare(manifest, files):

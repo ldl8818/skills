@@ -1,7 +1,11 @@
+import contextlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -164,6 +168,53 @@ class EntryTests(unittest.TestCase):
         result = entries.migrate(self.home, self.lookup, self.storage)
         self.assertEqual(result['migrated'], 0)
         self.assertTrue(path.is_dir())
+
+    def test_concurrent_migration_is_rejected_before_moving_sources(self):
+        internal = self.shared / 'agent-reach'
+        internal.mkdir()
+        (internal / 'SKILL.md').write_text('---\nname: agent-reach\n---\noriginal')
+        script = '''import importlib.util, json, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('entries_child', sys.argv[1])
+entries = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(entries)
+original = Path.rename
+def pause(path, destination):
+    print('moving', flush=True)
+    sys.stdin.readline()
+    return original(path, destination)
+Path.rename = pause
+print(json.dumps(entries.migrate(*map(Path, sys.argv[2:]))), flush=True)
+'''
+        child = subprocess.Popen([sys.executable, '-c', script, str(ROOT / 'scripts/entrypoints.py'),
+                                  str(self.home), str(self.lookup), str(self.storage)],
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            self.assertEqual(child.stdout.readline().strip(), 'moving')
+            with self.assertRaisesRegex(entries.EntryError, 'migration_in_progress'):
+                entries.migrate(self.home, self.lookup, self.storage)
+            self.assertTrue(internal.is_dir())
+        finally:
+            output, error = child.communicate('\n', timeout=5)
+        self.assertEqual(child.returncode, 0, error)
+        self.assertEqual(json.loads(output)['migrated'], 1)
+        self.assertEqual((self.storage / '.agents/agent-reach/SKILL.md').read_text(),
+                         '---\nname: agent-reach\n---\noriginal')
+        self.assertEqual(len(json.loads((self.storage / 'entries.json').read_text())['entries']), 1)
+
+    def test_malformed_receipt_record_is_preserved_and_returns_a_structured_error(self):
+        internal = self.shared / 'agent-reach'
+        internal.mkdir()
+        (internal / 'SKILL.md').write_text('---\nname: agent-reach\n---\noriginal')
+        self.storage.mkdir(parents=True)
+        receipt = self.storage / 'entries.json'
+        original = json.dumps({'schema_version': 1, 'entries': [{'preserved': []}]})
+        receipt.write_text(original)
+        with contextlib.redirect_stderr(io.StringIO()) as error:
+            self.assertEqual(entries.main(['apply', '--home', str(self.home), '--lookup-root', str(self.lookup)]), 78)
+        self.assertEqual(json.loads(error.getvalue())['error'], 'execution_receipt_invalid')
+        self.assertEqual(receipt.read_text(), original)
+        self.assertTrue(internal.is_dir())
 
 
 if __name__ == '__main__':

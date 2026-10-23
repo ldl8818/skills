@@ -77,7 +77,7 @@ class SourceTests(unittest.TestCase):
             cached = Path(temporary) / 'lookup/opencli/synthetic/source.tar.gz'
             cached.write_bytes(b'unknown user content')
             with self.assertRaisesRegex(source.SourceError, 'archive_changed'):
-                source.cached_archive(manifest)
+                source.cached_files(manifest)
             self.assertEqual(cached.read_bytes(), b'unknown user content')
             self.assertEqual(fetch.call_count, 1)
 
@@ -88,6 +88,71 @@ class SourceTests(unittest.TestCase):
              contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(source.main(['reference', '../private.md']), 78)
         fetch.assert_not_called()
+
+    def test_reference_verifies_the_complete_archive_once_per_invocation(self):
+        manifest, payload = archive_fixture()
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, XDG_CACHE_HOME=temporary), \
+             patch.object(source.urllib.request, 'urlopen', return_value=io.BytesIO(payload)), \
+             patch.object(source, 'metadata', return_value=manifest), \
+             patch.object(source, 'source_files', wraps=source.source_files) as verify:
+            for _ in range(2):
+                verify.reset_mock()
+                with contextlib.redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(source.main(['reference', 'docs/guide.md']), 0)
+                self.assertIn('Complete original guide.', output.getvalue())
+                self.assertEqual(verify.call_count, 1)
+
+    def test_symlinked_cache_parent_is_rejected_without_download_or_external_write(self):
+        manifest, payload = archive_fixture()
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, XDG_CACHE_HOME=temporary), \
+             patch.object(source.urllib.request, 'urlopen', return_value=io.BytesIO(payload)) as fetch:
+            root = Path(temporary)
+            outside = root / 'outside'
+            outside.mkdir()
+            (root / 'lookup').symlink_to(outside, target_is_directory=True)
+            with self.assertRaisesRegex(source.SourceError, 'source_cache_symlink'):
+                source.cached_files(manifest)
+            fetch.assert_not_called()
+            self.assertEqual(list(outside.iterdir()), [])
+
+    def test_cache_file_created_during_download_is_never_overwritten(self):
+        manifest, payload = archive_fixture()
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, XDG_CACHE_HOME=temporary):
+            target = Path(temporary) / 'lookup/opencli/synthetic/source.tar.gz'
+            def concurrent_write(*args, **kwargs):
+                target.parent.mkdir(parents=True)
+                target.write_bytes(b'concurrent unknown content')
+                return io.BytesIO(payload)
+            with patch.object(source.urllib.request, 'urlopen', side_effect=concurrent_write):
+                with self.assertRaisesRegex(source.SourceError, 'archive_changed'):
+                    source.cached_files(manifest)
+            self.assertEqual(target.read_bytes(), b'concurrent unknown content')
+            self.assertEqual([path.name for path in target.parent.iterdir()], ['source.tar.gz'])
+
+    def test_user_selected_cache_root_can_be_a_symlink(self):
+        manifest, payload = archive_fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            actual = Path(temporary) / 'actual'
+            actual.mkdir()
+            configured = Path(temporary) / 'configured'
+            configured.symlink_to(actual, target_is_directory=True)
+            with patch.dict(os.environ, XDG_CACHE_HOME=str(configured)), \
+                 patch.object(source.urllib.request, 'urlopen', return_value=io.BytesIO(payload)):
+                self.assertEqual(source.cached_files(manifest)['docs/guide.md'], b'Complete original guide.\n')
+            self.assertTrue((actual / 'lookup/opencli/synthetic/source.tar.gz').is_file())
+
+    def test_concurrent_valid_cache_is_reused_and_temporary_file_is_removed(self):
+        manifest, payload = archive_fixture()
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, XDG_CACHE_HOME=temporary):
+            target = Path(temporary) / 'lookup/opencli/synthetic/source.tar.gz'
+            def concurrent_write(*args, **kwargs):
+                target.parent.mkdir(parents=True)
+                target.write_bytes(payload)
+                return io.BytesIO(payload)
+            with patch.object(source.urllib.request, 'urlopen', side_effect=concurrent_write):
+                self.assertEqual(source.cached_files(manifest)['docs/guide.md'], b'Complete original guide.\n')
+            self.assertEqual(target.read_bytes(), payload)
+            self.assertEqual([path.name for path in target.parent.iterdir()], ['source.tar.gz'])
 
     def test_command_pages_preserve_access_and_include_new_commands(self):
         capabilities = {'site_commands': {'example read': {'access': 'read'}},

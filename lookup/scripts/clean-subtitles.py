@@ -11,6 +11,7 @@ MAX_INPUT_BYTES = 5 * 1024 * 1024
 TIMESTAMP = r"(?:\d{2,}:)?[0-5]\d:[0-5]\d[.,]\d{3}"
 TIMING = re.compile(rf"^({TIMESTAMP})\s+-->\s+({TIMESTAMP})(?:\s+.*)?$")
 INLINE_TIME = re.compile(rf"<{TIMESTAMP}>")
+CJK = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
 
 # Remove only known VTT/SRT presentation tags. Technical literals such as
 # vector<T> and <stdio.h> must survive; decode entities exactly once afterwards.
@@ -69,6 +70,27 @@ def parse_cues(source):
                      "rolling": bool(INLINE_TIME.search(raw_text))})
     return cues, malformed
 
+def suffix_prefix_overlap(previous, current):
+    """Find the longest rolling overlap in linear time for words or characters."""
+    if not previous or not current:
+        return 0
+    prefix = [0] * len(current)
+    for index in range(1, len(current)):
+        matched = prefix[index - 1]
+        while matched and current[index] != current[matched]:
+            matched = prefix[matched - 1]
+        if current[index] == current[matched]:
+            matched += 1
+        prefix[index] = matched
+    matched = 0
+    for token in previous[-len(current):]:
+        while matched and (matched == len(current) or token != current[matched]):
+            matched = prefix[matched - 1]
+        if token == current[matched]:
+            matched += 1
+    return matched
+
+
 def clean_cues(cues):
     """Remove only adjacent rolling overlap; ordinary repeated cues survive."""
     output, previous = [], None
@@ -85,12 +107,14 @@ def clean_cues(cues):
             elif adjacent_rolling:
                 old_words, new_words = previous["text"].split(), text.split()
                 if len(old_words) > 1 or len(new_words) > 1:
-                    for overlap in range(min(len(old_words), len(new_words)), 0, -1):
-                        if old_words[-overlap:] == new_words[:overlap]:
-                            text = " ".join(new_words[overlap:])
-                            break
+                    overlap = suffix_prefix_overlap(old_words, new_words)
+                    text = " ".join(new_words[overlap:])
                 elif len(previous["text"]) >= 2 and text.startswith(previous["text"]):
                     text = text[len(previous["text"]):].strip()
+                elif CJK.search(previous["text"]) and CJK.search(text):
+                    overlap = suffix_prefix_overlap(previous["text"], text)
+                    if overlap >= 2:
+                        text = text[overlap:].strip()
         if text:
             output.append({**cue, "text": text})
         previous = cue

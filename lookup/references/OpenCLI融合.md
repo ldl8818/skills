@@ -10,6 +10,8 @@
 
 原始源码和指南以固定来源、完整文件指纹和可恢复下载维护，首次读取时下载完整源码到 `XDG_CACHE_HOME/lookup/opencli/<commit>/source.tar.gz`，未设置时位于 `~/.cache/lookup/opencli/`。缓存前校验压缩包及全部文件，再按需输出一份原文；不解包到 Skill 自动发现目录，不执行源码，不安装 npm 包、不连接浏览器或查询业务站点。缓存损坏时保留原文件并报错，不覆盖未知内容。离线时可使用已验证缓存或已安装包的对应指南；缺少来源时如实报告。
 
+每次读取都完整校验归档与文件清单，并复用本次已核验的解包结果；缓存根目录以下的路径不跟随软链。并发下载只发布到尚不存在的目标，已有目标须通过同样校验，否则保留并报错。
+
 ```bash
 python3 scripts/opencli-source.py fetch
 python3 scripts/opencli-source.py reference skills/opencli-usage/SKILL.md

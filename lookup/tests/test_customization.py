@@ -123,6 +123,69 @@ class ReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(review.ReviewError, 'SYMLINK'):
             self.prepare()
 
+    def test_source_replacement_handles_file_and_directory_transitions(self):
+        for old_name, new_name in (('module.py', 'module.py/read.py'),
+                                   ('module/read.py', 'module')):
+            with self.subTest(old=old_name, new=new_name):
+                source = self.base / ('transition-source-' + str(len(old_name)))
+                destination = self.base / ('transition-live-' + str(len(old_name)))
+                write(destination, old_name, 'old implementation\n')
+                write(source, new_name, 'new implementation\n')
+                review.replace_source(source, destination)
+                self.assertEqual(review.files(destination), review.files(source))
+                self.assertEqual((destination / new_name).read_text(), 'new implementation\n')
+
+    def test_directory_transition_preserves_runtime_files_before_any_removal(self):
+        source = self.base / 'transition-source'
+        destination = self.base / 'transition-live'
+        write(source, 'module', 'new implementation\n')
+        previous = write(destination, 'module/read.py', 'old implementation\n')
+        private = write(destination, 'module/.env', 'SYNTHETIC_ONLY=retained\n')
+        with self.assertRaisesRegex(review.ReviewError, 'RUNTIME_PATH_CONFLICT'):
+            review.replace_source(source, destination)
+        self.assertEqual(previous.read_text(), 'old implementation\n')
+        self.assertEqual(private.read_text(), 'SYNTHETIC_ONLY=retained\n')
+
+    def test_acceptance_reads_each_merged_file_a_bounded_number_of_times(self):
+        for index in range(24):
+            name = f'changed-{index}.py'
+            write(self.old, name, 'old\n')
+            write(self.local, name, 'local\n')
+            write(self.new, name, 'new\n')
+        root = self.prepare()
+        _, request = review.load(self.store, 'opencli')
+        decision = self.base / 'bounded-review.json'
+        decision.write_text(json.dumps({'target': '2.0.3', 'decisions': [
+            {'scope': 'package', 'path': name, 'disposition': 'absorbed',
+             'reason': 'Use the complete new implementation.',
+             'evidence': 'Synthetic old, local and new inputs differ.',
+             'validation': 'The merged snapshot equals the new snapshot.'}
+            for name in request['scopes'][0]['customizations']], 'adaptations': []}))
+        original = Path.read_bytes
+        reads = {}
+        merged = root / '0/merged'
+        def counted(path):
+            if path.is_relative_to(merged):
+                reads[path] = reads.get(path, 0) + 1
+            return original(path)
+        with patch.object(Path, 'read_bytes', counted):
+            review.accept(self.store, 'opencli', decision)
+        self.assertTrue(reads)
+        self.assertLessEqual(max(reads.values()), 4, reads)
+
+    def test_changed_merge_during_routing_validation_is_not_approved(self):
+        header = '---\nname: example\ndescription: Synthetic guide.\n---\n'
+        for tree in (self.old, self.local, self.new):
+            write(tree, 'SKILL.md', header)
+        root = self.prepare()
+        decision, _ = self.decisions(root)
+        def drift(source, merged):
+            (root / '0/merged/added.py').write_text('concurrent change\n')
+        with patch.object(review, 'validate_skill_routing', side_effect=drift):
+            with self.assertRaisesRegex(review.ReviewError, 'APPROVED_RESULT_CHANGED'):
+                review.accept(self.store, 'opencli', decision)
+        self.assertFalse((root / 'accepted.json').exists())
+
     def test_upstream_skill_routing_fields_use_existing_manager_validation(self):
         source = write(self.new, 'SKILL.md', '---\nname: example\ndescription: Original description.\nwhen_to_use: "original, trigger"\ndispatch_intent: "read, search"\n---\nNew body.\n')
         merged = write(self.local, 'SKILL.md', source.read_text()+'Local body.\n')
@@ -154,6 +217,39 @@ class ReviewTests(unittest.TestCase):
                                 env=env, text=True, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue((root/'accepted.json').exists())
+
+    def test_real_cli_rejects_malformed_decision_shapes_without_side_effects(self):
+        root = self.prepare()
+        decision, valid = self.decisions(root)
+        home = self.base / 'invalid-decision-home'
+        home.mkdir()
+        env = dict(os.environ, HOME=str(home), XDG_STATE_HOME=str(self.base / 'state'), CI='1')
+        before = review.files(self.local)
+        request_before = (root / 'request.json').read_bytes()
+        cases = [('root-list', [], 'CUSTOMIZATION_REVIEW_INCOMPLETE'),
+                 ('root-null', None, 'CUSTOMIZATION_REVIEW_INCOMPLETE')]
+        for value in (None, {}, 'invalid', [None], ['invalid'],
+                      [{'scope': [], 'path': 'absorbed.py'}],
+                      [{'scope': 'package', 'path': {}}]):
+            cases.append(('decisions-' + repr(value), {**valid, 'decisions': value},
+                          'CUSTOMIZATION_REVIEW_INCOMPLETE'))
+        for value in (None, {}, 'invalid', [None], ['invalid'],
+                      [{'scope': [], 'path': 'preserved.py'}],
+                      [{'scope': 'package', 'path': {}}]):
+            cases.append(('adaptations-' + repr(value), {**valid, 'adaptations': value},
+                          'CUSTOMIZATION_ADAPTATIONS_INCOMPLETE'))
+        for label, value, error in cases:
+            with self.subTest(case=label):
+                decision.write_text(json.dumps(value))
+                result = subprocess.run([sys.executable, str(SCRIPT.with_name('lookup')),
+                                         'review', 'opencli', '--accept', str(decision)],
+                                        env=env, text=True, capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 78, result.stderr)
+                self.assertEqual(result.stdout, '')
+                self.assertEqual(json.loads(result.stderr), {'status': 'error', 'error': error})
+                self.assertFalse((root / 'accepted.json').exists())
+                self.assertEqual(review.files(self.local), before)
+                self.assertEqual((root / 'request.json').read_bytes(), request_before)
 
 
 class OpenCLIMergeTests(unittest.TestCase):
@@ -270,6 +366,73 @@ class OpenCLIMergeTests(unittest.TestCase):
         with self.assertRaisesRegex(upstream.MaintenanceError, 'ROLLBACK_TARGET_CHANGED'):
             upstream.rollback(self.store)
         self.assertEqual(upstream.installed(self.store, 'opencli')['current'], '2.0.3')
+
+    def test_failed_rollback_keeps_active_pointer_and_active_overrides_together(self):
+        override = write(self.home / '.opencli/clis', 'sample/read.js', 'custom adapter\n')
+        write(self.new, 'clis/sample/read.js', 'custom adapter\n')
+        self.assertEqual(upstream.update(self.store, 'opencli')['status'], 'manual_review')
+        self.seal('clis', 'sample/read.js', 'absorbed')
+        self.assertEqual(upstream.update(self.store, 'opencli')['status'], 'updated')
+        active = self.store.read('active.json')
+        original = self.store.write
+        def failed_pointer(name, value):
+            if name == 'active.json' and value == active.get('previous', {}):
+                raise OSError('synthetic pointer write failure')
+            return original(name, value)
+        with patch.object(self.store, 'write', side_effect=failed_pointer):
+            with self.assertRaises(OSError):
+                upstream.rollback(self.store)
+        self.assertEqual(self.store.read('active.json'), active)
+        self.assertFalse(override.exists())
+        self.assertEqual(upstream.installed(self.store, 'opencli')['current'], '2.0.3')
+
+    def test_partial_override_restore_failure_recovers_active_content(self):
+        override = write(self.home / '.opencli/clis', 'sample/read.js', 'custom adapter\n')
+        write(self.new, 'clis/sample/read.js', 'custom adapter\n')
+        self.assertEqual(upstream.update(self.store, 'opencli')['status'], 'manual_review')
+        self.seal('clis', 'sample/read.js', 'absorbed')
+        self.assertEqual(upstream.update(self.store, 'opencli')['status'], 'updated')
+        active = self.store.read('active.json')
+        backup = Path(active['customization_recovery'][0]['backup'])
+        original = review.replace_source
+        broken = self.home / '.opencli/clis/partial.js'
+        def partial_copy(source, destination):
+            if Path(source) == backup:
+                write(destination, 'partial.js', 'incomplete restore\n')
+                raise OSError('synthetic override copy failure')
+            return original(source, destination)
+        with patch.object(review, 'replace_source', side_effect=partial_copy):
+            with self.assertRaises(OSError):
+                upstream.rollback(self.store)
+        self.assertEqual(self.store.read('active.json'), active)
+        self.assertFalse(override.exists())
+        self.assertFalse(broken.exists())
+        self.assertEqual(list(self.store.root.glob('rollback-exchange-*')), [])
+
+    def test_failed_rollback_recovery_retains_its_snapshot(self):
+        override = write(self.home / '.opencli/clis', 'sample/read.js', 'old customization\n')
+        self.assertEqual(upstream.update(self.store, 'opencli')['status'], 'manual_review')
+        self.seal('clis', 'sample/read.js', 'preserved', 'adapted customization\n')
+        self.assertEqual(upstream.update(self.store, 'opencli')['status'], 'updated')
+        active = self.store.read('active.json')
+        original_write, original_replace = self.store.write, review.replace_source
+        def failed_pointer(name, value):
+            if name == 'active.json' and value == active.get('previous', {}):
+                raise OSError('synthetic pointer write failure')
+            return original_write(name, value)
+        def failed_restore(source, destination):
+            if Path(source).parent.name.startswith('rollback-exchange-'):
+                raise OSError('synthetic recovery copy failure')
+            return original_replace(source, destination)
+        with patch.object(self.store, 'write', side_effect=failed_pointer), \
+             patch.object(review, 'replace_source', side_effect=failed_restore):
+            with self.assertRaisesRegex(upstream.MaintenanceError, 'ROLLBACK_RECOVERY_FAILED:') as caught:
+                upstream.rollback(self.store)
+        area = Path(str(caught.exception).split(':', 1)[1])
+        self.assertTrue(area.is_dir())
+        self.assertEqual((area / '0/sample/read.js').read_text(), 'adapted customization\n')
+        self.assertEqual(self.store.read('active.json'), active)
+        self.assertEqual(override.read_text(), 'old customization\n')
 
     def test_merged_plugin_dependent_candidate_resumes_after_busy_deferral(self):
         script = self.local/'dist/src/main.js'

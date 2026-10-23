@@ -39,8 +39,8 @@
 -        throw new CommandExecutionError('Twitter tweet media extraction returned malformed payload');
 -    }
 +    const rows = await readThread(page, {
-+        'tweet-id': target.id, limit: 1000, 'top-by-engagement': 0,
-+    });
++        'tweet-id': target.id, limit: 1, 'top-by-engagement': 0,
++    }, { targetOnly: true });
 +    const tweets = rows.filter((row) => row.id === target.id);
 +    if (tweets.length !== 1 || !Array.isArray(tweets[0].media_urls)) {
 +        throw new CommandExecutionError('Twitter media response did not contain the requested tweet');
@@ -74,12 +74,22 @@
 +    func: readThread,
 +});
 +
-+export async function readThread(page, kwargs) {
++export async function readThread(page, kwargs, { targetOnly = false } = {}) {
          let tweetId = kwargs['tweet-id'];
          const urlMatch = tweetId.match(/\/status\/(\d+)/);
          if (urlMatch)
-@@ -167,5 +170,4 @@
+@@ -161,11 +164,14 @@
+             // TypeScript-side: type-safe parsing + cursor extraction
+             const { tweets, nextCursor } = parseTweetDetail(data, seen);
+             allTweets.push(...tweets);
++            if (targetOnly && seen.has(tweetId))
++                break;
+             if (!nextCursor || nextCursor === cursor)
+                 break;
+             cursor = nextCursor;
          }
++        if (targetOnly)
++            return allTweets.filter((tweet) => tweet.id === tweetId);
          const trimmed = allTweets.slice(0, kwargs.limit);
          return applyTopByEngagement(trimmed, kwargs['top-by-engagement']);
 -    },
