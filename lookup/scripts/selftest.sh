@@ -221,8 +221,8 @@ if [[ -x "$SELF_DIR/opencli-health.sh" ]] && command -v jq >/dev/null 2>&1; then
     L3_OK=1
   else
     state=$(jq -r '.state // "invalid_health_output"' <<<"$health_output" 2>/dev/null || printf 'invalid_health_output')
-    next=$(jq -r '.state // "inspect_native_doctor_report"' <<<"$health_output" 2>/dev/null || printf 'check_opencli_health')
-    bad "OpenCLI 门禁未就绪：${state}；下一步：${next}"
+    next=$(jq -r '.next_step // "inspect_native_doctor_report"' <<<"$health_output" 2>/dev/null || printf 'check_opencli_health')
+    bad "OpenCLI 连接诊断：${state}；下一步：${next}；未测试平台动作"
   fi
 else
   bad "scripts/opencli-health.sh 缺失、不可执行或 jq 不可用"

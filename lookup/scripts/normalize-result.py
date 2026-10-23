@@ -254,6 +254,26 @@ def normalize(capture, budget=40000):
         return result
     if isinstance(output, dict):
         output = [output]
+    # These adapters report per-file failures inside a successful CLI envelope.
+    # Keep the rows for diagnosis; a nonempty list is not a download success.
+    if provider in {"opencli/weixin/download", "opencli/twitter/download",
+                    "opencli/xiaohongshu/download"} and isinstance(output, list):
+        states = [row.get("status") if isinstance(row, dict) else None for row in output]
+        failed = [isinstance(state, str) and
+                  (state == "invalid URL" or re.match(r"^failed(?:\b|$)", state, re.I) is not None)
+                  for state in states]
+        verification = (provider == "opencli/weixin/download" and
+                        "failed — verification required in WeChat browser page" in states)
+        if verification or all(failed):
+            result["items"], reduced = bounded(output, budget)
+            result["truncated"] = result["truncated"] or reduced
+            result["error"] = {"code": "SECURITY_BLOCK" if verification else "DOWNLOAD_FAILED",
+                               "scope": "site_profile" if verification else "site_action",
+                               "outcome_unknown": False}
+            return result
+        if any(state != "success" for state in states):
+            local_partial = True
+            result["missing_fields"].append("download_status")
     output, reduced = bounded(output, budget)
     result["truncated"] = result["truncated"] or reduced
     key = "text" if isinstance(output, str) else "items"

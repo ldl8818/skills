@@ -1,6 +1,6 @@
 {
   "version": 5,
-  "_doc": "Lookup 的必要合约与任务边界，不是完整后端目录或自动执行器。候选按数组顺序列出，仅在条件相当时参考；实际选择见 references/任务选路.md。命令参数来自当前注册表／帮助；active/conditional 是登记状态，不表示当前健康。",
+  "_doc": "Lookup 的必要合约与任务边界，不是完整后端目录或自动执行器。候选按数组顺序列出，仅在条件相当时参考；实际选择见 references/任务选路.md。命令参数来自当前注册表／帮助；active/conditional 是登记状态，不表示当前健康。auth 描述认证依赖类型，不证明当前是否登录；browser-session 也不要求所有动作先登录。登录准备见 references/opencli-windows.md#登录准备与恢复。",
   "failure_domains": {
     "_model": "分别判断浏览器进程、站点账号、bridge+Profile、site+action；只有共享实际依赖才共享故障。",
     "opencli-browser": "浏览器进程 + 目标账号 + 具体 adapter；默认 Browser Bridge 与 LOOKUP_OPENCLI_PROFILE=ego-lite，显式 CDP 路线按实际 endpoint 判断共享依赖",
@@ -27,15 +27,18 @@
     "invocation": "read-current-ego-browser-skill-guide",
     "use_when": [
       "无合适专用来源且本机日常外部网页需要浏览器",
+      "平台抓取已满足 references/failure-domains.md#适配器修复与浏览器兜底 的条件",
+      "CLI 登录准备确需该接口，且已确认它指向 CLI 原绑定的同一浏览器和 Profile；只辅助人工交接，见 references/opencli-windows.md#登录准备与恢复",
       "用户明确指定ego环境",
       "开发或其他任务中实际能力最合适"
     ],
     "useless_when": [
       "已确认同一ego进程不可用",
-      "同一站点账号认证失效或风控"
+      "抓取兜底仍复用同一认证失效或风控中的站点账号；人工登录准备按独立流程交接"
     ],
     "requires": [
       "通过 ego-browser skill 读取与安装版本匹配的完整指南",
+      "平台抓取不能因一次动作失败、缺参数或需要渲染直接兜底；修复与停止条件见 references/failure-domains.md#适配器修复与浏览器兜底",
       "只操作本任务已证明归属的空间",
       "用户接管或权限拒绝后停止相关操作"
     ]
@@ -76,12 +79,17 @@
             "created_at",
             "url",
             "likes",
-            "views"
+            "retweets",
+            "replies",
+            "quotes",
+            "bookmarks",
+            "views",
+            "shares"
           ],
           "validator": "task_sufficient_with_provenance",
           "normalizer_provider": "opencli/twitter/search",
           "evidence_type": "full_text",
-          "_note": "短帖正文完整且覆盖任务时直接用；线程/长文/上下文缺口才补读"
+          "_note": "短帖正文完整且覆盖任务时直接用；线程/长文/上下文缺口才补读。互动指标按本地指标补丁保留，null为未提供；retweets是转帖、quotes是引用、bookmarks是书签，不能合并冒充分享数。"
         }
       ]
     },
@@ -260,6 +268,9 @@
             "title",
             "author",
             "likes",
+            "collects",
+            "comments",
+            "shares",
             "published_at",
             "url",
             "access_url",
@@ -446,33 +457,6 @@
       "desc": "取公众号文章正文",
       "providers": [
         {
-          "id": "ego-browser-weixin-dom",
-          "type": "manual",
-          "status": "conditional",
-          "failure_domain": "ego-browser-api",
-          "selectors": {
-            "title": "#activity-name",
-            "author": "#js_name",
-            "body": "#js_content"
-          },
-          "validator": "task_sufficient_with_provenance",
-          "evidence_type": "full_text",
-          "_note": "本机日常外部网页的默认浏览器，选中后用 ego-browser skill 读取指南；用户指定环境优先；历史selector失效时重新观察"
-        },
-        {
-          "id": "host-browser-weixin-dom",
-          "type": "manual",
-          "status": "conditional",
-          "failure_domain": "host-browser-api",
-          "evidence_type": "full_text",
-          "validator": "task_sufficient_with_provenance",
-          "requires": [
-            "宿主浏览器可用",
-            "已观察真实落地URL与正文"
-          ],
-          "_note": "按浏览器选路的指定环境或技术降级条件使用宿主正式接口；搜狗跳转/验证页不代表正文"
-        },
-        {
           "id": "opencli-weixin-download",
           "type": "opencli",
           "command": "weixin/download",
@@ -494,10 +478,37 @@
           ],
           "local_effect": "write",
           "validator": "task_sufficient_with_provenance",
-          "_note": "只在用户明确要求归档时使用；指定输出目录并关闭非必需图片下载，返回的是归档元数据，正文证据需验实际文件；非空Error行也可能失败",
+          "_note": "用户明确要求归档时优先使用；指定输出目录，需要配图时启用下载。返回的是归档元数据，须验实际正文与文件；非空Error行也可能失败。只阅读时使用其他适用正文来源，不额外归档；解析缺陷按 failure-domains.md 的修复规则处理。",
           "normalizer_provider": "opencli/weixin/download",
           "evidence_type": "metadata",
           "preserve_access_url": true
+        },
+        {
+          "id": "ego-browser-weixin-dom",
+          "type": "manual",
+          "status": "conditional",
+          "failure_domain": "ego-browser-api",
+          "selectors": {
+            "title": "#activity-name",
+            "author": "#js_name",
+            "body": "#js_content"
+          },
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "full_text",
+          "_note": "通用浏览器抓取必须满足 failure-domains.md#适配器修复与浏览器兜底 的条件，或来自用户真实指定；中转解析优先 OpenCLI Browser，取得原文URL后回到适用动作。历史selector失效先修复，不因已核实缺口直接转 Ego。"
+        },
+        {
+          "id": "host-browser-weixin-dom",
+          "type": "manual",
+          "status": "conditional",
+          "failure_domain": "host-browser-api",
+          "evidence_type": "full_text",
+          "validator": "task_sufficient_with_provenance",
+          "requires": [
+            "宿主浏览器可用",
+            "已观察真实落地URL与正文"
+          ],
+          "_note": "按用户真实指定或已满足的适配器修复兜底条件使用宿主正式接口，不能借技术降级绕过平台抓取门槛；搜狗跳转/验证页不代表正文"
         }
       ]
     },
@@ -774,7 +785,7 @@
   },
   "failure_scopes": {
     "bridge_profile": "本任务暂停同一 bridge+Profile 的 browser-backed provider",
-    "auth_required": "只暂停相同 site+account/context；不能静默换账号",
+    "auth_required": "只暂停相同 site+account/context 的自动抓取；按 references/opencli-windows.md#登录准备与恢复 交接原绑定环境，核对后回原 CLI；不能静默换账号",
     "unsupported_action": "只暂停相同 site+action",
     "invalid_output": "只影响该动作或该结果；缺字段/截断可按 partial 处理",
     "empty": "确认无匹配，不熔断",
@@ -838,11 +849,13 @@
   },
   "browser_routing": {
     "reference": "references/浏览器选路.md",
+    "login_preparation_reference": "references/opencli-windows.md#登录准备与恢复",
+    "platform_adapter_repair_reference": "references/failure-domains.md#适配器修复与浏览器兜底",
     "dedicated_sources_first": true,
     "user_environment_first": true,
     "local_external_web_default": "ego-browser",
     "development_selection": "按任务比较实际可用的宿主Browser、DevTools与ego",
     "technical_fallback": "independent-authorized-browser",
-    "note": "策略不自动执行；默认不等于唯一。核对能力、登录态和共享失败域；不因权限拒绝或用户接管换工具绕过限制。"
+    "note": "策略不自动执行；外部网页默认浏览器不覆盖平台修复门槛。核对能力、登录态和共享失败域；不因权限拒绝或用户接管换工具绕过限制。"
   }
 }

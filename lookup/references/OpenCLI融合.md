@@ -34,10 +34,10 @@ node scripts/opencli-run.mjs <site> <command> --help -f json
 | 66条内置命令 | `list <query>` 或对应命令组 `--help` | 包含下列发现、浏览器、认证、开发及维护能力；缺少 access 标记不等于只读 |
 | 页面浏览器 | `browser ...`，加载 opencli-browser | 页面导航、定位、表单、点击、上传、截图、frame、等待、提取、网络、console、对话框及 session 收尾；实际接口和字段以当前帮助为准 |
 | 原生 Chrome 对象 | `browser chrome describe`／`browser chrome call` | 标签、窗口、分组等方法按当前 schema 发现；只操作本任务归属对象，不以批量 API 或 profile 名称代替归属证据 |
-| 认证与 Profile | `auth status/refresh --site <site>`、`profile list/use/rename` | status 与刷新分别判断；不自动登录、采 Cookie、切换账号或修改其他任务默认环境。runner 仍以 LOOKUP_OPENCLI_PROFILE 为本任务 Profile，原生默认值不覆盖它 |
+| 认证与 Profile | `auth status/refresh --site <site>`、`profile list/use/rename` | status 与刷新分别判断；需人工登录时按 [登录准备与恢复](opencli-windows.md#登录准备与恢复) 打开原绑定环境并交接，恢复后回原 CLI。不自动登录、采 Cookie、切换账号或修改其他任务默认环境。runner 仍以 LOOKUP_OPENCLI_PROFILE 为本任务 Profile，原生默认值不覆盖它 |
 | 插件管理 | `plugin list/create/install/update/uninstall` | 原生包、扩展能力和本地定制均保留；安装／卸载、全局依赖及用户配置变更按明确任务授权执行，不由查询或自动修复隐式触发 |
 | Adapter 开发 | `adapter init/check/test/status/eject/reset`、`convention-audit` | 原生开发、检查、测试、导出覆盖和重置能力可用；test 会执行真实动作，reset 会移除本地覆盖，先核对对象、写入和恢复条件 |
-| Adapter 故障修复 | opencli-autofix 及 trace／测试工具 | 仅在选中 OpenCLI 且有具体失败证据时加载；先定位、保留本地差异，验证修复和相邻正常路径。原指南的发 Issue 建议不构成对外发送授权 |
+| Adapter 故障修复 | opencli-autofix 及 trace／测试工具 | 选中 OpenCLI 后，影响目标的已确认适配器缺陷优先修复；按 [修复轮次与兜底门槛](failure-domains.md#适配器修复与浏览器兜底) 保留本地差异、验证原目标与相邻正常路径。原指南的发 Issue 建议不构成对外发送授权 |
 | Bridge 诊断与生命周期 | `doctor`、`daemon status/restart/stop` | 状态读取与停止／重启共享进程分别处理；先核对其他任务占用及授权，不以杀共享进程恢复单个动作 |
 | Bridge、远端／无头、Android CDP | 原生 Bridge 与 CDP 接口及对应完整指南 | 默认保持 Bridge；显式选择的 CDP 环境使用下一节入口。不因技术失败自行换浏览器、账号或开放调试端口 |
 | Skill 与 Shell 补全 | `skills list/read`、`completion <shell>` | 指南读取和输出补全脚本文本不等于安装；不把内置指南重新注册为竞争的自动入口 |
@@ -61,7 +61,7 @@ node scripts/opencli-run.mjs <site> <command> --help -f json
 | opencli-usage | 发现命令、schema、结果与恢复 | 保留完整执行说明，选路归 Lookup |
 | opencli-browser | 需要页面或原生 Chrome 操作 | 保留全部接口；浏览器选择、账号与资源归属沿用 Lookup |
 | opencli-adapter-author | 新建／改进 Adapter | 完整参考覆盖 API 发现、策略、字段、输出、覆盖矩阵、站点经验及测试；只加载相关文件 |
-| opencli-autofix | 已确认 Adapter 故障，需要修复 | 保留完整修复流程；对外提交、安装和真实写入仍须对应授权 |
+| opencli-autofix | 已确认 Adapter 故障，需要修复 | 保留完整修复流程；修复轮次与浏览器兜底统一遵循 [Lookup 修复规则](failure-domains.md#适配器修复与浏览器兜底)，原指南的重试次数不替代该规则；对外提交、安装和真实写入仍须对应授权 |
 | smart-search | 需要站点领域经验和候选来源 | 保留原始完整 Skill 与8类来源参考；其自动触发、AI 源默认顺序、固定次数和强制全表预检不另设通用规则，统一遵循 Lookup 搜索策略、有界恢复与按需发现 |
 
 原生 `skills list/read` 当前只列出 `opencli-*`，不列 smart-search；不要据此误报它缺失。smart-search 及其他原始参考可从完整来源读取：
