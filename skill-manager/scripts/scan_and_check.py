@@ -1,0 +1,235 @@
+#!/usr/bin/env python3
+"""检查更新：本地装的 vs 上游最新。
+
+用法:
+  python3 scan_and_check.py           人类可读表格
+  python3 scan_and_check.py --json    原始 JSON（供其他脚本消费）
+  python3 scan_and_check.py --include-frozen  只读比较冻结版来源，不解冻或更新
+
+2026-07-11 重写：旧版自己实现了一套收集逻辑，与 list 各说各话，且把
+「远程最新 tag」填进版本列冒充本地版本（本地明明装的是 13.10.2，却显示
+13.10.3）。现在统一走 core，本地版本与上游版本严格分列，绝不混为一谈。
+"""
+import io
+import os
+import sys
+import json
+import threading
+import concurrent.futures
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import core
+from pathlib import Path
+import audit_upstream
+import lifecycle
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+else:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
+if any(a in ("-h", "--help") for a in sys.argv[1:]):
+    print(__doc__)
+    sys.exit(0)
+
+AS_JSON = "--json" in sys.argv
+
+
+def remote_latest(url, tags_ok=True):
+    """上游最新的发布点 → (ref, commit_sha)。
+
+    口径必须和 update 一致：update 更新到最新 tag，check 若拿 HEAD 比，
+    HEAD 永远领先 tag 几个未发版的 commit —— 更新完照样报「有新版」，
+    这个黄灯永远消不掉，用户会直接无视它。
+    tags_ok=False 用于插件：插件是按 commit 装的（update 也走 HEAD），拿 tag 比会误报。
+    """
+    if tags_ok:
+        ref, sha = core.latest_tag(url)
+        if ref:
+            return ref, sha
+    sha = core.remote_head(url)
+    return ("HEAD", sha) if sha else (None, None)
+
+
+_AHEAD_CACHE = {}
+_AHEAD_LOCK = threading.Lock()
+
+
+def unreleased_ahead(url):
+    """上游主分支是否领先最新 tag → True / False / None（判不了）。
+
+    刻意不并进 status：它一旦算「有新版」，黄灯就永远消不掉（tag 没动，HEAD 天天变），
+    用户会学会无视整列灯。作者把改进压在未发版提交里是常态，值得知道，但不值得
+    每天亮一次待办。同仓库多个 skill 只查一次。
+    """
+    with _AHEAD_LOCK:
+        if url in _AHEAD_CACHE:
+            return _AHEAD_CACHE[url]
+    _, tag_sha = core.latest_tag(url)
+    head = core.remote_head(url) if tag_sha else None
+    result = None if not (tag_sha and head) else (not head.startswith(tag_sha[:12]))
+    with _AHEAD_LOCK:
+        _AHEAD_CACHE[url] = result
+    return result
+
+
+def marketplace_repo(marketplace):
+    src = (core.read_json(core.KNOWN_MARKETPLACES_JSON, {})
+           .get(marketplace, {}).get("source", {}))
+    repo = src.get("repo")
+    if not repo:
+        return None
+    return repo if "://" in repo else f"https://github.com/{repo}"
+
+
+def check_one(target, include_frozen=False):
+    kind, name, url, local_hash, extra = target
+    base = {**extra, "kind": kind, "name": name, 'has_upstream': bool(url)}
+    if extra.get('maintenance_root'):
+        return {**base, **lifecycle.check(extra['maintenance_root'])}
+    if extra.get("frozen"):
+        result = {**base, "status": "frozen",
+                  "message": "已冻结（脱离上游，按本地版本号管）"}
+        coverage = extra.get('merge_coverage', 'unverified')
+        result['merge_coverage'] = coverage
+        if include_frozen:
+            ref, remote = remote_latest(url, tags_ok=extra.get("ref") != "main") if url else (None, None)
+            comparison = "unknown" if not remote or not local_hash else (
+                "same" if remote == local_hash else "different")
+            result.update(remote=ref, remote_hash=remote, baseline_hash=local_hash,
+                          upstream_comparison=comparison)
+            result["message"] = {"unknown": "已冻结；上游比较证据不足",
+                                 "same": "已冻结；上游与登记基线相同",
+                                 "different": f"已冻结；上游 {ref} 与基线不同，仅供人工评估合并"}[comparison]
+        if url and coverage != 'verified':
+            result['message'] += '；完整合并未验收，不能据此报告更新完成'
+        return result
+    if not url:
+        return {**base, "status": "local", "message": "本地 skill，无上游可比"}
+    # 插件是按 commit 装的（update 也走 HEAD），拿 tag 比会永远误报「有新版」。
+    # 跟 main 的 skill 同理：它的目标本来就是 HEAD，拿 tag 比会永远显示「落后」。
+    follows_main = extra.get("ref") == "main"
+    ref, rh = remote_latest(url, tags_ok=(kind != "plugin" and not follows_main))
+    if not rh:
+        return {**base, "status": "error", "message": f"连不上 {url}"}
+    if follows_main:
+        ref = "main"
+    if not local_hash:
+        return {**base, "remote": ref, "status": "unknown",
+                "message": "本地没记 commit，无法比对"}
+    if rh.startswith(local_hash[:12]):
+        cur = {**base, "remote": ref, "status": "current",
+               "message": f"上游提交相同（{ref}）",
+               'needs_merge_verification': extra.get('merge_coverage') != 'verified'}
+        # 跟 tag 的才提示：跟 main 的本来就在最前面，没有「未发版提交」这回事
+        if kind == "skill" and not follows_main and unreleased_ahead(url):
+            cur["ahead"] = True
+            cur["message"] += '· 上游 main 另有未发版提交'
+        if cur['needs_merge_verification']:
+            cur['message'] += '；本地完整合并未验收'
+        else:
+            cur['message'] += '；合并回执与现存文件一致'
+        return cur
+    return {**base, "remote": ref, "status": "outdated", "message": f"上游有新版 {ref}"}
+
+
+def build_targets():
+    skills = core.collect_all(all_projects=True)
+    targets, seen = [], set()
+
+    for s in skills:
+        owner = lifecycle.lookup_root(Path(s.md_path).parent) if s.name == 'lookup' else None
+        if owner and s.name not in seen:
+            seen.add(s.name)
+            targets.append(('skill', s.name, '', '', {'local': s.version,
+                'enabled': s.enabled, 'maintenance_root': str(owner)}))
+            continue
+        if s.source in ("github", "frozen") and s.name not in seen:
+            seen.add(s.name)
+            coverage = 'unverified'
+            if s.github_url:
+                try:
+                    root = Path(s.md_path).resolve().parent
+                    receipt = json.loads((root / audit_upstream.RECEIPT).read_text())
+                    coverage = 'verified' if not audit_upstream.verify(root, receipt) else 'drifted'
+                except (OSError, ValueError, KeyError, TypeError):
+                    coverage = 'unverified'
+            targets.append((
+                "skill", s.name, s.github_url, s.github_hash,
+                {"local": s.version, "enabled": s.enabled,
+                 "frozen": s.source == "frozen",
+                 "merge_coverage": coverage,
+                 "ref": s.get("github_ref", "")},
+            ))
+
+    # 插件的启用状态要从它旗下任一 skill 上取（插件本身不出现在 skill 列表里）
+    plugin_enabled = {}
+    for s in skills:
+        if s.plugin_key:
+            plugin_enabled[s.plugin_key] = plugin_enabled.get(s.plugin_key) or s.enabled
+
+    registry = core.read_json(core.INSTALLED_PLUGINS_JSON, {}).get("plugins", {})
+    for key, installs in registry.items():
+        if key in seen:
+            continue
+        seen.add(key)
+        ins = installs[0] if installs else {}
+        targets.append((
+            "plugin", key, marketplace_repo(key.split("@")[-1]),
+            ins.get("gitCommitSha", ""),
+            {"local": ins.get("version", "—"),
+             "enabled": plugin_enabled.get(key, False), "frozen": False},
+        ))
+    return targets
+
+
+ICON = {"current": "🟢", "outdated": "🟡", "frozen": "🔒",
+        "local": "⚪", "error": "🔴", "unknown": "⚪"}
+ORDER = {"outdated": 0, "error": 1, "unknown": 2, "current": 3, "frozen": 4, "local": 5}
+
+
+def main():
+    targets = build_targets()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+        results = list(ex.map(lambda target: check_one(target, "--include-frozen" in sys.argv), targets))
+
+    if AS_JSON:
+        print(json.dumps(results, ensure_ascii=False, indent=2))
+        return
+
+    results.sort(key=lambda r: (ORDER.get(r["status"], 9), r["name"]))
+    rows = [(f"{ICON.get(r['status'], '·')} {r['name']}",
+             "生效" if r["enabled"] else "未启用",
+             str(r.get("local", "—")), r["message"]) for r in results]
+
+    w_n = max(core.dw("Skill / 插件"), max(core.dw(r[0]) for r in rows))
+    w_e = max(core.dw("状态"), max(core.dw(r[1]) for r in rows))
+    w_l = max(core.dw("本地版本"), max(core.dw(r[2]) for r in rows))
+
+    print("\n检查更新（本地装的 vs 上游最新）\n")
+    print(f" {core.pad('Skill / 插件', w_n)} | {core.pad('状态', w_e)} | "
+          f"{core.pad('本地版本', w_l)} | 上游")
+    print(f" {'-' * w_n}-+-{'-' * w_e}-+-{'-' * w_l}-+-{'-' * 22}")
+    for n, e, l, m in rows:
+        print(f" {core.pad(n, w_n)} | {core.pad(e, w_e)} | {core.pad(l, w_l)} | {m}")
+
+    outdated = [r for r in results if r["status"] == "outdated"]
+    if outdated:
+        print(f"\n🟡 {len(outdated)} 个有新版：")
+        for r in outdated:
+            tail = "" if r["enabled"] else "   ← 未启用，可以不管"
+            print(f"   /skill-manager update {r['name']}{tail}")
+    else:
+        print("\n没有检测到可自动更新项；冻结项与查询失败项见上表。")
+
+    ahead = [r for r in results if r.get("ahead")]
+    if ahead:
+        print(f"\n🌿 {len(ahead)} 个已装到最新发布版，但上游 main 还有未发版提交：")
+        for r in ahead:
+            print(f"   /skill-manager update {r['name']} --ref main")
+        print("   （不是待办：上游未发版是常态，只在需要那批改动时才跟）")
+    print()
+
+
+if __name__ == "__main__":
+    main()

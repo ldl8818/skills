@@ -1,0 +1,194 @@
+# 维护者手册（改 scripts/ 前必读）
+
+> 日常执行不用读这份文件。只在修改 skill-manager 自身代码、排查其 bug、
+> 或想知道某条设计为何如此时读。每条规则附「来历」——它对应的真实事故。
+
+## 目录
+
+- [本 skill 的来源](#本-skill-的来源)
+- [数据层契约](#数据层契约)
+- [客户端目录适配](#客户端目录适配)
+- [实现细节备忘](#实现细节备忘)
+- [安全与事务边界](#安全与事务边界)
+- [事故簿](#独立事故不对应上面某条规则但别再犯)
+
+## 本 skill 的来源
+
+原上游 KKKKhazix/Khazix-Skills 已改版下架本 skill，本地版即唯一版本，故标 `frozen`。
+neat-freak 仍可从该仓库更新。
+
+## 数据层契约
+
+### core.py 是唯一数据层
+所有发现位置、运行时入口、插件与元数据的收集和判定全部走 `core.py`，不要在其他脚本里另起一套收集逻辑。
+加新检查前，先确认权威记录是不是已经躺在某个文件里了。
+> 来历（2026-07-11，最严重的一次）：`_source_of()` 旁路判定「没有 github_url → local」，
+> `doctor --fix` 顺势给 84 个 skill 编了 `version: 1.0.0`。实际 8 个是 tw93/Waza
+> v3.31.1（猜上游最新版 v3.31.2 也会错），74 个是 nexu-io/html-anything。
+> 权威记录一直躺在 `~/.agents/.skill-lock.json` 里没人读。
+> 修复 = `unknown` 来源 + `trace` 命令 + 删掉编版本号的 fixer。这就是三条铁律的出处。
+
+### update 与 delete 共用 core.resolve_target
+裸名解析（直装优先 → Claude 插件前缀匹配补 `@市场名`，唯一命中才补、撞名列候选）只有一份实现，
+别各写一份——两边行为漂移就是操作错对象的开端。
+
+### 字段名单：MANAGED_FIELDS 与 PRESERVE_FIELDS
+- `core.MANAGED_FIELDS`：算指纹时剥掉的「skill-manager 自己写的字段」。
+- `update_skill.PRESERVE_FIELDS`：更新时从本地 SKILL.md 原样保下来的字段
+  （`zh_description` / `update_policy`）。
+
+加新元数据字段时两份名单都要过一遍。漏 PRESERVE = 每次更新悄悄回滚一次用户定制，且无声。
+> 来历（2026-07-11）：`description` 不在 PRESERVE 里，3 个本地调优过触发描述的 skill
+> 一 update 全被上游盖回去。旧版曾增加 `keep_local_description` 开关；当前政策为完整保留上游描述、中文展示独立保存，该开关不再覆盖源字段。
+
+`when_to_use` 与 `dispatch_intent` 是顶层路由内容，不属于管理器生成的记账字段，不加入 `MANAGED_FIELDS` 或无条件保留的 `PRESERVE_FIELDS`。更新时按旧上游／本地／新上游三方合并；非冲突改动同时保留，双方修改同一字段时报告冲突，不静默覆盖或锁死上游改进。字段用途见 [SKILL.md 的路由字段](../SKILL.md#路由字段)。
+
+### 上游路由字段不可由适配理由豁免
+
+以 [Skill 入口的路由字段](../SKILL.md#路由字段)为现行定义。`audit_upstream.make_receipt` 和 `verify` 共用字段检查；schema 2回执在 SKILL.md 条目中保存源 YAML 字段块，联网取得的固定源快照核验还须逐项比对这些原文。旧回执不能只改版本号或哈希迁移，必须从完整源快照重新核对。
+
+普通更新将 `description` 从正文合并中分离，再复制完整上游字段块，保留折叠／换行语义；另外两个字段做三方合并，候选写入前执行同一原文检查。冲突或字段被改写时停止替换，在隔离目录完整恢复源字段后合入本地新增条目，不先筛掉上游词句，也不通过改标点、加限定或翻译原文规避冲突。
+
+旧 `keep_local_description` 不再回注、不覆盖上游，也不从指纹或溯源比较中豁免 description；字段仍可作为旧记账数据读取。现役安装数据不因升级脚本被批量重写，实际更新在授权范围内执行。
+
+### 版本判定是方向性比对，不是指纹相等
+「本地是哪一版」用 `core.content_matches_upstream(local, upstream)` 判：上游每个文件
+都须在本地存在且一致；**本地多出的文件不参与**——skill 运行时自生成的文件（配置、
+自学笔记）和 update 保留的本地独有文件不改变它装自哪一版。整目录指纹相等只用于
+dirty 检测（`fingerprint` + `fingerprints.json`），别拿它比上游。
+比对口径在这里统一：只剥离管理器记账字段，实际路由内容参与比较；有本地增补时不能将它冒充为与上游完全一致。
+> 来历（2026-07-11，官方 skill 评估跑出来的）：web-access 自生成的 config.env 和
+> site-patterns/ 让整目录指纹和上游哪个 tag 都对不中，trace 永远定不了版。
+> 同一次还连出两个 bug：单个 trace 不读已登记的 github_url（批量路径读、单个路径漏）；
+> find_skill_dir 认不出「仓库根就是 skill」的单 skill 仓库（解压临时目录名随机，
+> 靠目录名匹配必失败，改为看 frontmatter 的 name）。
+
+### 运行数据目录与旧数据自动搬家（2.4.0）
+`fingerprints.json` / `projects.json` / `descriptions_zh.json` 住 `core.DATA_DIR`
+（`~/.skill-manager/data/`）。2.2.0–2.3.x 住 `~/.claude/data/skill-manager/`，更旧版存在
+skill 自身目录；这两种选址分别会绑定 Claude，或要靠四处
+补偿硬撑（指纹自指排除、仓库 `.gitignore`、README 安装命令的 `--exclude` 清单、
+update 合并保数据），且用户重装漏抄一个 `--exclude` 就会删掉自己的账本，故迁出。
+`core._ensure_data_migrated()` 在首次读写账本时搬家：**旧位置有、新位置没有才搬**；
+单纯导入模块不改磁盘。多处都有时只搬优先级最高的一份，不合并猜测。
+`SM_DATA_FILES` 的指纹自指排除**保留**——
+老安装的残留和 evolution.json（skill-evolution-manager 的数据）仍可能躺在 skill 目录里。
+
+### check 与 update 口径一致
+
+Lookup 的本体与依赖由 `lifecycle.py` 委派到 `core.resolve_direct_path` 解析出的实际安装，不从 PATH 调用同名另一份。单项 `update lookup`、扫描与批量共用该分派；即使来源为 local 或旧版缺维护接口，也须纳入目标并如实报告。`--self-only`／`--upstream-only` 对应 Lookup 的本体／上游范围，默认总更新；普通 Skill 和插件继续使用原合并流程。结构化结果和退出码共同判定，不把部分成功、pending 或语义待判断记为完成。取消时先让维护子进程回收自有资源，超时结果未知不自动重试。
+
+update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有新版」）；
+插件按 commit 装，就拿 commit 比。
+
+### 跟随通道 github_ref（2.6.0）
+口径一致这条规则本身没变，只是从「一种口径」扩成「按通道分别一致」：
+`github_ref: main` 的 skill 目标是 HEAD，check 就拿 HEAD 比；空值仍比 tag。
+
+通道必须有粘性。不粘的话，跟了 main 的 skill 被一次无参 `update` 悄悄退回 tag，
+用户以为还在跟未发版改进，实际早掉队——这种沉默的回退比报错难发现得多。
+
+「上游 main 领先 tag」单列 `ahead` 字段、单独一段输出，**绝不并进 status**。
+并进去就是 `remote_latest` 那条注释警告的场景：tag 不动而 HEAD 天天变，黄灯永远消不掉，
+用户学会无视整列灯，真有新版时也看不见了。
+
+跟 main 时版本号加 `+main` 后缀：主分支的 VERSION 文件通常停在上一个 tag，
+照抄就成了「版本号说 3.32.0、内容是 3.32.0 之后的提交」，又一次撒谎。
+
+### User-Learned 段与本地独有文件
+`update_skill.py` 合并更新时保留目标 skill 的 `## User-Learned Best Practices` 段
+（`USER_SECTION_RE`）和本地独有文件。同名文件通过旧上游、本地、新上游三方合并；缺少可信旧基线或有冲突时拒绝覆盖。上游删除只在本地未改动时同步，本地已改动则转人工对账。改合并逻辑别弄丢。
+
+以上是现有脚本的机械保护行为。采用新上游替代本地能力、移除重复覆盖及保留必要定制的语义判断归[升级与定制合并](升级与定制合并.md#定制判断与合并)；机械合并不能替 Agent 作判断，自动生成的泛化适配说明不能证明语义完整。
+
+## 实现细节备忘
+
+### 客户端目录适配
+
+客户端目录的人类可读单源是 `references/client-paths.md`，运行时单源是
+`core.global_skill_roots()` 和 `core.project_skill_roots()`。扩展客户端时要同时验证：
+
+1. 全局扫描、项目识别和项目扫描共用同一根目录表。
+2. `resolve_direct_path()` 的启停、更新、定版本、删除与列表扫描看到同一批目录。
+3. 多入口指向同一实体时仍按 `realpath` 去重，共享入口优先展示。
+4. 文档把「管理器会扫描」与「某客户端官方承诺会加载」分开，未核实目录不写成标准。
+
+- **项目发现** = `projects.json` 注册表 ∪ 有会话记录且带已支持项目级 Skill 目录
+  （或 `.claude/settings.json`）的目录。**HOME、客户端全局配置目录和 `~/.skill-manager`
+  在 `is_project_dir` 源头排除**
+  （HOME 下有 `~/.claude/skills`，不排除会把全局 skill 重列成「项目:<用户名>」）。
+- **最近活跃** = `~/.claude/projects/<路径编码>/*.jsonl` 最新 mtime。不要用
+  `projects.json` 的 `last_seen`（只记「上次在这儿跑 skill-manager」，仅作兜底排序）。
+  路径编码反解有歧义，jsonl 里的 `cwd` 字段才是权威路径。
+- **git worktree 归并**：worktree 的项目级 Skill 目录是主仓的另一份检出，不是另一个项目。
+  `worktree_main()` 识别（`.git` 是文件、内容 `gitdir: .../worktrees/<名>`）后归并计数；
+  doctor 第 10 项显式报落后的 worktree——归并是防重复数，不是藏。
+  > 来历（2026-07-11）：worktree 落后 38 个提交，doctor 报的是旧副本里早已修好的
+  > 29 个问题，用户反复怀疑自己没修好。
+- **批量溯源**：同一仓库的多个 skill 一次下载比对全部（逐个下载是 74×12=888 次的组合爆炸）。
+- **tag 解析统一走 `core.remote_tags()`**：annotated tag 在 `ls-remote` 里返回 tag 对象
+  自己的 sha，真 commit 在 `^{}` 行；手写过滤会把错误 sha 记进 `github_hash`。
+
+## 安全与事务边界
+
+涉及依赖安装器、候选复用、使用锁、中断接续、原生异步状态或失败恢复时，先读[候选、切换与接续](升级与定制合并.md#候选切换与接续)。该节区分 Agent 执行要求与执行器接入要求；当前代码能力以本文件和实际脚本为准，不据规范名称推断已有后台服务或新 CLI。
+
+- 所有外部名字先过 `core.safe_component`，所有派生路径再过 `core.contained_path`；
+  两层都不能省。插件登记表和上游 manifest 都是不可信输入。
+- 远端归档通过 Python 下载和解包，不允许 `shell=True`，并拒绝路径逃逸、外部链接和设备文件；只将合法的归档内链接实体化为普通文件。
+- JSON 只对“文件不存在”使用默认值；损坏、权限错误必须硬失败。写入统一走同目录
+  临时文件、`fsync`、`os.replace`。
+- 直装更新先在相邻 staging 目录完成合并与校验，再原子替换在线目录；在线目录不能
+  在校验完成前逐文件覆盖。
+- **直装更新流程**：frozen 转完整隔离合并流程 → ls-remote 定位目标（相同 hash 不代替内容核验）→ 整目录备份 → 下载旧／新源快照并按
+  `github_path` 定位 → 三方合并落盘（保留同名文件本地改造、PRESERVE 字段、User-Learned 段、本地独有文件，
+  同步上游 `VERSION` 到 version 字段）→ **落盘后自检**（`validate_skill_md`：新
+  `SKILL.md` 解析不出 `name`/`description` 就判定合并出坏文件，从整目录备份回滚，
+  不当成功）→ 完整源文件／本地差异回执核验及并发改动核对 → **打印变更摘要**（`summarize_change`：description 变了 / 章节增减，
+  避免「hash 换了但没人知道换了什么」的静默更新）→ 失败不改本地。
+- **Claude 插件更新流程**：先核对安装目录与登记旧基线，未知或存在本地差异时保持原状并转隔离对账；无差异才下载新 tarball 定位插件目录（仓库根 → `plugins/<名>` → `external_plugins/<名>` →
+  浅层扫描；判据 = `.claude-plugin/plugin.json` 或 `marketplace.json`+`skills/`）→
+  结构验证通过才写登记表 → 同步 `descriptions_zh.json`。
+- **删除清理**：直装清 2 处（`fingerprints.json` 的 key 是 **`global:<名>`** 不是裸名、
+  `descriptions_zh.json`）；Claude 插件清 4 处（缓存目录连父目录、`installed_plugins.json`、
+  旗下 skill 的中文描述、全局与各项目的 `enabledPlugins`）。两条路径必须对称维护。
+  注意 `--dry-run` **列表为空和函数没扫到长得一模一样**，改代码后要单独验证「确实没有」。
+
+## 独立事故（不对应上面某条规则，但别再犯）
+
+- **保留本地描述曾留下上游多行块正文**：字段写入器只替换 `description:` 首行，
+  把上游缩进正文留在引号字符串后面，客户端因此拒绝加载。顶层字段替换必须覆盖
+  整个字段块；回归测试覆盖多行描述及 `keep_local_description` 合并路径。
+  `validate_skill_md` 的轻量解析只检查必需字段，不能作为完整 YAML 语法验证。
+- **doctor 报「已修复 N 项」曾用条目数而非成功数**：修复失败还说已修复，
+  违反第一条铁律。只报实际成功数。
+- **登记表可以指向不存在的目录且静默失效**：`installPath` 指向被清掉的版本目录
+  （更新中断残留），插件下所有 skill 静默加载不出来。doctor 第 1 项为此而设。
+- **插件可以没有 `skills/` 目录**（claude-hud 全在 `commands/`）：两处都要收，
+  只扫 `skills/` 它就整个消失。
+- **frontmatter 只认开头那个 `---` 块**：正文里的 yaml 代码示例不是元数据，
+  曾因 grep 抓错误判被污染。
+- **monorepo 插件曾被装成空壳仓库根**（2026-07-03，codex/imessage）：
+  修复 = 定位插件目录 + 结构验证后才写登记表。
+- **PyYAML 依赖曾致系统 python3 崩**（2026-07-03 移除）：保持零第三方依赖。
+- **删除曾不清指纹和中文描述**：指纹拿裸名查 `global:` 前缀 key 永远查不中，
+  doctor 第 3 项（死条目）一直在替它兜底——事后能查出，根子上不该留。
+- **删除曾不清各 Agent 入口软链**（2026-07-29，删 web-access 时暴露）：只删真身，
+  `~/.claude/skills/<名>` 与 `~/.codex/skills/<名>` 留下断链。症状很别扭——断链进不了
+  `list`（目标没了），却会被 doctor 的软链检查一直报，用户同时看到「已删除」和「还有问题」。
+  修复 = `core.entry_links_to()` 在**归档前**收集（realpath 依赖目标存在），归档成功后再删链；
+  归档失败回滚时连软链一起复原，否则真身还在却没了入口，比没删更糟。
+- **`github_path` 曾被写成一串 `../` 直通临时目录**（2026-07-29，Waza think）：
+  `find_skill_source` 命中已登记的 `github_path` 时走 `core.contained_path`，
+  它返回 realpath（macOS 上 `/var` → `/private/var`），拿它跟未解析的 `tmp`
+  算 `relpath` 就得到逃逸路径，写进 frontmatter 后下次更新再也找不到源目录。
+  修复 = 两边都 realpath，且 `..` 开头一律不写。只在「skill 已有 github_path」
+  且「系统临时目录带软链」时触发，潜伏了很久。
+- **禁用的 skill 曾完全无法更新**（同日修复）：`update_direct_skill` 只找 `SKILL.md`，
+  禁用态入口是 `SKILL.md.disabled`，于是报「不存在」——冷藏 = 永远停在禁用那天的版本。
+  合并时必须把上游 SKILL.md 写回同一个文件名，否则会顺手落一个 `SKILL.md`，
+  把用户明确禁用的 skill 静默启用。
+- **启停曾制造假 dirty 星**：整目录指纹把入口文件名也算作内容，`SKILL.md` 与
+  `SKILL.md.disabled` 正文完全相同时仍得出不同指纹。指纹须把两种入口名归一为
+  `SKILL.md`；启停是加载状态变化，不是内容变化。升级时若命中旧版禁用入口指纹，
+  自动迁移为新口径，不把原本已禁用的 Skill 误报为新改动。
