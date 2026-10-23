@@ -1,0 +1,97 @@
+--- a/download.js
++++ b/download.js
+@@ -23,6 +23,7 @@
+     parseTweetUrl,
+ } from './shared.js';
+ import { TWITTER_BEARER_TOKEN } from './utils.js';
++import { readThread } from './thread.js';
+ 
+ const USER_MEDIA_QUERY_ID = '9EovraBTXJYGSEQXZqlLmQ';
+ const USER_BY_SCREEN_NAME_QUERY_ID = 'IGgvgiOx4QZndDHuD3x9TQ';
+@@ -423,33 +424,29 @@
+ 
+ async function downloadSingleTweet(page, tweetUrl, output) {
+     const target = parseTweetUrl(tweetUrl);
+-    await page.goto(target.url);
+-    await page.wait(3);
+-    const items = unwrapBrowserResult(await page.evaluate(`
+-      (() => {
+-        const out = [];
+-        document.querySelectorAll('img[src*="pbs.twimg.com/media"]').forEach(img => {
+-          let src = img.src || '';
+-          src = src.replace(/&name=\\w+$/, '&name=large');
+-          if (!src.includes('&name=')) src = src + '&name=large';
+-          out.push({ type: 'image', url: src });
+-        });
+-        document.querySelectorAll('video').forEach(video => {
+-          const src = video.src || '';
+-          if (src) out.push({ type: 'video', url: src });
+-        });
+-        document.querySelectorAll('[data-testid="videoPlayer"]').forEach(player => {
+-          const tweetLink = player.closest('article')?.querySelector('a[href*="/status/"]');
+-          const href = tweetLink?.getAttribute('href') || '';
+-          if (href) out.push({ type: 'video-tweet', url: 'https://x.com' + href });
+-        });
+-        return out;
+-      })()
+-    `));
+-    if (!Array.isArray(items)) {
+-        throw new CommandExecutionError('Twitter tweet media extraction returned malformed payload');
+-    }
++    const rows = await readThread(page, {
++        'tweet-id': target.id, limit: 1, 'top-by-engagement': 0,
++    }, { targetOnly: true });
++    const tweets = rows.filter((row) => row.id === target.id);
++    if (tweets.length !== 1 || !Array.isArray(tweets[0].media_urls)) {
++        throw new CommandExecutionError('Twitter media response did not contain the requested tweet');
++    }
++    const tweet = tweets[0];
++    const items = tweet.media_urls.map((url) => {
++        const type = classifyMediaUrl(url);
++        if (type === 'image') {
++            const source = new URL(url);
++            if (source.hostname === 'pbs.twimg.com' && source.pathname.startsWith('/media/')) {
++                source.searchParams.set('name', 'orig');
++                url = source.href;
++            }
++        }
++        return { type, url };
++    });
+     if (items.length === 0) {
++        if (tweet.has_media) {
++            throw new CommandExecutionError('Twitter reported media without source URLs');
++        }
+         throw new EmptyResultError(`twitter download ${target.id}`, 'No media found in the tweet');
+     }
+     const cookies = await page.getCookies({ domain: 'x.com' });
+--- a/thread.js
++++ b/thread.js
+@@ -122,7 +122,10 @@
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the thread by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps the conversation\'s structural ordering.' },
+     ],
+     columns: ['id', 'author', 'author_avatar', 'bio', 'text', 'likes', 'retweets', 'views', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'card', 'quoted_tweet', 'author_verified'],
+-    func: async (page, kwargs) => {
++    func: readThread,
++});
++
++export async function readThread(page, kwargs, { targetOnly = false } = {}) {
+         let tweetId = kwargs['tweet-id'];
+         const urlMatch = tweetId.match(/\/status\/(\d+)/);
+         if (urlMatch)
+@@ -161,11 +164,14 @@
+             // TypeScript-side: type-safe parsing + cursor extraction
+             const { tweets, nextCursor } = parseTweetDetail(data, seen);
+             allTweets.push(...tweets);
++            if (targetOnly && seen.has(tweetId))
++                break;
+             if (!nextCursor || nextCursor === cursor)
+                 break;
+             cursor = nextCursor;
+         }
++        if (targetOnly)
++            return allTweets.filter((tweet) => tweet.id === tweetId);
+         const trimmed = allTweets.slice(0, kwargs.limit);
+         return applyTopByEngagement(trimmed, kwargs['top-by-engagement']);
+-    },
+-});
++}

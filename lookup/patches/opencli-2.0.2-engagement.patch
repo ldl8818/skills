@@ -1,0 +1,734 @@
+--- a/xiaohongshu/collection-helpers.js
++++ b/xiaohongshu/collection-helpers.js
+@@ -1,5 +1,6 @@
+ import { ArgumentError, AuthRequiredError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
+ import { buildXhsNoteUrl, normalizeXhsUserId } from './user-helpers.js';
++import { extractXhsMetrics, XHS_ENGAGEMENT_SOURCE } from './engagement.js';
+ 
+ export const COLLECT_API_PATTERN = 'note/collect/page';
+ export const LIKE_API_PATTERN = 'note/like/page';
+@@ -76,7 +77,7 @@
+         id: noteId,
+         title: toCleanString(noteCard.display_title ?? noteCard.displayTitle ?? noteCard.title ?? entry.title ?? entry.display_title),
+         author: toCleanString(user.nickname ?? user.nick_name ?? user.name),
+-        likes: toCleanString(interact.liked_count ?? interact.likedCount ?? 0) || '0',
++        ...extractXhsMetrics(interact),
+         type: toCleanString(noteCard.type ?? entry.type),
+         url,
+     };
+@@ -113,6 +114,7 @@
+ 
+ export const EXTRACT_COLLECTION_DOM_JS = `
+   (() => {
++    ${XHS_ENGAGEMENT_SOURCE}
+     const normalizeUrl = (href) => {
+       if (!href) return '';
+       let url;
+@@ -132,7 +134,6 @@
+       if (el.classList.contains('query-note-item')) return;
+       const titleEl = el.querySelector('.title, .note-title, a.title, .footer .title span');
+       const nameEl = el.querySelector('a.author .name, .author-name, .nick-name, .name');
+-      const likesEl = el.querySelector('.count, .like-count, .like-wrapper .count');
+       const detailLinkEl =
+         el.querySelector('a.cover.mask') ||
+         el.querySelector('a[href*="/search_result/"]') ||
+@@ -149,7 +150,10 @@
+         id,
+         title: cleanText(titleEl?.textContent || ''),
+         author: cleanText(nameEl?.textContent || ''),
+-        likes: cleanText(likesEl?.textContent || '0'),
++        likes: readXhsCardCount(el),
++        collects: null,
++        comments: null,
++        shares: null,
+         type: '',
+         url,
+       });
+--- a/xiaohongshu/comments.js
++++ b/xiaohongshu/comments.js
+@@ -51,15 +51,17 @@
+     const shortformRe = /^((?:\d+|\d{1,3}(?:[,，]\d{3})+)(?:\.\d+)?)([wWkK万千])\+?$/u;
+     const raw = String(value ?? '').replace(/\s+/g, '');
+     if (!raw)
++        return null;
++    if (/^(?:赞|点赞)$/.test(raw))
+         return 0;
+     if (integerRe.test(raw))
+         return Number(raw.replace(/[,+，]/g, ''));
+     const short = raw.match(shortformRe);
+     if (!short)
+-        return 0;
++        return null;
+     const numeric = Number(short[1].replace(/[,，]/g, ''));
+     if (!Number.isFinite(numeric))
+-        return 0;
++        return null;
+     const unit = short[2].toLowerCase();
+     const multiplier = unit === 'w' || unit === '万' ? 10000 : 1000;
+     return Math.round(numeric * multiplier);
+@@ -75,8 +77,7 @@
+  * page-side extractor.
+  */
+ export function parseXhsCommentTotal(headerText, barText) {
+-    // parseXhsLikeCountText reads any shape it does not know as 0; only a
+-    // literal zero may become 0 here.
++    // Only a literal numeric zero may become 0 in a numeric total.
+     const count = (raw) => {
+         const n = parseXhsLikeCountText(raw);
+         return n === 0 && !/^0+$/.test(raw) ? null : n;
+@@ -321,7 +322,7 @@
+           const author = clean(item.querySelector('.author-wrapper .name, .user-name'))
+           const authorHrefRaw = extractAuthorHref(item)
+           const text = clean(item.querySelector('.content, .note-text'))
+-          const likes = parseLikes(item.querySelector('.count'))
++          const likes = parseLikes(item.querySelector('.like .count, .like-wrapper .count'))
+           const time = clean(item.querySelector('.date, .time'))
+           const images = extractImages(item)
+ 
+@@ -345,7 +346,7 @@
+               // rows (回复 <span class="nickname">Bob</span> : ...). A nested
+               // row without that marker is a direct reply to the thread root.
+               const sReplyTo = clean(sContent?.querySelector(':scope > .nickname')) || author
+-              const sLikes = parseLikes(sub.querySelector('.count'))
++              const sLikes = parseLikes(sub.querySelector('.like .count, .like-wrapper .count'))
+               const sTime = clean(sub.querySelector('.date, .time'))
+               const sImages = extractImages(sub)
+               if (!sText) return
+--- a/xiaohongshu/creator-notes-summary.js
++++ b/xiaohongshu/creator-notes-summary.js
+@@ -8,6 +8,7 @@
+ import { EmptyResultError } from '@jackwener/opencli/errors';
+ import { fetchCreatorNotes } from './creator-notes.js';
+ import { fetchCreatorNoteDetailRows } from './creator-note-detail.js';
++import { normalizeXhsCount } from './engagement.js';
+ function findDetailValue(rows, metric) {
+     return rows.find((row) => row.metric === metric)?.value ?? '';
+ }
+@@ -30,11 +31,11 @@
+         id: note.id,
+         title: note.title,
+         published_at: findDetailValue(rows, 'published_at') || note.date,
+-        views: findDetailValue(rows, '观看数') || String(note.views),
+-        likes: findDetailValue(rows, '点赞数') || String(note.likes),
+-        collects: findDetailValue(rows, '收藏数') || String(note.collects),
+-        comments: findDetailValue(rows, '评论数') || String(note.comments),
+-        shares: findDetailValue(rows, '分享数'),
++        views: normalizeXhsCount(findDetailValue(rows, '观看数')) ?? normalizeXhsCount(note.views),
++        likes: normalizeXhsCount(findDetailValue(rows, '点赞数')) ?? normalizeXhsCount(note.likes),
++        collects: normalizeXhsCount(findDetailValue(rows, '收藏数')) ?? normalizeXhsCount(note.collects),
++        comments: normalizeXhsCount(findDetailValue(rows, '评论数')) ?? normalizeXhsCount(note.comments),
++        shares: normalizeXhsCount(findDetailValue(rows, '分享数')),
+         avg_view_time: findDetailValue(rows, '平均观看时长'),
+         rise_fans: findDetailValue(rows, '涨粉数'),
+         top_source: topSource.label,
+@@ -75,11 +76,11 @@
+                     id: note.id,
+                     title: note.title,
+                     published_at: note.date,
+-                    views: String(note.views),
+-                    likes: String(note.likes),
+-                    collects: String(note.collects),
+-                    comments: String(note.comments),
+-                    shares: '',
++                    views: normalizeXhsCount(note.views),
++                    likes: normalizeXhsCount(note.likes),
++                    collects: normalizeXhsCount(note.collects),
++                    comments: normalizeXhsCount(note.comments),
++                    shares: null,
+                     avg_view_time: '',
+                     rise_fans: '',
+                     top_source: '',
+--- a/xiaohongshu/creator-notes.js
++++ b/xiaohongshu/creator-notes.js
+@@ -10,6 +10,7 @@
+ import { cli, Strategy } from '@jackwener/opencli/registry';
+ import { CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
+ import { unwrapEvaluateResult } from './shared.js';
++import { normalizeXhsCount } from './engagement.js';
+ const DATE_LINE_RE = /^发布于 (\d{4}年\d{2}月\d{2}日 \d{2}:\d{2})$/;
+ const METRIC_LINE_RE = /^\d+$/;
+ const VISIBILITY_LINE_RE = /可见$/;
+@@ -90,10 +91,10 @@
+         id: card.id,
+         title: card.title,
+         date: card.date,
+-        views: card.metrics[0] ?? 0,
+-        likes: card.metrics[2] ?? 0,
+-        collects: card.metrics[3] ?? 0,
+-        comments: card.metrics[1] ?? 0,
++        views: normalizeXhsCount(card.metrics[0]),
++        likes: normalizeXhsCount(card.metrics[2]),
++        collects: normalizeXhsCount(card.metrics[3]),
++        comments: normalizeXhsCount(card.metrics[1]),
+         url: buildNoteDetailUrl(card.id),
+     }));
+ }
+@@ -102,10 +103,10 @@
+         id: item.id ?? '',
+         title: item.title ?? '',
+         date: formatPostTime(item.post_time),
+-        views: item.read_count ?? 0,
+-        likes: item.like_count ?? 0,
+-        collects: item.fav_count ?? 0,
+-        comments: item.comment_count ?? 0,
++        views: normalizeXhsCount(item.read_count),
++        likes: normalizeXhsCount(item.like_count),
++        collects: normalizeXhsCount(item.fav_count),
++        comments: normalizeXhsCount(item.comment_count),
+         url: buildNoteDetailUrl(item.id),
+     }));
+ }
+--- a/xiaohongshu/feed.js
++++ b/xiaohongshu/feed.js
+@@ -15,6 +15,7 @@
+ import { cli, Strategy } from '@jackwener/opencli/registry';
+ import { ArgumentError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
+ import { unwrapEvaluateResult } from './shared.js';
++import { XHS_ENGAGEMENT_SOURCE, normalizeXhsCount } from './engagement.js';
+ 
+ function parseLimit(raw) {
+     const parsed = Number(raw ?? 20);
+@@ -29,6 +30,7 @@
+ 
+ const FEEDS_READ_JS = `
+   (() => {
++    ${XHS_ENGAGEMENT_SOURCE}
+     let pinia = null;
+     const probe = (el) => el?.__vue_app__?.config?.globalProperties?.$pinia ?? null;
+     pinia = probe(document.querySelector('#app'));
+@@ -55,7 +57,7 @@
+           // Live store exposes both user.nickname and user.nickName; prefer
+           // nickname (observed populated on xhs), fall back to nickName.
+           author: card.user?.nickname ?? card.user?.nickName ?? '',
+-          likes: card.interactInfo?.likedCount ?? '',
++          ...extractXhsMetrics(card.interactInfo ?? card.interact_info ?? {}),
+           // The note's signing token lives on the top-level entry. Do NOT read
+           // card.user.xsecToken — that is the author profile's token, not the
+           // note's.
+@@ -130,7 +132,10 @@
+             title: toCleanString(row.title),
+             type: toCleanString(row.type),
+             author: toCleanString(row.author),
+-            likes: toCleanString(row.likes),
++            likes: normalizeXhsCount(row.likes),
++            collects: normalizeXhsCount(row.collects),
++            comments: normalizeXhsCount(row.comments),
++            shares: normalizeXhsCount(row.shares),
+             url: buildFeedNoteUrl(webHost, id, xsecToken),
+         });
+     }
+@@ -152,6 +157,6 @@
+     args: [
+         { name: 'limit', type: 'int', default: 20, help: 'Number of items to return' },
+     ],
+-    columns: ['id', 'title', 'author', 'likes', 'type', 'url'],
++    columns: ['id', 'title', 'author', 'likes', 'collects', 'comments', 'shares', 'type', 'url'],
+     func: async (page, kwargs) => runFeed(page, kwargs, 'www.xiaohongshu.com'),
+ });
+--- a/xiaohongshu/liked.js
++++ b/xiaohongshu/liked.js
+@@ -14,7 +14,7 @@
+         { name: 'id', type: 'string', help: 'User id or profile URL (defaults to current logged-in user)' },
+         { name: 'limit', type: 'int', default: 20, help: 'Number of notes to return' },
+     ],
+-    columns: ['rank', 'id', 'title', 'author', 'likes', 'type', 'url'],
++    columns: ['rank', 'id', 'title', 'author', 'likes', 'collects', 'comments', 'shares', 'type', 'url'],
+     func: async (page, kwargs) => {
+         const limit = parseCollectionLimit(kwargs.limit);
+         const userId = await resolveXhsUserId(page, kwargs.id);
+--- a/xiaohongshu/note.js
++++ b/xiaohongshu/note.js
+@@ -10,6 +10,7 @@
+ import { AuthRequiredError, EmptyResultError } from '@jackwener/opencli/errors';
+ import { parseNoteId, buildNoteUrl } from './note-helpers.js';
+ import { readXhsDetailPage } from './risk-control.js';
++import { normalizeXhsCount, XHS_ENGAGEMENT_SOURCE } from './engagement.js';
+ /**
+  * Host-agnostic IIFE that scrapes note title / author / counts / tags from a
+  * rendered note detail page. Exported so the rednote adapter can reuse the
+@@ -17,6 +18,7 @@
+  */
+ export const NOTE_EXTRACT_JS = `
+       (() => {
++        ${XHS_ENGAGEMENT_SOURCE}
+         const bodyText = document.body?.innerText || ''
+         const loginWall = /登录后查看|请登录/.test(bodyText)
+         const notFound = /页面不见了|笔记不存在|无法浏览/.test(bodyText)
+@@ -48,9 +50,9 @@
+         // comment's like/reply buttons in the comment section, and
+         // querySelector returns the FIRST match (a comment's count, not the
+         // post's). The post's true counts live inside .interact-container.
+-        const likes = clean(document.querySelector('.interact-container .like-wrapper .count'))
+-        const collects = clean(document.querySelector('.interact-container .collect-wrapper .count'))
+-        const comments = clean(document.querySelector('.interact-container .chat-wrapper .count'))
++        const noteId = location.pathname.match(/\\/(?:explore|search_result|note)\\/([0-9a-f]{24})(?:\\/|$)/i)?.[1] || ''
++        const pinia = document.querySelector('#app')?.__vue_app__?.config?.globalProperties?.$pinia?.state?.value?.note
++        const metrics = readXhsNoteMetrics(noteId, scope, [pinia, window.__INITIAL_STATE__?.note])
+ 
+         // Try to extract tags/topics
+         const tags = []
+@@ -59,7 +61,7 @@
+           if (t) tags.push(t)
+         })
+ 
+-        return { pageUrl: location.href, securityBlock, loginWall, notFound, title, desc, author, likes, collects, comments, tags }
++        return { pageUrl: location.href, securityBlock, loginWall, notFound, title, desc, author, ...metrics, tags }
+       })()
+     `;
+ export const command = cli({
+@@ -98,9 +100,6 @@
+             throw new EmptyResultError('xiaohongshu/note', `Note ${noteId} not found or unavailable — it may have been deleted or restricted`);
+         }
+         const d = data;
+-        // XHS renders placeholder text like "赞"/"收藏"/"评论" when count is 0;
+-        // normalize to '0' unless the value looks numeric.
+-        const numOrZero = (v) => /^\d+/.test(v) ? v : '0';
+         // A note may legitimately have no title, but a real note page always
+         // renders an author. If both are missing, the page failed to load.
+         if (!d.title && !d.author) {
+@@ -110,9 +109,11 @@
+             { field: 'title', value: d.title || '' },
+             { field: 'author', value: d.author || '' },
+             { field: 'content', value: d.desc || '' },
+-            { field: 'likes', value: numOrZero(d.likes || '') },
+-            { field: 'collects', value: numOrZero(d.collects || '') },
+-            { field: 'comments', value: numOrZero(d.comments || '') },
++            { field: 'likes', value: normalizeXhsCount(d.likes, ['赞', '点赞']) },
++            { field: 'collects', value: normalizeXhsCount(d.collects, ['收藏']) },
++            { field: 'comments', value: normalizeXhsCount(d.comments, ['评论']) },
++            { field: 'shares', value: normalizeXhsCount(d.shares) },
++            { field: 'metric_sources', value: d.metric_sources || {} },
+         ];
+         if (d.tags?.length) {
+             rows.push({ field: 'tags', value: d.tags.join(', ') });
+--- a/xiaohongshu/saved.js
++++ b/xiaohongshu/saved.js
+@@ -14,7 +14,7 @@
+         { name: 'id', type: 'string', help: 'User id or profile URL (defaults to current logged-in user)' },
+         { name: 'limit', type: 'int', default: 20, help: 'Number of notes to return' },
+     ],
+-    columns: ['rank', 'id', 'title', 'author', 'likes', 'type', 'url'],
++    columns: ['rank', 'id', 'title', 'author', 'likes', 'collects', 'comments', 'shares', 'type', 'url'],
+     func: async (page, kwargs) => {
+         const limit = parseCollectionLimit(kwargs.limit);
+         const userId = await resolveXhsUserId(page, kwargs.id);
+--- a/xiaohongshu/search.js
++++ b/xiaohongshu/search.js
+@@ -7,6 +7,7 @@
+ import { cli, Strategy } from '@jackwener/opencli/registry';
+ import { ArgumentError, AuthRequiredError, CliError, CommandExecutionError, EmptyResultError, TimeoutError } from '@jackwener/opencli/errors';
+ import { unwrapEvaluateResult } from './shared.js';
++import { XHS_ENGAGEMENT_SOURCE, mapXhsSearchMetrics } from './engagement.js';
+ const CONTENT_WAIT_SECONDS = 20;
+ const EXPLORE_URL = 'https://www.xiaohongshu.com/explore';
+ const SEARCH_NAVIGATION_SECONDS = 10;
+@@ -251,7 +252,6 @@
+             const nameChild = authorWrapEl.querySelector('.name');
+             author = nameChild ? cleanText(nameChild.textContent || '') : stripXhsAuthorDateSuffix(authorWrapEl.textContent || '');
+         }
+-        const likesEl = el.querySelector('.count, .like-count, .like-wrapper .count');
+         // Prefer search_result link (preserves xsec_token) over generic /explore/ link
+         const detailLinkEl = el.querySelector('a.cover.mask') ||
+             el.querySelector('a[href*="/search_result/"]') ||
+@@ -276,7 +276,7 @@
+         results.push({
+             title,
+             author,
+-            likes: cleanText(likesEl?.textContent || '0'),
++            likes: readXhsCardCount(el) ?? '',
+             url,
+             author_url: normalizeUrl(authorLinkEl?.getAttribute('href') || ''),
+         });
+@@ -708,6 +708,7 @@
+     return `
+       (() => {
+         const stripXhsAuthorDateSuffix = ${stripXhsAuthorDateSuffix.toString()};
++        ${XHS_ENGAGEMENT_SOURCE}
+         const extractSearchRows = ${extractSearchRows.toString()};
+         return extractSearchRows(${JSON.stringify(webHost)});
+       })()
+@@ -740,6 +741,7 @@
+         const noteUrlInfo = ${noteUrlInfo.toString()};
+         const mergeHarvestedRow = ${mergeHarvestedRow.toString()};
+         const stripXhsAuthorDateSuffix = ${stripXhsAuthorDateSuffix.toString()};
++        ${XHS_ENGAGEMENT_SOURCE}
+         const extractSearchRows = ${extractSearchRows.toString()};
+         const usableRowCount = ${usableRowCount.toString()};
+         const shouldStopScrolling = ${shouldStopScrolling.toString()};
+@@ -1017,7 +1019,7 @@
+         { name: 'scope', type: 'string', default: 'all', choices: ['all', 'seen', 'unseen', 'following'], help: 'Search scope' },
+         { name: 'location', type: 'string', default: 'all', choices: ['all', 'same-city', 'nearby'], help: 'Location distance' },
+     ],
+-    columns: ['rank', 'title', 'author', 'likes', 'collects', 'comments', 'published_at', 'url'],
++    columns: ['rank', 'title', 'author', 'likes', 'collects', 'comments', 'shares', 'published_at', 'url'],
+     func: async (page, kwargs) => {
+         try {
+             const limit = parseLimit(kwargs.limit);
+@@ -1045,13 +1047,7 @@
+                 .map((item, i) => ({
+                 rank: i + 1,
+                 ...item,
+-                // Search cards display the metric selected by the active sort.
+-                // Preserve missing likes instead of relabelling saves/replies.
+-                ...(kwargs.sort === 'most-collected'
+-                    ? { likes: '', collects: item.likes }
+-                    : kwargs.sort === 'most-commented'
+-                        ? { likes: '', comments: item.likes }
+-                        : {}),
++                ...mapXhsSearchMetrics(item.likes, kwargs.sort),
+                 published_at: noteIdToDate(item.url),
+             }));
+         }
+--- a/xiaohongshu/user-helpers.js
++++ b/xiaohongshu/user-helpers.js
+@@ -1,3 +1,5 @@
++import { extractXhsMetrics } from './engagement.js';
++
+ function toCleanString(value) {
+     return typeof value === 'string' ? value.trim() : value == null ? '' : String(value).trim();
+ }
+@@ -63,13 +65,12 @@
+         seen.add(noteId);
+         const userId = toCleanString(noteCard.user?.userId ?? noteCard.user?.user_id ?? fallbackUserId);
+         const xsecToken = toCleanString(entry?.xsecToken ?? entry?.xsec_token ?? noteCard.xsecToken ?? noteCard.xsec_token);
+-        const likes = toCleanString(noteCard.interactInfo?.likedCount ?? noteCard.interact_info?.liked_count ?? 0) || '0';
+         const cover = toCleanString(noteCard.cover?.urlDefault ?? noteCard.cover?.urlPre ?? noteCard.cover?.url ?? '');
+         rows.push({
+             id: noteId,
+             title: toCleanString(noteCard.displayTitle ?? noteCard.display_title ?? noteCard.title),
+             type: toCleanString(noteCard.type),
+-            likes,
++            ...extractXhsMetrics(noteCard.interactInfo ?? noteCard.interact_info ?? {}),
+             cover,
+             url: buildXhsNoteUrl(userId || fallbackUserId, noteId, xsecToken, webHost),
+         });
+--- a/xiaohongshu/user.js
++++ b/xiaohongshu/user.js
+@@ -104,7 +104,7 @@
+         { name: 'limit', type: 'int', default: 15, help: 'Number of notes to return (1-1000)' },
+         { name: 'timeout', type: 'int', default: 300, help: 'Maximum loading time in seconds (1-1800)' },
+     ],
+-    columns: ['id', 'title', 'type', 'likes', 'url'],
++    columns: ['id', 'title', 'type', 'likes', 'collects', 'comments', 'shares', 'url'],
+     func: async (page, kwargs) => {
+         const userId = normalizeXhsUserId(String(kwargs.id));
+         const limit = Number(kwargs.limit ?? 15);
+--- a/twitter/bookmark-folder.js
++++ b/twitter/bookmark-folder.js
+@@ -1,4 +1,5 @@
+ import { cli, Strategy } from '@jackwener/opencli/registry';
++import { extractTwitterMetrics } from './engagement.js';
+ import { ArgumentError, AuthRequiredError, CommandExecutionError } from '@jackwener/opencli/errors';
+ import { TWITTER_BEARER_TOKEN, applyTopByEngagement } from './utils.js';
+ import { extractMedia, resolveTwitterQueryId, describeTwitterApiError } from './shared.js';
+@@ -67,9 +68,7 @@
+         id: tw.rest_id,
+         author: screenName,
+         text: noteText || legacy.full_text || '',
+-        likes: legacy.favorite_count || 0,
+-        retweets: legacy.retweet_count || 0,
+-        bookmarks: legacy.bookmark_count || 0,
++        ...extractTwitterMetrics(tw),
+         created_at: legacy.created_at || '',
+         url: screenName ? `https://x.com/${screenName}/status/${tw.rest_id}` : `https://x.com/i/status/${tw.rest_id}`,
+         ...extractMedia(legacy),
+@@ -129,7 +128,7 @@
+         { name: 'limit', type: 'int', default: 20, help: 'Maximum number of bookmarks to return (default 20).' },
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the folder by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps the API\'s native (saved-time) ordering.' },
+     ],
+-    columns: ['id', 'author', 'text', 'likes', 'retweets', 'bookmarks', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations'],
++    columns: ['id', 'author', 'text', 'likes', 'retweets', 'replies', 'quotes', 'bookmarks', 'views', 'shares', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations'],
+     func: async (page, kwargs) => {
+         const folderId = String(kwargs['folder-id'] || '').trim();
+         if (!folderId || !FOLDER_ID_PATTERN.test(folderId)) {
+--- a/twitter/bookmarks.js
++++ b/twitter/bookmarks.js
+@@ -1,6 +1,7 @@
+ import fs from 'node:fs';
+ import path from 'node:path';
+ import { cli, Strategy } from '@jackwener/opencli/registry';
++import { extractTwitterMetrics } from './engagement.js';
+ import { ArgumentError, AuthRequiredError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
+ import { extractMedia, describeTwitterApiError, resolveTwitterQueryId, unwrapBrowserResult } from './shared.js';
+ import { DEFAULT_MAX_PAGINATION_PAGES, appendJsonlRows, ensureParentDir, loadJsonlArchiveState, removeResumeFile, resolveMaxPages, resolveOptionalFilePath } from './archive.js';
+@@ -62,9 +63,7 @@
+         author: screenName,
+         name: displayName,
+         text: noteText || legacy.full_text || '',
+-        likes: legacy.favorite_count || 0,
+-        retweets: legacy.retweet_count || 0,
+-        bookmarks: legacy.bookmark_count || 0,
++        ...extractTwitterMetrics(tw),
+         created_at: legacy.created_at || '',
+         url: `https://x.com/${screenName}/status/${tw.rest_id}`,
+         ...extractMedia(legacy),
+@@ -184,7 +183,7 @@
+         { name: 'max-pages', type: 'int', help: `Optional pagination safety cap (default ${DEFAULT_MAX_PAGINATION_PAGES}; raised automatically with --all).` },
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the bookmarks by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps the API\'s native (saved-time) ordering. Incompatible with --output-file.' },
+     ],
+-    columns: ['id', 'author', 'text', 'likes', 'retweets', 'bookmarks', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations'],
++    columns: ['id', 'author', 'text', 'likes', 'retweets', 'replies', 'quotes', 'bookmarks', 'views', 'shares', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations'],
+     func: async (page, kwargs) => {
+         const fetchAll = Boolean(kwargs.all);
+         const limit = fetchAll ? Number.POSITIVE_INFINITY : (kwargs.limit || 20);
+--- a/twitter/collection.js
++++ b/twitter/collection.js
+@@ -1,5 +1,6 @@
+ import { cli, Strategy } from '@jackwener/opencli/registry';
+ import { ArgumentError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
++import { extractTwitterMetrics } from './engagement.js';
+ import {
+     extractMedia,
+     extractQuotedTweet,
+@@ -173,10 +174,7 @@
+         author,
+         name: user?.legacy?.name || user?.core?.name || '',
+         text: tweet.note_tweet?.note_tweet_results?.result?.text || legacy.full_text || '',
+-        likes: legacy.favorite_count || 0,
+-        retweets: legacy.retweet_count || 0,
+-        replies: legacy.reply_count || 0,
+-        views: Number(tweet.views?.count) || 0,
++        ...extractTwitterMetrics(tweet),
+         is_retweet: Boolean(legacy.retweeted_status_result),
+         created_at: legacy.created_at || '',
+         url: `https://x.com/${author}/status/${tweet.rest_id}`,
+--- a/twitter/device-follow.js
++++ b/twitter/device-follow.js
+@@ -10,6 +10,7 @@
+  */
+ import { ArgumentError, AuthRequiredError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
+ import { cli, Strategy } from '@jackwener/opencli/registry';
++import { extractTwitterMetrics } from './engagement.js';
+ import { TWITTER_BEARER_TOKEN, applyTopByEngagement } from './utils.js';
+ import { describeTwitterApiError } from './shared.js';
+ 
+@@ -77,13 +78,7 @@
+         id: tweetId,
+         author: screenName,
+         text: tweet?.full_text || tweet?.text || '',
+-        likes: tweet?.favorite_count ?? 0,
+-        retweets: tweet?.retweet_count ?? 0,
+-        replies: tweet?.reply_count ?? 0,
+-        // The legacy v1.1 endpoint does not return view counts even with
+-        // include_ext_views=true; surface null rather than a 0 sentinel
+-        // that would lie about real engagement (typed-errors §3).
+-        views: null,
++        ...extractTwitterMetrics({ legacy: tweet }),
+         created_at: tweet?.created_at || '',
+         url: `https://x.com/${screenName}/status/${tweetId}`,
+     };
+@@ -129,7 +124,7 @@
+         { name: 'limit', type: 'int', default: 20, help: `Maximum number of tweets to return (1-${MAX_LIMIT}, default 20)` },
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank by weighted engagement and return the top N. Default 0 keeps upstream ordering.' },
+     ],
+-    columns: ['id', 'author', 'text', 'likes', 'retweets', 'replies', 'views', 'created_at', 'url'],
++    columns: ['id', 'author', 'text', 'likes', 'retweets', 'replies', 'quotes', 'bookmarks', 'views', 'shares', 'created_at', 'url'],
+     func: async (page, kwargs) => {
+         const limit = parseLimit(kwargs.limit);
+         const cookies = await page.getCookies({ url: 'https://x.com' });
+--- a/twitter/likes.js
++++ b/twitter/likes.js
+@@ -1,6 +1,7 @@
+ import fs from 'node:fs';
+ import path from 'node:path';
+ import { cli, Strategy } from '@jackwener/opencli/registry';
++import { extractTwitterMetrics } from './engagement.js';
+ import { ArgumentError, AuthRequiredError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
+ import { buildUserByScreenNameQueryUrl, looksLikePrivateTwitterTimeline, normalizeTwitterScreenName, resolveTwitterQueryId, sanitizeQueryId, extractMedia, unwrapBrowserResult, describeTwitterApiError } from './shared.js';
+ import { DEFAULT_MAX_PAGINATION_PAGES, appendJsonlRows, ensureParentDir, loadJsonlArchiveState, removeResumeFile, resolveMaxPages, resolveOptionalFilePath } from './archive.js';
+@@ -78,8 +79,7 @@
+         author: screenName,
+         name: displayName,
+         text: noteText || legacy.full_text || '',
+-        likes: legacy.favorite_count || 0,
+-        retweets: legacy.retweet_count || 0,
++        ...extractTwitterMetrics(tw),
+         created_at: legacy.created_at || '',
+         url: `https://x.com/${screenName}/status/${tw.rest_id}`,
+         ...extractMedia(legacy),
+@@ -203,7 +203,7 @@
+         { name: 'max-pages', type: 'int', help: `Optional pagination safety cap (default ${DEFAULT_MAX_PAGINATION_PAGES}; raised automatically with --all).` },
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the liked tweets by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps the API\'s native (recency) ordering. Incompatible with --output-file.' },
+     ],
+-    columns: ['id', 'author', 'name', 'text', 'likes', 'retweets', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations'],
++    columns: ['id', 'author', 'name', 'text', 'likes', 'retweets', 'replies', 'quotes', 'bookmarks', 'views', 'shares', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations'],
+     func: async (page, kwargs) => {
+         const fetchAll = Boolean(kwargs.all);
+         const limit = fetchAll ? Number.POSITIVE_INFINITY : (kwargs.limit || 20);
+--- a/twitter/list-tweets.js
++++ b/twitter/list-tweets.js
+@@ -1,4 +1,5 @@
+ import { cli, Strategy } from '@jackwener/opencli/registry';
++import { extractTwitterMetrics } from './engagement.js';
+ import { AuthRequiredError, CommandExecutionError } from '@jackwener/opencli/errors';
+ import { BROWSER_JSON_SNIFF_FN, throwIfLoginWall } from '@jackwener/opencli/utils';
+ import { TWITTER_BEARER_TOKEN, applyTopByEngagement } from './utils.js';
+@@ -71,12 +72,7 @@
+         author_avatar: extractAuthorAvatar(user),
+         bio,
+         text: noteText || legacy.full_text || '',
+-        likes: legacy.favorite_count || 0,
+-        retweets: legacy.retweet_count || 0,
+-        replies: legacy.reply_count || 0,
+-        // Same shape `twitter search` emits: a numeric string, '0' when X omits it.
+-        // Also feeds the log10(views) term of --top-by-engagement, which scored 0 before.
+-        views: tw.views?.count || '0',
++        ...extractTwitterMetrics(tw, { stringViews: true }),
+         created_at: legacy.created_at || '',
+         url: `https://x.com/${screenName}/status/${tw.rest_id}`,
+         ...extractMedia(legacy),
+@@ -129,7 +125,7 @@
+         { name: 'limit', type: 'int', default: 50 },
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the list timeline by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps the list\'s native (recency) ordering.' },
+     ],
+-    columns: ['id', 'author', 'author_avatar', 'bio', 'text', 'likes', 'retweets', 'replies', 'views', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'card', 'quoted_tweet'],
++    columns: ['id', 'author', 'author_avatar', 'bio', 'text', 'likes', 'retweets', 'replies', 'quotes', 'bookmarks', 'views', 'shares', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'card', 'quoted_tweet'],
+     func: async (page, kwargs) => {
+         const listId = String(kwargs.listId || '').trim();
+         if (!listId || !/^\d+$/.test(listId)) {
+--- a/twitter/search.js
++++ b/twitter/search.js
+@@ -2,6 +2,7 @@
+ import { cli, Strategy } from '@jackwener/opencli/registry';
+ import { extractAuthorAvatar, extractMedia, extractCard, extractQuotedTweet, normalizeTwitterGraphqlPayload, resolveTwitterOperationMetadata, describeTwitterApiError } from './shared.js';
+ import { TWITTER_BEARER_TOKEN, applyTopByEngagement } from './utils.js';
++import { extractTwitterMetrics } from './engagement.js';
+ 
+ // ── Public-search operator surface ─────────────────────────────────────
+ //
+@@ -221,8 +222,7 @@
+         bio,
+         text: tweet.note_tweet?.note_tweet_results?.result?.text || tweet.legacy?.full_text || '',
+         created_at: tweet.legacy?.created_at || '',
+-        likes: tweet.legacy?.favorite_count || 0,
+-        views: tweet.views?.count || '0',
++        ...extractTwitterMetrics(tweet, { stringViews: true }),
+         url: `https://x.com/i/status/${tweet.rest_id}`,
+         ...extractMedia(tweet.legacy),
+         card: extractCard(tweet),
+@@ -277,7 +277,7 @@
+         { name: 'limit', type: 'int', default: 15, help: 'Maximum number of tweets to return (default 15). Result count after server-side filtering.' },
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the results by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps X\'s native ordering.' },
+     ],
+-    columns: ['id', 'author', 'author_avatar', 'bio', 'text', 'created_at', 'likes', 'views', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'card', 'quoted_tweet', 'author_verified'],
++    columns: ['id', 'author', 'author_avatar', 'bio', 'text', 'created_at', 'likes', 'retweets', 'replies', 'quotes', 'bookmarks', 'views', 'shares', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'card', 'quoted_tweet', 'author_verified'],
+     func: async (page, kwargs) => {
+         const finalQuery = buildSearchQuery(kwargs.query, kwargs);
+         if (!finalQuery) {
+--- a/twitter/shared.js
++++ b/twitter/shared.js
+@@ -1,4 +1,5 @@
+ import { ArgumentError } from '@jackwener/opencli/errors';
++import { extractTwitterMetrics } from './engagement.js';
+ 
+ const QUERY_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+ const SCREEN_NAME_PATTERN = /^[A-Za-z0-9_]{1,15}$/;
+@@ -549,6 +550,7 @@
+         author: qScreenName,
+         name: qDisplayName,
+         text: qText,
++        ...extractTwitterMetrics(qTw),
+         created_at: typeof qLegacy.created_at === 'string' ? qLegacy.created_at : '',
+         url: `https://x.com/${qScreenName}/status/${qTw.rest_id}`,
+         has_media: qMedia.has_media,
+--- a/twitter/thread.js
++++ b/twitter/thread.js
+@@ -3,6 +3,7 @@
+ import { BROWSER_JSON_SNIFF_FN, throwIfLoginWall } from '@jackwener/opencli/utils';
+ import { extractAuthorAvatar, extractMedia, extractCard, extractQuotedTweet, describeTwitterApiError } from './shared.js';
+ import { TWITTER_BEARER_TOKEN, applyTopByEngagement } from './utils.js';
++import { extractTwitterMetrics } from './engagement.js';
+ // ── Twitter GraphQL constants ──────────────────────────────────────────
+ const TWEET_DETAIL_QUERY_ID = 'nBS-WpgA6ZG0CyNHD517JQ';
+ const FEATURES = {
+@@ -57,11 +58,7 @@
+         author_verified: Boolean(u?.is_blue_verified || u?.legacy?.verified),
+         bio,
+         text: noteText || l.full_text || '',
+-        likes: l.favorite_count || 0,
+-        retweets: l.retweet_count || 0,
+-        // Same shape `twitter search` emits: a numeric string, '0' when X omits it.
+-        // Also feeds the log10(views) term of --top-by-engagement, which scored 0 before.
+-        views: tw.views?.count || '0',
++        ...extractTwitterMetrics(tw, { stringViews: true }),
+         in_reply_to: l.in_reply_to_status_id_str || undefined,
+         created_at: l.created_at,
+         url: `https://x.com/${screenName}/status/${tw.rest_id}`,
+@@ -121,7 +118,7 @@
+         { name: 'limit', type: 'int', default: 50 },
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the thread by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps the conversation\'s structural ordering.' },
+     ],
+-    columns: ['id', 'author', 'author_avatar', 'bio', 'text', 'likes', 'retweets', 'views', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'card', 'quoted_tweet', 'author_verified'],
++    columns: ['id', 'author', 'author_avatar', 'bio', 'text', 'likes', 'retweets', 'replies', 'quotes', 'bookmarks', 'views', 'shares', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'card', 'quoted_tweet', 'author_verified'],
+     func: readThread,
+ });
+ 
+--- a/twitter/timeline.js
++++ b/twitter/timeline.js
+@@ -2,6 +2,7 @@
+ import { cli, Strategy } from '@jackwener/opencli/registry';
+ import { resolveTwitterQueryId, extractMedia, extractCard, extractQuotedTweet, describeTwitterApiError } from './shared.js';
+ import { TWITTER_BEARER_TOKEN, applyTopByEngagement } from './utils.js';
++import { extractTwitterMetrics } from './engagement.js';
+ // ── Twitter GraphQL constants ──────────────────────────────────────────
+ const HOME_TIMELINE_QUERY_ID = 'c-CzHF1LboFilMpsx4ZCrQ';
+ const HOME_LATEST_TIMELINE_QUERY_ID = 'BKB7oi212Fi7kQtCBGE4zA';
+@@ -76,17 +77,13 @@
+     const screenName = u?.legacy?.screen_name || u?.core?.screen_name || 'unknown';
+     const bio = u?.legacy?.description || '';
+     const noteText = tw.note_tweet?.note_tweet_results?.result?.text;
+-    const views = tw.views?.count ? parseInt(tw.views.count, 10) : 0;
+     return {
+         id: tw.rest_id,
+         author: screenName,
+         author_verified: Boolean(u?.is_blue_verified || u?.legacy?.verified),
+         bio,
+         text: noteText || l.full_text || '',
+-        likes: l.favorite_count || 0,
+-        retweets: l.retweet_count || 0,
+-        replies: l.reply_count || 0,
+-        views,
++        ...extractTwitterMetrics(tw),
+         created_at: l.created_at || '',
+         url: `https://x.com/${screenName}/status/${tw.rest_id}`,
+         ...extractMedia(l),
+@@ -157,7 +154,7 @@
+         { name: 'limit', type: 'int', default: 20, help: 'Maximum number of tweets to return (default 20).' },
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the timeline by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps X\'s native ordering.' },
+     ],
+-    columns: ['id', 'author', 'bio', 'text', 'likes', 'retweets', 'replies', 'views', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'card', 'quoted_tweet', 'author_verified'],
++    columns: ['id', 'author', 'bio', 'text', 'likes', 'retweets', 'replies', 'quotes', 'bookmarks', 'views', 'shares', 'created_at', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'card', 'quoted_tweet', 'author_verified'],
+     func: async (page, kwargs) => {
+         const limit = kwargs.limit || 20;
+         const timelineType = kwargs.type === 'following' ? 'following' : 'for-you';
+--- a/twitter/tweets.js
++++ b/twitter/tweets.js
+@@ -2,6 +2,7 @@
+ import { ArgumentError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
+ import { sanitizeQueryId, extractMedia, extractQuotedTweet, describeTwitterApiError } from './shared.js';
+ import { applyTopByEngagement } from './utils.js';
++import { extractTwitterMetrics } from './engagement.js';
+ import {
+     MAX_USER_TWEETS_PAGES,
+     USER_TWEETS_PAGE_SIZE,
+@@ -34,10 +35,7 @@
+         author: screenName,
+         name: displayName,
+         text: noteText || legacy.full_text || '',
+-        likes: legacy.favorite_count || 0,
+-        retweets: legacy.retweet_count || 0,
+-        replies: legacy.reply_count || 0,
+-        views: Number(tw.views?.count) || 0,
++        ...extractTwitterMetrics(tw),
+         is_retweet: isRetweet,
+         created_at: legacy.created_at || '',
+         url: `https://x.com/${screenName}/status/${tw.rest_id}`,
+@@ -117,7 +115,7 @@
+         { name: 'page-delay', type: 'int', default: DEFAULT_PAGE_DELAY_SECONDS, help: 'Seconds to wait between paginated timeline requests to reduce rate-limit risk. Use 0 to disable.' },
+         { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the tweets by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps the chronological ordering.' },
+     ],
+-    columns: ['id', 'author', 'created_at', 'is_retweet', 'text', 'likes', 'retweets', 'replies', 'views', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'quoted_tweet'],
++    columns: ['id', 'author', 'created_at', 'is_retweet', 'text', 'likes', 'retweets', 'replies', 'quotes', 'bookmarks', 'views', 'shares', 'url', 'has_media', 'media_urls', 'media_posters', 'media_durations', 'quoted_tweet'],
+     func: async (page, kwargs) => {
+         const limit = normalizeLimit(kwargs.limit);
+         const pageDelaySeconds = normalizePageDelaySeconds(kwargs['page-delay']);

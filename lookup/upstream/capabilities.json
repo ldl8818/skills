@@ -1,0 +1,388 @@
+{
+  "schema_version": 1,
+  "commit": "94f06c1969dfc1834001269d79d3ad0972d9dee6",
+  "channels": {
+    "exa_search": {
+      "reference": "search",
+      "actions": [
+        "web_search",
+        "technical_search"
+      ],
+      "lookup_references": [
+        "references/search-routing.md"
+      ],
+      "acceptance": "相关内容、原始来源和费用边界",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "web": {
+      "reference": "web",
+      "actions": [
+        "read",
+        "jina_reader",
+        "web_reader"
+      ],
+      "lookup_references": [
+        "references/search-routing.md"
+      ],
+      "acceptance": "真实正文、完整性和外发范围",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "rss": {
+      "reference": "web",
+      "actions": [
+        "parse_rss",
+        "parse_atom"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md"
+      ],
+      "acceptance": "真实条目、日期、链接与解析错误",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "github": {
+      "reference": "dev",
+      "actions": [
+        "repo_search",
+        "code_search",
+        "repo_read",
+        "issues",
+        "pull_requests",
+        "actions",
+        "releases",
+        "api"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md"
+      ],
+      "acceptance": "目标仓库与身份匹配，读写授权分开",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "twitter": {
+      "reference": "social",
+      "actions": [
+        "search",
+        "tweet",
+        "replies",
+        "article",
+        "user_posts",
+        "user",
+        "feed",
+        "own_likes"
+      ],
+      "lookup_references": [
+        "references/platform-routing.md"
+      ],
+      "acceptance": "作者、时间、完整范围与原帖",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "reddit": {
+      "reference": "social",
+      "actions": [
+        "search",
+        "read",
+        "comments",
+        "subreddit",
+        "hot",
+        "popular",
+        "all",
+        "subreddit_info"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md"
+      ],
+      "acceptance": "登录态、目标正文和评论分页",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "xiaohongshu": {
+      "reference": "social",
+      "actions": [
+        "search",
+        "note",
+        "comments",
+        "feed",
+        "user",
+        "hot"
+      ],
+      "lookup_references": [
+        "references/platform-routing.md"
+      ],
+      "acceptance": "完整访问上下文、真实正文和评论范围",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "bilibili": {
+      "reference": "video",
+      "actions": [
+        "search",
+        "video",
+        "hot",
+        "rank",
+        "subtitle",
+        "audio"
+      ],
+      "lookup_references": [
+        "references/platform-routing.md",
+        "references/youtube-subtitles.md"
+      ],
+      "acceptance": "元数据、字幕与音轨分别核对",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "facebook": {
+      "reference": "social",
+      "actions": [
+        "search",
+        "profile",
+        "feed",
+        "groups"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md"
+      ],
+      "acceptance": "目标账号可见范围，不扩大为任意群内容",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "instagram": {
+      "reference": "social",
+      "actions": [
+        "user_search",
+        "profile",
+        "user_posts",
+        "explore",
+        "saved"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md"
+      ],
+      "acceptance": "用户搜索与帖子范围分开",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "linkedin": {
+      "reference": "career",
+      "actions": [
+        "person_profile",
+        "people_search",
+        "company_profile",
+        "jobs",
+        "public_page"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md"
+      ],
+      "acceptance": "身份、页面权限和详情完整性",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "boss": {
+      "reference": "career",
+      "actions": [
+        "cdp_check",
+        "job_search",
+        "job_description"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md"
+      ],
+      "acceptance": "严格 CDP、用户确认登录和真实 JD",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "youtube": {
+      "reference": "video",
+      "actions": [
+        "search",
+        "metadata",
+        "subtitles",
+        "comments",
+        "transcribe"
+      ],
+      "lookup_references": [
+        "references/youtube-subtitles.md",
+        "references/媒体读取.md"
+      ],
+      "acceptance": "同一视频、证据类型及覆盖范围",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "xiaoyuzhou": {
+      "reference": "video",
+      "actions": [
+        "transcribe_episode",
+        "polish"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md",
+        "references/youtube-subtitles.md"
+      ],
+      "acceptance": "完整音轨、服务商与独立增强调用",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "xueqiu": {
+      "reference": "finance",
+      "actions": [
+        "whoami",
+        "search",
+        "stock",
+        "hot",
+        "hot_stock"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md"
+      ],
+      "acceptance": "真实代码、价格、时间或内容列表",
+      "live_status": "not_revalidated_by_integration"
+    },
+    "v2ex": {
+      "reference": "social",
+      "actions": [
+        "hot",
+        "node_topics",
+        "topic",
+        "replies",
+        "user"
+      ],
+      "lookup_references": [
+        "references/Agent-Reach融合.md"
+      ],
+      "acceptance": "目标主题、回复范围与分页",
+      "live_status": "not_revalidated_by_integration"
+    }
+  },
+  "cli": {
+    "setup": {
+      "entry": "scripts/reach.py run setup",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "install": {
+      "entry": "scripts/reach.py run install",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "configure": {
+      "entry": "scripts/reach.py run configure",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "doctor": {
+      "entry": "scripts/reach.py run doctor",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "uninstall": {
+      "entry": "scripts/reach.py run uninstall",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "skill": {
+      "entry": "scripts/reach.py run skill",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "registration_disabled"
+    },
+    "format": {
+      "entry": "scripts/reach.py run format",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "transcribe": {
+      "entry": "scripts/reach.py run transcribe",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "check-update": {
+      "entry": "scripts/reach.py run check-update",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "watch": {
+      "entry": "scripts/reach.py run watch",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "version": {
+      "entry": "scripts/reach.py run version",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    }
+  },
+  "mcp": {
+    "module": "agent_reach.integrations.mcp_server",
+    "tools": [
+      "get_status"
+    ],
+    "auto_registered": false,
+    "entry": "scripts/reach.py mcp"
+  },
+  "source_references": [
+    "search",
+    "social",
+    "career",
+    "dev",
+    "web",
+    "video",
+    "finance"
+  ],
+  "setup_guides": {
+    "exa": "agent_reach/guides/setup-exa.md",
+    "groq": "agent_reach/guides/setup-groq.md",
+    "reddit": "agent_reach/guides/setup-reddit.md",
+    "twitter": "agent_reach/guides/setup-twitter.md",
+    "xiaohongshu": "agent_reach/guides/setup-xiaohongshu.md"
+  },
+  "runtime_resources": [
+    "agent_reach/scripts/transcribe_xiaoyuzhou.sh",
+    "agent_reach/integrations/mcp_server.py",
+    "agent_reach/guides/setup-exa.md",
+    "agent_reach/guides/setup-groq.md",
+    "agent_reach/guides/setup-reddit.md",
+    "agent_reach/guides/setup-twitter.md",
+    "agent_reach/guides/setup-xiaohongshu.md"
+  ],
+  "python_api": {
+    "channels/__init__.py": [
+      "get_channel",
+      "get_all_channels"
+    ],
+    "core.py": [
+      "AgentReach.doctor",
+      "AgentReach.doctor_report"
+    ],
+    "channels/base.py": [
+      "Channel.can_handle",
+      "Channel.ordered_backends",
+      "Channel.check"
+    ],
+    "channels/web.py": [
+      "WebChannel.read"
+    ],
+    "channels/v2ex.py": [
+      "V2EXChannel.get_hot_topics",
+      "V2EXChannel.get_node_topics",
+      "V2EXChannel.get_topic",
+      "V2EXChannel.get_user",
+      "V2EXChannel.search"
+    ],
+    "channels/xueqiu.py": [
+      "XueqiuChannel.get_stock_quote",
+      "XueqiuChannel.search_stock",
+      "XueqiuChannel.get_hot_posts",
+      "XueqiuChannel.get_hot_stocks"
+    ],
+    "channels/youtube.py": [
+      "YouTubeChannel.transcribe"
+    ],
+    "channels/xiaohongshu.py": [
+      "format_xhs_result"
+    ],
+    "cookie_extract.py": [
+      "list_browser_profiles",
+      "extract_all",
+      "configure_from_browser"
+    ],
+    "config.py": [
+      "Config.load",
+      "Config.save",
+      "Config.get",
+      "Config.set",
+      "Config.delete",
+      "Config.is_configured",
+      "Config.get_configured_features",
+      "Config.to_dict"
+    ]
+  }
+}

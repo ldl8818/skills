@@ -1,0 +1,25 @@
+--- a/search.js
++++ b/search.js
+@@ -1017,7 +1017,7 @@
+         { name: 'scope', type: 'string', default: 'all', choices: ['all', 'seen', 'unseen', 'following'], help: 'Search scope' },
+         { name: 'location', type: 'string', default: 'all', choices: ['all', 'same-city', 'nearby'], help: 'Location distance' },
+     ],
+-    columns: ['rank', 'title', 'author', 'likes', 'published_at', 'url'],
++    columns: ['rank', 'title', 'author', 'likes', 'collects', 'comments', 'published_at', 'url'],
+     func: async (page, kwargs) => {
+         try {
+             const limit = parseLimit(kwargs.limit);
+@@ -1045,6 +1045,13 @@
+                 .map((item, i) => ({
+                 rank: i + 1,
+                 ...item,
++                // Search cards display the metric selected by the active sort.
++                // Preserve missing likes instead of relabelling saves/replies.
++                ...(kwargs.sort === 'most-collected'
++                    ? { likes: '', collects: item.likes }
++                    : kwargs.sort === 'most-commented'
++                        ? { likes: '', comments: item.likes }
++                        : {}),
+                 published_at: noteIdToDate(item.url),
+             }));
+         }
