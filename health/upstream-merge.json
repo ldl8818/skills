@@ -1,0 +1,438 @@
+{
+  "schema": 2,
+  "repository": "https://github.com/tw93/waza",
+  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "source_path": "skills/health",
+  "files": {
+    "SKILL.md": {
+      "upstream_sha256": "690e3b44f71deaa9b45baf67adaac40efc3e4e2278b89ed6bf2db4624d5bec4e",
+      "local_sha256": "c41c48cc85549111697599d7138af8cba2f0cea628848ae59203e975220a8000",
+      "status": "adapted",
+      "upstream_fields": {
+        "description": "description: \"Audits agent config, instruction drift, hooks or MCP, and AI maintainability. Use when Claude, Codex, or Pi setup looks wrong. Not for application bugs or PR review.\"\n",
+        "when_to_use": "when_to_use: \"检查claude, 检查codex, 检查pi, Codex 配置, Pi 配置, agent instructions, 健康度, 配置检查, 配置对不对, AI coding 腐化, Claude ignoring instructions, Pi coding agent, check config, settings not working, audit config\"\n",
+        "dispatch_intent": "dispatch_intent: \"Codex/Claude/Pi ignoring instructions, agent config audit, hooks/MCP broken, health token usage, AI coding code rot, risk-backed hotspot ownership, unreachable project constraints, unclear context, missing verification, stale verifier output\"\n"
+      },
+      "reason": [
+        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy.",
+        "Keep the required host salutation and output format instead of the upstream marker.",
+        "Expose the restored AI maintainability lane in the concise Chinese route.",
+        "Keep history opt-in with explicit paths while retaining the complete upstream history-analysis tool.",
+        "Separate analysis depth from data-access scope and mandatory multi-agent work.",
+        "Preserve authorized necessary repairs without letting the collector execute project code.",
+        "Avoid overriding the user's standing necessary-repair policy.",
+        "Keep the completion rule consistent with the local authorization boundary.",
+        "Preserve the bounded default collector and document explicit full static, maintainability and historical analysis interfaces."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            3,
+            4
+          ],
+          "local_lines": [
+            3,
+            4
+          ],
+          "removed_sha256": "08e939c12acc28e08f980893aa76b68315ae01d4dc2493124ca5b8f65f837458",
+          "added_sha256": "4b5f783343cd39fc8a048ece8468173dd0ba07781ac07b63c5ae087f174571b4"
+        },
+        {
+          "upstream_lines": [
+            5,
+            5
+          ],
+          "local_lines": [
+            5,
+            15
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "f97c49b5965b42782568205a15d8bdf32d9127e5e470f528406f7485696ff601"
+        },
+        {
+          "upstream_lines": [
+            9,
+            10
+          ],
+          "local_lines": [
+            19,
+            20
+          ],
+          "removed_sha256": "0e4f97f609ed61e3adb1694cca3163f9f2bdc7e93d20166513b1b180484053f8",
+          "added_sha256": "84876eff960eac289181c8f7bde1e9c85010c5a0538fa4ffc48b82c9924db8bf"
+        },
+        {
+          "upstream_lines": [
+            30,
+            31
+          ],
+          "local_lines": [
+            40,
+            41
+          ],
+          "removed_sha256": "c347fc82ad7aa14671585d9a6121d6138a6c98ca9954ea5da35a92cf0e4b1c83",
+          "added_sha256": "518df246a0f0c3fcc86b396c43427caa1c7ab1434a6f0a2fc9ad813a55daae9e"
+        },
+        {
+          "upstream_lines": [
+            32,
+            33
+          ],
+          "local_lines": [
+            42,
+            43
+          ],
+          "removed_sha256": "74d22271be48d2937980513331dab9fe686dad44f189ac3099ca6fb835a07120",
+          "added_sha256": "3e4d7be285e4b58c5ad0b13c1f706c9229ff52f513d2a558312ce33826b0bc14"
+        },
+        {
+          "upstream_lines": [
+            42,
+            44
+          ],
+          "local_lines": [
+            52,
+            54
+          ],
+          "removed_sha256": "13936cfd809eaa6123393e604814f85d740cd21da96dd9bb02a9236944863e88",
+          "added_sha256": "ea1d03f4e5829cc77b4b729c66d2dcbc379c4367f9dcdae663be719207e9b370"
+        },
+        {
+          "upstream_lines": [
+            214,
+            215
+          ],
+          "local_lines": [
+            224,
+            233
+          ],
+          "removed_sha256": "a0cf8ae91ada60b0f3db7f0d4c0002e60637a3f5a37a50612218a7d0fa82cc48",
+          "added_sha256": "0f196b20086390d39ab1bce69dc087804137f4b6fedee2cf896ee95e8221010a"
+        }
+      ],
+      "sections": {
+        "# Health: Agent-Assisted Engineering Health": "# Health: Agent-Assisted Engineering Health",
+        "## Durable Context Preflight": "## Durable Context Preflight",
+        "## Gotchas": "## Gotchas",
+        "## Hard Rules": "## Hard Rules",
+        "## Outcome Contract": "## Outcome Contract",
+        "## Output": "## Output",
+        "## Step 0: Establish the evidence basis": "## Step 0: Establish the evidence basis",
+        "## Step 1: Collect data": "## Step 1: Collect data",
+        "## Step 1b: Runtime Inventory and MCP Check": "## Step 1b: Runtime Inventory and MCP Check",
+        "## Step 1c: Safety and security checks": "## Step 1c: Safety and security checks",
+        "## Step 2: Analyze": "## Step 2: Analyze",
+        "### Finding format": "### Finding format",
+        "### Long-Running Agent Stop Conditions": "### Long-Running Agent Stop Conditions",
+        "### Memory and Skill Supply Chain": "### Memory and Skill Supply Chain",
+        "### Security Baseline Checks": "### Security Baseline Checks",
+        "### [!] Critical -- fix now": "### [!] Critical -- fix now",
+        "### [-] Incremental -- nice to have": "### [-] Incremental -- nice to have",
+        "### [PASS] Passing checks (table, max 5 rows)": "### [PASS] Passing checks (table, max 5 rows)",
+        "### [~] Structural -- fix soon": "### [~] Structural -- fix soon"
+      }
+    },
+    "agents/inspector-context.md": {
+      "upstream_sha256": "0d7dd06c531f6443a3f68242d192d143fbc2a7702bf9d77699fc64cc4493ea3d",
+      "local_sha256": "0d7dd06c531f6443a3f68242d192d143fbc2a7702bf9d77699fc64cc4493ea3d",
+      "status": "identical",
+      "sections": {
+        "## Part A: Context Layer": "## Part A: Context Layer",
+        "## Part B: Skill Security & Quality": "## Part B: Skill Security & Quality",
+        "## Part C: Context Effectiveness": "## Part C: Context Effectiveness",
+        "### Context Pressure (needs conversation signals)": "### Context Pressure (needs conversation signals)",
+        "### Enforcement Gaps (needs conversation signals)": "### Enforcement Gaps (needs conversation signals)",
+        "### Redundant Context (structural, no conversation needed)": "### Redundant Context (structural, no conversation needed)"
+      }
+    },
+    "agents/inspector-control.md": {
+      "upstream_sha256": "18e26395b32becd605886b4290584717f38915819de4fe427493a20b09731858",
+      "local_sha256": "083b3b1630be8420e846d8f1203c73c342630e5ab70cb75b6874ae5cb8f86025",
+      "status": "adapted",
+      "reason": [
+        "Do not propose automatic permission changes or imply that static audits supply history."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            29,
+            30
+          ],
+          "local_lines": [
+            29,
+            30
+          ],
+          "removed_sha256": "9e43840f94ceb4d02df27442a1b6897f598bee1452c3e14a85ab09ebd3bc3ddd",
+          "added_sha256": "9ec77861e2230b89a2332282c5bb27b29e4648b8eee27590267ffb69c9477195"
+        },
+        {
+          "upstream_lines": [
+            61,
+            62
+          ],
+          "local_lines": [
+            61,
+            62
+          ],
+          "removed_sha256": "3f813f63ebb13e52466901793f1a84761f824509c7f531f8b385683668934da2",
+          "added_sha256": "45485f8f8fcf97c106c10dd01670707c6f229bd623cf8379b7747d0751dbce2f"
+        }
+      ],
+      "sections": {
+        "## Part A: Control + Verification Layer": "## Part A: Control + Verification Layer",
+        "## Part B: Behavior Pattern Audit": "## Part B: Behavior Pattern Audit"
+      }
+    },
+    "agents/inspector-maintainability.md": {
+      "upstream_sha256": "0b48e5561bac9b11880caeca7e6dba3414acf5ba104ed79c05e0fed8f3ca1da8",
+      "local_sha256": "0b48e5561bac9b11880caeca7e6dba3414acf5ba104ed79c05e0fed8f3ca1da8",
+      "status": "identical",
+      "sections": {
+        "# AI Maintainability Inspector": "# AI Maintainability Inspector",
+        "## Mission": "## Mission",
+        "## Output": "## Output",
+        "## Severity Rules": "## Severity Rules"
+      }
+    },
+    "references/durable-context.md": {
+      "upstream_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "local_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "status": "identical",
+      "sections": {
+        "# Durable Context Preflight": "# Durable Context Preflight",
+        "## Current state wins": "## Current state wins",
+        "## Memory is not authorization": "## Memory is not authorization",
+        "## Redaction gate": "## Redaction gate",
+        "## Scope": "## Scope"
+      }
+    },
+    "references/long-running-agents.md": {
+      "upstream_sha256": "edc1ee3470f87668bf5c8fff98554ad8d1aa716c159c917199b3d527e74fe09c",
+      "local_sha256": "4edfe4649a8423f52bf2540ef1b12a552bb7f581cff0339394b97b31f8311048",
+      "status": "adapted",
+      "reason": [
+        "Keep stop-condition analysis without granting termination authority or imposing arbitrary task cancellation.",
+        "Honor real budgets and blockers without inventing hard-coded task cancellation thresholds."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            8,
+            12
+          ],
+          "local_lines": [
+            8,
+            12
+          ],
+          "removed_sha256": "cfef9ab445b84bb9b5972cde91472e197967a336b017f2796babecc232b8934d",
+          "added_sha256": "7eda8eb5441424ba58c0ccf67de6f312f1e20e61a73dbec37e847bf047c37ad5"
+        },
+        {
+          "upstream_lines": [
+            13,
+            14
+          ],
+          "local_lines": [
+            13,
+            16
+          ],
+          "removed_sha256": "789e95b68b5c0747a5fb73ec4a098547e79ea74ef37ecd3de00de88af181ee55",
+          "added_sha256": "e8049abde6f2e39f992d3c5a3e7b7adb2c8e6a83630e5f2c462ae7e8ac23621a"
+        }
+      ],
+      "sections": {
+        "# Long-Running Agent Stop Conditions": "# Long-Running Agent Stop Conditions"
+      }
+    },
+    "references/maintainability-findings.md": {
+      "upstream_sha256": "bc48226145aa15ce959f04e5636d20c6e308ad3426e58c07718f23fc1bfc2054",
+      "local_sha256": "bc48226145aa15ce959f04e5636d20c6e308ad3426e58c07718f23fc1bfc2054",
+      "status": "identical",
+      "sections": {
+        "# AI Maintainability Structural Findings": "# AI Maintainability Structural Findings"
+      }
+    },
+    "scripts/block-pipe-to-shell.py": {
+      "upstream_sha256": "34713fdf0c48d564c87edf21f88a367331bcba50356f32515b7d02ed2193c67a",
+      "local_sha256": "34713fdf0c48d564c87edf21f88a367331bcba50356f32515b7d02ed2193c67a",
+      "status": "identical"
+    },
+    "scripts/check-agent-context.sh": {
+      "upstream_sha256": "d4c74fe963cf9f71c9020e7ef93d0f4d4b20ed202f5f99686570a5850a9a7ba1",
+      "local_sha256": "d4c74fe963cf9f71c9020e7ef93d0f4d4b20ed202f5f99686570a5850a9a7ba1",
+      "status": "identical"
+    },
+    "scripts/check-doc-refs.sh": {
+      "upstream_sha256": "be790dffc718986ff854bfdd684f717025634371e79bfc869f4fdbd4e275069f",
+      "local_sha256": "be790dffc718986ff854bfdd684f717025634371e79bfc869f4fdbd4e275069f",
+      "status": "identical"
+    },
+    "scripts/check-maintainability.sh": {
+      "upstream_sha256": "a1a0120494315953f135b95da133f30d67ed9c61850ee8d618f7f6afaa88a43b",
+      "local_sha256": "a1a0120494315953f135b95da133f30d67ed9c61850ee8d618f7f6afaa88a43b",
+      "status": "identical"
+    },
+    "scripts/check-verifier-output.sh": {
+      "upstream_sha256": "c4de5fb4f5a2375d0aa917b4f883d0a11449f8079938797b822c17fd38fae480",
+      "local_sha256": "c4de5fb4f5a2375d0aa917b4f883d0a11449f8079938797b822c17fd38fae480",
+      "status": "identical"
+    },
+    "scripts/check_agent_context.py": {
+      "upstream_sha256": "5cd3282c7a59e0ccc0ed9f1964029c05aa62fa848e6b77e39e86e98c44ca459d",
+      "local_sha256": "ebcc1423ec8899ea4d299083c96a39e0ed566e591cffdf7017793972f7e0a24c",
+      "status": "adapted",
+      "reason": [
+        "Keep global configuration opt-in on the restored context analyzer.",
+        "Do not authorize global filesystem access in project-only mode.",
+        "Keep the early project-only return before any global configuration reads."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            1556,
+            1556
+          ],
+          "local_lines": [
+            1556,
+            1557
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "d8aca8fd69090c5a372298e302108bbe847529c0c6fa5e4f8a22f71387168335"
+        },
+        {
+          "upstream_lines": [
+            1565,
+            1566
+          ],
+          "local_lines": [
+            1566,
+            1567
+          ],
+          "removed_sha256": "f5de515a30b11c5eb1ed8a734d87d0da27a7324f8323b60541a1a848f742adf8",
+          "added_sha256": "e8386d0a03025b48527653621862326128f186a2cd1c970f9b4aab9dfd4443ed"
+        },
+        {
+          "upstream_lines": [
+            1594,
+            1594
+          ],
+          "local_lines": [
+            1595,
+            1606
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "4807a0bccbb903696787f75235a9fe0e81f4bfa0ef2dcc010f0100595f826e5b"
+        }
+      ]
+    },
+    "scripts/check_doc_refs.py": {
+      "upstream_sha256": "a43a5ecb6c6d97a642f96bb21b29381c7f6ed3af67c2e60a027bfbda062ca9f3",
+      "local_sha256": "a43a5ecb6c6d97a642f96bb21b29381c7f6ed3af67c2e60a027bfbda062ca9f3",
+      "status": "identical"
+    },
+    "scripts/check_maintainability.py": {
+      "upstream_sha256": "e3dd6bff7114b30152b03f88a023d088551a98c144b93a1897d0eebe0e2f2ab4",
+      "local_sha256": "e3dd6bff7114b30152b03f88a023d088551a98c144b93a1897d0eebe0e2f2ab4",
+      "status": "identical"
+    },
+    "scripts/check_verifier_output.py": {
+      "upstream_sha256": "15b7be020d913b2a59805e7af8bad5674f53f69a4c3bf96d817fcf0e9d4c07bb",
+      "local_sha256": "15b7be020d913b2a59805e7af8bad5674f53f69a4c3bf96d817fcf0e9d4c07bb",
+      "status": "identical"
+    },
+    "scripts/collect-data.sh": {
+      "upstream_sha256": "765c743a099b8034c5840bf915840ccf2e46b5a9aa91ba954731cfecc5ca3834",
+      "local_sha256": "27e117452b9438469c7329e588697c0bf19f59b319bbc8fbe897a8557e4a1e98",
+      "status": "adapted",
+      "reason": [
+        "Route default collection to the existing bounded project adapter; require explicit full static scope for the upstream collector.",
+        "Do not scan raw historical access-denial logs during a static audit.",
+        "Propagate explicit global scope to the context helper."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            12,
+            12
+          ],
+          "local_lines": [
+            12,
+            27
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "477e052380450fede2fbc574b821f1219017107716f0d63d83f119f961a39e13"
+        },
+        {
+          "upstream_lines": [
+            1059,
+            1060
+          ],
+          "local_lines": [
+            1074,
+            1075
+          ],
+          "removed_sha256": "818b2367c14a5a803b455b8e21cbc5614adf6f3694e912c0eb519a351bacfb9e",
+          "added_sha256": "6e646f01675aca696e0557418b1eb0df65b9bc3cac0c336a0ae085d4605a8d47"
+        },
+        {
+          "upstream_lines": [
+            1074,
+            1075
+          ],
+          "local_lines": [
+            1089,
+            1090
+          ],
+          "removed_sha256": "f52c1d156840351d4eb262f918d3f4235feddf5aa9961cff88e9edd9cb9018c4",
+          "added_sha256": "63f9b409f2d7dfa11cc1ba68c2d83c20457950627840d50dfd14469e8f992b6a"
+        }
+      ]
+    },
+    "scripts/conversation_audit.py": {
+      "upstream_sha256": "afb2ffc43a6a0dc2ac86f11f1800fb858c9f3d22235fe48e9c3285e6da44aeea",
+      "local_sha256": "dd696afe90c3aebdc62ff5c1f5bd518874dbec7a13e236f8fa5edace6339b45b",
+      "status": "adapted",
+      "reason": [
+        "Retain the local mandatory history opt-in flag."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            908,
+            908
+          ],
+          "local_lines": [
+            908,
+            909
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "f8333edc74a4bfd408e5388fbc454e41512e06f4ac07100a6b3954e730da7553"
+        }
+      ]
+    },
+    "scripts/read_skill_description.py": {
+      "upstream_sha256": "f60fa80d48306aea81b0e9ba269ef713565ce827592b78d0b932231893143107",
+      "local_sha256": "f60fa80d48306aea81b0e9ba269ef713565ce827592b78d0b932231893143107",
+      "status": "identical"
+    },
+    "scripts/run-health.ps1": {
+      "upstream_sha256": "36329f079ed07f3699699e1665fd49c2a3865bfef23dc9f1a9e85232ad16404d",
+      "local_sha256": "36329f079ed07f3699699e1665fd49c2a3865bfef23dc9f1a9e85232ad16404d",
+      "status": "identical"
+    },
+    "scripts/scan_skill_security.py": {
+      "upstream_sha256": "4ab83c18721f4266ade44a7d0b2f44fdbf3e2cef622e33a845ae4a56310a1424",
+      "local_sha256": "4ab83c18721f4266ade44a7d0b2f44fdbf3e2cef622e33a845ae4a56310a1424",
+      "status": "identical"
+    }
+  },
+  "local_only": {
+    "LICENSE": "83ef2e3caa22ff257740df8684627ef8c4e21102986cf943e3fdd31ca7b430d5",
+    "references/astra-compatibility.md": "8ceb194b3f38c8299fb57762714f6b55e54a2057b178d51286b836a72be98e27",
+    "references/checks.md": "159a3267b2ec02add3ea2632f07d0b3caccd819bbf096be3037321595f2020dc",
+    "scripts/collect-project.sh": "7aff6e1e0e4934b7d651702c3e581a6e63d557c1e6fac984d514e0e40e4a7b7b",
+    "scripts/collect_data.py": "1eb01548a7738f784ecd9042f5892023c80894220c8a55f69de7d8f55e2006b6",
+    "tests/test_collection.py": "2c417b5c18c891da0703244b3a3cda4ce6582bf84c22e6a6bff8e53ab2c040e5",
+    "tests/test_full_collection.py": "4934e3b0a881c4b7f960226b8591b7908ed88d45f3745e0ee7f02588c53f7bf1"
+  }
+}
