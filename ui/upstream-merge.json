@@ -1,0 +1,214 @@
+{
+  "schema": 2,
+  "repository": "https://github.com/tw93/waza",
+  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "source_path": "skills/ui",
+  "files": {
+    "SKILL.md": {
+      "upstream_sha256": "30ac6005c3563d43803c6c40e4ae0e1b35960a0bd9af0b3b388b73914ca8330a",
+      "local_sha256": "d9373da1d927f04357be84f99b5302d5504887d07bc6e59e63d5cd64e16a6a73",
+      "status": "adapted",
+      "upstream_fields": {
+        "description": "description: \"Produces distinctive production UI and screenshot-grounded visual polish. Use when building or restyling pages, components, or typography. Not for backend logic or data pipelines.\"\n",
+        "when_to_use": "when_to_use: \"做组件, 不好看, 不和谐, 不清晰, 很丑, 很怪, 很傻, 突兀, 不协调, 字体, 排版, UI, 截图, build page, create component, make it look good, screenshot with visual complaint, font looks wrong\"\n",
+        "dispatch_intent": "dispatch_intent: \"UI, component, page, visual interface, frontend, artifact-grounded screenshot aesthetic complaint\"\n"
+      },
+      "reason": [
+        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy.",
+        "Keep the required host salutation and output format instead of the upstream marker.",
+        "Silence cannot grant material decisions or approval.",
+        "Avoid a redundant design approval gate on an explicit implementation request.",
+        "Preserve routing to image/document/Hunt tools, existing product style and browser selection without losing upstream design methods."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            3,
+            4
+          ],
+          "local_lines": [
+            3,
+            4
+          ],
+          "removed_sha256": "6052a5dbcfa65b72a8da70a0302fa1d0463331be67ad72f2f51f7d7c098c1e96",
+          "added_sha256": "d55ea46a35d6ccb438cacd2f152ec1ee525c170518570b394180e793857122a1"
+        },
+        {
+          "upstream_lines": [
+            5,
+            5
+          ],
+          "local_lines": [
+            5,
+            15
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "6ff375d183bcd66ebb967e2210a00051ae5a24d8be285b3a9068cf35c3072ca9"
+        },
+        {
+          "upstream_lines": [
+            9,
+            10
+          ],
+          "local_lines": [
+            19,
+            20
+          ],
+          "removed_sha256": "0e4f97f609ed61e3adb1694cca3163f9f2bdc7e93d20166513b1b180484053f8",
+          "added_sha256": "84876eff960eac289181c8f7bde1e9c85010c5a0538fa4ffc48b82c9924db8bf"
+        },
+        {
+          "upstream_lines": [
+            47,
+            48
+          ],
+          "local_lines": [
+            57,
+            58
+          ],
+          "removed_sha256": "71e05e518df5995713432643130b7f0004a53c6a15bc09b66faae6a21e4c0f1f",
+          "added_sha256": "4bc8ddfd402b83f77f3826de7d8173a52904ccfeb93283f434841747b4bc7cc4"
+        },
+        {
+          "upstream_lines": [
+            97,
+            98
+          ],
+          "local_lines": [
+            107,
+            108
+          ],
+          "removed_sha256": "fcd2473b76a8014de5406410c9e0f19555df3990611794414516cc3ae9e19b0a",
+          "added_sha256": "c03ef556ae21f3e9dafd7d85ef1288420ac71c30599e660eff90cd2d0932c467"
+        },
+        {
+          "upstream_lines": [
+            129,
+            129
+          ],
+          "local_lines": [
+            139,
+            145
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "95b9f4c4b7f2c6731797e79efb154664eee468c3c4d1d03d87ae45fb97d3bdd2"
+        }
+      ],
+      "sections": {
+        "# UI: Build It With a Point of View": "# UI: Build It With a Point of View",
+        "## Durable Context Preflight": "## Durable Context Preflight",
+        "## Gotchas": "## Gotchas",
+        "## Hard Rules": "## Hard Rules",
+        "## Lock the Direction First": "## Lock the Direction First",
+        "## Mode Picker": "## Mode Picker",
+        "## Outcome Contract": "## Outcome Contract",
+        "## Output: Aesthetic Review": "## Output: Aesthetic Review",
+        "## When Asked For Options": "## When Asked For Options",
+        "### App shell exception (sidebar + main workspace)": "### App shell exception (sidebar + main workspace)",
+        "### Data dashboard exception": "### Data dashboard exception",
+        "### Existing-native-app exception (do not propose wholesale platform restyling)": "### Existing-native-app exception (do not propose wholesale platform restyling)",
+        "### Source repo as reference": "### Source repo as reference"
+      }
+    },
+    "references/design-data-viz.md": {
+      "upstream_sha256": "eeda7f4a80494a934d5e4c94d36a509dfc8a15664e8e58d0864c830e8fc9e2b2",
+      "local_sha256": "eeda7f4a80494a934d5e4c94d36a509dfc8a15664e8e58d0864c830e8fc9e2b2",
+      "status": "identical",
+      "sections": {
+        "# Design Reference: Data Visualization": "# Design Reference: Data Visualization",
+        "## Chart selection": "## Chart selection",
+        "## Dashboard defaults": "## Dashboard defaults",
+        "## Number-dense interfaces": "## Number-dense interfaces",
+        "## Using a product as a benchmark": "## Using a product as a benchmark"
+      }
+    },
+    "references/design-native-motion.md": {
+      "upstream_sha256": "d2c81da29e92c23ec058f99c7d87b3acb2d8f963e8fabf6c13b991c06e757ac7",
+      "local_sha256": "d2c81da29e92c23ec058f99c7d87b3acb2d8f963e8fabf6c13b991c06e757ac7",
+      "status": "identical",
+      "sections": {
+        "# Native Motion Mapping": "# Native Motion Mapping",
+        "## Translating the web idioms": "## Translating the web idioms",
+        "## Where native surfaces actually break": "## Where native surfaces actually break"
+      }
+    },
+    "references/design-reference.md": {
+      "upstream_sha256": "959d62859014bd6f7e9a38104e18a6afe77f1985da11e7daac09c2217ef757b1",
+      "local_sha256": "959d62859014bd6f7e9a38104e18a6afe77f1985da11e7daac09c2217ef757b1",
+      "status": "identical",
+      "sections": {
+        "# Design Reference": "# Design Reference",
+        "## Absolute Bans (CSS-Pattern Level)": "## Absolute Bans (CSS-Pattern Level)",
+        "## Aesthetic Review Checks": "## Aesthetic Review Checks",
+        "## App Shell Rules": "## App Shell Rules",
+        "## CJK & Multilingual Type": "## CJK & Multilingual Type",
+        "## Color System: OKLCH Rules": "## Color System: OKLCH Rules",
+        "## Common Traps": "## Common Traps",
+        "## Content Authenticity": "## Content Authenticity",
+        "## DESIGN.md Scaffold (Optional, Production UIs)": "## DESIGN.md Scaffold (Optional, Production UIs)",
+        "## Data Visualization Surfaces": "## Data Visualization Surfaces",
+        "## Font Selection Procedure": "## Font Selection Procedure",
+        "## Options Guide": "## Options Guide",
+        "## Placeholders Over Imitations": "## Placeholders Over Imitations",
+        "## Pre-Handoff Checklist: Strategic Omissions": "## Pre-Handoff Checklist: Strategic Omissions",
+        "## Production Quality Baseline": "## Production Quality Baseline",
+        "## Reference Material Priority": "## Reference Material Priority",
+        "## Reference-site Brand Presets (awesome-design-md)": "## Reference-site Brand Presets (awesome-design-md)",
+        "## Reflex Fonts to Reject": "## Reflex Fonts to Reject",
+        "## Tech Stack Conflicts": "## Tech Stack Conflicts",
+        "## Theme Matrix": "## Theme Matrix",
+        "### Accessibility": "### Accessibility",
+        "### Adding to Existing UI": "### Adding to Existing UI",
+        "### Animation": "### Animation",
+        "### Performance": "### Performance",
+        "### Responsive & Screen Verification": "### Responsive & Screen Verification",
+        "### Surfaces": "### Surfaces",
+        "### Touch and Mobile": "### Touch and Mobile",
+        "### Typography Details": "### Typography Details"
+      }
+    },
+    "references/durable-context.md": {
+      "upstream_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "local_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "status": "identical",
+      "sections": {
+        "# Durable Context Preflight": "# Durable Context Preflight",
+        "## Current state wins": "## Current state wins",
+        "## Memory is not authorization": "## Memory is not authorization",
+        "## Redaction gate": "## Redaction gate",
+        "## Scope": "## Scope"
+      }
+    },
+    "references/mode-generated-asset.md": {
+      "upstream_sha256": "a3936b992a066540110e706c218c3744e59f31e16ef04b6eef7f7b49da42b7ae",
+      "local_sha256": "a3936b992a066540110e706c218c3744e59f31e16ef04b6eef7f7b49da42b7ae",
+      "status": "identical",
+      "sections": {
+        "# Mode: Generated Image Asset": "# Mode: Generated Image Asset",
+        "## Decoration Debt": "## Decoration Debt",
+        "## Scope It To What The Thing Is": "## Scope It To What The Thing Is",
+        "## Spec Before Pixels": "## Spec Before Pixels",
+        "## Two Rejections Is A Hard Stop": "## Two Rejections Is A Hard Stop"
+      }
+    },
+    "references/mode-quick-fix.md": {
+      "upstream_sha256": "18ac9a149deb02fae5ac097a26618d4c2cc0ccf7f3c493ee4bb4a1b8d362f2cc",
+      "local_sha256": "18ac9a149deb02fae5ac097a26618d4c2cc0ccf7f3c493ee4bb4a1b8d362f2cc",
+      "status": "identical",
+      "sections": {
+        "# Visual Quick-Fix Mode": "# Visual Quick-Fix Mode"
+      }
+    },
+    "references/mode-screenshot-iteration.md": {
+      "upstream_sha256": "9f97acea0b8e9d6fbc8baac6893c7cdf6aecd01ac935776f761e1de4f20dd6f0",
+      "local_sha256": "9f97acea0b8e9d6fbc8baac6893c7cdf6aecd01ac935776f761e1de4f20dd6f0",
+      "status": "identical",
+      "sections": {
+        "# Screenshot Iteration Mode": "# Screenshot Iteration Mode"
+      }
+    }
+  },
+  "local_only": {
+    "LICENSE": "83ef2e3caa22ff257740df8684627ef8c4e21102986cf943e3fdd31ca7b430d5"
+  }
+}
