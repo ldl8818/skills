@@ -1,0 +1,6 @@
+{
+  "hook_event_name": "UserPromptSubmit",
+  "session_id": "example-session",
+  "cwd": "/example/project",
+  "prompt": "不对，应该先核验事实。"
+}

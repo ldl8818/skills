@@ -1,0 +1,13 @@
+{
+  "cwd": "/workspace",
+  "hook_event_name": "PostToolUse",
+  "model": "example-model",
+  "permission_mode": "default",
+  "session_id": "example-session",
+  "tool_input": {"command": "false"},
+  "tool_name": "Bash",
+  "tool_response": "command failed",
+  "tool_use_id": "example-tool",
+  "transcript_path": null,
+  "turn_id": "example-turn"
+}

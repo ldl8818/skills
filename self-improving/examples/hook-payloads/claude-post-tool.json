@@ -1,0 +1,19 @@
+{
+  "cwd": "/workspace",
+  "duration_ms": 10,
+  "hook_event_name": "PostToolUse",
+  "permission_mode": "default",
+  "prompt_id": "example-prompt",
+  "session_id": "example-session",
+  "tool_input": {"command": "false", "description": "Example failure"},
+  "tool_name": "Bash",
+  "tool_response": {
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false,
+    "stderr": "command failed",
+    "stdout": ""
+  },
+  "tool_use_id": "example-tool",
+  "transcript_path": "/state/transcript.jsonl"
+}

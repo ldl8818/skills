@@ -1,0 +1,108 @@
+# Changelog
+
+## 3.1.3
+
+- Move the Python package to src/self_improving while keeping imports and CLI names unchanged. Source commands and managed Hooks now run from src; templates and Skill links still resolve to the Skill root. Existing source installations must run upgrade from src to refresh Hooks.
+
+- Align documentation for Doraemon 跨 Agent 自我进化记忆系统 with current knowledge routing, catalog indexes, resume behavior and Markdown maintenance boundaries; update Skill discovery and consolidate reference sections without changing runtime behavior.
+- Recognize standalone read-only Python inspections before authority-write checks; keep unknown code, shell composition and actual review/write operations guarded.
+
+## 3.1.2
+
+- Allow authorized edits and moves of memory.md and corrections.md as ordinary document maintenance. Keep verified ledger writes and mutating review commands guarded on both clients.
+
+## 3.1.1
+
+- Treat legacy Markdown corrections as optional audit history: doctor accepts its absence, and initialization no longer recreates it in an existing marked memory root. Candidate capture and v2 approvals are unchanged.
+
+## 3.1.0
+
+- Add private revision-bound knowledge check, list, read and accept commands, generated catalog views and doctor diagnostics.
+- Route reviewed original sections on prompt submission; preserve required full-read pointers through compaction, recheck scope and invalidate changed sources.
+- Bound each event by the shared token estimate, isolate knowledge workers with a one-second timeout, and keep candidate persistence independent from reading.
+- Extend Codex SessionStart registration to clear and compact; preserve existing approval guards and third-party Hooks.
+
+## 3.0.0 - 2026-08-31
+- Startup context is cost-safe by default: free-form `memory.md` injection is off, resumed sessions compare a per-session content digest and emit changed context only once, and all dynamic sections share a 1,200-token budget. A changed resume explicitly invalidates the prior injection, including when revoke or promote leaves no active rules. Budget omissions, expired rules, due reviews, ignored v1 rows and malformed ledger events produce an explicit receipt instead of disappearing silently.
+- Verified corrections are now lifecycle-bound v2 records with priority, promotion target, review date and expiry date. `review lifecycle-list` exposes rule-level status and `review promote` stops injection after formal placement without deleting audit history. Repository scope uses stable Git identity, so a rule applies across linked worktrees; selection resolves that identity once rather than starting Git for every rule. Legacy v1 approvals remain auditable, can be migrated explicitly to v2, and are not injected by the new default.
+- Command-error capture now relies only on structured failure state. Successful output containing words such as `error` or `failed` is no longer logged. Error history is capped, disabled persistence is silent, schema receipts write only when the shape changes or once per day, and review reminders move from SessionStart to a throttled Stop message.
+- `doctor` now uses the runtime's exact receipt and resume-update reserves, rejects core memory that the total budget would omit, and reports budget omissions, ignored legacy rows, expiry/review state, malformed approvals, rooted backticked-path breakage, expired core notices and error-log growth. It no longer treats an `interrupted`-only Claude payload as proof that ordinary command failures are observable. Codex observes startup and resume so the common digest gate can distinguish unchanged from changed context.
+- Approval commands now require a promotion target and support `global`, repository and project scopes. Interactive review records lifecycle metadata without putting user text into Shell syntax.
+- Codex's authority guard continues to deny mutating review commands but now tokenizes adjacent Shell quote fragments before matching, so spelling commands as `re''view ap''prove` cannot bypass it. Exact standalone read-only `-h` and `--help` invocations remain available; chained commands cannot use the help exception.
+- Legacy migration keeps command-error capture disabled, matching the v3 safe default. `review legacy-list` now includes active v1 JSONL approvals as well as Markdown rows, and successful v1 replacement appends a revoke event so the same record is not offered repeatedly.
+
+## 2.6.6 - 2026-08-31
+- Codex authority-write protection now returns the supported `PreToolUse` `deny` decision. Codex parses but does not support `ask`; an `ask` result marks the Hook failed and continues the tool call, so protected review commands must now be copied to and run in a regular terminal. The injected review reminder gives the same platform-specific instruction. Claude Code keeps its one-time `ask` permission dialog.
+- Codex protection now matches `apply_patch` as well as `Bash` and checks patch target paths for the three authority files. Managed Hooks on both platforms now use a 10-second timeout instead of inheriting Codex's 600-second default. Existing third-party Hooks remain preserved during install and upgrade.
+- `doctor` now verifies each managed Hook's matcher, command type and timeout as well as its command path, so an older `Bash`-only or no-timeout Codex installation is reported as stale instead of receiving a false healthy result.
+- Add `review approve-interactive` and `review import-legacy-interactive` for Codex's manual-terminal path. Copied commands contain only a validated fingerprint or legacy ID; the CLI validates and displays that ID before reading the distilled rule and scope. Interactive approvals run one at a time, so answers cannot drift onto another record; quotes, semicolons, command substitutions and other candidate-derived text never enter Shell syntax.
+
+## 2.6.5 - 2026-08-04
+- Claude Code and Codex `Stop` reminders now emit the shared `systemMessage` JSON object instead of an XML tag. When pending correction candidates reach the review threshold, neither client reports `invalid stop hook JSON output`; the reminder remains non-blocking and never promotes candidates automatically.
+
+## 2.6.4 - 2026-07-28
+- Correction capture no longer treats generated or quoted long text as a human correction. Three real capture defects found in a review of the candidate inbox are fixed: the English keywords `remember` and `stop doing` no longer match inside longer English words (`remembering` in a generated prompt matched before), while still matching when adjacent to Chinese text; prompts longer than 1500 characters are never corrections, because a correction is a short immediate reply and any long document eventually contains a keyword by chance; and messages beginning with the slash-command tags `<command-message>` / `<command-name>` / `<command-args>` (fullwidth variants included) are recognized as client-injected, so typing `/some-command 这里不对` no longer files the whole command into the inbox.
+- The length rule is deliberately independent of what a machine message looks like, so client features that reuse the user-prompt channel are filtered without enumerating their tags. Codex ambient suggestions (`~/.codex/ambient-suggestions/`) were the observed source of four such candidates.
+- The candidate inbox now records *why* capture fired, because filters will always miss something. A new `Match` column stores the matched keyword plus a short window of surrounding text; `review list` shows it and `review list --json` exposes it as `matched`. Keyword matching runs on the full prompt while the stored candidate is truncated to 500 characters, so a candidate could previously be filed with its trigger invisible to the reviewer — exactly what made the four machine-generated candidates hard to explain during review. The match text is redacted and capped like any other stored content, and is deliberately excluded from the fingerprint so identical sentences still deduplicate. Inbox rows written before this version have no `Match` column and keep parsing unchanged.
+
+## 2.6.3 - 2026-07-18
+- `SKILL.md` metadata: shorten `zh_description` to fit the 64-column skill list. Documentation only.
+- This release and 2.6.2 originally changed only `SKILL.md`, leaving `self_improving/__init__.py`, `pyproject.toml` and this changelog at 2.6.1. The three lagging places were realigned later; the shipped behavior was never affected.
+
+## 2.6.2 - 2026-07-17
+- `SKILL.md` metadata: declare `source: local`. Documentation only.
+
+## 2.6.1 - 2026-07-16
+- `doctor` no longer reports a false "Hook wiring" failure when run from a different Python interpreter than the one that installed the hooks (e.g. a project venv vs the Homebrew install). The check now matches the registered command's package path, config path, platform and event exactly while allowing any interpreter segment; stale or relocated hook commands still fail the check as before.
+
+## 2.6.0 - 2026-07-13
+- Correction capture now pre-filters non-human text, fixing real noise observed in review: messages beginning with client-injected system tags (`<task-notification>`, `<system-reminder>` and similar, fullwidth variants included) are never treated as corrections, and correction keywords appearing only inside fenced code blocks (pasted logs, diffs) no longer trigger capture. Human text outside the fences still captures normally. This keeps review effort and machine-generated private paths out of the candidate inbox; the human review gate is unchanged.
+
+## 2.5.1 - 2026-07-13
+- Skill triggering and self-containment fixes from a best-practices review. The SKILL.md description now carries Chinese trigger phrases (`zh_description` in metadata is never injected into agent context, so Chinese requests previously had nothing to match); the Commands section states that commands must run from the skill install directory and how to locate it (the package is not installed into site-packages, so `python3 -m self_improving` fails elsewhere); the full `review approve/reject/revoke/legacy-list/import-legacy` command templates used by the pre-review flow are listed; references carry when-to-read guidance.
+- Replace the cryptic "2.2 review command" wording with "`review approve` command" across SKILL.md, `docs/privacy.md`, `docs/hooks.md`, `docs/migration.md` and `docs/quickstart-zh.md`; drop the stale "in version 2.2" support statement in README. Documentation only, no code behavior changes.
+- Add `.DS_Store` to `.gitignore` for clones without a global ignore file.
+- `migrate legacy` preview no longer suggests `--apply` when a configuration already exists; it now says apply will refuse and points to `upgrade`, matching the documented refusal behavior.
+- Replace the lottery/short-video project names in the Chinese quickstart with a neutral example, and switch its scope example to a placeholder absolute path, so the repo's own red-line scan passes on every published doc.
+
+## 2.5.0 - 2026-07-12
+- Codex authority-write guard now emits the same PreToolUse `ask` permission decision as Claude Code, verified against codex-cli 0.144.1 which parses the identical `hookSpecificOutput` protocol. One-click batch approval now works the same way on both platforms; no more hand-pasting commands into a terminal. Codex versions too old to parse hook decisions do not enforce the guard — upgrade Codex.
+
+## 2.4.0 - 2026-07-12
+- Add an agent pre-review path toward low-friction learning: `review list --json` emits machine-readable pending candidates, and `SessionStart` injects a review reminder with pre-review guidance once pending candidates reach the reminder threshold. Agents draft distilled rules and recommendations; approval still requires explicit user consent in conversation plus the client permission dialog, and raw candidates are still never injected.
+- Recognize Chinese memory directory names (`领域知识`, `项目`, `创作风格`, `归档`, `草稿`) as index categories alongside the legacy English names, whose labels now match (`archive` → `归档`, `styles` → `创作风格`).
+
+## 2.3.0 - 2026-07-12
+- Claude Code authority-write guard now returns a PreToolUse `ask` decision instead of a hard block: the user approves or rejects the specific write in the client permission dialog, which in-session text (including injected content) cannot forge. Codex keeps the hard block because it has no equivalent ask mechanism.
+- Add `方案` as a recognized memory index category alongside the legacy `设计` directory name.
+- Stop link-checking auto-captured candidate logs under `.learnings/`: untrusted captured text is not a document and produced false broken-link warnings in `doctor`.
+
+## 2.2.1 - 2026-07-12
+- Add `review legacy-list` with content-derived stable IDs and an explicit `review import-legacy` path that requires a newly distilled answer and global/project scope.
+- Make the private approval ledger append-only: approval, revocation and re-approval are auditable events in one authoritative file instead of cross-file state changes.
+- Enforce one active rule per legacy source; changing its answer or scope requires revocation first.
+
+## 2.2.0 - 2026-07-12
+- Inject human-approved corrections into new Claude Code and Codex sessions within configurable count and character budgets.
+- Keep raw correction candidates out of Agent instructions and preserve the human review gate.
+- Store new approvals in a machine-readable private JSONL ledger with explicit global/project scope; legacy Markdown rows remain audit-only.
+- Add an 8,000-character default budget for the core memory and protect both authority stores from common Agent writes and shell-invoked approval bypasses.
+- Add learning-loop health reporting for pending, approved, and currently injectable corrections.
+- Add a Chinese zero-to-one guide and troubleshooting guide for first-time users.
+- Keep 2.1.x configuration compatible and fill the new injection defaults during upgrade.
+
+## 2.1.1 - 2026-07-11
+- Fixed the authority-write guard falsely blocking read-only commands: redirects to `/dev/null` and file descriptors (e.g. `2>/dev/null`, `2>&1`) no longer count as write signals.
+
+## 2.1.0 - 2026-07-11
+- Removed the mandatory `YYYY-MM-DD-` date-prefix naming convention and its doctor check; memory documents may use plain descriptive names.
+
+## 2.0.0 - 2026-07-11
+- Separated public code, user configuration, runtime state, and private memory.
+- Added configurable Claude Code and Codex Hook adapters.
+- Added initialization, health checks, persistence controls, legacy migration, upgrades, review, and uninstall commands.
+- Replaced fixed author paths with versioned configuration.
+- Added safe defaults that keep centralized command-error persistence disabled for new users.
+- Added stable index generation, document naming/link checks, and real-event coverage reporting.
+- Verified all five Hook event types in fresh Claude Code and Codex sessions.
+- Added sanitized real-schema fixtures to catch platform payload drift.
