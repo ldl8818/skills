@@ -1,0 +1,388 @@
+{
+  "schema": 2,
+  "repository": "https://github.com/tw93/Waza",
+  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "source_path": "skills/check",
+  "files": {
+    "SKILL.md": {
+      "upstream_sha256": "dbf7cc3adfab3b2e9735f2bce9e1a89290767f66d29ec715bc7e39b8367ba4fa",
+      "local_sha256": "edf71009727565d3ad63f09c77bb77c1fa49d32295c3aba8f1dc7ca6b33c8b3e",
+      "status": "adapted",
+      "upstream_fields": {
+        "description": "description: \"Reviews diffs, PRs, release readiness, and publishing follow-through. Use when asked to review, triage issues or PRs, or ship. Not for debugging root causes or prose.\"\n",
+        "when_to_use": "when_to_use: \"review, 看看代码, 检查一下, 合并前, 看看issue, 看看PR, release, publish, push, 发布, 提交, close issue, 关闭issue, release reaction, 发布表情, before merge, 值得发布, code review, code-review, audit, 项目体检, 项目评分, scorecard\"\n",
+        "dispatch_intent": "dispatch_intent: \"Code review, before merge, release gates, generated artifacts, safety sinks, publish/push/reaction follow-through, triage issues/PRs, project-wide code-quality audit scorecard\"\n"
+      },
+      "reason": [
+        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy.",
+        "Keep the required host salutation and output format instead of the upstream marker.",
+        "Preserve standing necessary repair authorization without broadening external writes.",
+        "Do not require redundant per-finding approval when repair is already authorized.",
+        "Retain local risk-based depth; line and file counts cannot choose review severity.",
+        "Keep repair classification aligned with existing authorization.",
+        "Respect existing authorization in autofix routing.",
+        "Keep the existing OCR adapter, complete task scope and proportional verification alongside the restored upstream review modes.",
+        "Document the discovery default and explicit execution path."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            3,
+            4
+          ],
+          "local_lines": [
+            3,
+            4
+          ],
+          "removed_sha256": "a01f0aad6160a1329bf35f0c95d2ce8d598e579774fd8aaa203aa9cde65d44d3",
+          "added_sha256": "ac1385be1e5446134f50e29a9b4075ff2d13dbb5214d1c3adf7ff2be628eb1dd"
+        },
+        {
+          "upstream_lines": [
+            5,
+            5
+          ],
+          "local_lines": [
+            5,
+            17
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "69fbbfea620fc580c1b95b53ccb995fa2b9f4297c47e4bc25eff200281bba837"
+        },
+        {
+          "upstream_lines": [
+            9,
+            10
+          ],
+          "local_lines": [
+            21,
+            22
+          ],
+          "removed_sha256": "0e4f97f609ed61e3adb1694cca3163f9f2bdc7e93d20166513b1b180484053f8",
+          "added_sha256": "84876eff960eac289181c8f7bde1e9c85010c5a0538fa4ffc48b82c9924db8bf"
+        },
+        {
+          "upstream_lines": [
+            13,
+            14
+          ],
+          "local_lines": [
+            25,
+            26
+          ],
+          "removed_sha256": "c1d561b1fd9ade67764e4f3784837647822f8a4d0d4d6f7b62affb4054b09410",
+          "added_sha256": "4f68587046c537c2ad854556a48b8d6235be9558e231d6545fa6cb80127b386a"
+        },
+        {
+          "upstream_lines": [
+            21,
+            22
+          ],
+          "local_lines": [
+            33,
+            34
+          ],
+          "removed_sha256": "e995c3e5cde0dd731aeda360d6106ac3a5f6a67fe6b6c954e911bfda8c083340",
+          "added_sha256": "0cdcd399a29bb44c8689bbec547faeac24039fc8b4aeab7db3890159c515fe73"
+        },
+        {
+          "upstream_lines": [
+            96,
+            99
+          ],
+          "local_lines": [
+            108,
+            111
+          ],
+          "removed_sha256": "f1ad807c0063c6ff7af22ee0c96c78a69c22eb97529a3abbaa1168d928969772",
+          "added_sha256": "06cc7c334154405f79bc05e3d6356a390b0b50d3da2d1f7964dc4a650886e9e3"
+        },
+        {
+          "upstream_lines": [
+            170,
+            171
+          ],
+          "local_lines": [
+            182,
+            183
+          ],
+          "removed_sha256": "92ff2cdb46007ab5374676fd1e60042f2060e752e40aa5c8746773b926556514",
+          "added_sha256": "640df6baceb908a91e6c6ba4c7b66a79482adb11d203d6e1550c733ee5554375"
+        },
+        {
+          "upstream_lines": [
+            175,
+            176
+          ],
+          "local_lines": [
+            187,
+            188
+          ],
+          "removed_sha256": "354366270ea08022e007302c9a2b58a8e1e74958aab913c6fdab44f51d6f8c03",
+          "added_sha256": "c3591ea0f20f39690db4286dc186f6540a18f893fc8bfb6a7a4a996115d7410c"
+        },
+        {
+          "upstream_lines": [
+            189,
+            190
+          ],
+          "local_lines": [
+            201,
+            202
+          ],
+          "removed_sha256": "5945351061a3ab3275c54726e4f1419ff94e1fa003d7991b271bbb04b1554595",
+          "added_sha256": "6116f7f6f361a4a94110c19b8c0a134916638086aa8bf56c98145acdcef2a70c"
+        },
+        {
+          "upstream_lines": [
+            228,
+            228
+          ],
+          "local_lines": [
+            240,
+            246
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "ae25cebc674bf6c179a6b27811e93b1debd5c2a63ea33402b36a3fe3914215c4"
+        }
+      ],
+      "sections": {
+        "# Check: Review Before You Ship": "# Check: Review Before You Ship",
+        "## Adversarial Pass (Deep only)": "## Adversarial Pass (Deep only)",
+        "## Autofix Routing": "## Autofix Routing",
+        "## Command And Install Surfaces": "## Command And Install Surfaces",
+        "## Did We Build What Was Asked?": "## Did We Build What Was Asked?",
+        "## Durable Context Preflight": "## Durable Context Preflight",
+        "## Finding Quality Gate": "## Finding Quality Gate",
+        "## Get the Diff": "## Get the Diff",
+        "## Gotchas": "## Gotchas",
+        "## Hard Rules": "## Hard Rules",
+        "## Hard Stops (fix before merging)": "## Hard Stops (fix before merging)",
+        "## Knowledge Sync": "## Knowledge Sync",
+        "## Mode Picker": "## Mode Picker",
+        "## Outcome Contract": "## Outcome Contract",
+        "## Pattern-Fix Completeness": "## Pattern-Fix Completeness",
+        "## Plan Execution Mode": "## Plan Execution Mode",
+        "## Platform Operations": "## Platform Operations",
+        "## Project Context Extraction": "## Project Context Extraction",
+        "## Question the Approach, Not Just the Diff": "## Question the Approach, Not Just the Diff",
+        "## Scope": "## Scope",
+        "## Sign-off": "## Sign-off",
+        "## Specialist Review (Standard and Deep only)": "## Specialist Review (Standard and Deep only)",
+        "## Verification": "## Verification",
+        "## Worktree Safety Preflight": "## Worktree Safety Preflight"
+      }
+    },
+    "agents/reviewer-architecture.md": {
+      "upstream_sha256": "f677dcffab43a854b5133aebea64988bc32a417c4068ec95a10a5b2f56a21f22",
+      "local_sha256": "f677dcffab43a854b5133aebea64988bc32a417c4068ec95a10a5b2f56a21f22",
+      "status": "identical",
+      "sections": {
+        "# Architecture Reviewer": "# Architecture Reviewer",
+        "## Focus Areas": "## Focus Areas",
+        "## Output Format": "## Output Format",
+        "## Scope Rules": "## Scope Rules"
+      }
+    },
+    "agents/reviewer-security.md": {
+      "upstream_sha256": "c391e0617a3a19835cdf336bd1c9e33b9233b77a418d4021ee3654c85942739d",
+      "local_sha256": "c391e0617a3a19835cdf336bd1c9e33b9233b77a418d4021ee3654c85942739d",
+      "status": "identical",
+      "sections": {
+        "# Security Reviewer": "# Security Reviewer",
+        "## Focus Areas": "## Focus Areas",
+        "## Output Format": "## Output Format",
+        "## Scope Rules": "## Scope Rules"
+      }
+    },
+    "references/durable-context.md": {
+      "upstream_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "local_sha256": "c2308bdca7cd0d3f587d70c91cbc24b0574f235ea714b5098ccd31d450115bfc",
+      "status": "identical",
+      "sections": {
+        "# Durable Context Preflight": "# Durable Context Preflight",
+        "## Current state wins": "## Current state wins",
+        "## Memory is not authorization": "## Memory is not authorization",
+        "## Redaction gate": "## Redaction gate",
+        "## Scope": "## Scope"
+      }
+    },
+    "references/mode-audit.md": {
+      "upstream_sha256": "074ae61d94fc1508c1299d6bd256bec29fe014dcb645ec9df9a9946d523e8b0e",
+      "local_sha256": "074ae61d94fc1508c1299d6bd256bec29fe014dcb645ec9df9a9946d523e8b0e",
+      "status": "identical",
+      "sections": {
+        "# Project Audit Mode (project-wide scorecard)": "# Project Audit Mode (project-wide scorecard)"
+      }
+    },
+    "references/mode-ship.md": {
+      "upstream_sha256": "3d5c88991cb3480be7c1d5373b4649a2198b9734c311b2cd4bb99ad675922592",
+      "local_sha256": "3d5c88991cb3480be7c1d5373b4649a2198b9734c311b2cd4bb99ad675922592",
+      "status": "identical",
+      "sections": {
+        "# Release Worthiness And Ship Follow-through": "# Release Worthiness And Ship Follow-through",
+        "## Release Worthiness Analysis": "## Release Worthiness Analysis",
+        "## Ship / Release Follow-through": "## Ship / Release Follow-through",
+        "### Reworked Or Cancelled Release Gate": "### Reworked Or Cancelled Release Gate"
+      }
+    },
+    "references/mode-triage.md": {
+      "upstream_sha256": "7a7b68abea50a3c6af0b8f3c797e9d668f3120847241af89caa07011ffdbc8e6",
+      "local_sha256": "c521200ce47d9760789211429f141eebdf807eff4e5b2c1208790b99a6a23f51",
+      "status": "adapted",
+      "reason": [
+        "Queue classification cannot authorize public writes."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            26,
+            26
+          ],
+          "local_lines": [
+            26,
+            28
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "142dcf04b227c4b75215db67e70969425644edd5e0167965521c2105ee222fde"
+        }
+      ],
+      "sections": {
+        "# Triage Mode (issue / PR queues)": "# Triage Mode (issue / PR queues)"
+      }
+    },
+    "references/persona-catalog.md": {
+      "upstream_sha256": "46485f0666d1ff224ac1e7466a778cc7c23ac6381020ba4a0bb16dc6f36092b0",
+      "local_sha256": "417f5cb54c924d29e695c9f0c328937583dfb15bad1bf0faf4334688cbde4eca",
+      "status": "adapted",
+      "reason": [
+        "Preserve conditional, risk-proportionate delegation instead of invoking agents merely because the facility exists."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            6,
+            7
+          ],
+          "local_lines": [
+            6,
+            7
+          ],
+          "removed_sha256": "e1a7ebbc34d8cedf92babcd3dd0cc052146bd765768f3b36f245c8dc6229c33b",
+          "added_sha256": "5bd54752087899e63fc8169e3e48fb5cd5e5ab6b716f11f2961e581e52dde716"
+        }
+      ],
+      "sections": {
+        "# Specialist Reviewer Activation Catalog": "# Specialist Reviewer Activation Catalog",
+        "## Adversarial Pass (Deep only)": "## Adversarial Pass (Deep only)",
+        "## Always-On (no condition required)": "## Always-On (no condition required)",
+        "## Conditional Specialists": "## Conditional Specialists",
+        "## Review Coordination": "## Review Coordination",
+        "### Architecture Reviewer": "### Architecture Reviewer",
+        "### Security Reviewer": "### Security Reviewer"
+      }
+    },
+    "references/project-context.md": {
+      "upstream_sha256": "3da5ec64a9b7e2a4514716d6d58d273c73d705844f7f8b139cb8a739a08f7dc1",
+      "local_sha256": "3da5ec64a9b7e2a4514716d6d58d273c73d705844f7f8b139cb8a739a08f7dc1",
+      "status": "identical",
+      "sections": {
+        "# Project Review Context Template": "# Project Review Context Template",
+        "## CLI Command Surface": "## CLI Command Surface",
+        "## Project Commands": "## Project Commands",
+        "## Project Hard Stops": "## Project Hard Stops",
+        "## Project-Specific Risks": "## Project-Specific Risks",
+        "## Public Replies": "## Public Replies",
+        "## Recommended Context Shape": "## Recommended Context Shape",
+        "## Release Follow-through": "## Release Follow-through",
+        "## Release Gate 2.0 Matrix": "## Release Gate 2.0 Matrix",
+        "## Safety Sink Review": "## Safety Sink Review",
+        "## Skill Or Plugin Install Surface": "## Skill Or Plugin Install Surface",
+        "## What Belongs In Project Context": "## What Belongs In Project Context",
+        "## What Belongs In Waza `/check`": "## What Belongs In Waza `/check`",
+        "## What Does Not Belong In Public Context": "## What Does Not Belong In Public Context"
+      }
+    },
+    "references/public-reply.md": {
+      "upstream_sha256": "1d1796c1ed23b7953008349e9db752ec98ffb4dddf29c8b852ea3466cbe820ed",
+      "local_sha256": "1d1796c1ed23b7953008349e9db752ec98ffb4dddf29c8b852ea3466cbe820ed",
+      "status": "identical",
+      "sections": {
+        "# Public Reply Mechanics (maintainer, issue or PR)": "# Public Reply Mechanics (maintainer, issue or PR)"
+      }
+    },
+    "references/release-surfaces.md": {
+      "upstream_sha256": "d1969e7bd947a4b23b21b349271b9c4cac835a2c8b449d947dd2ff228c4f018b",
+      "local_sha256": "d1969e7bd947a4b23b21b349271b9c4cac835a2c8b449d947dd2ff228c4f018b",
+      "status": "identical",
+      "sections": {
+        "# Release Surface Review Methods": "# Release Surface Review Methods",
+        "## CLI Command Surface": "## CLI Command Surface",
+        "## Packaged Install Surface": "## Packaged Install Surface",
+        "## Reworked Or Cancelled Release Gate": "## Reworked Or Cancelled Release Gate"
+      }
+    },
+    "references/review-patterns.md": {
+      "upstream_sha256": "72dc9727f1a27f88423506b0a208ee01d7e2187c2e6fde55680a3736f79a5dbf",
+      "local_sha256": "72dc9727f1a27f88423506b0a208ee01d7e2187c2e6fde55680a3736f79a5dbf",
+      "status": "identical",
+      "sections": {
+        "# Conditional Review Patterns": "# Conditional Review Patterns",
+        "## Captured output and asynchronous completion": "## Captured output and asynchronous completion",
+        "## Dependency changes": "## Dependency changes",
+        "## Destructive matcher breadth": "## Destructive matcher breadth",
+        "## Duplicated derivations": "## Duplicated derivations",
+        "## History-sensitive normalization": "## History-sensitive normalization",
+        "## Never-shipped migrations": "## Never-shipped migrations",
+        "## Non-atomic replacement of user files": "## Non-atomic replacement of user files",
+        "## Recurring or hard-to-observe bugs": "## Recurring or hard-to-observe bugs",
+        "## Simplification and deletion": "## Simplification and deletion",
+        "## Test surface fidelity": "## Test surface fidelity",
+        "## Unknown identifiers": "## Unknown identifiers"
+      }
+    },
+    "scripts/audit_signals.py": {
+      "upstream_sha256": "a9fc0aa115917850f73b89fb05780ebf83c0db2f6ced270e10fb18a5343a534b",
+      "local_sha256": "a9fc0aa115917850f73b89fb05780ebf83c0db2f6ced270e10fb18a5343a534b",
+      "status": "identical"
+    },
+    "scripts/release_gate.py": {
+      "upstream_sha256": "726106652bc2f9fcfe1556f9cc826e2a4c260254303005290c305efb4614ed7e",
+      "local_sha256": "726106652bc2f9fcfe1556f9cc826e2a4c260254303005290c305efb4614ed7e",
+      "status": "identical"
+    },
+    "scripts/run-tests.sh": {
+      "upstream_sha256": "21c0103486b69e5f55fa900f81e91fbec1418900f7edd90570b7ab93abfc4dc6",
+      "local_sha256": "c84ec9a595c6b5b6dc1b1def4cb7be50300aa9179fca08bfa656b17a5fe3a7f5",
+      "status": "adapted",
+      "reason": [
+        "Keep complete upstream execution behind explicit --execute; preserve the existing discovery-only default."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            4,
+            4
+          ],
+          "local_lines": [
+            4,
+            19
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "8e950b7ce612779620e8424d354b855f63710cce2ea8b081c2c1367bbc856985"
+        }
+      ]
+    }
+  },
+  "local_only": {
+    "LICENSE": "83ef2e3caa22ff257740df8684627ef8c4e21102986cf943e3fdd31ca7b430d5",
+    "LICENSE-APACHE": "1945665fdb6968a66ea29438ddee0aee23035365c862e5c4a75b62b303340acf",
+    "NOTICE.md": "c09edb760501488413e63d2081978a9887adc4e85ec8c5d77cc3964b9a45e847",
+    "references/OCR完整引擎.md": "de3f613934427fe6417b51b33443aa66a76860b5274f882951748766d2bd0cfb",
+    "references/open-code-review.md": "ae3a76ae87dbd34916dfa4c940282a69c23a2d42f4a3a00abcbb1e0e09d7d2e7",
+    "references/review-scope.md": "2ef95302ef91d31f9d9f0dcdcdd9959ba810b8c7f76bee63e7f341fca1d92a63",
+    "references/深入审查.md": "ddf90e58e040cf3e9955e58e0c27c7b7bc35b7734c2e98698b72a36855fca878",
+    "scripts/review_scope.py": "972559ba0a50a190c40185259b5cb0540e2e5be32772fbabbfdcc8ae76d35157",
+    "tests/test_review_scope.py": "fb9de3be156e3855b79d74cee4d557338c57e3268eedf48df79d9e904512e39d"
+  }
+}
