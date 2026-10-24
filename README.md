@@ -19,6 +19,30 @@
 
 每个 Skill 的依赖、安装和验证命令以其目录内的 `README.md` 与 `SKILL.md` 为准。
 
+## 独立版本下载
+
+以下标签指向各自的独立源码快照。下载包只包含对应的 `<Skill名>/` 目录、仓库许可和分发说明，不包含其他 Skill；`main` 继续保存完整仓库。
+
+| Skill | 版本标签 |
+|---|---|
+| check | [check-v6.1.0](https://github.com/ldl8818/skills/archive/refs/tags/check-v6.1.0.zip) |
+| health | [health-v4.1.0](https://github.com/ldl8818/skills/archive/refs/tags/health-v4.1.0.zip) |
+| hunt | [hunt-v4.3.1](https://github.com/ldl8818/skills/archive/refs/tags/hunt-v4.3.1.zip) |
+| lookup | [lookup-v2.3.1](https://github.com/ldl8818/skills/archive/refs/tags/lookup-v2.3.1.zip) |
+| luobo-ppt | [luobo-ppt-v1.0.1](https://github.com/ldl8818/skills/archive/refs/tags/luobo-ppt-v1.0.1.zip) |
+| neat-freak | [neat-freak-v3.1.0](https://github.com/ldl8818/skills/archive/refs/tags/neat-freak-v3.1.0.zip) |
+| self-improving | [self-improving-v3.1.3](https://github.com/ldl8818/skills/archive/refs/tags/self-improving-v3.1.3.zip) |
+| skill-manager | [skill-manager-v2.10.0](https://github.com/ldl8818/skills/archive/refs/tags/skill-manager-v2.10.0.zip) |
+| think | [think-waza-v3.40.0](https://github.com/ldl8818/skills/archive/refs/tags/think-waza-v3.40.0.zip) |
+| ui | [ui-v4.1.0](https://github.com/ldl8818/skills/archive/refs/tags/ui-v4.1.0.zip) |
+| write | [write-v4.2.0](https://github.com/ldl8818/skills/archive/refs/tags/write-v4.2.0.zip) |
+
+`think` 使用已登记的 Waza 原版基线版本，不另编自身版本；`download-video` 尚无已登记版本，暂不建立数字版本标签。
+
+独立快照中的 Skill 文件与标签说明记录的来源目录逐字一致，快照提交不带整仓父提交。跨目录文档的固定来源链接、外部工具与跨 Skill 协作前提见下载包根目录的 `README.md`；单包不包含批量冻结安装器需要的其他 Skill。解压后使用包内对应目录，保护已有安装。源码分发、隔离入口检查与真实业务／客户端验收分别判断。
+
+已发布标签保持固定；后续内容变化时先按相应 Skill 的版本规则登记，再创建新标签。本次 `lookup-v2.3.1` 纠正了最初指向整仓提交的对象；之前下载的整仓归档应重新下载独立包。
+
 代码审查统一使用 `check`，以 [Waza 衍生的本地 Check](check/NOTICE.md) 为主干，Alibaba OCR 作为按需工具。影响局部、预期明确的改动直接检查和验证，不要求 OCR、额外清单或整套规则；资金、权限、状态变化、共享接口及跨模块影响进入[深入审查](check/references/深入审查.md)，先核对业务预期，再沿调用关系审查、修复和验证。复杂审查按需使用 Delegate 的规则，模型工作仍由当前宿主会话完成，无需独立 API。代码、Markdown／配套文档、测试、未跟踪文件及删除影响按任务纳入，不以 OCR 筛选结果缩小范围。只有明确选择且模型通道获授权时才运行完整 OCR；命令见[接入说明](check/references/open-code-review.md)。具体故障使用 `hunt`，必要时衔接 `check`，再验证原故障路径。
 
 ## 命令
