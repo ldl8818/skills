@@ -1,0 +1,846 @@
+{
+  "version": 5,
+  "_doc": "Lookup 的必要合约与任务边界，不是完整后端目录或自动执行器。候选按数组顺序列出，仅在条件相当时参考；实际选择见 references/任务选路.md。命令参数来自当前注册表／帮助；active/conditional 是登记状态，不表示当前健康。auth 描述认证依赖类型，不证明当前是否登录；browser-session 也不要求所有动作先登录。登录准备见 references/opencli-windows.md#登录准备与恢复。",
+  "failure_domains": {
+    "_model": "分别判断浏览器进程、站点账号、bridge+Profile、site+action；只有共享实际依赖才共享故障。",
+    "opencli-browser": "浏览器进程 + 目标账号 + 具体 adapter；Browser Bridge 固定已确认的 ego-lite contextId，不默认选择产品名别名；CDP 只接受绑定中已确认的 ego-lite endpoint",
+    "host-browser-api": "当前 Agent 实际发现的浏览器能力；是否与其他候选共享进程/Profile/账号需现场核对",
+    "ego-browser-api": "ego-browser 原生执行接口；仍依赖 ego lite 与其对应会话，不依赖 OpenCLI bridge/adapter",
+    "direct-http": "本机直连或已配置网络路径，不依赖浏览器；仍受原站/账号/网络限制",
+    "sogou": "搜狗微信搜索/跳转上游",
+    "remote-http": "第三方服务，受配额、数据外发和原站可用性约束",
+    "local-data": "仅用户指定的本机数据源"
+  },
+  "failure_classes": [
+    "auth_required",
+    "unsupported_action",
+    "invalid_output",
+    "rate_limited",
+    "network",
+    "bridge_profile",
+    "deadline_exceeded",
+    "unknown"
+  ],
+  "ego_browser": {
+    "provider_id": "ego-browser",
+    "failure_domain": "ego-browser-api",
+    "invocation": "read-current-ego-browser-skill-guide",
+    "use_when": [
+      "无合适专用来源且本机日常外部网页需要浏览器",
+      "平台抓取已满足 references/failure-domains.md#适配器修复与浏览器兜底 的条件",
+      "CLI 登录准备确需该接口，且已确认它指向 CLI 原绑定的同一浏览器和 Profile；只辅助人工交接，见 references/opencli-windows.md#登录准备与恢复",
+      "用户明确指定ego环境",
+      "本地 Web UI 调试没有可用的 Agent 内置浏览器，或其能力不足"
+    ],
+    "useless_when": [
+      "已确认同一ego进程不可用",
+      "抓取兜底仍复用同一认证失效或风控中的站点账号；人工登录准备按独立流程交接"
+    ],
+    "requires": [
+      "通过 ego-browser skill 读取与安装版本匹配的完整指南",
+      "平台抓取不能因一次动作失败、缺参数或需要渲染直接兜底；修复与停止条件见 references/failure-domains.md#适配器修复与浏览器兜底",
+      "只操作本任务已证明归属的空间",
+      "用户接管或权限拒绝后停止相关操作"
+    ]
+  },
+  "actions": {
+    "x/search": {
+      "desc": "搜 X 推文",
+      "providers": [
+        {
+          "id": "opencli-twitter-search",
+          "type": "opencli",
+          "command": "twitter/search",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "query",
+            "product",
+            "limit"
+          ],
+          "required_columns": [
+            "author",
+            "text",
+            "created_at",
+            "url"
+          ],
+          "policy_args": [
+            {
+              "name": "product",
+              "value": "live",
+              "when": "用户要求最新/最近/今天"
+            }
+          ],
+          "keep_fields": [
+            "author",
+            "text",
+            "created_at",
+            "url",
+            "likes",
+            "retweets",
+            "replies",
+            "quotes",
+            "bookmarks",
+            "views",
+            "shares"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/twitter/search",
+          "evidence_type": "full_text",
+          "_note": "短帖正文完整且覆盖任务时直接用；线程/长文/上下文缺口才补读。互动指标按本地指标补丁保留，null为未提供；retweets是转帖、quotes是引用、bookmarks是书签，不能合并冒充分享数。"
+        }
+      ]
+    },
+    "x/article": {
+      "desc": "取 X 长文正文",
+      "providers": [
+        {
+          "id": "opencli-twitter-article",
+          "type": "opencli",
+          "command": "twitter/article",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "tweet-id"
+          ],
+          "required_columns": [
+            "title",
+            "author",
+            "content",
+            "url"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/twitter/article",
+          "evidence_type": "full_text"
+        }
+      ]
+    },
+    "x/thread": {
+      "desc": "取 X 整串推文",
+      "providers": [
+        {
+          "id": "opencli-twitter-thread",
+          "type": "opencli",
+          "command": "twitter/thread",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "tweet-id",
+            "limit"
+          ],
+          "required_columns": [
+            "author",
+            "text",
+            "url"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/twitter/thread",
+          "evidence_type": "full_text"
+        }
+      ]
+    },
+    "x/tweets": {
+      "desc": "取指定账号最近推文",
+      "providers": [
+        {
+          "id": "opencli-twitter-tweets",
+          "type": "opencli",
+          "command": "twitter/tweets",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "username",
+            "limit"
+          ],
+          "required_columns": [
+            "author",
+            "text",
+            "created_at",
+            "url"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/twitter/tweets",
+          "evidence_type": "full_text"
+        }
+      ]
+    },
+    "youtube/search": {
+      "desc": "搜 YouTube 视频",
+      "providers": [
+        {
+          "id": "ytdlp-search",
+          "type": "cli",
+          "status": "active",
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "bin": "yt-dlp",
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "metadata"
+        }
+      ]
+    },
+    "youtube/transcript": {
+      "desc": "取 YouTube 字幕正文",
+      "providers": [
+        {
+          "id": "ytdlp-subs",
+          "type": "cli",
+          "status": "active",
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "bin": "yt-dlp",
+          "post": "scripts/clean-subtitles.py <actual-vtt-file>",
+          "cleanup": "仅清理本任务生成的已确认路径",
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "subtitles",
+          "_note": "先确认人工/自动轨道及可用语言；请求语言无字幕不代表视频无字幕；不凭warning单独判成功或失败"
+        },
+        {
+          "id": "opencli-youtube-transcript",
+          "type": "opencli",
+          "command": "youtube/transcript",
+          "status": "conditional",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "url",
+            "mode"
+          ],
+          "required_columns": [],
+          "normalizer_provider": "opencli/youtube/transcript",
+          "evidence_type": "subtitles",
+          "validator": "task_sufficient_with_provenance",
+          "_note": "先检查当前注册表与帮助；已核对实现支持 url/lang/mode，raw/grouped 模式输出不同而未声明 columns，按实际字幕文本与定位验收，不虚构固定字段",
+          "_source": "https://github.com/jackwener/opencli/blob/b06ab7780e73d3021e12e0f170086c2d55675776/clis/youtube/transcript.js#L125-L139"
+        },
+        {
+          "id": "agent-reach-transcribe",
+          "type": "cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "configured-transcription-provider",
+          "bin": "python3",
+          "entry": "scripts/reach.py run transcribe",
+          "evidence_type": "asr",
+          "local_effect": "temporary-audio",
+          "validator": "task_sufficient_with_provenance",
+          "requires": [
+            "scripts/reach.py status确认融合运行时已准备；普通查询不自动prepare",
+            "已有ffmpeg/ffprobe与转写配置",
+            "音频外发/费用在任务授权范围内",
+            "音频可获取"
+          ],
+          "_note": "使用随包融合引擎，不要求独立agent-reach命令；默认只使用已选服务商，不自动配置Key、跨服务商或把ASR称为原始字幕"
+        }
+      ]
+    },
+    "xhs/search": {
+      "desc": "搜小红书笔记列表",
+      "providers": [
+        {
+          "id": "opencli-xhs-search",
+          "type": "opencli",
+          "command": "xiaohongshu/search",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "query",
+            "limit"
+          ],
+          "required_columns": [
+            "title",
+            "author",
+            "published_at",
+            "url"
+          ],
+          "keep_fields": [
+            "title",
+            "author",
+            "likes",
+            "collects",
+            "comments",
+            "shares",
+            "published_at",
+            "url",
+            "access_url",
+            "xsec_token",
+            "xsec_source"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/xiaohongshu/search",
+          "preserve_access_url": true,
+          "access_context": "保留原始可访问URL及xsec_token/xsec_source等已有必要参数；不要用规范化URL覆盖",
+          "evidence_type": "excerpt"
+        }
+      ]
+    },
+    "xhs/detail": {
+      "desc": "取小红书笔记正文",
+      "providers": [
+        {
+          "id": "opencli-xhs-note",
+          "type": "opencli",
+          "command": "xiaohongshu/note",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "note-id"
+          ],
+          "required_columns": [
+            "field",
+            "value"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/xiaohongshu/note",
+          "preserve_access_url": true,
+          "access_context": "保留原始可访问URL及xsec_token/xsec_source等已有必要参数；不要用规范化URL覆盖",
+          "evidence_type": "full_text",
+          "_note": "note参数名称由注册表确认；优先传含访问参数的完整URL而非裸ID"
+        }
+      ]
+    },
+    "xhs/comments": {
+      "desc": "取小红书评论",
+      "providers": [
+        {
+          "id": "opencli-xhs-comments",
+          "type": "opencli",
+          "command": "xiaohongshu/comments",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "note-id",
+            "limit"
+          ],
+          "required_columns": [
+            "author",
+            "text",
+            "time"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/xiaohongshu/comments",
+          "preserve_access_url": true,
+          "access_context": "保留原始可访问URL及xsec_token/xsec_source等已有必要参数；不要用规范化URL覆盖",
+          "evidence_type": "comments",
+          "_note": "若当前评论动作仅接裸ID且访问上下文不足，使用支持完整定位的动作或浏览器，不凭空构造token"
+        }
+      ]
+    },
+    "bilibili/search": {
+      "desc": "搜 B站视频",
+      "providers": [
+        {
+          "id": "bili-search",
+          "type": "cli",
+          "status": "active",
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "bin": "bili",
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "metadata",
+          "freshness_policy": "仅实际可核对时间和支持的排序能证明最新；不足时用浏览器核对"
+        },
+        {
+          "id": "opencli-bilibili-search",
+          "type": "opencli",
+          "command": "bilibili/search",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "query",
+            "limit"
+          ],
+          "required_columns": [
+            "title",
+            "author",
+            "url"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/bilibili/search",
+          "evidence_type": "metadata",
+          "freshness_policy": "仅实际可核对时间和支持的排序能证明最新；不足时用浏览器核对"
+        }
+      ]
+    },
+    "bilibili/transcript": {
+      "desc": "取 B站视频字幕",
+      "providers": [
+        {
+          "id": "opencli-bilibili-subtitle",
+          "type": "opencli",
+          "command": "bilibili/subtitle",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "bvid"
+          ],
+          "required_columns": [
+            "from",
+            "to",
+            "content"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/bilibili/subtitle",
+          "evidence_type": "subtitles"
+        },
+        {
+          "id": "bili-audio-asr",
+          "type": "manual",
+          "status": "conditional",
+          "failure_domain": "direct-http",
+          "auth": "configured-transcription-provider",
+          "evidence_type": "asr",
+          "validator": "task_sufficient_with_provenance",
+          "requires": [
+            "bili音频动作存在且能取同一视频音频",
+            "已有转写能力与授权"
+          ],
+          "_note": "音频下载和ASR分别验收，不默认安装或切换服务商"
+        }
+      ]
+    },
+    "weixin/search": {
+      "desc": "搜公众号文章",
+      "providers": [
+        {
+          "id": "opencli-weixin-search",
+          "type": "opencli",
+          "command": "weixin/search",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "upstream_failure_domain": "sogou",
+          "auth": "none",
+          "required_access": "read",
+          "required_args": [
+            "query",
+            "limit"
+          ],
+          "required_columns": [
+            "title",
+            "url",
+            "summary",
+            "publish_time"
+          ],
+          "keep_fields": [
+            "title",
+            "summary",
+            "publish_time",
+            "url"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "normalizer_provider": "opencli/weixin/search",
+          "evidence_type": "excerpt",
+          "preserve_access_url": true
+        }
+      ]
+    },
+    "weixin/detail": {
+      "desc": "取公众号文章正文",
+      "providers": [
+        {
+          "id": "opencli-weixin-download",
+          "type": "opencli",
+          "command": "weixin/download",
+          "status": "conditional",
+          "failure_domain": "opencli-browser",
+          "auth": "none",
+          "required_access": "read",
+          "required_args": [
+            "url",
+            "output",
+            "download-images"
+          ],
+          "required_columns": [
+            "title",
+            "author",
+            "publish_time",
+            "status",
+            "saved"
+          ],
+          "local_effect": "write",
+          "validator": "task_sufficient_with_provenance",
+          "_note": "用户明确要求归档时优先使用；指定输出目录，需要配图时启用下载。返回的是归档元数据，须验实际正文与文件；非空Error行也可能失败。只阅读时使用其他适用正文来源，不额外归档；解析缺陷按 failure-domains.md 的修复规则处理。",
+          "normalizer_provider": "opencli/weixin/download",
+          "evidence_type": "metadata",
+          "preserve_access_url": true
+        },
+        {
+          "id": "ego-browser-weixin-dom",
+          "type": "manual",
+          "status": "conditional",
+          "failure_domain": "ego-browser-api",
+          "selectors": {
+            "title": "#activity-name",
+            "author": "#js_name",
+            "body": "#js_content"
+          },
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "full_text",
+          "_note": "通用浏览器抓取必须满足 failure-domains.md#适配器修复与浏览器兜底 的条件，或来自用户真实指定；中转解析优先 OpenCLI Browser，取得原文URL后回到适用动作。历史selector失效先修复，不因已核实缺口直接转 Ego。"
+        }
+      ]
+    },
+    "douyin/search": {
+      "desc": "搜 Douyin 视频",
+      "providers": [
+        {
+          "id": "opencli-douyin-search",
+          "type": "opencli",
+          "command": "douyin/search",
+          "status": "active",
+          "failure_domain": "opencli-browser",
+          "auth": "browser-session",
+          "required_access": "read",
+          "required_args": [
+            "query",
+            "limit"
+          ],
+          "required_columns": [
+            "desc",
+            "author",
+            "url"
+          ],
+          "keep_fields": [
+            "desc",
+            "author",
+            "url",
+            "likes"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "freshness_provable": false,
+          "normalizer_provider": "opencli/douyin/search",
+          "evidence_type": "metadata",
+          "unknown_metric_fields": [
+            "plays",
+            "comments",
+            "shares"
+          ],
+          "_note": "当前已核对版本使用0填充不可见指标；该版本的占位值应为未知，不能当真实零"
+        }
+      ],
+      "_note": "搜索卡片不能当完整视频内容；按需从注册表发现user-videos等动作，未配置独立任意视频正文/字幕承诺"
+    },
+    "web/fetch": {
+      "desc": "取任意网页正文",
+      "providers": [
+        {
+          "id": "lookup-fetch-sh",
+          "type": "cli",
+          "status": "active",
+          "failure_domain": "direct-http",
+          "auth": "none",
+          "bin": "bash",
+          "_note": "从 Lookup 根目录执行；仅请求原站，HTML/纯文本/Markdown分别提取，stdout含最终Source URL，stderr为状态JSON",
+          "normalizer_provider": "lookup/fetch",
+          "exit_codes": {
+            "0": "ok",
+            "3": "partial",
+            "1": "error",
+            "2": "invalid_args"
+          },
+          "output_budget_arg": "--max-output-chars",
+          "validator": "task_sufficient_with_provenance",
+          "max_output_chars": 40000,
+          "evidence_type": "full_text"
+        },
+        {
+          "id": "jina-reader",
+          "type": "http",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "none",
+          "bin": "curl",
+          "validator": "task_sufficient_with_provenance",
+          "max_output_chars": 40000,
+          "_note": "仅用于用户允许发送给第三方的公开 URL；认证、内网和敏感链接禁用",
+          "evidence_type": "full_text"
+        }
+      ]
+    },
+    "web/search/en": {
+      "desc": "英文语义搜索",
+      "providers": [
+        {
+          "id": "exa-mcp",
+          "type": "mcp-cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "oauth_or_none",
+          "bin": "mcporter",
+          "requires": [
+            "优先已授权且归属、免费余额和超额边界均已确认的宿主 Exa 连接器或 exa-account；账号条件未确认时可用已核对无认证的官方 exa 入口；明确额度耗尽或权限阻断时不在同服务换入口"
+          ],
+          "_note": "账号和免 Key 额度分别核对，接入与回执验收见 search-routing.md；免 Key 自检不证明账号可用",
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt"
+        },
+        {
+          "id": "tavily-mcp",
+          "type": "mcp-cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "oauth_or_keyless_header",
+          "bin": "mcporter",
+          "requires": [
+            "优先已授权且归属、免费余额和超额边界均已确认的 tavily-account；账号条件未确认时可用已核对无认证且带 Keyless Header 的 tavily；明确额度耗尽或权限阻断时不在同服务换入口"
+          ],
+          "policy_args": [
+            {
+              "name": "search_depth",
+              "value": "basic",
+              "when": "普通搜索"
+            }
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt",
+          "_note": "按 search-routing.md 的免费顺序与切换规则执行；工具名以当前 schema 为准"
+        },
+        {
+          "id": "doubao-web-search",
+          "type": "mcp-cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "protected_search_key",
+          "bin": "mcporter",
+          "conditional_args": [
+            "需要时效时添加 max_age_days: {freshness_days}"
+          ],
+          "keep_fields": [
+            "title",
+            "url",
+            "snippet",
+            "published_at",
+            "source"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt",
+          "requires": [
+            "已配置搜索专用 Key，已确认免费余额与超额停用边界"
+          ]
+        },
+        {
+          "id": "host-search-en",
+          "type": "manual",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "evidence_type": "excerpt",
+          "validator": "task_sufficient_with_provenance",
+          "requires": [
+            "宿主已提供合适的搜索能力"
+          ],
+          "_note": "按覆盖范围/时间参数选择，不假设固定工具名"
+        }
+      ],
+      "_note": "英文查国内主题仍优先豆包；具体顺序与切换见 search-routing.md。"
+    },
+    "web/search/zh": {
+      "desc": "中文全网搜索",
+      "providers": [
+        {
+          "id": "doubao-web-search",
+          "type": "mcp-cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "protected_search_key",
+          "bin": "mcporter",
+          "conditional_args": [
+            "需要时效时添加 max_age_days: {freshness_days}"
+          ],
+          "keep_fields": [
+            "title",
+            "url",
+            "snippet",
+            "published_at",
+            "source"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt",
+          "requires": [
+            "已配置搜索专用 Key，已确认免费余额与超额停用边界"
+          ]
+        },
+        {
+          "id": "tavily-mcp",
+          "type": "mcp-cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "oauth_or_keyless_header",
+          "bin": "mcporter",
+          "requires": [
+            "优先已授权且归属、免费余额和超额边界均已确认的 tavily-account；账号条件未确认时可用已核对无认证且带 Keyless Header 的 tavily；明确额度耗尽或权限阻断时不在同服务换入口"
+          ],
+          "policy_args": [
+            {
+              "name": "search_depth",
+              "value": "basic",
+              "when": "普通搜索"
+            }
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt",
+          "_note": "按 search-routing.md 的免费顺序与切换规则执行；工具名以当前 schema 为准"
+        },
+        {
+          "id": "exa-mcp",
+          "type": "mcp-cli",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "oauth_or_none",
+          "bin": "mcporter",
+          "requires": [
+            "优先已授权且归属、免费余额和超额边界均已确认的宿主 Exa 连接器或 exa-account；账号条件未确认时可用已核对无认证的官方 exa 入口；明确额度耗尽或权限阻断时不在同服务换入口"
+          ],
+          "_note": "账号和免 Key 额度分别核对，接入与回执验收见 search-routing.md；免 Key 自检不证明账号可用",
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "excerpt"
+        },
+        {
+          "id": "host-search-zh",
+          "type": "manual",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "evidence_type": "excerpt",
+          "validator": "task_sufficient_with_provenance",
+          "requires": [
+            "宿主已提供合适的搜索能力"
+          ],
+          "_note": "按覆盖范围/时间参数选择，不假设固定工具名"
+        }
+      ],
+      "_note": "国内主题优先豆包；查询语言不决定来源，中文查国外内容按 search-routing.md 的其他普通搜索顺序执行。"
+    },
+    "web/ai-news": {
+      "desc": "AI 圈资讯聚合",
+      "providers": [
+        {
+          "id": "aihot-api",
+          "type": "http",
+          "status": "conditional",
+          "failure_domain": "remote-http",
+          "auth": "none",
+          "bin": "curl",
+          "keep_fields": [
+            "score",
+            "title",
+            "source.name",
+            "url"
+          ],
+          "validator": "task_sufficient_with_provenance",
+          "freshness_provable": false,
+          "evidence_type": "excerpt"
+        }
+      ]
+    },
+    "local/history": {
+      "desc": "检索本机浏览器书签与历史",
+      "providers": [
+        {
+          "id": "find-url-mjs",
+          "type": "cli",
+          "status": "active",
+          "failure_domain": "local-data",
+          "auth": "none",
+          "bin": "node",
+          "validator": "task_sufficient_with_provenance",
+          "evidence_type": "metadata",
+          "normalizer_provider": "lookup/find-url",
+          "profile_scope": "单个Local State.profile.last_used，未设置则Default；--profile为已登记目录名，不是OpenCLI别名",
+          "limit_policy": "默认20；普通top-N可带more_available，--limit 0最多1000，超过该保护上限为partial/exit3",
+          "_note": "只查选定ego lite Profile历史与书签；不扫描其他Profile或浏览器，不把数据库错误当empty；stdout JSON结果，stderr JSON状态"
+        }
+      ]
+    }
+  },
+  "failure_scopes": {
+    "bridge_profile": "本任务暂停同一 bridge+Profile 的 browser-backed provider",
+    "auth_required": "只暂停相同 site+account/context 的自动抓取；按 references/opencli-windows.md#登录准备与恢复 交接原绑定环境，核对后回原 CLI；不能静默换账号",
+    "unsupported_action": "只暂停相同 site+action",
+    "invalid_output": "只影响该动作或该结果；缺字段/截断可按 partial 处理",
+    "empty": "确认无匹配，不熔断",
+    "partial": "保留已证实部分，仅补充影响任务的缺口",
+    "deadline_exceeded": "结果未知；确认前次动作结束前不重派"
+  },
+  "result_contract": {
+    "helper": "scripts/normalize-result.py",
+    "input": "已捕获 JSON 信封：provider, exit_code, stdout, stderr；按需提供 url, access_url, evidence_type, empty_confirmed, truncated, missing_fields",
+    "statuses": [
+      "ok",
+      "empty",
+      "partial",
+      "error"
+    ],
+    "evidence_types": [
+      "full_text",
+      "excerpt",
+      "metadata",
+      "comments",
+      "subtitles",
+      "asr",
+      "visual"
+    ],
+    "fields": [
+      "provider",
+      "url",
+      "access_url",
+      "source",
+      "author",
+      "published_at",
+      "fetched_at",
+      "evidence_type",
+      "truncated",
+      "missing_fields",
+      "items",
+      "text",
+      "error"
+    ],
+    "rules": [
+      "未证实空结果标 partial，确认无匹配才标 empty",
+      "未知字段保持未知；已知占位0不能当真实0",
+      "证据已足够时停止；只为与任务有关的缺口追加读取",
+      "helper不联网、不路由、不重试、不证明来源真实性"
+    ]
+  },
+  "host_browser": {
+    "provider_id": "host-browser",
+    "failure_domain": "host-browser-api",
+    "invocation": "discover-current-agent",
+    "use_when": [
+      "开发过程中调试本地 Web UI，且当前 Agent 真正提供内置浏览器"
+    ],
+    "requires": [
+      "当前 Agent 内置浏览器的正式能力文档",
+      "目标属于当前开发任务的本地 Web UI",
+      "不得接管现有 Chrome 充当内置浏览器"
+    ]
+  },
+  "browser_routing": {
+    "reference": "references/浏览器选路.md",
+    "login_preparation_reference": "references/opencli-windows.md#登录准备与恢复",
+    "platform_adapter_repair_reference": "references/failure-domains.md#适配器修复与浏览器兜底",
+    "dedicated_sources_first": true,
+    "local_external_web_default": "ego-browser",
+    "development_selection": "本地 Web UI 调试使用真正的 Agent 内置浏览器；无可用能力时用 ego-lite",
+    "technical_fallback": "report-blocked-no-other-browser",
+    "note": "实际浏览器范围以浏览器选路.md为唯一政策；CLI/API优先，登录与账号复用限定ego-lite，外部网页不得降级其他浏览器。用户当次明确改变政策时按新指令执行。",
+    "respect_user_account_and_target": true
+  }
+}
