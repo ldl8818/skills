@@ -7,6 +7,10 @@ import sys
 
 import core
 
+TOOL_DEPENDENCIES = {'ego-lite': 'ego-browser', 'ego-browser': 'ego-browser',
+                     'opencli': 'opencli', 'agent-reach': 'agent-reach'}
+TOOL_NAMES = (*TOOL_DEPENDENCIES, 'lark-cli')
+
 
 def lookup_root(path):
     root = Path(path).resolve()
@@ -18,19 +22,33 @@ def lookup_root(path):
     return None
 
 
-def invoke(root, action='update', self_only=False, upstream_only=False, dry_run=False):
+def invoke(root, action='update', self_only=False, upstream_only=False, dry_run=False,
+           dependency=None):
+    if action != 'check' and not dry_run:
+        import native_tools
+        return native_tools.guard_lookup(lambda: _invoke(
+            root, action, self_only, upstream_only, dry_run, dependency))
+    return _invoke(root, action, self_only, upstream_only, dry_run, dependency)
+
+
+def _invoke(root, action='update', self_only=False, upstream_only=False, dry_run=False,
+            dependency=None):
     root = Path(root).resolve()
     entries = ('upstream.py', 'self_update.py', 'owned_process.py')
     if (root / 'scripts').is_symlink() or any((root / 'scripts' / name).is_symlink() for name in entries):
         return {'status': 'error', 'error': 'LOOKUP_MAINTENANCE_ENTRY_REDIRECTED',
                 'root': str(root)}, 1
     command = [sys.executable, str(root / 'scripts/upstream.py'),
-               'upgrade' if upstream_only else action]
+               'upgrade' if upstream_only or dependency else action]
+    if dependency:
+        if dependency not in TOOL_DEPENDENCIES.values():
+            return {'status': 'error', 'error': 'UNKNOWN_LOOKUP_DEPENDENCY'}, 1
+        command.append(dependency)
     if self_only:
         command.append('--self-only')
     if dry_run:
         return {'status': 'plan', 'root': str(root), 'command': command,
-                'scope': 'self' if self_only else 'dependencies' if upstream_only else 'all',
+                'scope': dependency or ('self' if self_only else 'dependencies' if upstream_only else 'all'),
                 'remote_checked': False}, 0
     if not all((root / 'scripts' / name).is_file() for name in entries):
         return {'status': 'error', 'error': 'LOOKUP_MAINTENANCE_INTERFACE_UNAVAILABLE',
@@ -43,12 +61,18 @@ def invoke(root, action='update', self_only=False, upstream_only=False, dry_run=
         payload = json.loads(result.stdout or result.stderr)
         if not isinstance(payload, dict) or not isinstance(payload.get('status'), str):
             raise ValueError('invalid maintenance result')
+        items = payload.get('results') if payload['status'] == 'batch' else [payload]
+        if (not isinstance(items, list)
+                or any(not isinstance(item, dict) or not isinstance(item.get('status'), str)
+                       for item in items)):
+            raise ValueError('invalid maintenance items')
         if result.returncode == 0:
-            items = payload.get('results', []) if payload['status'] == 'batch' else [payload]
-            names = [item.get('dependency') for item in items if isinstance(item, dict)]
-            scoped = (len(names) == len(items) and all(isinstance(name, str) for name in names)
+            names = [item.get('dependency') for item in items]
+            scoped = (all(isinstance(name, str) for name in names)
                       and len(set(names)) == len(names))
-            if self_only:
+            if dependency:
+                scoped = scoped and names == [dependency] and payload['status'] != 'batch'
+            elif self_only:
                 scoped = scoped and names == ['lookup']
             elif upstream_only:
                 scoped = scoped and payload['status'] == 'batch' and 'lookup' not in names
@@ -58,10 +82,16 @@ def invoke(root, action='update', self_only=False, upstream_only=False, dry_run=
                 return {'status': 'outcome_unknown', 'error': 'LOOKUP_MAINTENANCE_SCOPE_MISMATCH',
                         'root': str(root), 'reported': payload, 'retry_safe': False}, 1
         def incomplete(item):
+            if not isinstance(item, dict):
+                return True
             if item.get('status') == 'batch':
-                return any(incomplete(child) for child in item.get('results', []))
-            return item.get('status') in ('failed', 'error', 'manual_review', 'pending',
-                                           'outcome_unknown', 'interrupted', 'check_failed')
+                children = item.get('results')
+                return (not isinstance(children, list) or not children
+                        or any(incomplete(child) for child in children))
+            complete = {'updated', 'up_to_date', 'local_ahead', 'not_installed', 'reference_only'}
+            if action == 'check':
+                complete |= {'update_available', 'local_changed', 'native_updater', 'installed'}
+            return item.get('status') not in complete
         return payload, result.returncode or int(incomplete(payload))
     except subprocess.TimeoutExpired:
         return {'status': 'outcome_unknown', 'error': 'LOOKUP_MAINTENANCE_TIMEOUT',
@@ -69,6 +99,19 @@ def invoke(root, action='update', self_only=False, upstream_only=False, dry_run=
     except (OSError, ValueError):
         return {'status': 'error', 'error': 'LOOKUP_MAINTENANCE_RESULT_UNAVAILABLE',
                 'root': str(root)}, 1
+
+
+def invoke_tool(name, dry_run=False):
+    if name == 'lark-cli':
+        import native_tools
+        return native_tools.update_lark(dry_run=dry_run)
+    dependency = TOOL_DEPENDENCIES[name]
+    path, error = core.resolve_direct_path('lookup')
+    root = lookup_root(path) if path and not error else None
+    if root is None:
+        return {'status': 'error', 'error': error or 'LOOKUP_NOT_INSTALLED',
+                'dependency': dependency}, 1
+    return invoke(root, dependency=dependency, dry_run=dry_run)
 
 
 def update(root, self_only=False, upstream_only=False):

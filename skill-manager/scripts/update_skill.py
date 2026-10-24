@@ -8,6 +8,9 @@
   python3 update_skill.py lookup          总更新 lookup 本体与已安装上游
   python3 update_skill.py lookup --self-only       只更新 lookup 本体
   python3 update_skill.py lookup --upstream-only   只更新 lookup 上游
+  python3 update_skill.py ego-lite        只更新 Ego，委派已安装的 lookup 维护器
+  python3 update_skill.py opencli         只更新 OpenCLI；agent-reach 同理
+  python3 update_skill.py lark-cli        官方更新 + 本机按需入口保护与验收
 
 2026-07-11 增强：
 - 裸名字自动解析（`core.resolve_target`，与 delete 共用）：市场名是安装来源的内部
@@ -737,6 +740,13 @@ def update_plugin(plugin_key):
 # ── 单个更新（名字解析走 core.resolve_target，update / delete 共用） ──
 
 def update_one(name, project=None, ref_arg=None, self_only=False, upstream_only=False):
+    if name in lifecycle.TOOL_NAMES:
+        if project or ref_arg or self_only or upstream_only:
+            print('❌ 工具更新不接受 Skill 作用域或通道参数；保持所属维护器的安装来源。')
+            return False
+        payload, code = lifecycle.invoke_tool(name)
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return code == 0
     if project:
         return update_direct_skill(name, project, ref_arg, self_only, upstream_only)
     kind, key, err = core.resolve_target(name)
@@ -870,6 +880,13 @@ if __name__ == "__main__":
         sys.exit(0 if update_all(dry_run="--dry-run" in flags) else 1)
 
     if "--dry-run" in flags:
+        if names[0] in lifecycle.TOOL_NAMES:
+            if project or ref_arg or flags & {'--self-only', '--upstream-only'}:
+                print('❌ 工具更新不接受 Skill 作用域或通道参数。')
+                sys.exit(1)
+            payload, code = lifecycle.invoke_tool(names[0], dry_run=True)
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+            sys.exit(code)
         # 只解析目标，不联网查新版（批量 dry-run 才做真实比对）——如实说清，别让人
         # 把「将更新」误读成「确认有新版」
         kind, key, err = ("skill", names[0], None) if project else core.resolve_target(names[0])

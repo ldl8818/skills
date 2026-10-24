@@ -1,11 +1,11 @@
 ---
 name: skill-manager
-description: "管理已安装 Skills：盘点、溯源、更新、启停、删除、定版与自检。内容编写走 skill-creator。"
-when_to_use: "列出已安装 Skill、查 Skill 来源、检查 Skill 更新、合并上游 Skill、启用或禁用 Skill、删除 Skill、冻结版本、Skill 安装状态自检、update skills"
-dispatch_intent: "已安装 Skills 的盘点、溯源、完整上游合并更新、启停、删除、定版与自检；Skill 内容编写交给 skill-creator。"
+description: "管理已安装 Skills：盘点、溯源、更新、启停、删除、定版与自检；统一发起已接入工具更新。内容编写走 skill-creator。"
+when_to_use: "列出已安装 Skill、查 Skill 来源、检查 Skill 更新、合并上游 Skill、启用或禁用 Skill、删除 Skill、冻结版本、Skill 安装状态自检、update skills、更新 ego-lite、更新 ego-browser、更新 lark-cli、更新 OpenCLI、更新 Agent Reach"
+dispatch_intent: "已安装 Skills 的盘点、溯源、完整上游合并更新、启停、删除、定版与自检；已接入工具更新按所属维护器委派，验收定制、配置及发现入口；Skill 内容编写交给 skill-creator。"
 license: MIT
 metadata:
-  version: "2.10.0"
+  version: "2.11.0"
   zh_description: 管理 skill 全生命周期：列出、溯源、查更新、启停、定版本、自检
   update_policy: frozen
 ---
@@ -42,6 +42,8 @@ metadata:
 
 ## 命令
 
+更新统一从本管理器进入，再按[更新对象与执行入口](references/升级与定制合并.md#更新对象与执行入口)委派实际维护器。随程序分发的指南跟随所属程序维护，不作为独立 Skill 另行覆盖；原生更新后仍须核对定制、发现入口与实际运行版本。未接入的工具先明确保护与验收方式，不直接绕过管理器调用安装器。
+
 lookup 的更新由其实际安装目录内的维护器执行。“更新／升级 lookup”或 `update lookup` 默认包含本体与已安装上游；`update lookup --self-only` 只更新本体，`--upstream-only` 只维护上游。检查和批量更新同样识别本地来源的 lookup，不因没有 `github_url` 而跳过。缺少维护接口的旧安装先按完整来源与定制流程迁移；定制待判断时由当前 Agent 连续合并、验证并接续，不能把委派或退出码当作完成。命令与结果协议见 [lookup 更新入口](../lookup/references/上游更新.md#命令与范围)。
 
 | 用户意图 | 命令 | 脚本 |
@@ -50,6 +52,7 @@ lookup 的更新由其实际安装目录内的维护器执行。“更新／升�
 | 检查更新 | `check [--include-frozen]`（冻结项只读比较，不解冻） | `scan_and_check.py` |
 | 溯源 | `trace <名字> [--repo <URL>] [--write]`；`trace --all --write` 批量 | `trace_source.py` |
 | 更新 | `update <名字> [--project <路径>] [--ref main\|release]`；lookup 另支持 `--self-only`／`--upstream-only`，不通过 `--ref` 切换通道；无参 = 批量；`--dry-run` 只列不做 | `update_skill.py` |
+| 更新已接入工具 | `update ego-lite`／`ego-browser`／`opencli`／`agent-reach` 委派 lookup 指定依赖；`update lark-cli` 使用本机飞书按需入口保护 | `update_skill.py`、`lifecycle.py`、`native_tools.py` |
 | 启用 / 禁用 | `enable\|disable <名字> [--project <路径>]`；直装或 Claude 插件 | `toggle_skill.py` |
 | 升版本号 | `bump <名字> [patch\|minor\|major] [--project <路径>]` | `bump_skill.py` |
 | 体检 | `doctor [--fix]`（`--fix` 只做有依据的补录，绝不发明数据） | `doctor.py` |

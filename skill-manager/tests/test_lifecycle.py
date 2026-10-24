@@ -145,6 +145,65 @@ class LifecycleTests(unittest.TestCase):
                 self.assertNotEqual(self.cli(*args).returncode, 0)
         self.assertFalse(self.log.exists())
 
+    def test_named_tools_delegate_only_the_requested_dependency(self):
+        self.updater.write_text('import json,sys\nfrom pathlib import Path\n'
+            f'Path({str(self.log)!r}).write_text(json.dumps(sys.argv[1:]))\n'
+            'print(json.dumps({"status":"up_to_date","dependency":sys.argv[2]}))\n')
+        for name, dependency in lifecycle.TOOL_DEPENDENCIES.items():
+            with self.subTest(name=name):
+                result = self.cli(name)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(json.loads(self.log.read_text()), ['upgrade', dependency])
+
+    def test_named_tool_plan_rejects_scope_changes_and_does_not_invoke(self):
+        self.executor()
+        bridge = self.home / '.agents/tools/lark/scripts/read_embedded.py'
+        bridge.parent.mkdir(parents=True)
+        bridge.write_text('# synthetic\n')
+        binary = self.home / 'bin/lark-cli'
+        binary.parent.mkdir()
+        binary.write_text('#!/bin/sh\nexit 2\n')
+        binary.chmod(0o700)
+        self.env['PATH'] = str(binary.parent) + os.pathsep + self.env['PATH']
+        for name in lifecycle.TOOL_NAMES:
+            result = self.cli(name, '--dry-run')
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(json.loads(result.stdout)['status'], 'plan')
+            self.assertNotEqual(self.cli(name, '--dry-run', '--ref', 'main').returncode, 0)
+        self.assertFalse(self.log.exists())
+
+    def test_named_tool_rejects_wrong_dependency_success(self):
+        self.updater.write_text('import json\nprint(json.dumps('
+            '{"status":"up_to_date","dependency":"lookup"}))\n')
+        result = self.cli('ego-lite')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('LOOKUP_MAINTENANCE_SCOPE_MISMATCH', result.stdout)
+
+    def test_deferred_and_unknown_outcomes_never_claim_a_completed_update(self):
+        for status in ('deferred', 'unexpected'):
+            with self.subTest(status=status):
+                self.executor(status=status)
+                result = self.cli('lookup')
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn(status, result.stdout)
+
+    def test_nonzero_malformed_batch_returns_an_error_without_a_traceback(self):
+        self.updater.write_text('import json\n'
+                               'print(json.dumps({"status":"batch","results":[None]}))\n'
+                               'raise SystemExit(1)\n')
+        result = self.cli('lookup')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('Traceback', result.stderr)
+
+    def test_check_rejects_malformed_batch_items_without_starting_a_config_transaction(self):
+        for items in (None, 1, [None], [{}]):
+            with self.subTest(items=items):
+                self.updater.write_text('import json\nprint(json.dumps('
+                    + repr({'status': 'batch', 'results': items}) + '))\n')
+                result, code = lifecycle.invoke(self.skill, action='check')
+                self.assertEqual(code, 1, result)
+                self.assertEqual(result['error'], 'LOOKUP_MAINTENANCE_RESULT_UNAVAILABLE')
+
 
 if __name__ == '__main__':
     unittest.main()
