@@ -3,7 +3,7 @@
   "_doc": "Lookup 的必要合约与任务边界，不是完整后端目录或自动执行器。候选按数组顺序列出，仅在条件相当时参考；实际选择见 references/任务选路.md。命令参数来自当前注册表／帮助；active/conditional 是登记状态，不表示当前健康。auth 描述认证依赖类型，不证明当前是否登录；browser-session 也不要求所有动作先登录。登录准备见 references/opencli-windows.md#登录准备与恢复。",
   "failure_domains": {
     "_model": "分别判断浏览器进程、站点账号、bridge+Profile、site+action；只有共享实际依赖才共享故障。",
-    "opencli-browser": "浏览器进程 + 目标账号 + 具体 adapter；默认 Browser Bridge 与 LOOKUP_OPENCLI_PROFILE=ego-lite，显式 CDP 路线按实际 endpoint 判断共享依赖",
+    "opencli-browser": "浏览器进程 + 目标账号 + 具体 adapter；Browser Bridge 固定已确认的 ego-lite contextId，不默认选择产品名别名；CDP 只接受绑定中已确认的 ego-lite endpoint",
     "host-browser-api": "当前 Agent 实际发现的浏览器能力；是否与其他候选共享进程/Profile/账号需现场核对",
     "ego-browser-api": "ego-browser 原生执行接口；仍依赖 ego lite 与其对应会话，不依赖 OpenCLI bridge/adapter",
     "direct-http": "本机直连或已配置网络路径，不依赖浏览器；仍受原站/账号/网络限制",
@@ -30,7 +30,7 @@
       "平台抓取已满足 references/failure-domains.md#适配器修复与浏览器兜底 的条件",
       "CLI 登录准备确需该接口，且已确认它指向 CLI 原绑定的同一浏览器和 Profile；只辅助人工交接，见 references/opencli-windows.md#登录准备与恢复",
       "用户明确指定ego环境",
-      "开发或其他任务中实际能力最合适"
+      "本地 Web UI 调试没有可用的 Agent 内置浏览器，或其能力不足"
     ],
     "useless_when": [
       "已确认同一ego进程不可用",
@@ -496,19 +496,6 @@
           "validator": "task_sufficient_with_provenance",
           "evidence_type": "full_text",
           "_note": "通用浏览器抓取必须满足 failure-domains.md#适配器修复与浏览器兜底 的条件，或来自用户真实指定；中转解析优先 OpenCLI Browser，取得原文URL后回到适用动作。历史selector失效先修复，不因已核实缺口直接转 Ego。"
-        },
-        {
-          "id": "host-browser-weixin-dom",
-          "type": "manual",
-          "status": "conditional",
-          "failure_domain": "host-browser-api",
-          "evidence_type": "full_text",
-          "validator": "task_sufficient_with_provenance",
-          "requires": [
-            "宿主浏览器可用",
-            "已观察真实落地URL与正文"
-          ],
-          "_note": "按用户真实指定或已满足的适配器修复兜底条件使用宿主正式接口，不能借技术降级绕过平台抓取门槛；搜狗跳转/验证页不代表正文"
         }
       ]
     },
@@ -837,14 +824,12 @@
     "failure_domain": "host-browser-api",
     "invocation": "discover-current-agent",
     "use_when": [
-      "用户指定当前宿主浏览器或特定环境",
-      "localhost预览、元素标注、前端验证或调试更适合宿主Browser或DevTools",
-      "ego技术不可用或能力不足，且候选能绕开已确认失败依赖"
+      "开发过程中调试本地 Web UI，且当前 Agent 真正提供内置浏览器"
     ],
     "requires": [
-      "当前宿主能力文档",
-      "明确环境与授权",
-      "核对实际Profile和账号"
+      "当前 Agent 内置浏览器的正式能力文档",
+      "目标属于当前开发任务的本地 Web UI",
+      "不得接管现有 Chrome 充当内置浏览器"
     ]
   },
   "browser_routing": {
@@ -852,10 +837,10 @@
     "login_preparation_reference": "references/opencli-windows.md#登录准备与恢复",
     "platform_adapter_repair_reference": "references/failure-domains.md#适配器修复与浏览器兜底",
     "dedicated_sources_first": true,
-    "user_environment_first": true,
     "local_external_web_default": "ego-browser",
-    "development_selection": "按任务比较实际可用的宿主Browser、DevTools与ego",
-    "technical_fallback": "independent-authorized-browser",
-    "note": "策略不自动执行；外部网页默认浏览器不覆盖平台修复门槛。核对能力、登录态和共享失败域；不因权限拒绝或用户接管换工具绕过限制。"
+    "development_selection": "本地 Web UI 调试使用真正的 Agent 内置浏览器；无可用能力时用 ego-lite",
+    "technical_fallback": "report-blocked-no-other-browser",
+    "note": "实际浏览器范围以浏览器选路.md为唯一政策；CLI/API优先，登录与账号复用限定ego-lite，外部网页不得降级其他浏览器。用户当次明确改变政策时按新指令执行。",
+    "respect_user_account_and_target": true
   }
 }

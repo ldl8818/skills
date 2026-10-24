@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 context = {'scope': 'bridge_profile', 'diagnostic_only': True, 'action_tested': False,
-           'profile': os.environ.get('LOOKUP_OPENCLI_PROFILE', 'ego-lite')}
+           'profile': None}
 
 def emit(state, next_step, **details):
     ready = state == 'ready'
@@ -18,11 +18,16 @@ def emit(state, next_step, **details):
                      ensure_ascii=False))
     sys.exit(0 if ready else 78)
 
-# A Bridge diagnostic cannot qualify a separately selected CDP transport.
-if os.environ.get('LOOKUP_OPENCLI_TRANSPORT', 'bridge') == 'cdp':
-    emit('not_applicable', 'validate_selected_transport')
-
 try:
+    selection = subprocess.run(['node', str(Path(sys.argv[1]) / 'opencli-profile.mjs')],
+                               capture_output=True, text=True, timeout=5)
+    if selection.returncode != 0:
+        error = json.loads(selection.stderr).get('error')
+        emit('profile_rejected', 'confirm_ego_lite_binding', error=error)
+    context.update(json.loads(selection.stdout))
+    # A Bridge diagnostic cannot qualify a separately selected CDP transport.
+    if context['transport'] == 'cdp':
+        emit('not_applicable', 'validate_selected_transport')
     run = subprocess.run(['node', str(Path(sys.argv[1]) / 'opencli-run.mjs'), 'doctor'],
                          capture_output=True, text=True)
     if run.stderr:

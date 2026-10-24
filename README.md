@@ -28,7 +28,7 @@
 | check | [check-v6.1.0](https://github.com/ldl8818/skills/archive/refs/tags/check-v6.1.0.zip) |
 | health | [health-v4.1.0](https://github.com/ldl8818/skills/archive/refs/tags/health-v4.1.0.zip) |
 | hunt | [hunt-v4.3.1](https://github.com/ldl8818/skills/archive/refs/tags/hunt-v4.3.1.zip) |
-| lookup | [lookup-v2.3.1](https://github.com/ldl8818/skills/archive/refs/tags/lookup-v2.3.1.zip) |
+| lookup | [lookup-v2.4.0](https://github.com/ldl8818/skills/archive/refs/tags/lookup-v2.4.0.zip) |
 | luobo-ppt | [luobo-ppt-v1.0.1](https://github.com/ldl8818/skills/archive/refs/tags/luobo-ppt-v1.0.1.zip) |
 | neat-freak | [neat-freak-v3.1.0](https://github.com/ldl8818/skills/archive/refs/tags/neat-freak-v3.1.0.zip) |
 | self-improving | [self-improving-v3.1.3](https://github.com/ldl8818/skills/archive/refs/tags/self-improving-v3.1.3.zip) |

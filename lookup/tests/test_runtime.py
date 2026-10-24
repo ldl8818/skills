@@ -76,6 +76,12 @@ class Fixture(unittest.TestCase):
     def run_cmd(self, args, timeout=6, **env):
         return self.collect(self.spawn(args, env=dict(self.env, **env)), timeout)
 
+    def bind_profile(self, **updates):
+        self.env['XDG_CONFIG_HOME'] = str(self.home / '.config')
+        self.binding_file = self.home / '.config/lookup/opencli-binding.json'
+        write(self.binding_file, json.dumps(dict(
+            version=1, browser='ego-lite', context_id='fixture-context', **updates)))
+
     def tearDown(self):
         try:
             for child in self.children:
@@ -121,6 +127,7 @@ class RunnerTests(Fixture):
         super().setUp()
         write(self.bin/'opencli', '#!'+sys.executable+'\n'+MOCK_OPENCLI, True)
         self.env['FAKE_BASE']=str(self.base)
+        self.bind_profile()
         self.command=[REAL_NODE,str(ROOT/'scripts/opencli-run.mjs')]
 
     def test_native_delayed_result_and_exit_are_preserved(self):
@@ -137,10 +144,74 @@ class RunnerTests(Fixture):
         self.assertEqual(json.loads((self.base/'dispatch').read_text()),args)
 
     def test_profile_and_owned_cleanup_are_explicit(self):
+        write(self.home / '.opencli/browser-profiles.json',
+              '{"aliases":{"work":"fixture-context"}}')
         code,out,_=self.run_cmd(self.command+['--profile','work','example','read'],
             LOOKUP_OPENCLI_PROFILE='work',OPENCLI_PROFILE='unrelated',FAKE_PROFILE='1')
         self.assertEqual(code,0)
-        self.assertEqual(json.loads(out),{'profile':'work','cleanup':'1'})
+        self.assertEqual(json.loads(out),{'profile':'fixture-context','cleanup':'1'})
+        self.assertEqual(json.loads((self.base/'dispatch').read_text())[1], 'fixture-context')
+
+    def test_real_id_without_product_alias_ignores_other_defaults(self):
+        write(self.home / '.opencli/browser-profiles.json',
+              '{"aliases":{"chrome":"other-context"},"defaultContextId":"other-context"}')
+        code,out,_=self.run_cmd(self.command+['example','read'], FAKE_PROFILE='1')
+        self.assertEqual(code,0)
+        self.assertEqual(json.loads(out)['profile'],'fixture-context')
+
+    def test_missing_binding_never_guesses_even_with_multiple_profiles(self):
+        self.binding_file.unlink()
+        write(self.home / '.opencli/browser-profiles.json',
+              '{"aliases":{"ego-lite":"fixture-context","work":"other-context"},"defaultContextId":"other-context"}')
+        code,_,err=self.run_cmd(self.command+['example','read'])
+        self.assertEqual(code,78)
+        self.assertIn('OPENCLI_PROFILE_REJECTED',err)
+        self.assertFalse((self.base/'dispatch').exists())
+
+    def test_empty_missing_wrong_or_retargeted_alias_never_dispatches(self):
+        cases = [('', {}), ('ego-lite', {}), ('missing', {}),
+                 ('work', {'work':'other-context'}), ('other-context', {})]
+        for profile, aliases in cases:
+            with self.subTest(profile=profile,aliases=aliases):
+                write(self.home / '.opencli/browser-profiles.json', json.dumps({'aliases':aliases}))
+                code,_,err=self.run_cmd(self.command+['example','read'], LOOKUP_OPENCLI_PROFILE=profile)
+                self.assertEqual(code,78)
+                self.assertIn('OPENCLI_PROFILE_REJECTED',err)
+                self.assertFalse((self.base/'dispatch').exists())
+
+    def test_bad_binding_or_alias_config_never_dispatches(self):
+        for value in ['not json', '[]', '{"version":1,"browser":"chrome","context_id":"fixture-context"}',
+                      '{"version":1,"browser":"ego-lite","context_id":""}']:
+            with self.subTest(value=value):
+                write(self.binding_file,value)
+                code,_,_=self.run_cmd(self.command+['example','read'])
+                self.assertEqual(code,78)
+                self.assertFalse((self.base/'dispatch').exists())
+        self.bind_profile()
+        write(self.home / '.opencli/browser-profiles.json','not json')
+        code,_,_=self.run_cmd(self.command)
+        self.assertEqual(code,78)
+        self.assertFalse((self.base/'dispatch').exists())
+
+    def test_alias_cannot_shadow_the_pinned_context_id(self):
+        write(self.home / '.opencli/browser-profiles.json',
+              '{"aliases":{"fixture-context":"other-context"}}')
+        code,_,_=self.run_cmd(self.command)
+        self.assertEqual(code,78)
+        self.assertFalse((self.base/'dispatch').exists())
+
+    def test_profile_after_separator_stays_literal(self):
+        args=['example','read','--','--profile=literal-text']
+        code,_,_=self.run_cmd(self.command+args)
+        self.assertEqual(code,0)
+        self.assertEqual(json.loads((self.base/'dispatch').read_text()),args)
+
+    def test_profile_resolver_works_through_installed_skill_link(self):
+        link = self.base / 'linked-skill'
+        link.symlink_to(ROOT, target_is_directory=True)
+        code,out,_=self.run_cmd([REAL_NODE,str(link/'scripts/opencli-profile.mjs')])
+        self.assertEqual(code,0)
+        self.assertEqual(json.loads(out)['profile'],'fixture-context')
 
     def test_conflicting_profile_and_transport_fail_before_dispatch(self):
         cases=[(['--profile','chrome'],{}),(['--profile=chrome','--profile=ego-lite'],{}),
@@ -154,11 +225,20 @@ class RunnerTests(Fixture):
                 self.assertFalse((self.base/'dispatch').exists())
 
     def test_explicit_cdp_route_forwards_literal_arguments(self):
+        self.bind_profile(cdp_endpoint='http://127.0.0.1:9222')
         args = ['boss', 'search', 'a b; $(touch never)']
         code, _, _ = self.run_cmd(self.command + args, LOOKUP_OPENCLI_TRANSPORT='cdp',
                                   OPENCLI_CDP_ENDPOINT='http://127.0.0.1:9222')
         self.assertEqual(code, 0)
         self.assertEqual(json.loads((self.base/'dispatch').read_text()), args)
+
+    def test_unconfirmed_or_changed_cdp_never_dispatches(self):
+        for endpoint in ['http://127.0.0.1:9222','http://127.0.0.1:9333']:
+            code,_,err=self.run_cmd(self.command, LOOKUP_OPENCLI_TRANSPORT='cdp',
+                                   OPENCLI_CDP_ENDPOINT=endpoint)
+            self.assertEqual(code,78)
+            self.assertIn('OPENCLI_TRANSPORT_REJECTED',err)
+            self.assertFalse((self.base/'dispatch').exists())
 
     def test_invalid_explicit_transport_never_dispatches(self):
         for mode, endpoint in [('unknown',''), ('cdp',''), ('cdp','file:///tmp/browser'),
@@ -178,7 +258,7 @@ class RunnerTests(Fixture):
         self.assertFalse((self.base/'dispatch').exists())
 
     def test_auth_requires_explicit_sites(self):
-        for args in [['auth','status'],['--profile','ego-lite','auth','refresh'],['--','auth','status'],
+        for args in [['auth','status'],['--profile','fixture-context','auth','refresh'],['--','auth','status'],
                      ['auth','status','--site','example','--site= , ']]:
             code,_,err=self.run_cmd(self.command+args)
             self.assertEqual(code,78)
@@ -213,6 +293,7 @@ class HealthTests(Fixture):
         super().setUp()
         write(self.bin/'opencli', '#!'+sys.executable+'\n'+MOCK_OPENCLI, True)
         self.env['FAKE_BASE']=str(self.base)
+        self.bind_profile()
     def health(self,report):
         return self.run_cmd(['bash',str(ROOT/'scripts/opencli-health.sh')],FAKE_DOCTOR=json.dumps(report))
 
@@ -220,6 +301,7 @@ class HealthTests(Fixture):
         code,out,_=self.health({'ok':True,'data':{'daemonRunning':True,'extensionConnected':True,'connectivity':{'ok':True}}})
         self.assertEqual(code,0)
         self.assertEqual(json.loads(out)['state'],'ready')
+        self.assertEqual(json.loads(out)['profile'],'fixture-context')
         self.assertEqual(json.loads((self.base/'dispatch').read_text()),['doctor'])
 
     def test_zero_exit_does_not_mean_connected(self):
@@ -233,6 +315,23 @@ class HealthTests(Fixture):
         code,out,_=self.run_cmd(['bash',str(ROOT/'scripts/opencli-health.sh')],FAKE_DOCTOR='not json')
         self.assertEqual(code,78)
         self.assertEqual(json.loads(out)['state'],'invalid_health_report')
+
+    def test_missing_binding_reports_no_guessed_profile(self):
+        self.binding_file.unlink()
+        code,out,_=self.health({})
+        self.assertEqual(code,78)
+        self.assertEqual(json.loads(out)['state'],'profile_rejected')
+        self.assertIsNone(json.loads(out)['profile'])
+        self.assertFalse((self.base/'dispatch').exists())
+
+    def test_cdp_diagnostic_only_accepts_confirmed_endpoint(self):
+        self.bind_profile(cdp_endpoint='http://127.0.0.1:9222')
+        code,out,_=self.run_cmd(['bash',str(ROOT/'scripts/opencli-health.sh')],
+            LOOKUP_OPENCLI_TRANSPORT='cdp',OPENCLI_CDP_ENDPOINT='http://127.0.0.1:9222')
+        self.assertEqual(code,78)
+        self.assertEqual(json.loads(out)['state'],'not_applicable')
+        self.assertEqual(json.loads(out)['profile'],'fixture-context')
+        self.assertFalse((self.base/'dispatch').exists())
 
 
 class EgoTests(Fixture):
@@ -350,7 +449,7 @@ class SelftestTests(Fixture):
         self.fixture = self.base / 'skill'
         scripts = self.fixture / 'scripts'
         scripts.mkdir(parents=True)
-        for name in ('selftest.sh', 'flock-holder.py'):
+        for name in ('selftest.sh', 'flock-holder.py', 'opencli-profile.mjs'):
             shutil.copyfile(ROOT / 'scripts' / name, scripts / name)
         write(scripts / 'fetch.sh', '#!/bin/sh\nexit 0\n')
         write(scripts / 'fetch_local.py', '')
@@ -388,7 +487,7 @@ else if(args.includes('--help')) {
   console.error('Cleanup could not be confirmed: fixture')
 } else process.exit(99)
 """)
-        write(scripts / 'opencli-health.sh', '#!/bin/sh\nprintf \'%s\\n\' \'{"ok":true,"state":"ready","profile":"ego-lite"}\'\n', True)
+        write(scripts / 'opencli-health.sh', '#!/bin/sh\nprintf \'%s\\n\' \'{"ok":true,"state":"ready","profile":"fixture-context"}\'\n', True)
         self.command = ['bash', str(scripts / 'selftest.sh')]
 
     def test_search_mode_checks_search_without_browser_or_auth(self):

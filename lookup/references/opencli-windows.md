@@ -13,17 +13,39 @@ node scripts/opencli-run.mjs <site> <command> ...
 ```
 
 - `list` 的 JSON 为 `{ok,data:{commands,total,nextOffset?}}`，只返回当前页；需要更多候选时沿 `nextOffset` 分页，不把首屏当完整注册表。选择 `access: read`，从单个命令帮助核对 `browser`、`positionals`、`command_options`、`browser_common_options` 和 `columns`。
-- `opencli-run.mjs` 原样调用公开 CLI，不导入包内模块、不修改 Commander。它固定 `LOOKUP_OPENCLI_PROFILE`（默认 `ego-lite`）、拒绝冲突 Profile／隐式 CDP transport、限定认证检查站点，并设置 `OPENCLI_CLOSE_OWNED_TAB=1`。需改用另一 Profile 时先确认任务授权与实际别名；显式获准的 CDP 路线用 [专用入口](OpenCLI融合.md#显式-cdp-路线)，默认不切换。
+- `opencli-run.mjs` 调用公开 CLI，不导入包内模块、不修改 Commander。它按下节绑定固定实际 `contextId`，拒绝冲突 Profile／隐式 CDP transport、限定认证检查站点，并设置 `OPENCLI_CLOSE_OWNED_TAB=1`。显式获准且已确认属于 ego-lite 的 CDP 路线用 [专用入口](OpenCLI融合.md#显式-cdp-路线)，默认不切换。
 - 该入口优先使用 [托管维护](上游更新.md) 已验收的 Lookup 专用版本，否则使用原系统安装。能力发现、帮助与业务执行都通过同一入口；上游指南中的裸 `opencli` 命令也经此入口调用，不混用系统旧版帮助与托管新版执行。没有 Python 或更新提醒不可用时保留原执行能力；有效版本指针异常则先核实，不静默改用其他版本。
 - `OPENCLI_CONFIG_DIR` 可指定已有 OpenCLI 配置目录；health 与 runner 必须使用同一环境。切目录或 Profile 不能作为绕过失败依赖的证明。
 - Ego Lite 是基于 Chromium 的浏览器，可安装 OpenCLI 的 Chrome 扩展；OpenCLI 通过该扩展执行，`ego-browser` Skill 通过浏览器自身接口执行。两者可使用同一个 Ego Lite 浏览器，无需另开原版 Chrome。换执行接口仍须核对共同的进程、Profile 与站点登录态。
-- Profile 是 OpenCLI 的连接别名，不是浏览器产品或 Skill 名称。默认别名 `ego-lite` 本身不证明实际连接与登录态；有环境疑点时核对当前连接和目标站点会话，不根据别名推断。
+- OpenCLI Profile 选择值可以是实际连接 `contextId` 或本机配置的别名，不是浏览器产品或 Skill 名称。别名与默认连接均不能证明实际浏览器和账号身份。
 - `LOOKUP_OPENCLI_TIMEOUT_MS` 默认90秒，包含版本检查与执行等待；超时或收到中止信号时只终止本次 CLI 子进程，浏览器动作可能继续，返回结果未知，不自动重派。旧 `OPENCLI_RUN_IMPORT_TIMEOUT_MS`／`OPENCLI_RUN_HARD_TIMEOUT_MS` 已退役；旧 `OPENCLI_DAEMON_PORT` 必须移除，不再自行管理端口。
 - 普通结果默认为 `{ok:true,data:...}`，失败为 `{ok:false,error:...}` 并使用非零退出码；日志在 stderr。帮助、版本和流式输出有各自格式，不统一当业务信封。保留实际 exit code、stdout 和 stderr；归一化按 [failure-domains.md](failure-domains.md)。
+
+## Profile 绑定
+
+安装或首次配置时，在 ego-lite 中确认 Browser Bridge 的实际连接，再运行 `opencli profile list` 核对其 `contextId`。多连接时必须有来自 ego-lite 的对应证据，不按数量、默认值、连接顺序或别名猜测。原连接属于 Chrome 或身份未确认时停止，不用它打开登录页。
+
+将已确认结果保存在 `${XDG_CONFIG_HOME:-$HOME/.config}/lookup/opencli-binding.json`；以下仅为格式示例，`example-context` 必须替换成实际值：
+
+```json
+{
+  "version": 1,
+  "browser": "ego-lite",
+  "context_id": "example-context"
+}
+```
+
+`node scripts/opencli-profile.mjs` 只读取配置并报告选中结果，不发现、重命名或切换连接。runner、health 与 selftest 共用该解析；未绑定、配置损坏或冲突时返回78，不执行 OpenCLI。裸 `opencli profile list` 仅用于首次配置与定向诊断，不用来绕开 runner 执行业务。
+
+运行时默认使用绑定中的实际 `contextId`，不使用 OpenCLI 的默认连接，也不默认寻找名为 `ego-lite` 的别名。可显式设置 `LOOKUP_OPENCLI_PROFILE` 或 `--profile`，但必须等于绑定 ID，或是当前 `${OPENCLI_CONFIG_DIR:-$HOME/.opencli}/browser-profiles.json` 中指向该 ID 的别名；空值、别名缺失、改指或冲突均拒绝。传给 OpenCLI 的值固定为实际 ID，其他连接不会自动接替；真实断连由原生执行报告。
+
+绑定文件是本机确认结果，不随公开 Skill 分发或跨机器照搬；更换实际连接后重新核实并更新。确认来自配置与首次配置证据，不代表运行时能够自动识别浏览器产品。该 ID 只供 OpenCLI 路由，不是 ego-browser 的 `profileId`；后者按当前正式指南使用实际环境，用户未指定时不主动选内部 Profile。
 
 ## 登录准备与恢复
 
 本节维护 CLI 所需站点登录的准备、人工交接与恢复流程。登录准备可在适配器修复之前发生，不属于通用浏览器抓取兜底，不计入 [适配器修复轮次](failure-domains.md#适配器修复与浏览器兜底)。
+
+原绑定环境必须已确认为 ego-lite；原 Chrome 登录态、标签或扩展不得成为放行条件。若绑定错误或尚未确认，先停止并说明配置缺口，不在其他浏览器登录，不迁移 Cookie。
 
 1. **按动作判断依赖。** 从当前帮助、执行指南及必要的实际结果判断具体动作是否需要站点登录。`browser: true` 或台账 `auth: browser-session` 仅说明浏览器／会话依赖，不能证明当前未登录，也不能据此要求整个平台先登录。公开动作或已完整取得目标时直接继续；出现不阻断内容的登录按钮或提示不触发登录准备。
 2. **在需要时提前说明。** 已知动作需要登录且原绑定环境有当前未登录证据时，在派发该动作前告知用户受影响的站点、动作及登录环境，进入登录准备。状态未知且当前版本支持该站点的认证检查时，可在同一环境执行一次定向 `auth status --site <site>`；`unknown`、不支持检查或 bridge 故障不能当作未登录。有连接条件且没有明确账号／权限阻断时，仍以最小业务动作核实。实际动作返回 `AUTH_REQUIRED` 或会话失效时，先保留结果并停止该站点账号的自动抓取，再转入登录准备；不等失败多次才告知。

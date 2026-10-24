@@ -36,7 +36,7 @@ node scripts/opencli-run.mjs <site> <command> --help -f json
 | 66条内置命令 | `list <query>` 或对应命令组 `--help` | 包含下列发现、浏览器、认证、开发及维护能力；缺少 access 标记不等于只读 |
 | 页面浏览器 | `browser ...`，加载 opencli-browser | 页面导航、定位、表单、点击、上传、截图、frame、等待、提取、网络、console、对话框及 session 收尾；实际接口和字段以当前帮助为准 |
 | 原生 Chrome 对象 | `browser chrome describe`／`browser chrome call` | 标签、窗口、分组等方法按当前 schema 发现；只操作本任务归属对象，不以批量 API 或 profile 名称代替归属证据 |
-| 认证与 Profile | `auth status/refresh --site <site>`、`profile list/use/rename` | status 与刷新分别判断；需人工登录时按 [登录准备与恢复](opencli-windows.md#登录准备与恢复) 打开原绑定环境并交接，恢复后回原 CLI。不自动登录、采 Cookie、切换账号或修改其他任务默认环境。runner 仍以 LOOKUP_OPENCLI_PROFILE 为本任务 Profile，原生默认值不覆盖它 |
+| 认证与 Profile | `auth status/refresh --site <site>`、`profile list/use/rename` | status 与刷新分别判断；需人工登录时按 [登录准备与恢复](opencli-windows.md#登录准备与恢复) 打开原绑定环境并交接，恢复后回原 CLI。不自动登录、采 Cookie、切换账号或修改其他任务默认环境。runner 固定 [已确认的 ego-lite contextId](opencli-windows.md#profile-绑定)，不使用产品名或原生默认连接兜底 |
 | 插件管理 | `plugin list/create/install/update/uninstall` | 原生包、扩展能力和本地定制均保留；安装／卸载、全局依赖及用户配置变更按明确任务授权执行，不由查询或自动修复隐式触发 |
 | Adapter 开发 | `adapter init/check/test/status/eject/reset`、`convention-audit` | 原生开发、检查、测试、导出覆盖和重置能力可用；test 会执行真实动作，reset 会移除本地覆盖，先核对对象、写入和恢复条件 |
 | Adapter 故障修复 | opencli-autofix 及 trace／测试工具 | 选中 OpenCLI 后，影响目标的已确认适配器缺陷优先修复；按 [修复轮次与兜底门槛](failure-domains.md#适配器修复与浏览器兜底) 保留本地差异、验证原目标与相邻正常路径。原指南的发 Issue 建议不构成对外发送授权 |
@@ -78,14 +78,14 @@ node scripts/opencli-run.mjs skills read opencli-adapter-author references/api-d
 
 ## 显式 CDP 路线
 
-Lookup 已选定并获准使用目标 CDP 环境时，显式设置传输模式与目标 endpoint；没有 endpoint、模式无效或 URL 不支持时，在执行前失败。默认 Bridge 收到遗留 CDP 环境变量仍拒绝执行，避免隐式换路。
+只有已确认属于 ego-lite 的目标 CDP 环境可用。先将实际 endpoint 保存为 [绑定文件](opencli-windows.md#profile-绑定) 的可选 `cdp_endpoint`，再显式设置传输模式与完全一致的 endpoint；未确认、错配、模式无效或 URL 不支持时，在执行前失败。默认 Bridge 收到遗留 CDP 环境变量仍拒绝执行，避免隐式换路。
 
 ```bash
 LOOKUP_OPENCLI_TRANSPORT=cdp OPENCLI_CDP_ENDPOINT=http://127.0.0.1:9222 \
   node scripts/opencli-run.mjs <site> <command> ...
 ```
 
-远端／无头／Android 的完整指南分别位于 `docs/advanced/cdp.md`、`docs/advanced/remote-chrome.md` 和 `docs/advanced/android-chrome.md`。设置隧道、开放端口、启动浏览器、登录或连接其他设备均不由上面的变量自动授权。不要在 endpoint 的 authority 中嵌入凭据，也不向日志回显带令牌的 URL。
+上游远端／无头／Android 能力仅保留为参考，不批准在当前政策下切换其他浏览器；完整指南分别位于 `docs/advanced/cdp.md`、`docs/advanced/remote-chrome.md` 和 `docs/advanced/android-chrome.md`。设置隧道、开放端口、启动浏览器、登录或连接其他设备均不由上面的变量自动授权。不要在 endpoint 的 authority 中嵌入凭据，也不向日志回显带令牌的 URL。
 
 `opencli-health.sh` 的就绪判据针对 Browser Bridge；不能把 CDP 不具备 extensionConnected 判据解释为该 CDP 路线不可用。CDP 按实际版本的专用帮助和目标最小动作验证，单独报告环境、账号与结果；不以 Bridge doctor 报告替代其验收。
 

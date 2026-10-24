@@ -2,6 +2,7 @@
 // Lookup policy boundary; execution and async lifecycle belong to OpenCLI.
 import { spawn, spawnSync } from 'node:child_process'
 import { opencliExecutable, supervisedCommand, checkUpdates, reportUpdates } from './upstream-client.mjs'
+import { resolveBinding } from './opencli-profile.mjs'
 
 function fail(code, message) {
   console.error(JSON.stringify({error: {code, message}, phase: 'entry', outcome_unknown: false, retryable: false}))
@@ -9,33 +10,13 @@ function fail(code, message) {
 }
 const args = process.argv.slice(2)
 const options = args.slice(0, args.includes('--') ? args.indexOf('--') : args.length)
-const profile = process.env.LOOKUP_OPENCLI_PROFILE ?? 'ego-lite'
-if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(profile)) {
-  fail('OPENCLI_PROFILE_REJECTED', 'LOOKUP_OPENCLI_PROFILE must name the intended profile')
-}
 function values(name) {
   return options.flatMap((arg, index) => arg === name ? [options[index + 1] ?? '']
     : arg.startsWith(name + '=') ? [arg.slice(name.length + 1)] : [])
 }
-if (values('--profile').some(value => value !== profile)) {
-  fail('OPENCLI_PROFILE_REJECTED', '--profile must match LOOKUP_OPENCLI_PROFILE')
-}
-const transport = process.env.LOOKUP_OPENCLI_TRANSPORT ?? 'bridge'
-if (!['bridge', 'cdp'].includes(transport)) {
-  fail('OPENCLI_TRANSPORT_REJECTED', 'LOOKUP_OPENCLI_TRANSPORT must be bridge or cdp')
-}
-if (transport === 'bridge' && process.env.OPENCLI_CDP_ENDPOINT) {
-  fail('OPENCLI_TRANSPORT_REJECTED', 'Explicitly select the authorized CDP route before setting an endpoint')
-}
-if (transport === 'cdp') {
-  let endpoint
-  try { endpoint = new URL(process.env.OPENCLI_CDP_ENDPOINT ?? '') }
-  catch { fail('OPENCLI_TRANSPORT_REJECTED', 'The CDP route requires an explicit endpoint') }
-  if (!['http:', 'https:', 'ws:', 'wss:'].includes(endpoint.protocol)
-      || !endpoint.hostname || endpoint.username || endpoint.password) {
-    fail('OPENCLI_TRANSPORT_REJECTED', 'Unsupported CDP endpoint; do not put credentials in its authority')
-  }
-}
+let profile
+try { ({profile} = resolveBinding(values('--profile'))) }
+catch (error) { fail(error.code, error.message) }
 if (process.env.OPENCLI_DAEMON_PORT?.trim()) {
   fail('OPENCLI_CONFIG_REJECTED', 'OpenCLI 2 no longer supports OPENCLI_DAEMON_PORT; remove the old setting')
 }
@@ -72,7 +53,11 @@ if (!options.some(arg => ['--version', '--help', '-h'].includes(arg))) {
 }
 const remaining = Number(budget) - (Date.now() - started)
 if (remaining <= 0) fail('OPENCLI_ENTRY_TIMEOUT', 'Budget exhausted before dispatch')
-const [executable, dispatchArgs] = supervisedCommand(selected, args)
+// Forward a concrete ID, so an alias/default can never silently select another browser.
+const pinnedArgs = args.map((arg, index) => index >= options.length ? arg
+  : arg.startsWith('--profile=') ? '--profile=' + profile
+  : options[index - 1] === '--profile' ? profile : arg)
+const [executable, dispatchArgs] = supervisedCommand(selected, pinnedArgs)
 const child = spawn(executable, dispatchArgs, {env, stdio: 'inherit', shell: false})
 let stoppedCode
 let killTimer

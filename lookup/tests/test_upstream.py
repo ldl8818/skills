@@ -235,6 +235,10 @@ class UpdateTests(unittest.TestCase):
         prepare.assert_not_called()
 
     def test_native_runner_rejects_corrupt_active_version(self):
+        config = self.base / 'home/.config/lookup/opencli-binding.json'
+        config.parent.mkdir(parents=True)
+        config.write_text(json.dumps({'version': 1, 'browser': 'ego-lite',
+                                      'context_id': 'fixture-context'}))
         candidate = self.candidate()
         self.store.write('active.json', candidate)
         Path(candidate['binary']).write_text('changed')

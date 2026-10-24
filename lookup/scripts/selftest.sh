@@ -191,7 +191,7 @@ else
   bad "fetch.sh 不在 $FETCH_SH —— 静态抓取通道失效"
 fi
 
-for script in find-url.mjs match-site.mjs ego-spaces.mjs opencli-run.mjs; do
+for script in find-url.mjs match-site.mjs ego-spaces.mjs opencli-profile.mjs opencli-run.mjs; do
   if [[ -f "$SELF_DIR/$script" ]] && node --check "$SELF_DIR/$script" 2>/dev/null; then
     ok "scripts/$script 可解析"
   else
@@ -217,7 +217,8 @@ if [[ -x "$SELF_DIR/opencli-health.sh" ]] && command -v jq >/dev/null 2>&1; then
   health_output=$(bash "$SELF_DIR/opencli-health.sh")
   health_status=$?
   if [[ "$health_status" -eq 0 ]] && jq -e '.ok == true and .state == "ready"' >/dev/null 2>&1 <<<"$health_output"; then
-    ok "daemon + Profile ${LOOKUP_OPENCLI_PROFILE:-ego-lite} 扩展状态就绪（尚未验证平台业务）"
+    selected_profile=$(jq -r '.profile' <<<"$health_output")
+    ok "daemon + Profile ${selected_profile} 扩展状态就绪（尚未验证平台业务）"
     L3_OK=1
   else
     state=$(jq -r '.state // "invalid_health_output"' <<<"$health_output" 2>/dev/null || printf 'invalid_health_output')

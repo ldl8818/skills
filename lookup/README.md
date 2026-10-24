@@ -2,11 +2,11 @@
 
 > Complete Agent Reach and OpenCLI capabilities in one entry point for web, browser and execution-tool tasks. Skill instructions are in Chinese.
 
-Lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 全部执行能力，以及联网搜索、媒体和本地 UI 验收。只将 Lookup 注册为自动入口，由当前 Agent 按需读取平台／工具指南并执行；工具随附的通用优先声明不重做选路。完整能力、依赖和适配见 [Agent Reach 融合](references/Agent-Reach融合.md) 与 [OpenCLI 融合](references/OpenCLI融合.md)，选路分别见 [任务选路](references/任务选路.md) 与 [浏览器选路](references/浏览器选路.md)。
+Lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 全部执行能力，以及联网搜索、媒体和本地 UI 验收。能用 API、连接器、CLI 或系统命令完成时先用它们；确需浏览器时，只有开发中调试本地 Web UI 可用 Agent 真正内置的浏览器，其他一律用 ego-lite。ego-lite 不可用时报告阻塞，不切 Chrome 或其他浏览器。只将 Lookup 注册为自动入口，由当前 Agent 按需读取平台／工具指南并执行；工具随附的通用优先声明不重做选路。完整能力、依赖和适配见 [Agent Reach 融合](references/Agent-Reach融合.md) 与 [OpenCLI 融合](references/OpenCLI融合.md)，选路分别见 [任务选路](references/任务选路.md) 与 [浏览器选路](references/浏览器选路.md)。
 
-Lookup 2.3.1完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件、16个渠道、11类 CLI、7类参考、5份设置指南、MCP 和公开 Python 接口；同时纳入 OpenCLI 正式版2.0.2的170个站点、1,223条站点命令和66条内置命令，以及全部5套 Skill。Agent Reach 来源随压缩快照保存；OpenCLI 完整源码／发布包以逐文件回执固定，完整源码可校验后按需缓存，原始 Skill 不进入自动发现。平台可用性仍取决于本机工具、账号和当前真实结果；完整融合不表示所有站点已逐项实测。
+Lookup 2.4.0完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件、16个渠道、11类 CLI、7类参考、5份设置指南、MCP 和公开 Python 接口；同时纳入 OpenCLI 正式版2.0.2的170个站点、1,223条站点命令和66条内置命令，以及全部5套 Skill。Agent Reach 来源随压缩快照保存；OpenCLI 完整源码／发布包以逐文件回执固定，完整源码可校验后按需缓存，原始 Skill 不进入自动发现。平台可用性仍取决于本机工具、账号和当前真实结果；完整融合不表示所有站点已逐项实测。
 
-平台抓取优先发现并实测 OpenCLI 动作，保留 yt-dlp 等更合适的专用 CLI；网站改版导致适配失效时先修复，经过3轮有效修复仍未完成目标才允许 Ego 等通用浏览器抓取兜底。轮次、记录与停止条件统一见 [适配器修复与浏览器兜底](references/failure-domains.md#适配器修复与浏览器兜底)，普通重跑不算修复，成功即停。连接探针不能代替业务调用；用户指定、视觉／交互目标和账号／权限边界分别判断。全网搜索顺序只用于全网搜索。小红书新版布局的定向修复见[执行与诊断](references/opencli-windows.md#小红书新版搜索适配)。
+平台抓取优先发现并实测 OpenCLI 动作，保留 yt-dlp 等更合适的专用 CLI；网站改版导致适配失效时先修复，经过3轮有效修复仍未完成目标才允许 ego-lite 通用浏览器抓取兜底。轮次、记录与停止条件统一见 [适配器修复与浏览器兜底](references/failure-domains.md#适配器修复与浏览器兜底)，普通重跑不算修复，成功即停。连接探针不能代替业务调用；用户指定、视觉／交互目标和账号／权限边界分别判断。全网搜索顺序只用于全网搜索。小红书新版布局的定向修复见[执行与诊断](references/opencli-windows.md#小红书新版搜索适配)。
 
 小红书、Douyin、B站等平台按具体动作判断是否需要登录。需要登录且当前未登录时，Lookup 会提前说明，打开 CLI 原绑定的浏览器和 Profile 供用户手动操作；收到恢复信号并核对后，继续原 CLI 动作。登录准备不占三轮适配修复次数，也不批准转为浏览器全程抓取；验证码、风控和用户接管期间暂停相关自动操作。具体流程见 [登录准备与恢复](references/opencli-windows.md#登录准备与恢复)。
 
@@ -28,7 +28,7 @@ Lookup 2.3.1完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件�
 | 保存与下载 | 保存这篇文章及配图；把指定视频下载到我给的目录。 | 优先适用 OpenCLI／专用 CLI、文件核验；指定视频落盘交给 download-video | 小红书正文6图、公众号正文5图有真实归档证据；X 单帖图片按修复后的动作补验。完整视频下载未纳入本轮，普通阅读不会默认下载。 |
 | 历史与书签找回 | 找到我昨天在 Ego Lite 看过的内部报表地址。 | 单 Profile 历史／书签 helper；必要时原生历史页 | 历史锁定分类、释放后读取有离线回归，原生历史补救已真实通过；不遍历其他 Profile，不把内部关键词发到公网。 |
 | 网页交互 | 筛选最近一周的结果，再打开详情核对作者和时间。 | ego-browser 或按任务选定的浏览器接口 | 真实筛选与详情核对通过；账号权限决定可见范围。发布、评论等按用户授权执行，本次未验证真实外部写入。 |
-| 本地 UI 验收 | 检查这个页面的筛选、分页和手机布局。 | 宿主 Browser、Ego 或 DevTools | 控件、分页与媒体有受控验证；已有用户标注和手机布局修复分支未完整实测。 |
+| 本地 UI 验收 | 检查这个页面的筛选、分页和手机布局。 | 本地开发时用 Agent 内置浏览器，否则用 ego-lite | 控件、分页与媒体有受控验证；已有用户标注和手机布局修复分支未完整实测。 |
 | 读取故障诊断 | 页面能打开，为什么工具读不到正文？ | 原生 doctor、错误分类、访问上下文与独立路径判断 | 连接诊断、业务错误、超时和锁定有真实或离线证据；诊断正常只证明对应探针可用。 |
 
 ## 常用平台的实际覆盖
@@ -44,7 +44,7 @@ Lookup 2.3.1完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件�
 | YouTube：总结这个视频，列出关键观点的时间点。 | yt-dlp、OpenCLI transcript；无可靠字幕时按需转写 | 同一视频的117段字幕读取通过，另有跨语言字幕核对 | 依赖字幕轨道、网络和工具运行时；自动字幕与人工字幕均需质量核对。无字幕视频需要可用 ASR，字幕结论不覆盖全片视觉。 |
 | Douyin：筛选最近一天的内容；完整转写这条视频的口播。 | OpenCLI search／detail／user-videos；Ego Lite 页面筛选与媒体读取；独立 ASR | detail、最新发布加一周内／一天内筛选通过；62.9秒完整音轨送入本地 ASR，得到30段并定向校对 | 当前已验 CLI 没有日期筛选参数或完整 ASR 动作。临时转写环境已清理，常备 ASR 尚未配置；短音轨通过不代表长视频或逐字人工听审。近期结果可能含图文，不能冒充视频内容。 |
 
-Ego Lite 是基于 Chromium 的浏览器，OpenCLI 是独立项目。两条路径分别为 **OpenCLI CLI → OpenCLI Chrome 扩展 → Ego Lite** 和 **ego-browser 执行接口 → Ego Lite**。后者选中后通过 `ego-browser skill` 读取完整指南。`ego-lite` 也可被配置成 OpenCLI 的 Profile 别名，但别名本身不能证明目标浏览器或登录账号一致。需登录的动作使用用户指定的已登录环境；出现账号挑战时交还控制。
+Ego Lite 是基于 Chromium 的浏览器，OpenCLI 是独立项目。两条路径分别为 **OpenCLI CLI → OpenCLI Chrome 扩展 → Ego Lite** 和 **ego-browser 执行接口 → Ego Lite**。后者选中后通过 `ego-browser skill` 读取完整指南。OpenCLI 选择实际 `contextId` 或已核实的本机别名，运行入口固定首次确认的 ego-lite 连接，不给产品名设置默认 Profile。需登录的动作在该 ego-lite 环境交接；出现账号挑战时交还控制。
 
 ## 能力边界
 
@@ -68,7 +68,7 @@ flowchart TB
     official["官方 API / 已连接服务 / 搜索"]
     adapters["OpenCLI 站点 Adapter / 专用 CLI"]
     static["原站 HTTP / 本地静态正文提取"]
-    browser["浏览器执行接口<br/>Ego / 宿主 Browser / DevTools"]
+    browser["浏览器执行接口<br/>ego-lite / 本地 UI 的 Agent 内置浏览器"]
     evidence["统一证据验收<br/>目标 · 来源 · 时效 · 完整性 · 证据类型"]
     enough{"证据足以回答？"}
     done["带来源交付已证实结论"]
@@ -83,7 +83,7 @@ flowchart TB
     choose --> official
     choose -->|平台抓取优先| adapters
     choose --> static
-    choose -->|指定环境或其他浏览器任务| browser
+    choose -->|确需浏览器，按唯一政策选路| browser
     official --> evidence
     adapters --> evidence
     static --> evidence
@@ -153,7 +153,7 @@ Tavily／Exa 用户级账号／免 Key 接入、豆包配置与额度切换见 [
 | Agent Reach 融合引擎 | 完整原始资料随包；需要时用 `scripts/reach.py prepare` 准备私有 Python 环境，诊断、配置和转写通过同一来源执行；不注册额外 Skill |
 | python3、curl、jq | 正文提取、结果处理和 OpenCLI 门禁／合约检查 |
 | ego lite 与随包执行指南 | 按浏览器路由选中后用 `ego-browser skill` 读取正式接口；平台抓取仍遵守修复门槛，不注册额外自动入口 |
-| 当前 Agent Browser／DevTools | 按开发、标注、调试、指定环境及技术降级需求选择 |
+| 当前 Agent Browser／DevTools | 仅开发中调试本地 Web UI 使用真正内置浏览器；不接管 Chrome |
 
 静态正文脚本 `scripts/fetch.sh` 随 Skill 分发，默认只请求原站、本地提取，不自动安装依赖或转发第三方。支持 HTTP(S) HTML、纯文本与 Markdown，保留最终来源 URL；拒绝凭据 URL、非文本响应和超出大小限制的内容。`--prefer` 选择提取器，`--max-output-chars` 默认 40,000；stdout 保持正文，stderr 给机器可读状态。exit 3 表示有正文但截断，仍可按任务使用已证实部分。已有 `readability-lxml`／`html2text` 时可提升提取质量。
 
@@ -184,14 +184,9 @@ test ! -e ~/.codex/skills/lookup && test ! -L ~/.codex/skills/lookup && \
 
 ### OpenCLI Profile
 
-先按 OpenCLI 官方文档完成安装及扩展连接，再从实际 Profile 清单选择用户明确使用的浏览器。不要用其他 Profile 通过门禁：
+先按 OpenCLI 官方文档安装扩展，在 ego-lite 中确认真实连接并用 `opencli profile list` 核对 `contextId`，再按 [Profile 绑定](references/opencli-windows.md#profile-绑定) 保存本机确认结果。多连接时不猜测，不重命名为产品名，不改变 OpenCLI 默认值。
 
-```bash
-opencli profile list
-opencli profile rename <contextId> ego-lite
-```
-
-Lookup 默认选择名为 `ego-lite` 的 OpenCLI Profile；这是用户配置的连接别名。需要另一明确配置的 Profile 时，给 health 与 runner 使用同一 `LOOKUP_OPENCLI_PROFILE` 环境变量。helper 不替用户登录，也不注入或导出 Cookie。
+runner、health 与 selftest 共用该绑定；缺失、空值、别名丢失或改指、Profile 冲突时返回78。`LOOKUP_OPENCLI_PROFILE` 可指定已绑定实际 ID 或已核实指向它的本机别名，最终传入实际 ID。绑定只供 OpenCLI 使用，不复制为 ego-browser 的 `profileId`；helper 不替用户登录，不导出 Cookie。
 
 ego 不是必装前提；需要它时用 `ego-browser skill` 按需读取当前正式执行指南。任务脚本使用 `scripts/ego-run.mjs` 的本任务 lease 与 finally 收尾，多轮交互通过 `scripts/ego-task.mjs` 复用该 lease；只关闭有本任务创建证据的空间。旧空间辅助脚本仍只做保守检查，普通安装不自动写 hook、不按全局闲置时间回收未知空间，见 [ego-space-hooks.md](references/ego-space-hooks.md)。
 
@@ -238,7 +233,7 @@ node scripts/match-site.mjs "<用户输入或目标域名>"
 node scripts/find-url.mjs "<关键词>" --since 7d
 ```
 
-`find-url.mjs` 只查 ego lite 的一个 Profile：默认 `Local State` 的 `profile.last_used`，未设置则 `Default`；`--profile "<已登记目录名>"` 可指定授权目标，不遍历所有 Profile。`--json` 提供结构化结果与 `more_available`，错误不会伪装成空列表；普通 top-N 和触及保护上限的 partial 分别报告。其他浏览器要发现独立的已授权能力，不猜内部地址、不把内部关键词发到公网。详细输出与退出码见 [search-routing.md](references/search-routing.md)。
+`find-url.mjs` 只查 ego lite 的一个 Profile：默认 `Local State` 的 `profile.last_used`，未设置则 `Default`；`--profile "<已登记目录名>"` 可指定授权目标，不遍历所有 Profile。`--json` 提供结构化结果与 `more_available`，错误不会伪装成空列表；普通 top-N 和触及保护上限的 partial 分别报告。其他浏览器的历史不因已登录或本脚本无结果而自动纳入；须由用户当次明确改变范围，不猜内部地址、不把内部关键词发到公网。详细输出与退出码见 [search-routing.md](references/search-routing.md)。
 
 ## 参考文件
 
@@ -246,7 +241,7 @@ node scripts/find-url.mjs "<关键词>" --since 7d
 |---|---|
 | [任务选路.md](references/任务选路.md) | 多后端筛选、复用上游资料及区分环境可用与任务完成 |
 | [OpenCLI融合.md](references/OpenCLI融合.md) | 全部站点与内置命令、5套指南、CDP、插件及适配器开发维护 |
-| [浏览器选路.md](references/浏览器选路.md) | 需要浏览器时的默认选择、开发场景、指定环境与技术降级 |
+| [浏览器选路.md](references/浏览器选路.md) | CLI 优先、本地 Web UI 内置浏览器例外与 ego-lite 唯一边界 |
 | [动态页面读取.md](references/动态页面读取.md) | 内容就绪与有界等待、登录提示、访问上下文、iframe／Shadow DOM |
 | [媒体读取.md](references/媒体读取.md) | 图片懒加载与实际资源、视频定位／采帧、证据覆盖范围 |
 | [search-routing.md](references/search-routing.md) | 全网搜索、网页、历史与站点经验 |
