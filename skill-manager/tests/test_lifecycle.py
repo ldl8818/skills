@@ -1,4 +1,4 @@
-"""Resolved Lookup delegation, legacy detection and truthful partial outcomes."""
+"""Resolved lookup delegation, legacy detection and truthful partial outcomes."""
 import importlib.util
 import json
 import os

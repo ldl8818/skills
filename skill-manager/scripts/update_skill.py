@@ -5,9 +5,9 @@
   python3 update_skill.py                更新所有有新版的（先 check 再逐个更新）
   python3 update_skill.py --dry-run      只列出将要更新的，不动手
   python3 update_skill.py <名字>          更新单个；插件可只写裸名（自动补 @市场名）
-  python3 update_skill.py lookup          总更新 Lookup 本体与已安装上游
-  python3 update_skill.py lookup --self-only       只更新 Lookup 本体
-  python3 update_skill.py lookup --upstream-only   只更新 Lookup 上游
+  python3 update_skill.py lookup          总更新 lookup 本体与已安装上游
+  python3 update_skill.py lookup --self-only       只更新 lookup 本体
+  python3 update_skill.py lookup --upstream-only   只更新 lookup 上游
 
 2026-07-11 增强：
 - 裸名字自动解析（`core.resolve_target`，与 delete 共用）：市场名是安装来源的内部
@@ -424,7 +424,7 @@ def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False,
     owner = lifecycle.lookup_root(skill_dir)
     if owner:
         if ref_arg:
-            print('❌ Lookup 的本体通道由其维护入口管理，不通过通用 --ref 切换。')
+            print('❌ lookup 的本体通道由其维护入口管理，不通过通用 --ref 切换。')
             return False
         return lifecycle.update(owner, self_only, upstream_only)
     if upstream_only:
@@ -745,7 +745,7 @@ def update_one(name, project=None, ref_arg=None, self_only=False, upstream_only=
         return False
     if kind == "plugin":
         if self_only or upstream_only:
-            print('❌ 插件不支持 Lookup 的本体／上游范围参数。')
+            print('❌ 插件不支持 lookup 的本体／上游范围参数。')
             return False
         if ref_arg:
             print("❌ --ref 只对直装 skill 有效：插件按 commit 装，本来就跟 HEAD")
@@ -813,7 +813,7 @@ def update_all(dry_run=False):
     print(f"✅ 成功 {len(done)}：" + "、".join(done) if done else "✅ 成功 0")
     if failed:
         print(f"❌ 未全部完成 {len(failed)}：" + "、".join(failed) +
-              f"\n   （逐项核对实际结果；普通 Skill 备份在 {BACKUP_ROOT}/，Lookup 另有维护回执。）")
+              f"\n   （逐项核对实际结果；普通 Skill 备份在 {BACKUP_ROOT}/，lookup 另有维护回执。）")
     return not failed and not errors and not unresolved
 
 
@@ -878,7 +878,7 @@ if __name__ == "__main__":
             owner = lifecycle.lookup_root(path) if path and not resolution_error else None
             if owner:
                 if ref_arg:
-                    print('❌ Lookup 不通过通用 --ref 切换通道。')
+                    print('❌ lookup 不通过通用 --ref 切换通道。')
                     sys.exit(1)
                 payload, code = lifecycle.invoke(owner, self_only='--self-only' in flags,
                     upstream_only='--upstream-only' in flags, dry_run=True)

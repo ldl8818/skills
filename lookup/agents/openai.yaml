@@ -1,5 +1,5 @@
 interface:
-  display_name: "Lookup"
+  display_name: "lookup"
   short_description: "融合 Agent Reach 与 OpenCLI 全部能力的联网和浏览器统一入口"
   default_prompt: "使用 $lookup 选择合适路径，按需加载平台或浏览器指南，获取并核验目标信息，完成所需阅读、交互或环境诊断。"
 

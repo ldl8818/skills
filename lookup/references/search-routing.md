@@ -123,7 +123,7 @@ mcporter list exa --schema --json --no-oauth
 mcporter call exa.web_search_exa query="<搜索词>" objective="<证据目标与来源要求>" numResults=3 --no-oauth --timeout 30000 --output json
 ```
 
-从 Lookup 根目录运行独立真实搜索自检：
+从 lookup 根目录运行独立真实搜索自检：
 
 ```bash
 bash scripts/selftest.sh --search
@@ -186,7 +186,7 @@ curl -fsSL "https://aihot.virxact.com/api/v1/items?mode=selected&window=24h&limi
 
 ## 读取已知网页
 
-从 Lookup 根目录执行：
+从 lookup 根目录执行：
 
 ```bash
 bash scripts/fetch.sh "<url>"

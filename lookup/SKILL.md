@@ -1,8 +1,8 @@
 ---
 name: lookup
-description: "联网搜索、平台内容、网页操作与本地 UI 验收的统一入口；融合 Agent Reach 和 OpenCLI 全部能力，按需配置、诊断、开发适配器及维护 Lookup 本体与上游工具。"
-when_to_use: "联网搜索、查官方资料、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、lookup upgrade、更新 Lookup、升级 Lookup、更新 Lookup 上游"
-dispatch_intent: "统一承接联网与浏览器任务，按需加载 Agent Reach、OpenCLI 和浏览器执行资料，选择路线并核验证据；指定视频链接落盘交给 download-video；Lookup 本体与上游更新按自身维护入口执行。"
+description: "联网搜索、平台内容、网页操作与本地 UI 验收的统一入口；融合 Agent Reach 和 OpenCLI 全部能力，按需配置、诊断、开发适配器及维护 lookup 本体与上游工具。"
+when_to_use: "联网搜索、查官方资料、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、lookup upgrade、更新 lookup、升级 lookup、更新 lookup 上游"
+dispatch_intent: "统一承接联网与浏览器任务，按需加载 Agent Reach、OpenCLI 和浏览器执行资料，选择路线并核验证据；指定视频链接落盘交给 download-video；lookup 本体与上游更新按自身维护入口执行。"
 metadata:
   version: "2.4.0"
   source: local
@@ -10,19 +10,19 @@ metadata:
 
 # lookup — 联网与浏览器统一入口
 
-Lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 的全部站点动作／浏览器／开发维护能力，以及现有搜索、媒体与证据验收规则。当前主 Agent 通过 Lookup 选路，再按需加载指南和调用工具；不启动另一个路由 Agent，不扩大用户授权。
+lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 的全部站点动作／浏览器／开发维护能力，以及现有搜索、媒体与证据验收规则。当前主 Agent 通过 lookup 选路，再按需加载指南和调用工具；不启动另一个路由 Agent，不扩大用户授权。
 
 ## 唯一自动入口
 
-只将 Lookup 注册为联网与浏览器任务的自动触发 Skill。Agent Reach、OpenCLI 的5套 Skill、ego-browser 与 web-access 的完整来源和执行指南保留在自动发现目录之外，选中后才读取；不得先让它们自动触发再回转 Lookup。用户指定工具时，Lookup 按指定条件选择执行路径。
+只将 lookup 注册为联网与浏览器任务的自动触发 Skill。Agent Reach、OpenCLI 的5套 Skill、ego-browser 与 web-access 的完整来源和执行指南保留在自动发现目录之外，选中后才读取；不得先让它们自动触发再回转 lookup。用户指定工具时，lookup 按指定条件选择执行路径。
 
 Agent Reach 的16个渠道、7类完整参考、配置、诊断、转写、安装与维护流程统一见 [Agent Reach 融合与能力映射](references/Agent-Reach融合.md)。平台任务、环境配置或诊断先读该入口的对应项；普通网页与已有搜索接入仍使用下文的直接路径，不强制体检或安装。原始上游触发说明只作来源记录，不作为第二套当前选路规则。
 
 OpenCLI 的全部站点／内置命令、浏览器与原生 Chrome 接口、CDP、认证／Profile、插件、适配器开发与修复统一见 [OpenCLI 完整能力](references/OpenCLI融合.md)。现有 providers.json 只登记常用动作合约，不限制可发现能力的范围；其他动作从当前原生注册表与帮助选取，按任务核对读写授权。
 
-## Lookup 更新
+## lookup 更新
 
-未限定范围的“更新／升级 Lookup”或“更新 Lookup 这个 Skill”执行 `lookup update`，维护本体及已安装的 OpenCLI、Agent Reach、ego-browser。明确只更新本体时用 `lookup update --self-only`；只更新上游时用 `lookup upgrade`，指定一项用 `lookup upgrade <dependency>`。自然语言、终端和 Skill Manager 委派使用同一维护器；定制待判断时，当前 Agent 比较完整三方材料、验证并接续。命令、来源与结果范围见[更新提醒与维护](references/上游更新.md)。
+未限定范围的“更新／升级 lookup”或“更新 lookup 这个 Skill”执行 `lookup update`，维护本体及已安装的 OpenCLI、Agent Reach、ego-browser。明确只更新本体时用 `lookup update --self-only`；只更新上游时用 `lookup upgrade`，指定一项用 `lookup upgrade <dependency>`。自然语言、终端和 Skill Manager 委派使用同一维护器；定制待判断时，当前 Agent 比较完整三方材料、验证并接续。命令、来源与结果范围见[更新提醒与维护](references/上游更新.md)。
 
 ## 工作流程
 
@@ -30,7 +30,7 @@ OpenCLI 的全部站点／内置命令、浏览器与原生 Chrome 接口、CDP�
 
 1. **确定目标**：明确对象、环境与所需证据，区分正文、评论、字幕、画面、交互或视觉验收；需要最新或完整内容时，定义时间与覆盖范围。已有材料满足这些要求时不重复联网。
 2. **选择路径**：优先用户指定环境、专用官方能力和适用的已连接服务。平台搜索、正文、评论、字幕与素材保存先读 [平台检索路由](references/platform-routing.md#发现与执行)，优先发现并实际调用适用的 OpenCLI 动作，保留 yt-dlp 等更合适的专用 CLI；不得因一次探针、历史失败或未登记而跳过核心能力。全网搜索才按 [免费顺序与切换](references/search-routing.md#免费顺序与切换) 选择国内内容豆包 → Tavily → Exa、其他普通搜索 Exa → Tavily → 豆包，各服务核对账号、额度与费用。视觉、交互等浏览器任务按 [浏览器选路.md](references/浏览器选路.md) 选择；平台抓取不得仅凭动作失败或内容缺口直接转 Ego。
-3. **加载执行接口**：只读所选工具的当前帮助与相关参考。首次选用 OpenCLI、ego-browser 或 Agent Reach 时，按 [更新提醒与维护](references/上游更新.md) 启动有界后台检查；运行入口已检查时不重复发起。同一新版只提醒一次，检查失败不阻断当前查询。工具可以在同一环境内定位、等待、提取和处理普通错误；重试遵循 [有界恢复](references/failure-domains.md#有界恢复)。跨工具、浏览器或账号的换路由 Lookup 判断，工具随附的通用优先声明不重做选路。职责与加载边界见 [任务选路.md](references/任务选路.md)。
+3. **加载执行接口**：只读所选工具的当前帮助与相关参考。首次选用 OpenCLI、ego-browser 或 Agent Reach 时，按 [更新提醒与维护](references/上游更新.md) 启动有界后台检查；运行入口已检查时不重复发起。同一新版只提醒一次，检查失败不阻断当前查询。工具可以在同一环境内定位、等待、提取和处理普通错误；重试遵循 [有界恢复](references/failure-domains.md#有界恢复)。跨工具、浏览器或账号的换路由 lookup 判断，工具随附的通用优先声明不重做选路。职责与加载边界见 [任务选路.md](references/任务选路.md)。
 4. **执行与补证**：按具体动作判断登录依赖；已知需要且当前未登录时提前告知，实际返回认证要求时停止相关抓取，按 [登录准备与恢复](references/opencli-windows.md#登录准备与恢复) 打开 CLI 原绑定浏览器／Profile 供用户手动处理，收到恢复信号并核对后回到原 CLI。登录准备不算抓取兜底或修复轮次。先取结构化字段或定向正文，按任务判断是否足够，不设统一字数门槛。动作失败先定位连接、账号或具体动作；探针与业务结果冲突时按 [连接诊断](references/opencli-windows.md#连接诊断) 复核。仍影响目标的适配器缺陷必须先修复，按 [适配器修复与浏览器兜底](references/failure-domains.md#适配器修复与浏览器兜底) 完成最多3轮有依据的修复；仅3轮均未完成目标且符合换路条件时，才允许 ego-lite 通用浏览器抓取兜底。普通重试不代替修复轮次；连接、账号、权限与结果未知按各自停止边界处理。完整短帖已足够时直接用；只有影响结论的缺口才追加详情、分页、评论、字幕或画面。导航与点击回执不证明目标内容就绪，UI 验收须检查实际页面。
 5. **核验与收尾**：核对目标、来源、作者、时间、完整性与证据类型；只管理本任务有归属证据的资源，按所选工具接口收尾。选用 ego 必须执行 [任务空间与收尾规则](references/ego-space-hooks.md#本任务生命周期入口)。检查本轮所用依赖的更新通知并转述给用户；仅在已有对应托管授权时，按维护流程连续处理。区分实测、来源陈述与推断，缺少时间不证明最新，只有字幕不声称看过画面。
 

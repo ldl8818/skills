@@ -11,7 +11,7 @@
 | [`think`](think/) | 价值判断、架构方案与可执行交接计划；保留完整上游原版 |
 | [`ui`](ui/) | 产品界面创建、视觉修改与真实渲染验证 |
 | [`write`](write/) | 明确要求的文案起草、改写和本地化 |
-| [`lookup`](lookup/) | 融合 Agent Reach 和 OpenCLI 全部能力的联网与浏览器统一入口；按需执行、配置、开发维护及更新 Lookup 本体与上游 |
+| [`lookup`](lookup/) | 融合 Agent Reach 和 OpenCLI 全部能力的联网与浏览器统一入口；按需执行、配置、开发维护及更新 lookup 本体与上游 |
 | [`self-improving`](self-improving/) | Claude Code 与 Codex 共用的可配置、自我进化记忆系统；公开程序与私人记忆分离 |
 | [`skill-manager`](skill-manager/) | Skill 的列出、溯源、查更新、更新、启停、定版本、自检和归档删除 |
 | [`download-video`](download-video/) | 按中文内容标题和发布日期下载视频，并用 `ffprobe` 验证本地文件 |

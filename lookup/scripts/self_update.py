@@ -1,4 +1,4 @@
-"""Update only Lookup's source tree; never pull or reset its containing repository."""
+"""Update only lookup's source tree; never pull or reset its containing repository."""
 from contextlib import contextmanager
 import hashlib
 import io

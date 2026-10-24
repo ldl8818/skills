@@ -76,7 +76,7 @@ update 合并保数据），且用户重装漏抄一个 `--exclude` 就会删掉
 
 ### check 与 update 口径一致
 
-Lookup 的本体与依赖由 `lifecycle.py` 委派到 `core.resolve_direct_path` 解析出的实际安装，不从 PATH 调用同名另一份。单项 `update lookup`、扫描与批量共用该分派；即使来源为 local 或旧版缺维护接口，也须纳入目标并如实报告。`--self-only`／`--upstream-only` 对应 Lookup 的本体／上游范围，默认总更新；普通 Skill 和插件继续使用原合并流程。结构化结果和退出码共同判定，不把部分成功、pending 或语义待判断记为完成。取消时先让维护子进程回收自有资源，超时结果未知不自动重试。
+lookup 的本体与依赖由 `lifecycle.py` 委派到 `core.resolve_direct_path` 解析出的实际安装，不从 PATH 调用同名另一份。单项 `update lookup`、扫描与批量共用该分派；即使来源为 local 或旧版缺维护接口，也须纳入目标并如实报告。`--self-only`／`--upstream-only` 对应 lookup 的本体／上游范围，默认总更新；普通 Skill 和插件继续使用原合并流程。结构化结果和退出码共同判定，不把部分成功、pending 或语义待判断记为完成。取消时先让维护子进程回收自有资源，超时结果未知不自动重试。
 
 update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有新版」）；
 插件按 commit 装，就拿 commit 比。

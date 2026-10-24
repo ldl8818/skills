@@ -1,10 +1,10 @@
 # Agent Reach 融合与能力映射
 
-平台能力、环境配置、诊断或转写任务读取对应部分。Lookup 统一决定任务路线和完成条件；下面的上游资料提供具体平台知识与工具用法，不重做通用选路。
+平台能力、环境配置、诊断或转写任务读取对应部分。lookup 统一决定任务路线和完成条件；下面的上游资料提供具体平台知识与工具用法，不重做通用选路。
 
 ## 来源与加载
 
-完整来源为 [Agent Reach](https://github.com/Panniantong/Agent-Reach/tree/94f06c1969dfc1834001269d79d3ad0972d9dee6)，主分支基线 `94f06c1969dfc1834001269d79d3ad0972d9dee6`，上游版本1.5.0。本地融合版本独立记录在 Lookup 入口。正式 tag v1.5.0只有13个渠道，同版本号不能证明覆盖当前16个渠道。
+完整来源为 [Agent Reach](https://github.com/Panniantong/Agent-Reach/tree/94f06c1969dfc1834001269d79d3ad0972d9dee6)，主分支基线 `94f06c1969dfc1834001269d79d3ad0972d9dee6`，上游版本1.5.0。本地融合版本独立记录在 lookup 入口。正式 tag v1.5.0只有13个渠道，同版本号不能证明覆盖当前16个渠道。
 
 - 原始仓库的121个文件完整保存为 [源快照](../upstream/agent-reach.tar.gz)，逐文件清单、大小、哈希及本地运行适配归 [来源回执](../upstream/agent-reach.json)，原 [MIT 许可](../upstream/LICENSE-agent-reach) 保留。
 - 原始 `SKILL.md`、英文入口和7类参考均保留原文，存于压缩快照中，不能被客户端当成另一个 Skill 自动发现。不要将解包目录链接到客户端的 skills 目录。
@@ -35,7 +35,7 @@
 | 雪球 | finance | 会话核对、股票搜索、行情、热门内容与热门股票 | OpenCLI 或明确配置的最小 Cookie；HTTP 400不当股票不存在；返回代码、价格、时间或真实非空列表 |
 | V2EX | social | 热门、节点主题、主题详情与回复、用户资料 | 公开 API 或上游 Channel 方法；核对主题 ID、回复范围及分页，不把热门列表当全站搜索 |
 
-Lookup 已有的公众号、Douyin、其他搜索服务、浏览器操作、本地 UI 验收、历史检索与媒体证据继续使用各自现行参考；不因上游未登记这些渠道而移除。
+lookup 已有的公众号、Douyin、其他搜索服务、浏览器操作、本地 UI 验收、历史检索与媒体证据继续使用各自现行参考；不因上游未登记这些渠道而移除。
 
 V2EX 原始 Channel 方法只取回复第一页，且将回复请求失败降成空列表。融合运行时保留正文并补充 `replies_complete / replies_error`，失败和未取全均不能认定为无回复；需要完整回复时沿公开 replies API 分页，并核对返回范围与总数。原始来源不改写，修正记录在来源回执的运行适配中。
 
@@ -54,7 +54,7 @@ python3 scripts/reach.py run doctor --json
 
 运行时位于 `XDG_DATA_HOME/lookup/agent-reach/<commit>-<integration-id>`，未设置时使用 `~/.local/share/lookup/agent-reach/<commit>-<integration-id>`。integration-id 绑定本地适配，适配变化时准备新环境并保留旧环境。准备需要 Python ≥3.10、已有 uv 和下载 Python 依赖的网络；不安装全局 CLI，不调用模型、读取浏览器账号或查询业务站点。准备失败只清理本次创建的环境，已有未知残留保持原状；同一来源重复准备不重装。配置仍沿用上游的 `~/.agent-reach/`，不会在来源快照中保存凭据。
 
-| 流程 | Lookup 内的执行方式与完成条件 |
+| 流程 | lookup 内的执行方式与完成条件 |
 |---|---|
 | 环境安装与渠道配置 | 读取 `reference install` 及所选分类，核对计划与授权后调用 `run install --env=local --system --channels=<name>`；默认 `run install --env=local` 仅检查。安装器保留全部渠道安装能力；明确选择渠道时跳过无关的全局核心工具与 Exa 配置，只诊断所选渠道，缺少该渠道的必要依赖则据实际错误定向处理。默认完整安装或显式 all 保留原流程；客户端 Skill 注册统一关闭。安装后核对 [发现入口](#客户端发现与恢复) |
 | 交互设置与凭据配置 | `run setup` 或 `run configure <key>`；优先隐藏输入，管道输入用 `--stdin`；不把值写进命令、日志或回复。浏览器 Cookie 读取须有明确的平台与 Profile 授权，只采所需字段；X／小红书仍使用用户提供的 Cookie-Editor 导出，不自动登录或更换账号 |
@@ -66,11 +66,11 @@ python3 scripts/reach.py run doctor --json
 | 健康观察 | `run watch` 仅执行一次原生健康与更新检查，不因此建立定时任务或守护进程 |
 | MCP 状态接口 | `python3 scripts/reach.py mcp` 直接运行原始 integrations/mcp_server.py，公开能力为 get_status；默认 Python 依赖不含 MCP，且上游未声明 mcp extra。需要时明确安装所需 MCP SDK 到隔离运行时；不误称为搜索／阅读 MCP，也不自动注册服务 |
 | 卸载与恢复 | 原生 `run uninstall --dry-run` 可预览；真正卸载须核对它会删除的配置、凭据和 Skill 范围，按明确授权执行；私有融合运行时与原生独立安装分别处理 |
-| 原生 Skill 管理 | 原始 skill 命令与完整触发原文保留在源快照中；融合运行入口拒绝重新注册它，改由 Lookup 的 entrypoints.py 管理唯一入口 |
+| 原生 Skill 管理 | 原始 skill 命令与完整触发原文保留在源快照中；融合运行入口拒绝重新注册它，改由 lookup 的 entrypoints.py 管理唯一入口 |
 
 ### 设置指南、MCP 与 Python 接口
 
-准备引擎后，`python3 scripts/reach.py status` 返回已核验环境的 Python 路径。原始公开 Python 接口可用该解释器调用，不要求重新安装独立 Agent Reach，不复制实现。输入作为独立 argv 传入，输出继续按 Lookup 的目标与证据规则验收。
+准备引擎后，`python3 scripts/reach.py status` 返回已核验环境的 Python 路径。原始公开 Python 接口可用该解释器调用，不要求重新安装独立 Agent Reach，不复制实现。输入作为独立 argv 传入，输出继续按 lookup 的目标与证据规则验收。
 
 | 接口 | 保留的能力与边界 |
 |---|---|
@@ -104,20 +104,20 @@ python3 scripts/reach.py mcp
 
 ## 客户端发现与恢复
 
-只让 Lookup 出现在客户端的联网与浏览器 Skill 自动发现目录。上游压缩快照保留原触发字段，不修改它们来消除竞争；OpenCLI 用 `opencli skills read opencli-browser -f plain`，Ego 用当前 `ego-browser skill` 按需读取完整执行指南。
+只让 lookup 出现在客户端的联网与浏览器 Skill 自动发现目录。上游压缩快照保留原触发字段，不修改它们来消除竞争；OpenCLI 用 `opencli skills read opencli-browser -f plain`，Ego 用当前 `ego-browser skill` 按需读取完整执行指南。
 
 ```bash
 python3 scripts/entrypoints.py audit --lookup-root /absolute/lookup
 python3 scripts/entrypoints.py apply --lookup-root /absolute/lookup
 ```
 
-apply 只处理已有客户端目录中的已识别竞争入口，保留其原始来源与恢复记录到 `~/.local/share/lookup/execution-skills/`，并给这些客户端建立直达同一 Lookup 源码的单跳链接。首次安装尚无客户端目录时只创建共享入口。同名 Lookup 真目录与选定源码不同、链接指向其他源码或保留目标冲突时保持原状，不覆盖；选定目录本身作为唯一源码时可直接使用。它不安装尚不存在的客户端，不修改应用自带 Skill 或插件缓存。
+apply 只处理已有客户端目录中的已识别竞争入口，保留其原始来源与恢复记录到 `~/.local/share/lookup/execution-skills/`，并给这些客户端建立直达同一 lookup 源码的单跳链接。首次安装尚无客户端目录时只创建共享入口。同名 lookup 真目录与选定源码不同、链接指向其他源码或保留目标冲突时保持原状，不覆盖；选定目录本身作为唯一源码时可直接使用。它不安装尚不存在的客户端，不修改应用自带 Skill 或插件缓存。
 
 新机恢复和上游安装／更新后重新检查发现入口，防止安装器注册新的竞争 Skill；chezmoi 的 V3、旧模板与 WorkBuddy 映射复用本入口。已有会话可能保留旧 Skill 清单，磁盘验收通过仍须用新会话核对自然选择。
 
 ## 更新与完整性
 
-原生独立包和平台工具的更新继续由既有 `lookup update` 维护流程承担。融合快照随 Lookup 源码维护，不能用“原生包版本相同／已升级”替代融合验收，也不让原生包更新覆盖本地入口。
+原生独立包和平台工具的更新继续由既有 `lookup update` 维护流程承担。融合快照随 lookup 源码维护，不能用“原生包版本相同／已升级”替代融合验收，也不让原生包更新覆盖本地入口。
 
 候选包的离线能力门禁为 `python3 scripts/reach.py contract --package-root /absolute/candidate/agent_reach`。既有 `lookup update agent-reach` 在原生包验证中调用同一门禁，核对当前融合所需的16个渠道、11类 CLI 流程、7类参考、5份设置指南、MCP／播客脚本与公开 Python 接口；缺项、未知注册方式或解析失败时沿既有备份恢复，不把同为1.5.0的13渠道包认定为等价。门禁通过仍不证明业务站点、账号或新增上游能力已验收。
 

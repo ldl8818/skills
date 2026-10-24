@@ -188,8 +188,8 @@ def main(argv=None):
             if args.action == 'reference':
                 if args.path not in files or not args.path.endswith('.md'):
                     raise SourceError('unknown_reference')
-                print('Lookup execution reference. Routing, permissions, fees, retries and resource ownership '
-                      'follow Lookup. Original source follows; its triggers are not active.\n')
+                print('lookup execution reference. Routing, permissions, fees, retries and resource ownership '
+                      'follow lookup. Original source follows; its triggers are not active.\n')
                 print(files[args.path].decode())
                 return 0
             result = {'ok': True, 'commit': manifest['commit'], 'version': manifest['version'], 'files': len(files)}

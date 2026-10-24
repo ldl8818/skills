@@ -1,4 +1,4 @@
-"""Delegate Lookup maintenance to its resolved installation, independent of PATH."""
+"""Delegate lookup maintenance to its resolved installation, independent of PATH."""
 import json
 import importlib.util
 from pathlib import Path
@@ -83,5 +83,5 @@ def check(root):
     errors = code != 0 or any(i.get('status') in ('failed', 'error', 'check_failed') for i in items)
     outdated = any(i.get('status') in ('update_available', 'local_changed') for i in items)
     return {'status': 'error' if errors else 'outdated' if outdated else 'current',
-            'message': 'Lookup 本体与已安装上游分项检查；Ego 远端版本仍以原生维护回执为准。',
+            'message': 'lookup 本体与已安装上游分项检查；Ego 远端版本仍以原生维护回执为准。',
             'managed_update': True, 'maintenance_root': str(root), 'components': payload}

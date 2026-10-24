@@ -1,6 +1,6 @@
 # OpenCLI 执行与升级边界
 
-选用 OpenCLI、诊断连接或评估升级时读取。Lookup 维护任务边界，上游维护命令、异步执行、连接和浏览器资源。当前基线为正式发布2.0.2；随包入口接受 `>=2.0.2 <3`，版本范围不是所有后续版本已实测的承诺。
+选用 OpenCLI、诊断连接或评估升级时读取。lookup 维护任务边界，上游维护命令、异步执行、连接和浏览器资源。当前基线为正式发布2.0.2；随包入口接受 `>=2.0.2 <3`，版本范围不是所有后续版本已实测的承诺。
 
 全部170站点、1,289条公开命令、5套指南与开发维护能力统一见 [完整融合入口](OpenCLI融合.md)。本文件只维护共享执行边界；providers.json 中没有登记的动作仍可从原生注册表发现。
 
@@ -14,7 +14,7 @@ node scripts/opencli-run.mjs <site> <command> ...
 
 - `list` 的 JSON 为 `{ok,data:{commands,total,nextOffset?}}`，只返回当前页；需要更多候选时沿 `nextOffset` 分页，不把首屏当完整注册表。选择 `access: read`，从单个命令帮助核对 `browser`、`positionals`、`command_options`、`browser_common_options` 和 `columns`。
 - `opencli-run.mjs` 调用公开 CLI，不导入包内模块、不修改 Commander。它按下节绑定固定实际 `contextId`，拒绝冲突 Profile／隐式 CDP transport、限定认证检查站点，并设置 `OPENCLI_CLOSE_OWNED_TAB=1`。显式获准且已确认属于 ego-lite 的 CDP 路线用 [专用入口](OpenCLI融合.md#显式-cdp-路线)，默认不切换。
-- 该入口优先使用 [托管维护](上游更新.md) 已验收的 Lookup 专用版本，否则使用原系统安装。能力发现、帮助与业务执行都通过同一入口；上游指南中的裸 `opencli` 命令也经此入口调用，不混用系统旧版帮助与托管新版执行。没有 Python 或更新提醒不可用时保留原执行能力；有效版本指针异常则先核实，不静默改用其他版本。
+- 该入口优先使用 [托管维护](上游更新.md) 已验收的 lookup 专用版本，否则使用原系统安装。能力发现、帮助与业务执行都通过同一入口；上游指南中的裸 `opencli` 命令也经此入口调用，不混用系统旧版帮助与托管新版执行。没有 Python 或更新提醒不可用时保留原执行能力；有效版本指针异常则先核实，不静默改用其他版本。
 - `OPENCLI_CONFIG_DIR` 可指定已有 OpenCLI 配置目录；health 与 runner 必须使用同一环境。切目录或 Profile 不能作为绕过失败依赖的证明。
 - Ego Lite 是基于 Chromium 的浏览器，可安装 OpenCLI 的 Chrome 扩展；OpenCLI 通过该扩展执行，`ego-browser` Skill 通过浏览器自身接口执行。两者可使用同一个 Ego Lite 浏览器，无需另开原版 Chrome。换执行接口仍须核对共同的进程、Profile 与站点登录态。
 - OpenCLI Profile 选择值可以是实际连接 `contextId` 或本机配置的别名，不是浏览器产品或 Skill 名称。别名与默认连接均不能证明实际浏览器和账号身份。
@@ -64,7 +64,7 @@ node scripts/opencli-run.mjs skills read opencli-browser -f plain
 node scripts/opencli-run.mjs browser <command> --help -f json
 ```
 
-不为读取执行文档再安装一个自动触发的通用路由 Skill。页面会话、frame、等待、截图与动作参数以上述当前文档为准；Lookup 不复制另一份 API 手册。
+不为读取执行文档再安装一个自动触发的通用路由 Skill。页面会话、frame、等待、截图与动作参数以上述当前文档为准；lookup 不复制另一份 API 手册。
 
 接口返回空列表或执行回执时，仍按 [动态页面读取](动态页面读取.md) 与 [媒体读取](媒体读取.md) 核对目标；工具声明支持 frame、点击或视频不等于当前页面已通过这些能力的验证。
 
@@ -135,7 +135,7 @@ X 的搜索、详情、时间线、作者推文、收藏与点赞读取路径共
 
 已有 helper 的唯一实现若被上游可靠覆盖，删去该实现及对应旧测试，保留本地边界回归。新增版本适配不得退回包内 monkey patch。升级不通过时保留原可用版本；已切换后按维护前记录恢复原版本与必要配置，不清空登录资料。
 
-2.0.2已原生等待 `parseAsync()`，因此 Lookup 不再维护1.8.6–1.8.8的异步注入与自写 daemon 生命周期。命令列表、JSON 输出和清理属于新版契约，旧版无法继续使用本入口。
+2.0.2已原生等待 `parseAsync()`，因此 lookup 不再维护1.8.6–1.8.8的异步注入与自写 daemon 生命周期。命令列表、JSON 输出和清理属于新版契约，旧版无法继续使用本入口。
 
 ## 设计取舍
 

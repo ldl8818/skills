@@ -1,6 +1,6 @@
 # OpenCLI 完整能力与融合入口
 
-需要 OpenCLI 的平台能力、浏览器接口、开发或维护工具时读取对应部分。Lookup 统一触发、选路、授权和验收；OpenCLI 提供具体执行能力。只读本任务需要的指南和帮助，不把完整注册表加载进上下文。
+需要 OpenCLI 的平台能力、浏览器接口、开发或维护工具时读取对应部分。lookup 统一触发、选路、授权和验收；OpenCLI 提供具体执行能力。只读本任务需要的指南和帮助，不把完整注册表加载进上下文。
 
 ## 完整基线
 
@@ -45,7 +45,7 @@ node scripts/opencli-run.mjs <site> <command> --help -f json
 | Skill 与 Shell 补全 | `skills list/read`、`completion <shell>` | 指南读取和输出补全脚本文本不等于安装；不把内置指南重新注册为竞争的自动入口 |
 | 输出与扩展协议 | 当前命令的 `-f`、字段 schema、流式／follow 帮助 | 保留 JSON、table、YAML、Markdown、CSV、plain 和流式等实际支持格式，不强制将所有输出包装成一个业务信封；验收目标内容及文件写入范围 |
 
-站点命令不仅限于 Lookup 原 providers.json 中列出的常用动作。完整候选都可从原生注册表发现，现有 providers 合约继续约束其已登记动作；未登记动作不自动视为不可用，也不自动取得执行授权。
+站点命令不仅限于 lookup 原 providers.json 中列出的常用动作。完整候选都可从原生注册表发现，现有 providers 合约继续约束其已登记动作；未登记动作不自动视为不可用，也不自动取得执行授权。
 
 ```bash
 node scripts/opencli-run.mjs list "<action>" --limit 25 -f json
@@ -60,11 +60,11 @@ node scripts/opencli-run.mjs <site> <command> --help -f json
 
 | 来源 | 按需读取时机 | 融合处理 |
 |---|---|---|
-| opencli-usage | 发现命令、schema、结果与恢复 | 保留完整执行说明，选路归 Lookup |
-| opencli-browser | 需要页面或原生 Chrome 操作 | 保留全部接口；浏览器选择、账号与资源归属沿用 Lookup |
+| opencli-usage | 发现命令、schema、结果与恢复 | 保留完整执行说明，选路归 lookup |
+| opencli-browser | 需要页面或原生 Chrome 操作 | 保留全部接口；浏览器选择、账号与资源归属沿用 lookup |
 | opencli-adapter-author | 新建／改进 Adapter | 完整参考覆盖 API 发现、策略、字段、输出、覆盖矩阵、站点经验及测试；只加载相关文件 |
-| opencli-autofix | 已确认 Adapter 故障，需要修复 | 保留完整修复流程；修复轮次与浏览器兜底统一遵循 [Lookup 修复规则](failure-domains.md#适配器修复与浏览器兜底)，原指南的重试次数不替代该规则；对外提交、安装和真实写入仍须对应授权 |
-| smart-search | 需要站点领域经验和候选来源 | 保留原始完整 Skill 与8类来源参考；其自动触发、AI 源默认顺序、固定次数和强制全表预检不另设通用规则，统一遵循 Lookup 搜索策略、有界恢复与按需发现 |
+| opencli-autofix | 已确认 Adapter 故障，需要修复 | 保留完整修复流程；修复轮次与浏览器兜底统一遵循 [lookup 修复规则](failure-domains.md#适配器修复与浏览器兜底)，原指南的重试次数不替代该规则；对外提交、安装和真实写入仍须对应授权 |
+| smart-search | 需要站点领域经验和候选来源 | 保留原始完整 Skill 与8类来源参考；其自动触发、AI 源默认顺序、固定次数和强制全表预检不另设通用规则，统一遵循 lookup 搜索策略、有界恢复与按需发现 |
 
 原生 `skills list/read` 当前只列出 `opencli-*`，不列 smart-search；不要据此误报它缺失。smart-search 及其他原始参考可从完整来源读取：
 
@@ -74,7 +74,7 @@ python3 scripts/opencli-source.py reference skills/smart-search/references/sourc
 node scripts/opencli-run.mjs skills read opencli-adapter-author references/api-discovery.md -f plain
 ```
 
-只注册 Lookup。已存在的这5套 OpenCLI 入口由 [发现恢复](Agent-Reach融合.md#客户端发现与恢复) 保留到自动发现目录之外；同名 smart-search 必须能识别为 OpenCLI 来源，无关同名 Skill 保持原状。原始 description 和触发规则不改写，只在当前组合中关闭其独立发现。
+只注册 lookup。已存在的这5套 OpenCLI 入口由 [发现恢复](Agent-Reach融合.md#客户端发现与恢复) 保留到自动发现目录之外；同名 smart-search 必须能识别为 OpenCLI 来源，无关同名 Skill 保持原状。原始 description 和触发规则不改写，只在当前组合中关闭其独立发现。
 
 ## 显式 CDP 路线
 

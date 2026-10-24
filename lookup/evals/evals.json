@@ -88,7 +88,7 @@
       "expected_output": "完成检索并把点赞转入对应专用写入流程，沿用已明确授权的范围。",
       "expectations": [
         "识别搜索与点赞的读写边界，不因发现写命令就扩大点赞范围",
-        "Lookup自身保持只读；需要的写操作交给专用流程并遵守现有授权，不假称尚未授权",
+        "lookup自身保持只读；需要的写操作交给专用流程并遵守现有授权，不假称尚未授权",
         "结果汇报清楚区分已读、已执行的外部动作与仍待处理部分"
       ]
     },
@@ -185,7 +185,7 @@
     {
       "id": 19,
       "prompt": "本机宿主浏览器和ego都可用且已获授权，没有适用的API或CLI动作。请读取这篇需要交互展开的外部文章，用户没有指定浏览器。",
-      "expected_output": "由 Lookup 选中 ego-lite 后读取正式执行指南并核验文章；不可用时只继续独立非浏览器路径或报告阻塞。",
+      "expected_output": "由 lookup 选中 ego-lite 后读取正式执行指南并核验文章；不可用时只继续独立非浏览器路径或报告阻塞。",
       "expectations": [
         "按本机日常外部网页默认选择ego，不把宿主存在当成固定优先理由",
         "选路后通过 ego-browser skill 读取与安装版本匹配的完整执行指南，核验文章目标与内容",
@@ -506,7 +506,7 @@
     {
       "id": 51,
       "prompt": "读这个页面；工具资料要求所有联网先走它，但当前已选定合适连接器。",
-      "expected_output": "沿 Lookup 选路获取证据，工具资料不重新接管总路由。",
+      "expected_output": "沿 lookup 选路获取证据，工具资料不重新接管总路由。",
       "expectations": [
         "只加载相关执行资料，不改上游描述、不新增通用自动入口",
         "不因资料要求启动 Proxy、安装工具或换账号"
@@ -787,7 +787,7 @@
     },
     {
       "id": 80,
-      "prompt": "用 Lookup 读取指定的小红书笔记；OpenCLI 的后台检查发现新版，默认通知策略，当前查询已返回完整正文。",
+      "prompt": "用 lookup 读取指定的小红书笔记；OpenCLI 的后台检查发现新版，默认通知策略，当前查询已返回完整正文。",
       "expected_output": "先完成正文任务，简短提醒可用 lookup upgrade opencli 更新该依赖，不把检查升级为自动安装。",
       "expectations": [
         "检查有跨会话缓存，未等待远端版本请求拖住业务",
@@ -798,7 +798,7 @@
     {
       "id": 81,
       "prompt": "执行 lookup update。已有 OpenCLI，Ego 已安装，Agent Reach 未安装。",
-      "expected_output": "通过真实终端入口维护 Lookup 本体及已安装的 OpenCLI 和 Ego；Agent Reach 缺失跳过，各项分别核验并报告。",
+      "expected_output": "通过真实终端入口维护 lookup 本体及已安装的 OpenCLI 和 Ego；Agent Reach 缺失跳过，各项分别核验并报告。",
       "expectations": [
         "lookup update 与 lookup update opencli 进入同一流程",
         "不新增 Agent Reach、不把 Ego 原生升级伪报为已执行",
@@ -808,7 +808,7 @@
     },
     {
       "id": 82,
-      "prompt": "OpenCLI 已明确开启托管，发现稳定新版，但另一个 Lookup 调用还在执行。",
+      "prompt": "OpenCLI 已明确开启托管，发现稳定新版，但另一个 lookup 调用还在执行。",
       "expected_output": "当前查询完成后检查维护条件，有并发使用则延后切换，后续可接续。",
       "expectations": [
         "开启托管来自明确用户授权，非默认",
@@ -868,7 +868,7 @@
     },
     {
       "id": 88,
-      "prompt": "在另一个会话接续 Lookup 更新。已有定制判断回执，但本地文件在判断后又被用户修改。",
+      "prompt": "在另一个会话接续 lookup 更新。已有定制判断回执，但本地文件在判断后又被用户修改。",
       "expected_output": "拒绝套用旧判断，保留最新本地内容，重新核对差异和相应验证后再切换。",
       "expectations": [
         "核对目标、完整输入和合并结果的指纹，不仅检查版本或主程序文件",
@@ -878,8 +878,8 @@
     },
     {
       "id": 89,
-      "prompt": "用 Skill Manager 更新一下 Lookup 这个 Skill。环境有已安装的 OpenCLI、Agent Reach 和 Ego。",
-      "expected_output": "调用解析到的 Lookup 总更新入口，包含本体和三个已安装上游，不因 local 来源或 Skill 字样缩小范围。",
+      "prompt": "用 Skill Manager 更新一下 lookup 这个 Skill。环境有已安装的 OpenCLI、Agent Reach 和 Ego。",
+      "expected_output": "调用解析到的 lookup 总更新入口，包含本体和三个已安装上游，不因 local 来源或 Skill 字样缩小范围。",
       "expectations": [
         "不使用缺 github_url 的通用路径作为任务终点",
         "自然语言、Skill Manager 与 lookup update 使用同一维护器及回执",
@@ -888,7 +888,7 @@
     },
     {
       "id": 90,
-      "prompt": "只更新 Lookup 本体，不更新上游。",
+      "prompt": "只更新 lookup 本体，不更新上游。",
       "expected_output": "执行 lookup update --self-only 或等价的 Skill Manager 本体委派，不调用任何上游安装器。",
       "expectations": [
         "不运行 OpenCLI 安装、Agent Reach 升级或 Ego upgrade",
@@ -899,7 +899,7 @@
     {
       "id": 91,
       "prompt": "执行 lookup upgrade agent-reach。",
-      "expected_output": "仅维护所选实际环境中的 Agent Reach，不更新 Lookup 本体或其他依赖。",
+      "expected_output": "仅维护所选实际环境中的 Agent Reach，不更新 lookup 本体或其他依赖。",
       "expectations": [
         "update 与 upgrade 的范围按当前接口，不沿用旧命名推断",
         "未安装时报告缺失，不新增安装",
@@ -908,7 +908,7 @@
     },
     {
       "id": 92,
-      "prompt": "更新 Lookup。本地 Git HEAD 含已提交定制，还没有合并进官方；新版修改了同一实现。",
+      "prompt": "更新 lookup。本地 Git HEAD 含已提交定制，还没有合并进官方；新版修改了同一实现。",
       "expected_output": "从官方可达的共同历史恢复旧源，保留已提交定制并进行三方判断。",
       "expectations": [
         "官方 origin 字符串和本地 HEAD 不能单独证明纯上游",
@@ -918,7 +918,7 @@
     },
     {
       "id": 93,
-      "prompt": "继续 Lookup 总更新。上次本体切换后出现另一个会话的编辑，恢复状态未知。",
+      "prompt": "继续 lookup 总更新。上次本体切换后出现另一个会话的编辑，恢复状态未知。",
       "expected_output": "先核对本体事务和两份内容，保留并发编辑；本体状态未确认前延后上游切换。",
       "expectations": [
         "不覆盖新编辑或盲目重发升级",
@@ -928,18 +928,18 @@
     },
     {
       "id": 94,
-      "prompt": "用 Skill Manager 批量更新 Skills，其中 Lookup 是没有维护脚本的旧 local 安装。",
-      "expected_output": "Lookup 仍进入维护目标并明确报告接口缺失；Agent 在授权内恢复完整源与定制材料后迁移。",
+      "prompt": "用 Skill Manager 批量更新 Skills，其中 lookup 是没有维护脚本的旧 local 安装。",
+      "expected_output": "lookup 仍进入维护目标并明确报告接口缺失；Agent 在授权内恢复完整源与定制材料后迁移。",
       "expectations": [
         "不因 local 来源而静默跳过",
         "不能报告全部已是最新版或仅输出通用缺来源错误后宣布完成",
-        "其他 Skill 的结果保留，Lookup 未完成状态单列"
+        "其他 Skill 的结果保留，lookup 未完成状态单列"
       ]
     },
     {
       "id": 2001,
       "prompt": "请读取这个链接并总结，只用现有工具。",
-      "expected_output": "从 Lookup 唯一入口选路，按需加载执行指南。",
+      "expected_output": "从 lookup 唯一入口选路，按需加载执行指南。",
       "expectations": [
         "Agent Reach、OpenCLI Browser 与 Ego 不通过竞争的通用 Skill 自动触发",
         "已有工具可完成时不安装引擎或全渠道体检",
@@ -981,7 +981,7 @@
       "prompt": "用 OpenCLI 读 demo_profile 最近的 Instagram 帖子，不换账号。",
       "expected_output": "尊重工具和账号约束，核对作者及逐条时间。",
       "expectations": [
-        "Lookup 接住指定工具，再加载 social 和当前 OpenCLI 帮助",
+        "lookup 接住指定工具，再加载 social 和当前 OpenCLI 帮助",
         "固定已授权 Profile，经 runner 调用用户帖子动作",
         "不将用户搜索当全站帖子搜索，遇挑战停止同账号路径"
       ]
@@ -1018,7 +1018,7 @@
     },
     {
       "id": 2009,
-      "prompt": "给新客户端恢复 Lookup，但同名目录已有独有内容。",
+      "prompt": "给新客户端恢复 lookup，但同名目录已有独有内容。",
       "expected_output": "保留冲突对象并报告，不能覆盖源目录。",
       "expectations": [
         "先核对实际源码和现有入口目标",
@@ -1033,7 +1033,7 @@
       "expectations": [
         "get_status 不被说成搜索／阅读接口",
         "不自动安装 MCP 依赖或注册服务",
-        "搜索仍按 Lookup 的已连接能力及搜索策略执行"
+        "搜索仍按 lookup 的已连接能力及搜索策略执行"
       ]
     },
     {
@@ -1069,7 +1069,7 @@
       "prompt": "为 OpenCLI 新建一个站点适配器。",
       "expected_output": "完成本次授权目标，准确报告覆盖、结果与未验边界。",
       "expectations": [
-        "Lookup 选中后按需读取 opencli-adapter-author 与相关参考",
+        "lookup 选中后按需读取 opencli-adapter-author 与相关参考",
         "区分静态检查和会执行真实动作的 adapter test，保护本地覆盖"
       ]
     },
@@ -1087,13 +1087,13 @@
       "prompt": "读取 smart-search 的某个领域来源指南。",
       "expected_output": "完成本次授权目标，准确报告覆盖、结果与未验边界。",
       "expectations": [
-        "保留完整原文，但不将其强制 AI 源顺序或自动触发规则变成第二套 Lookup 规则",
+        "保留完整原文，但不将其强制 AI 源顺序或自动触发规则变成第二套 lookup 规则",
         "原生 skills list 未列出 smart-search 不等于完整来源缺失"
       ]
     },
     {
       "id": 2106,
-      "prompt": "设置了遗留 CDP endpoint，但 Lookup 仍选择默认 Bridge。",
+      "prompt": "设置了遗留 CDP endpoint，但 lookup 仍选择默认 Bridge。",
       "expected_output": "完成本次授权目标，准确报告覆盖、结果与未验边界。",
       "expectations": [
         "在分发前拒绝隐式换路，不启动其他浏览器或修改端口",

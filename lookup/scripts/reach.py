@@ -264,7 +264,7 @@ def main(argv=None):
     sub.add_parser('verify', help='Verify every original upstream file, offline')
     item = sub.add_parser('contract', help='Validate an installed or candidate package before maintenance switches it')
     item.add_argument('--package-root', required=True, type=Path, help='Exact agent_reach package directory')
-    item = sub.add_parser('reference', help='Read one complete upstream reference after Lookup selects it')
+    item = sub.add_parser('reference', help='Read one complete upstream reference after lookup selects it')
     item.add_argument('category', choices=REFERENCES)
     sub.add_parser('status', help='Read isolated runtime identity without probing platforms')
     sub.add_parser('prepare', help='Explicitly install private Python dependencies; no client registration')
@@ -285,8 +285,8 @@ def main(argv=None):
             result = {'ok': True, 'commit': manifest['commit'], 'version': manifest['version'],
                       'channel': manifest['channel'], 'files': len(files), 'archive_sha256': manifest['archive_sha256']}
         elif args.command == 'reference':
-            print('Lookup execution reference. Routing, authorization, installation, fees and retries '
-                  'follow Lookup; the following is the complete pinned upstream reference.\n')
+            print('lookup execution reference. Routing, authorization, installation, fees and retries '
+                  'follow lookup; the following is the complete pinned upstream reference.\n')
             print(files[REFERENCES[args.category]].decode())
             return 0
         elif args.command == 'status':

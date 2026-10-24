@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep Lookup as the sole generic web Skill; preserve displaced sources."""
+"""Keep lookup as the sole generic web Skill; preserve displaced sources."""
 import argparse
 import fcntl
 import json
@@ -174,7 +174,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     home, lookup = args.home.resolve(), args.lookup_root.resolve()
     if not home.is_dir() or not (lookup / 'SKILL.md').is_file():
-        parser.error('existing HOME and Lookup source are required')
+        parser.error('existing HOME and lookup source are required')
     storage = home / '.local/share/lookup/execution-skills'
     try:
         if args.action == 'apply':

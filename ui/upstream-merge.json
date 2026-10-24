@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "30ac6005c3563d43803c6c40e4ae0e1b35960a0bd9af0b3b388b73914ca8330a",
-      "local_sha256": "d9373da1d927f04357be84f99b5302d5504887d07bc6e59e63d5cd64e16a6a73",
+      "local_sha256": "74038fdb53b50453632207b804e72deb17fceb11ab7c0e836531c1c92f489c0f",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Produces distinctive production UI and screenshot-grounded visual polish. Use when building or restyling pages, components, or typography. Not for backend logic or data pipelines.\"\n",
@@ -18,7 +18,8 @@
         "Keep the required host salutation and output format instead of the upstream marker.",
         "Silence cannot grant material decisions or approval.",
         "Avoid a redundant design approval gate on an explicit implementation request.",
-        "Preserve routing to image/document/Hunt tools, existing product style and browser selection without losing upstream design methods."
+        "Preserve routing to image/document/Hunt tools, existing product style and browser selection without losing upstream design methods.",
+        "Use lowercase lookup in the local browser-routing adaptation; preserve upstream text and routing fields."
       ],
       "changes": [
         {
@@ -91,7 +92,7 @@
             145
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "95b9f4c4b7f2c6731797e79efb154664eee468c3c4d1d03d87ae45fb97d3bdd2"
+          "added_sha256": "d7e185fef8fb611b1bac9a97e0f3c28b4f8b63ea37063b43298a30ee5e8f8be0"
         }
       ],
       "sections": {

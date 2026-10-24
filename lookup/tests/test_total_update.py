@@ -27,7 +27,7 @@ def tree(root, version='1.0.0', extra='old'):
     root.mkdir(parents=True, exist_ok=True)
     (root / 'scripts').mkdir(exist_ok=True)
     (root / 'SKILL.md').write_text('---\nname: lookup\ndescription: Synthetic lookup\n'
-        f'metadata:\n  source: local\n  version: "{version}"\n---\n# Lookup\n')
+        f'metadata:\n  source: local\n  version: "{version}"\n---\n# lookup\n')
     (root / 'scripts/lookup').write_text('# synthetic entry\n')
     (root / 'scripts/customization.py').write_text('# synthetic source\n')
     (root / 'scripts/self_update.py').write_text('# synthetic source\n')

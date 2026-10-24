@@ -42,14 +42,14 @@ metadata:
 
 ## 命令
 
-Lookup 的更新由其实际安装目录内的维护器执行。“更新／升级 Lookup”或 `update lookup` 默认包含本体与已安装上游；`update lookup --self-only` 只更新本体，`--upstream-only` 只维护上游。检查和批量更新同样识别本地来源的 Lookup，不因没有 `github_url` 而跳过。缺少维护接口的旧安装先按完整来源与定制流程迁移；定制待判断时由当前 Agent 连续合并、验证并接续，不能把委派或退出码当作完成。命令与结果协议见 [Lookup 更新入口](../lookup/references/上游更新.md#命令与范围)。
+lookup 的更新由其实际安装目录内的维护器执行。“更新／升级 lookup”或 `update lookup` 默认包含本体与已安装上游；`update lookup --self-only` 只更新本体，`--upstream-only` 只维护上游。检查和批量更新同样识别本地来源的 lookup，不因没有 `github_url` 而跳过。缺少维护接口的旧安装先按完整来源与定制流程迁移；定制待判断时由当前 Agent 连续合并、验证并接续，不能把委派或退出码当作完成。命令与结果协议见 [lookup 更新入口](../lookup/references/上游更新.md#命令与范围)。
 
 | 用户意图 | 命令 | 脚本 |
 |---------|------|------|
 | 列出技能 | `list`（全局 + 当前项目）；`list <项目>`；`list --all [-n N]` 全景，展开最近活跃前 3 个、其余折叠 | `list_skills.py` |
 | 检查更新 | `check [--include-frozen]`（冻结项只读比较，不解冻） | `scan_and_check.py` |
 | 溯源 | `trace <名字> [--repo <URL>] [--write]`；`trace --all --write` 批量 | `trace_source.py` |
-| 更新 | `update <名字> [--project <路径>] [--ref main\|release]`；Lookup 另支持 `--self-only`／`--upstream-only`，不通过 `--ref` 切换通道；无参 = 批量；`--dry-run` 只列不做 | `update_skill.py` |
+| 更新 | `update <名字> [--project <路径>] [--ref main\|release]`；lookup 另支持 `--self-only`／`--upstream-only`，不通过 `--ref` 切换通道；无参 = 批量；`--dry-run` 只列不做 | `update_skill.py` |
 | 启用 / 禁用 | `enable\|disable <名字> [--project <路径>]`；直装或 Claude 插件 | `toggle_skill.py` |
 | 升版本号 | `bump <名字> [patch\|minor\|major] [--project <路径>]` | `bump_skill.py` |
 | 体检 | `doctor [--fix]`（`--fix` 只做有依据的补录，绝不发明数据） | `doctor.py` |

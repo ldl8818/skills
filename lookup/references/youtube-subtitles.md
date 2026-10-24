@@ -24,7 +24,7 @@
 
 ## 清洗与定位
 
-从 Lookup 根目录执行：
+从 lookup 根目录执行：
 
 ~~~bash
 python3 scripts/clean-subtitles.py "<实际字幕文件.vtt>" --max-output-chars 40000
@@ -63,4 +63,4 @@ stdout 是带时间位置的文本，stderr 是单个 JSON 状态对象：
 4. 核对实际输出非空、时间段合理且无输入裁剪或输出截断。将开头、中间、结尾与音频或同时间点烧录字幕交叉核对，重点检查数字、单位、专名和同音术语。校正须有原始证据，保留未经校对的输出与修改依据；无法确定的词标明不确定，不凭语句通顺补写。无对白的开头或片尾允许没有字幕，不能以最后一条字幕早于片尾直接判断遗漏；连续静音、背景音乐或明显幻觉须如实标记。
 5. 交付区分“整段音频已处理”与“每个词均已人工校对”。转写覆盖不全时列明已覆盖区间；采样画面只支持相应时刻的视觉结论。任务结束后按素材用途清理或保留，不把临时媒体与模型缓存当正式内容提交。
 
-Apple Silicon 上的本地引擎可按需参考 [MLX Whisper 官方说明](https://github.com/ml-explore/mlx-examples/tree/main/whisper)，以已安装版本的帮助为准；Lookup 不维护模型推理实现。
+Apple Silicon 上的本地引擎可按需参考 [MLX Whisper 官方说明](https://github.com/ml-explore/mlx-examples/tree/main/whisper)，以已安装版本的帮助为准；lookup 不维护模型推理实现。

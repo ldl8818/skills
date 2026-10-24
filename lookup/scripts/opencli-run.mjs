@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Lookup policy boundary; execution and async lifecycle belong to OpenCLI.
+// lookup policy boundary; execution and async lifecycle belong to OpenCLI.
 import { spawn, spawnSync } from 'node:child_process'
 import { opencliExecutable, supervisedCommand, checkUpdates, reportUpdates } from './upstream-client.mjs'
 import { resolveBinding } from './opencli-profile.mjs'

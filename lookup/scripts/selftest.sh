@@ -186,7 +186,7 @@ fi
 
 FETCH_SH="$SELF_DIR/fetch.sh"
 if [[ -f "$FETCH_SH" && -f "$SELF_DIR/fetch_local.py" ]] && bash -n "$FETCH_SH"; then
-  ok "Lookup 本地提取脚本存在，Shell 语法通过"
+  ok "lookup 本地提取脚本存在，Shell 语法通过"
 else
   bad "fetch.sh 不在 $FETCH_SH —— 静态抓取通道失效"
 fi

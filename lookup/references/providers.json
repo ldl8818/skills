@@ -1,6 +1,6 @@
 {
   "version": 5,
-  "_doc": "Lookup 的必要合约与任务边界，不是完整后端目录或自动执行器。候选按数组顺序列出，仅在条件相当时参考；实际选择见 references/任务选路.md。命令参数来自当前注册表／帮助；active/conditional 是登记状态，不表示当前健康。auth 描述认证依赖类型，不证明当前是否登录；browser-session 也不要求所有动作先登录。登录准备见 references/opencli-windows.md#登录准备与恢复。",
+  "_doc": "lookup 的必要合约与任务边界，不是完整后端目录或自动执行器。候选按数组顺序列出，仅在条件相当时参考；实际选择见 references/任务选路.md。命令参数来自当前注册表／帮助；active/conditional 是登记状态，不表示当前健康。auth 描述认证依赖类型，不证明当前是否登录；browser-session 也不要求所有动作先登录。登录准备见 references/opencli-windows.md#登录准备与恢复。",
   "failure_domains": {
     "_model": "分别判断浏览器进程、站点账号、bridge+Profile、site+action；只有共享实际依赖才共享故障。",
     "opencli-browser": "浏览器进程 + 目标账号 + 具体 adapter；Browser Bridge 固定已确认的 ego-lite contextId，不默认选择产品名别名；CDP 只接受绑定中已确认的 ego-lite endpoint",
@@ -549,7 +549,7 @@
           "failure_domain": "direct-http",
           "auth": "none",
           "bin": "bash",
-          "_note": "从 Lookup 根目录执行；仅请求原站，HTML/纯文本/Markdown分别提取，stdout含最终Source URL，stderr为状态JSON",
+          "_note": "从 lookup 根目录执行；仅请求原站，HTML/纯文本/Markdown分别提取，stdout含最终Source URL，stderr为状态JSON",
           "normalizer_provider": "lookup/fetch",
           "exit_codes": {
             "0": "ok",

@@ -1416,27 +1416,27 @@ def human_result(result):
         return '\n'.join(human_result(item) for item in result['results'])
     if status == 'up_to_date':
         if dependency == 'lookup':
-            return f'Lookup 本体{result["current"]}已核对 {result.get("channel", "main")} 通道；本地内容保留。'
+            return f'lookup 本体{result["current"]}已核对 {result.get("channel", "main")} 通道；本地内容保留。'
         return f'{dependency} 当前有效版本{result["current"]}，已是最新稳定版。'
     if status == 'local_ahead':
-        return f'Lookup 本体{result["current"]}领先源头{result["latest"]}，已保留，不执行降级。'
+        return f'lookup 本体{result["current"]}领先源头{result["latest"]}，已保留，不执行降级。'
     if status == 'native_updater':
         return f'{dependency} 本机版本{result["current"]}；未检查远端版本，更新由原生升级器确认。'
     if status == 'update_available':
         if dependency == 'lookup':
-            return (f'Lookup 源头有新内容待合并；本地版本{result.get("current", "未知")}，'
+            return (f'lookup 源头有新内容待合并；本地版本{result.get("current", "未知")}，'
                     f'源版本{result.get("latest", "未知")}；可运行 lookup update。')
         return f'{dependency} 当前版本{result.get("current", "未知")}，发现新版{result.get("latest", "未知")}；可运行 lookup upgrade {dependency}。'
     if status == 'check_failed':
         return dependency + ' 更新检查未完成：' + str(result.get('error') or result.get('reason') or 'UNKNOWN')
     if status == 'updated':
         if dependency == 'lookup':
-            return f'Lookup 本体已更新为{result["current"]}；原目录备份：{result["recovery"]}。'
+            return f'lookup 本体已更新为{result["current"]}；原目录备份：{result["recovery"]}。'
         if dependency == 'ego-browser':
             return f'ego-browser 已更新为{result["current"]}，官方指南完整性已核对；浏览器业务未重验。'
         if dependency == 'agent-reach':
             return f'agent-reach 已更新为{result["current"]}，命令与随包 Skill 已核对；平台业务未重验。'
-        return (f'OpenCLI 已更新为{result["current"]}；Lookup 命令合约验证通过。'
+        return (f'OpenCLI 已更新为{result["current"]}；lookup 命令合约验证通过。'
                 '原系统安装保留；真实平台业务仍按任务验证。')
     if status == 'not_installed':
         return f'未安装 {dependency}，已跳过；没有新增依赖。'
@@ -1454,7 +1454,7 @@ def human_result(result):
         return dependency+' 更新失败：' + str(result.get('error')) + ('；原环境已恢复。' if result.get('restored') else '；恢复状态请核对本机维护回执。')
     if status in ('pending', 'outcome_unknown'):
         if dependency == 'lookup':
-            return 'Lookup 本体切换结果待核实；保留维护回执，先核对实际目录与恢复材料。'
+            return 'lookup 本体切换结果待核实；保留维护回执，先核对实际目录与恢复材料。'
         return (f'{dependency} 原生升级尚未确认完成；请在浏览器完成或取消原操作。'
                 f'确认后可用 lookup upgrade {dependency} --retry 显式重试。')
     return json.dumps(result, ensure_ascii=False)
@@ -1482,11 +1482,11 @@ def main(argv=None, human=False):
     item.add_argument('dependency', choices=DEPENDENCIES)
     item.add_argument('mode', choices=('notify', 'auto'))
     for name in ('update', 'upgrade'):
-        item = sub.add_parser(name, help=('Update Lookup and installed upstream dependencies' if name == 'update'
+        item = sub.add_parser(name, help=('Update lookup and installed upstream dependencies' if name == 'update'
                                          else 'Upgrade installed upstream dependencies only'))
         item.add_argument('dependency', nargs='?', choices=UPDATE_DEPENDENCIES)
         if name == 'update':
-            item.add_argument('--self-only', action='store_true', help='Update Lookup source only')
+            item.add_argument('--self-only', action='store_true', help='Update lookup source only')
         item.add_argument('--auto', action='store_true')
         item.add_argument('--retry', action='store_true', help='Explicitly retry a previously uncertain native update')
     item = sub.add_parser('rollback')
@@ -1523,8 +1523,8 @@ def main(argv=None, human=False):
             raise
         if human and args.action in ('update', 'upgrade'):
             own = args.action == 'update' and not args.dependency and not args.auto
-            scope = ('Lookup 本体' if getattr(args, 'self_only', False) else
-                     'Lookup 本体与已安装上游' if own else args.dependency or '已安装上游')
+            scope = ('lookup 本体' if getattr(args, 'self_only', False) else
+                     'lookup 本体与已安装上游' if own else args.dependency or '已安装上游')
             print('正在更新' + (' ' if scope[0].isascii() else '') + scope + '。', file=sys.stderr)
             if not getattr(args, 'self_only', False) and args.dependency in (None, 'ego-browser') and not args.auto:
                 print('Ego 原生升级可能重启浏览器或等待界面确认。', file=sys.stderr)
