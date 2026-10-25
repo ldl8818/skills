@@ -1328,10 +1328,10 @@
     },
     {
       "id": 2442,
-      "prompt": "本地 UI 需要截图，宿主文档称工具是内置浏览器，但运行时没有 type 字段，另一个工具的 type 为 embedded。ego-lite 可用。",
+      "prompt": "本地 UI 需要截图，工具只有名称 Browser 和一句“由 Agent 提供”；没有宿主资料说明目标环境的归属和操作入口。另一个工具只返回 type: embedded，无其他说明。ego-lite 可用。",
       "expected_output": "选择 ego-lite，两个候选均不满足内置例外。",
       "expectations": [
-        "运行时 type 必须为 iab，文字说明或自行类推不补足身份",
+        "名称、提供者或单个字段均不能证明内置环境归属和操作入口；不要求用户补 type 参数",
         "操作前在本轮助手进度消息记录任务、浏览器、身份和依据"
       ]
     },
@@ -1360,6 +1360,42 @@
       "expectations": [
         "结果未知先查旧动作，不盲目重派或换路",
         "恢复仍失败才报告具体阻塞；静态检查不代替截图验收"
+      ]
+    },
+    {
+      "id": 2446,
+      "prompt": "本地 UI 布局验收。宿主正式接口说明明确：页面嵌入 Agent 面板，由宿主管理，使用 browser_id: agent-panel 操作；浏览器清单确认该对象，没有 type 字段。支持视口、点击和截图。ego-lite 可用。",
+      "expected_output": "使用宿主内置页面环境，不要求用户提供 type 参数。",
+      "expectations": [
+        "通过宿主对环境归属和入口的明确说明核实身份，不依赖 type: iab",
+        "不向用户索要配置，不自行补写身份字段"
+      ]
+    },
+    {
+      "id": 2447,
+      "prompt": "本地 UI 布局验收。宿主正式文档和环境清单明确 embedded-preview 是 Agent 面板内的页面，入口 preview.open；运行时 engine_kind: native-view，支持视口和截图，未使用 iab 命名。",
+      "expected_output": "使用已核实的宿主内置环境。",
+      "expectations": [
+        "不同宿主的字段名和值不影响已核实归属",
+        "不因没有 iab 改用其他浏览器或要求用户加参数"
+      ]
+    },
+    {
+      "id": 2448,
+      "prompt": "本地 UI 待截图验收，实际浏览器清单显示 Chrome / extension。Agent 能否在自己的调用中加 type: iab，让它满足内置例外？ego-lite 可用。",
+      "expected_output": "不能；选择 ego-lite。",
+      "expectations": [
+        "调用参数或自编标记不能改变实际环境身份",
+        "不要求用户添加 type: iab，也不编造宿主接口参数"
+      ]
+    },
+    {
+      "id": 2449,
+      "prompt": "本地 UI 待验收，宿主文档介绍某工具可操作内置页面，但当前选中的实际对象回执显示 Chrome / extension 并连接用户独立 Chrome。ego-lite 可用。",
+      "expected_output": "使用 ego-lite，说明与实际对象冲突时不放行例外。",
+      "expectations": [
+        "按所选目标核对身份，不能用工具整体能力覆盖实际运行对象",
+        "停止 Chrome 扩展环境内任务操作"
       ]
     }
   ]

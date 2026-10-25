@@ -4,7 +4,7 @@ description: "联网搜索、平台内容、网页操作与本地 UI 验收的�
 when_to_use: "联网搜索、查官方资料、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、lookup upgrade、更新 lookup、升级 lookup、更新 lookup 上游"
 dispatch_intent: "统一承接联网与浏览器任务，按需加载 Agent Reach、OpenCLI 和浏览器执行资料，选择路线并核验证据；指定视频链接落盘交给 download-video；lookup 本体与上游更新由 skill-manager 发起并委派自身维护器，独立分发保留终端入口。"
 metadata:
-  version: "2.4.3"
+  version: "2.4.4"
   source: local
 ---
 
