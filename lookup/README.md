@@ -2,9 +2,9 @@
 
 > Complete Agent Reach and OpenCLI capabilities in one entry point for web, browser and execution-tool tasks. Skill instructions are in Chinese.
 
-lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 全部执行能力，以及联网搜索、媒体和本地 UI 验收。能用 API、连接器、CLI 或系统命令完成时先用它们；确需浏览器时，只有开发中调试本地 Web UI 可用 Agent 真正内置的浏览器，其他一律用 ego-lite。ego-lite 不可用时报告阻塞，不切 Chrome 或其他浏览器。只将 lookup 注册为自动入口，由当前 Agent 按需读取平台／工具指南并执行；工具随附的通用优先声明不重做选路。完整能力、依赖和适配见 [Agent Reach 融合](references/Agent-Reach融合.md) 与 [OpenCLI 融合](references/OpenCLI融合.md)，选路分别见 [任务选路](references/任务选路.md) 与 [浏览器选路](references/浏览器选路.md)。
+lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 全部执行能力，以及联网搜索、媒体和本地 UI 验收。能用 API、连接器、CLI 或系统命令完成时先用它们；确需浏览器时，先按 [浏览器选路「操作前选路」](references/浏览器选路.md#操作前选路)核实任务与浏览器身份，再打开、接管或导航标签。默认使用 ego-lite；本地开发例外须满足该文三个条件，Chrome 扩展与身份未知的工具均不满足。ego-lite 不可用时报告阻塞，不切 Chrome 或其他浏览器。只将 lookup 注册为自动入口，由当前 Agent 按需读取平台／工具指南并执行；工具随附的通用优先声明不重做选路。完整能力、依赖和适配见 [Agent Reach 融合](references/Agent-Reach融合.md) 与 [OpenCLI 融合](references/OpenCLI融合.md)，选路分别见 [任务选路](references/任务选路.md) 与 [浏览器选路](references/浏览器选路.md)。
 
-lookup 2.4.2完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件、16个渠道、11类 CLI、7类参考、5份设置指南、MCP 和公开 Python 接口；同时纳入 OpenCLI 正式版2.0.2的170个站点、1,223条站点命令和66条内置命令，以及全部5套 Skill。Agent Reach 来源随压缩快照保存；OpenCLI 完整源码／发布包以逐文件回执固定，完整源码可校验后按需缓存，原始 Skill 不进入自动发现。平台可用性仍取决于本机工具、账号和当前真实结果；完整融合不表示所有站点已逐项实测。
+lookup 2.4.3完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件、16个渠道、11类 CLI、7类参考、5份设置指南、MCP 和公开 Python 接口；同时纳入 OpenCLI 正式版2.0.2的170个站点、1,223条站点命令和66条内置命令，以及全部5套 Skill。Agent Reach 来源随压缩快照保存；OpenCLI 完整源码／发布包以逐文件回执固定，完整源码可校验后按需缓存，原始 Skill 不进入自动发现。平台可用性仍取决于本机工具、账号和当前真实结果；完整融合不表示所有站点已逐项实测。
 
 平台抓取优先发现并实测 OpenCLI 动作，保留 yt-dlp 等更合适的专用 CLI；网站改版导致适配失效时先修复，经过3轮有效修复仍未完成目标才允许 ego-lite 通用浏览器抓取兜底。轮次、记录与停止条件统一见 [适配器修复与浏览器兜底](references/failure-domains.md#适配器修复与浏览器兜底)，普通重跑不算修复，成功即停。连接探针不能代替业务调用；用户指定、视觉／交互目标和账号／权限边界分别判断。全网搜索顺序只用于全网搜索。小红书新版布局的定向修复见[执行与诊断](references/opencli-windows.md#小红书新版搜索适配)。
 
@@ -28,7 +28,7 @@ lookup 2.4.2完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件�
 | 保存与下载 | 保存这篇文章及配图；把指定视频下载到我给的目录。 | 优先适用 OpenCLI／专用 CLI、文件核验；指定视频落盘交给 download-video | 小红书正文6图、公众号正文5图有真实归档证据；X 单帖图片按修复后的动作补验。完整视频下载未纳入本轮，普通阅读不会默认下载。 |
 | 历史与书签找回 | 找到我昨天在 Ego Lite 看过的内部报表地址。 | 单 Profile 历史／书签 helper；必要时原生历史页 | 历史锁定分类、释放后读取有离线回归，原生历史补救已真实通过；不遍历其他 Profile，不把内部关键词发到公网。 |
 | 网页交互 | 筛选最近一周的结果，再打开详情核对作者和时间。 | ego-browser 或按任务选定的浏览器接口 | 真实筛选与详情核对通过；账号权限决定可见范围。发布、评论等按用户授权执行，本次未验证真实外部写入。 |
-| 本地 UI 验收 | 检查这个页面的筛选、分页和手机布局。 | 本地开发时用 Agent 内置浏览器，否则用 ego-lite | 控件、分页与媒体有受控验证；已有用户标注和手机布局修复分支未完整实测。 |
+| 本地 UI 验收 | 检查这个页面的筛选、分页和手机布局。 | 操作前核实该文三个例外条件，否则用 ego-lite | 控件、分页与媒体有受控验证；已有用户标注和手机布局修复分支未完整实测。 |
 | 读取故障诊断 | 页面能打开，为什么工具读不到正文？ | 原生 doctor、错误分类、访问上下文与独立路径判断 | 连接诊断、业务错误、超时和锁定有真实或离线证据；诊断正常只证明对应探针可用。 |
 
 ## 常用平台的实际覆盖
@@ -153,7 +153,7 @@ Tavily／Exa 用户级账号／免 Key 接入、豆包配置与额度切换见 [
 | Agent Reach 融合引擎 | 完整原始资料随包；需要时用 `scripts/reach.py prepare` 准备私有 Python 环境，诊断、配置和转写通过同一来源执行；不注册额外 Skill |
 | python3、curl、jq | 正文提取、结果处理和 OpenCLI 门禁／合约检查 |
 | ego lite 与随包执行指南 | 按浏览器路由选中后用 `ego-browser skill` 读取正式接口；平台抓取仍遵守修复门槛，不注册额外自动入口 |
-| 当前 Agent Browser／DevTools | 仅开发中调试本地 Web UI 使用真正内置浏览器；不接管 Chrome |
+| 当前 Agent Browser／DevTools | 仅在浏览器选路的三个例外条件全部成立时使用；不接管 Chrome |
 
 静态正文脚本 `scripts/fetch.sh` 随 Skill 分发，默认只请求原站、本地提取，不自动安装依赖或转发第三方。支持 HTTP(S) HTML、纯文本与 Markdown，保留最终来源 URL；拒绝凭据 URL、非文本响应和超出大小限制的内容。`--prefer` 选择提取器，`--max-output-chars` 默认 40,000；stdout 保持正文，stderr 给机器可读状态。exit 3 表示有正文但截断，仍可按任务使用已证实部分。已有 `readability-lxml`／`html2text` 时可提升提取质量。
 
@@ -241,7 +241,7 @@ node scripts/find-url.mjs "<关键词>" --since 7d
 |---|---|
 | [任务选路.md](references/任务选路.md) | 多后端筛选、复用上游资料及区分环境可用与任务完成 |
 | [OpenCLI融合.md](references/OpenCLI融合.md) | 全部站点与内置命令、5套指南、CDP、插件及适配器开发维护 |
-| [浏览器选路.md](references/浏览器选路.md) | CLI 优先、本地 Web UI 内置浏览器例外与 ego-lite 唯一边界 |
+| [浏览器选路.md](references/浏览器选路.md) | CLI 优先、操作前身份核实、本地开发例外与 ego-lite 唯一边界 |
 | [动态页面读取.md](references/动态页面读取.md) | 内容就绪与有界等待、登录提示、访问上下文、iframe／Shadow DOM |
 | [媒体读取.md](references/媒体读取.md) | 图片懒加载与实际资源、视频定位／采帧、证据覆盖范围 |
 | [search-routing.md](references/search-routing.md) | 全网搜索、网页、历史与站点经验 |
