@@ -4,7 +4,7 @@ description: "联网搜索、平台内容、网页操作与本地 UI 验收的�
 when_to_use: "联网搜索、查官方资料、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、lookup upgrade、更新 lookup、升级 lookup、更新 lookup 上游"
 dispatch_intent: "统一承接联网与浏览器任务，按需加载 Agent Reach、OpenCLI 和浏览器执行资料，选择路线并核验证据；指定视频链接落盘交给 download-video；lookup 本体与上游更新由 skill-manager 发起并委派自身维护器，独立分发保留终端入口。"
 metadata:
-  version: "2.4.4"
+  version: "2.4.5"
   source: local
 ---
 
@@ -28,7 +28,7 @@ OpenCLI 的全部站点／内置命令、浏览器与原生 Chrome 接口、CDP�
 
 ## 工作流程
 
-能用专用 API、连接器、CLI 或系统命令完成时先用它们。确需浏览器时，先执行 [浏览器选路「操作前选路」](references/浏览器选路.md#操作前选路)，再打开、接管或导航标签；默认使用 ego-lite。本地开发例外必须满足该文三个条件，不能把工具可用或 Chrome 扩展当成内置浏览器。ego-lite 不可用时报告阻塞，不切换其他浏览器。OpenCLI 先完成 [真实连接绑定](references/opencli-windows.md#profile-绑定)，不得把产品名当默认 Profile。
+能用专用 API、连接器、CLI 或系统命令完成时先用它们。确需浏览器时，先执行 [浏览器选路「操作前选路」](references/浏览器选路.md#操作前选路)，再打开、接管或导航标签；本地 UI 开发与验收使用当前桌面客户端窗口内的浏览器面板，没有可用面板或无法完成目标时使用 ego-lite。其他浏览器任务使用 ego-lite；不可用时报告阻塞，不切换其他浏览器。具体范围与入口由该文统一规定，不要求用户提供技术参数。OpenCLI 先完成 [真实连接绑定](references/opencli-windows.md#profile-绑定)，不得把产品名当默认 Profile。
 
 1. **确定目标**：明确对象、环境与所需证据，区分正文、评论、字幕、画面、交互或视觉验收；需要最新或完整内容时，定义时间与覆盖范围。已有材料满足这些要求时不重复联网。
 2. **选择路径**：优先用户指定环境、专用官方能力和适用的已连接服务；浏览器指定的效力统一按 [浏览器选路「使用与验收」](references/浏览器选路.md#使用与验收) 判断。平台搜索、正文、评论、字幕与素材保存先读 [平台检索路由](references/platform-routing.md#发现与执行)，优先发现并实际调用适用的 OpenCLI 动作，保留 yt-dlp 等更合适的专用 CLI；不得因一次探针、历史失败或未登记而跳过核心能力。全网搜索才按 [免费顺序与切换](references/search-routing.md#免费顺序与切换) 选择国内内容豆包 → Tavily → Exa、其他普通搜索 Exa → Tavily → 豆包，各服务核对账号、额度与费用。视觉、交互等浏览器任务按 [浏览器选路.md](references/浏览器选路.md) 选择；平台抓取不得仅凭动作失败或内容缺口直接转 Ego。

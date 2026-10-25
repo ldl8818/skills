@@ -50,7 +50,7 @@ OpenCLI 的明确 Profile、原生 doctor 与等待预算见 [执行与升级边
 | OpenCLI → 同一 ego 的 ego-browser | 可绕开 OpenCLI adapter／bridge | ego 进程与该 Profile 登录态 |
 | 本机 fetch → 第三方 reader | 本机 HTTP 实现及部分网络限制 | 原站限制、第三方配额与数据外发边界 |
 
-ego-lite 不可用或能力不足时报告浏览器路径阻塞，不切换 Chrome、其他宿主浏览器或独立 DevTools；本地 Web UI 调试例外见 [浏览器选路](浏览器选路.md)。
+ego-lite 不可用或能力不足时报告浏览器路径阻塞，不切换 Chrome、其他宿主浏览器或独立 DevTools；本地 Web UI 使用当前桌面客户端浏览器面板的范围见 [浏览器选路](浏览器选路.md)。
 
 上表只说明依赖差异，不构成换路批准；平台抓取仍须通过上一节兜底门槛。HTTP 403／429、网关错误或验证页只证明当前通道失败，不能据此声称内容不存在。切工具不能绕开用户授权、登录要求或账号风险限制。
 

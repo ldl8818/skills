@@ -264,12 +264,12 @@
     },
     {
       "id": 27,
-      "prompt": "请处理 localhost 页面上的元素标注，修正手机宽度下的布局。宿主说明与运行时均确认该环境是当前 Agent 的内置页面，type 为 iab，且具备操作、视口与截图能力；ego-lite 也可用。",
-      "expected_output": "使用当前 Agent 内置浏览器调试本地 Web UI 并核验实际渲染。",
+      "prompt": "当前在 Codex 桌面端开发本任务的 localhost 页面；聊天区域旁的内置 Browser 面板已有元素标注，具备操作、视口和截图能力，ego-lite 也可用。请修正手机宽度下的布局并验收。",
+      "expected_output": "使用当前 Codex 桌面端窗口内的 Browser 面板调试本地 UI 并核验实际渲染。",
       "expectations": [
-        "本地Web UI开发例外成立，保留目标和标注上下文",
-        "确认真正内置且有操作与截图能力，不接管现有Chrome冒充",
-        "若内置能力不足则用ego-lite，不启用独立Chrome或DevTools"
+        "当前桌面客户端、本任务本地 UI 和面板可用三个事实明确，使用该客户端的面板",
+        "保留目标和标注上下文，不接管独立 Chrome 冒充",
+        "能力不足时使用 ego-lite，不要求用户指定技术字段"
       ]
     },
     {
@@ -1256,7 +1256,7 @@
     },
     {
       "id": 2434,
-      "prompt": "已经在确认 type: iab 且能力完整的内置环境完成本地布局测试。现在要打开同一报告的线上 HTTPS 页面检查发布效果，能否继续使用原 tab？",
+      "prompt": "已经在当前 Codex 桌面端窗口内的 Browser 面板完成本地布局测试。现在要打开同一报告的线上 HTTPS 页面检查发布效果，能否继续使用原面板？",
       "expected_output": "重新选路并使用 ego-lite 进行线上验收。",
       "expectations": [
         "本地例外不延续到线上页面",
@@ -1274,7 +1274,7 @@
     },
     {
       "id": 2436,
-      "prompt": "本地开发页面可在确认 type: iab 的环境中打开，但该接口不能截图或调整视口。本次必须验证手机宽度的实际布局；ego-lite 可用。",
+      "prompt": "当前在 Codex 桌面端开发本地页面，窗口内的 Browser 面板可打开页面，但 Agent 接口不能截图或调整视口。本次必须验证手机宽度的实际布局；ego-lite 可用。",
       "expected_output": "使用 ego-lite 完成所需视口和截图验证。",
       "expectations": [
         "身份符合不能代替能力符合",
@@ -1283,7 +1283,7 @@
     },
     {
       "id": 2437,
-      "prompt": "开发任务已完成，现在仅检查部署在外部 HTTPS 地址的页面布局。内置 iab 和 ego-lite 都可用。",
+      "prompt": "当前在 Codex 桌面端，开发任务已完成，现在仅检查部署在外部 HTTPS 地址的页面布局。窗口内 Browser 面板和 ego-lite 都可用。",
       "expected_output": "使用 ego-lite。",
       "expectations": [
         "任务名含开发或 UI 不使线上页面成为本地例外",
@@ -1364,7 +1364,7 @@
     },
     {
       "id": 2446,
-      "prompt": "本地 UI 布局验收。宿主正式接口说明明确：页面嵌入 Agent 面板，由宿主管理，使用 browser_id: agent-panel 操作；浏览器清单确认该对象，没有 type 字段。支持视口、点击和截图。ego-lite 可用。",
+      "prompt": "当前在一个 Agent 桌面客户端开发本地 UI。宿主正式接口说明明确：页面嵌入客户端窗口的浏览器面板，使用 browser_id: agent-panel 操作；浏览器清单确认该对象，没有 type 字段。支持视口、点击和截图。请验收布局，ego-lite 可用。",
       "expected_output": "使用宿主内置页面环境，不要求用户提供 type 参数。",
       "expectations": [
         "通过宿主对环境归属和入口的明确说明核实身份，不依赖 type: iab",
@@ -1373,10 +1373,11 @@
     },
     {
       "id": 2447,
-      "prompt": "本地 UI 布局验收。宿主正式文档和环境清单明确 embedded-preview 是 Agent 面板内的页面，入口 preview.open；运行时 engine_kind: native-view，支持视口和截图，未使用 iab 命名。",
+      "prompt": "假设当前 Claude Code 桌面客户端提供了同类浏览器面板：正式文档和环境清单明确 embedded-preview 是客户端窗口内的页面，入口 preview.open；运行时 engine_kind: native-view，支持视口和截图，未使用 iab 命名。请验收本任务的本地 UI 布局。",
       "expected_output": "使用已核实的宿主内置环境。",
       "expectations": [
-        "不同宿主的字段名和值不影响已核实归属",
+        "在假设同类面板存在且可用的前提下按相同规则执行，不声称所有 Claude Code 桌面版本已有此功能",
+        "不同宿主的字段名和值不影响已明确的桌面客户端面板归属",
         "不因没有 iab 改用其他浏览器或要求用户加参数"
       ]
     },
@@ -1396,6 +1397,51 @@
       "expectations": [
         "按所选目标核对身份，不能用工具整体能力覆盖实际运行对象",
         "停止 Chrome 扩展环境内任务操作"
+      ]
+    },
+    {
+      "id": 2450,
+      "prompt": "当前在 Codex CLI 终端会话中开发 localhost 页面。本机安装了 Codex 桌面端，另一个桌面会话也有右侧浏览器面板，但当前终端没有该面板的操作入口。ego-lite 可用。请截图验收。",
+      "expected_output": "使用 ego-lite，不借用另一个桌面客户端或会话的面板。",
+      "expectations": [
+        "本机安装桌面应用不等于当前会话拥有内置面板",
+        "不要求用户换客户端或添加参数来满足例外"
+      ]
+    },
+    {
+      "id": 2451,
+      "prompt": "当前在 Codex 桌面端开发本地 UI，内置 Browser 面板因布局调整停靠在聊天区域左侧，Agent 可通过正式入口操作、设置视口和截图。ego-lite 可用。",
+      "expected_output": "使用当前桌面客户端的内置 Browser 面板。",
+      "expectations": [
+        "窗口内的归属和能力明确，面板位置不影响判定",
+        "不把截图中的右侧位置写成固定门槛"
+      ]
+    },
+    {
+      "id": 2452,
+      "prompt": "当前在 Agent 桌面客户端开发本地 UI。客户端虽有网页预览面板，但未向 Agent 开放任何操作入口。ego-lite 可用，任务需要点击表单并截图验收。",
+      "expected_output": "使用 ego-lite 完成所需交互与截图。",
+      "expectations": [
+        "面板可见不等于 Agent 可以操作",
+        "不把截图验收转交用户，也不启动默认 Chrome"
+      ]
+    },
+    {
+      "id": 2453,
+      "prompt": "当前在另一个 Agent 桌面客户端开发本地 UI；该版本没有任何内置浏览器面板。ego-lite 可用。请检查移动端布局。",
+      "expected_output": "使用 ego-lite。",
+      "expectations": [
+        "不预设所有桌面客户端都有同类功能",
+        "不要求用户安装、配置或提供固定身份字段"
+      ]
+    },
+    {
+      "id": 2454,
+      "prompt": "当前在 Codex 桌面端，用户只要求把本任务的本地 HTML 打开预览，没有要求截图验收。当前窗口的内置 Browser 面板可由 Agent 打开该页面，但暂未提供截图接口。",
+      "expected_output": "使用当前桌面客户端面板打开预览，仅报告已打开，不宣称视觉验收通过。",
+      "expectations": [
+        "按本次所需能力判断，不为普通预览强制截图能力",
+        "不因缺少本次未要求的截图能力改用其他浏览器或索要配置"
       ]
     }
   ]
