@@ -8,7 +8,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-SKILL_VERSION = "2.5.0"
+SKILL_VERSION = "1.0.2"  # local frozen version; upstream baseline is 2.5.0
 SKILL_DIR = Path(__file__).resolve().parent.parent
 # bundled icons and gallery: <skill>/assets, or <skill>/scripts/assets in packages whose
 # platform only allows SKILL.md + references/ + scripts/ + templates/ (WorkBuddy)
@@ -342,6 +342,17 @@ def wrap_lines(text, size_pt, box_w_pt, bold=False, latin_scale=1.0):
         cur = ""
         tokens = re.findall(r"[A-Za-z0-9\.\-_/%]+|\s+|.", para)
         for tok in tokens:
+            if text_width_pt(tok, size_pt, bold, latin_scale) > box_w_pt:
+                if cur:
+                    lines.append(cur.rstrip())
+                    cur = ""
+                # Only oversized tokens are split; ordinary word wrapping is unchanged.
+                for ch in tok:
+                    if cur and text_width_pt(cur + ch, size_pt, bold, latin_scale) > box_w_pt:
+                        lines.append(cur)
+                        cur = ""
+                    cur += ch
+                continue
             trial = cur + tok
             if text_width_pt(trial, size_pt, bold, latin_scale) <= box_w_pt or not cur:
                 cur = trial
@@ -416,6 +427,7 @@ def fit_size(text, box_w_in, box_h_in, max_pt, min_pt=10, bold=False, line_spaci
     for size in cands:
         lines = wrap_lines(text, size, w_pt, bold, latin_scale)
         ok = len(lines) * size * line_spacing * LINE_PITCH <= h_pt and (max_lines is None or len(lines) <= max_lines)
+        ok = ok and all(text_width_pt(line, size, bold, latin_scale) <= w_pt for line in lines)
         if ok:
             if first_fit is None:
                 first_fit = size

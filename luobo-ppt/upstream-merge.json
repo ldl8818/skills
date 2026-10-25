@@ -11,8 +11,25 @@
     },
     "INSTALL.md": {
       "upstream_sha256": "c466b2c38e750acec925d9138c093a1ef670ef714232ef19a34f1aa3a827f2de",
-      "local_sha256": "c466b2c38e750acec925d9138c093a1ef670ef714232ef19a34f1aa3a827f2de",
-      "status": "identical",
+      "local_sha256": "fc73c5bcaa9a624dfc2241c01a5368c16f0b35b9ed10b723183d095f3617d76b",
+      "status": "adapted",
+      "reason": [
+        "Document transactional staging, physical-path rejection, rollback and retained-backup failure behavior; retain all upstream installation sections."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            1,
+            1
+          ],
+          "local_lines": [
+            1,
+            5
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "5870137d3bb2a235d1bd7c18d34ec7cdbfe9df59538403375191f2bfb5f92c17"
+        }
+      ],
       "sections": {
         "# luobo-ppt 安装说明": "# luobo-ppt 安装说明",
         "## 依赖清单": "## 依赖清单",
@@ -32,20 +49,33 @@
     },
     "README.md": {
       "upstream_sha256": "90f1abf5200d747f0468e864910fc511697178235c3c032b431adf3b7fbcb6ab",
-      "local_sha256": "f0d13fefc1b99608aded625a7092c81a6c9d61dc34b3c45ae38be6a189aa3be5",
+      "local_sha256": "027dc05cda75c2954d0d77d963a38fc3949a10ba670c6b0f8b3f4178ca5219b9",
       "status": "adapted",
       "reason": [
-        "Keep the frozen single-source installation and full-reconciliation update instructions instead of running git pull over local customization."
+        "Keep the frozen single-source installation and full-reconciliation update instructions instead of running git pull over local customization.",
+        "Distinguish local frozen version 1.0.2 from the preserved upstream 2.5.0 badge and changelog; document chart refusal, corrected workflows and offline regression entry points."
       ],
       "changes": [
+        {
+          "upstream_lines": [
+            26,
+            26
+          ],
+          "local_lines": [
+            26,
+            43
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "7a8d16c208f379416aa7285bd240f0ff46a4ad6ffbc28028a564c751d5828047"
+        },
         {
           "upstream_lines": [
             206,
             209
           ],
           "local_lines": [
-            206,
-            207
+            223,
+            224
           ],
           "removed_sha256": "3e5a2017f2283e4174acc8239afd8e5d9188a05ac0d38067ec62676c79bc5b54",
           "added_sha256": "d2cf02df8234011fdcc72c910abbc98379a5f47973fab9bff07378359d0711f7"
@@ -91,13 +121,14 @@
     },
     "SKILL.md": {
       "upstream_sha256": "1e1ece380ad7e2a309196088886959e063b3d5e01a9188eae2a730615e917b84",
-      "local_sha256": "1f2eb368790f84142b13b518e4844265882c940fc89b4658ac4e30e285054868",
+      "local_sha256": "10062fdcd857effb098cd2985c7f592ba2de78b5e56116417b485900f3e6784c",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: 做 PPT 和美化 PPT 的一站式 skill，输出可编辑的原生 .pptx。从零生成时，给一个题目、一篇文章或口播稿、一份大纲，产出结论式标题、带口播备注、风格统一的 PPT；按参考图美化时，给一份朴素的 .pptx 和一张参考图，文字一字不改地换上统一的配色、母版、版式、图标和插画。当用户说\"做个PPT\"\"把这篇文章做成PPT\"\"生成口播PPT\"\"美化PPT\"\"照这张图的风格改PPT\"\"套个风格\"\"make slides\"\"beautify my deck\"，或丢来 pptx、文章、大纲时，务必使用此skill。生图模型可配置，没配置时自动用程序化插画兜底。\n"
       },
       "reason": [
-        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy."
+        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy.",
+        "Advance only the local version to 1.0.2; document native-chart refusal, level-aware replanning, preview fallback and nonzero pipeline failures while preserving routing fields and upstream provenance."
       ],
       "changes": [
         {
@@ -122,7 +153,7 @@
             14
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "2899bd0f3a0680da094ed079f2ee21aa0dd017e5d1d9c21b68c0b3b95622759e"
+          "added_sha256": "86631b2160cbdb0a8fcee3c40170e2b9f91aecca7323eb876c1c719e6bc67d50"
         },
         {
           "upstream_lines": [
@@ -162,12 +193,48 @@
         },
         {
           "upstream_lines": [
+            38,
+            38
+          ],
+          "local_lines": [
+            51,
+            52
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "d5ad8589e2112ac9c5c1612c1bba2ccc196decc8f38144b3c1695d188c73c05b"
+        },
+        {
+          "upstream_lines": [
+            56,
+            56
+          ],
+          "local_lines": [
+            70,
+            71
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "fb4f54d9de830e8bbac02ad0902a7a164e880a7e9dc3ea09b68c239161282fc8"
+        },
+        {
+          "upstream_lines": [
+            63,
+            63
+          ],
+          "local_lines": [
+            78,
+            79
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "f8b00ac40e94ee06d0b0ce024522f78a13b907cb7e5c99a4cbdbc819bdda8842"
+        },
+        {
+          "upstream_lines": [
             89,
             90
           ],
           "local_lines": [
-            102,
-            103
+            105,
+            106
           ],
           "removed_sha256": "68945ea2781753cb3153b7ebf830262d869c42cc883aa15b3406018c0d912c88",
           "added_sha256": "ec39b146550c962bcbcbafcfcf1e2910d026c95b11b6c1da5572d9974ce26f6d"
@@ -303,8 +370,73 @@
     },
     "install.sh": {
       "upstream_sha256": "89d41e7d9e36b4613b2087112339cfddce03ab242e98b7bbc967d577f7eed497",
-      "local_sha256": "89d41e7d9e36b4613b2087112339cfddce03ab242e98b7bbc967d577f7eed497",
-      "status": "identical"
+      "local_sha256": "5a467ede144c0114c29374185f88a41233559c35247a27bc028c885b6e57d3c9",
+      "status": "adapted",
+      "reason": [
+        "Resolve physical source/destination paths, reject containment, validate a same-filesystem staged copy, preserve configuration without following a staged config symlink, and roll back failed or interrupted publication. Clean owned temporary files; retain and report the backup if rollback fails. Preserve the active source when it uses a legacy directory name."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            12,
+            13
+          ],
+          "local_lines": [
+            12,
+            13
+          ],
+          "removed_sha256": "81b1e5bcf02dcd858b5509676b1d17fb757be8bd2d80a3fb40261929d4e6801c",
+          "added_sha256": "6211b13c56b6b17a5ef18f3e95de40c9ca01ba06287e9b3e004f3bd877414e3b"
+        },
+        {
+          "upstream_lines": [
+            72,
+            72
+          ],
+          "local_lines": [
+            72,
+            113
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "e8519a9254e290abac12ab19ec5db0e1d875f5503c0915d728b25cd280c428c2"
+        },
+        {
+          "upstream_lines": [
+            76,
+            77
+          ],
+          "local_lines": [
+            117,
+            122
+          ],
+          "removed_sha256": "95492a6b38add9416e4676d88b7ccebc2331abd791702d77ad66c0a3727fc86a",
+          "added_sha256": "9cb84a7839735478f1781ab309f669e037de931165a44c226cb654f1466b3652"
+        },
+        {
+          "upstream_lines": [
+            79,
+            88
+          ],
+          "local_lines": [
+            124,
+            129
+          ],
+          "removed_sha256": "c75f1aa3ce7338b1cd43ed0827548e2d2a1e14de4ad338f96535f5f958f021a1",
+          "added_sha256": "99fe517eb9f4b620729e7c149c48927db39d102e56bfa5609c7ef0ce59b8294f"
+        },
+        {
+          "upstream_lines": [
+            93,
+            93
+          ],
+          "local_lines": [
+            134,
+            139
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "306616395bfec23a47c0fe71ec9b5411b80d0c1f03453f6d485735d9ba06f5d4"
+        }
+      ]
     },
     "references/critique.md": {
       "upstream_sha256": "52b11b0fea9813e22d27edd18776c23b7b5f55f2e2eadfd3fcb2aa9da387f33a",
@@ -509,13 +641,47 @@
     },
     "scripts/analyze_source.py": {
       "upstream_sha256": "94ebd706c2f99b217a93c00d883f96377870546195dfd42f7a67fa6690cc89e2",
-      "local_sha256": "94ebd706c2f99b217a93c00d883f96377870546195dfd42f7a67fa6690cc89e2",
-      "status": "identical"
+      "local_sha256": "3cf1d3d1d95621236c214bf27785e544e6264cde3e872292ca8d27283955d3fb",
+      "status": "adapted",
+      "reason": [
+        "Stop collecting numeric fragments after the thirty unique entries actually returned, avoiding quadratic work while preserving the exact output and independent full-text statistics."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            92,
+            92
+          ],
+          "local_lines": [
+            92,
+            94
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "156d3d570bc39f5c27befa16f90c4cbbd016bd1cb97ec5d6a5926723b01fedbb"
+        }
+      ]
     },
     "scripts/build_deck.py": {
       "upstream_sha256": "9851a10f4c0eabab6dd742ba5cce2812a5590311f2a6bb34678db0d560de2a66",
-      "local_sha256": "9851a10f4c0eabab6dd742ba5cce2812a5590311f2a6bb34678db0d560de2a66",
-      "status": "identical"
+      "local_sha256": "56ff22780115744cf893eb8a0db15373317538478035c266e12ee0ae6fc8a139",
+      "status": "adapted",
+      "reason": [
+        "Record successfully embedded images with absolute paths in layout_dump so approximate previews resolve the same assets when WORK is relative."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            171,
+            171
+          ],
+          "local_lines": [
+            171,
+            173
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "f97778f2ce5841c0a4c80ddedc2edab3a7cd7acf95243cdf6b1119410361bd8d"
+        }
+      ]
     },
     "scripts/capacity.py": {
       "upstream_sha256": "89397814f27cdb79ddc159b77bd13161355b67c71380dff7596864a5db86a09e",
@@ -524,18 +690,129 @@
     },
     "scripts/common.py": {
       "upstream_sha256": "fb99a09c41453cd568f90f853a5d517ec5c671322a6afbfb413472dfcb20188a",
-      "local_sha256": "fb99a09c41453cd568f90f853a5d517ec5c671322a6afbfb413472dfcb20188a",
-      "status": "identical"
+      "local_sha256": "47c6c46de396cff26c470c91aff79f11c21b9a11929fa61378aed80a3a1cd25f",
+      "status": "adapted",
+      "reason": [
+        "Split only oversized tokens and check line widths during font fitting, preserving ordinary word wrapping; report local frozen version 1.0.2 in environment checks."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            10,
+            11
+          ],
+          "local_lines": [
+            10,
+            11
+          ],
+          "removed_sha256": "c2fff8d24755e5343088c99919aa5f62fc8593f2e78bc3efabe40133886b3cd1",
+          "added_sha256": "54ccccb7d75ad4468450e0e989740a7bc791f34fee778430d49995c79f632ad4"
+        },
+        {
+          "upstream_lines": [
+            344,
+            344
+          ],
+          "local_lines": [
+            344,
+            355
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "9ccd1be190049c9df99e4dcac1ea70677d07e4615c5f54c294fbf0aa3d5c6211"
+        },
+        {
+          "upstream_lines": [
+            418,
+            418
+          ],
+          "local_lines": [
+            429,
+            430
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "1d6787ca6933f6e6a7ee917aa2abff2cbe33c44f890f59c90d0684739aa89836"
+        }
+      ]
     },
     "scripts/compare_sheet.py": {
       "upstream_sha256": "2ee63ede5e43d5cc8ac83caa8c909bdf338a09432d494ec696c8bbd71e12460a",
-      "local_sha256": "2ee63ede5e43d5cc8ac83caa8c909bdf338a09432d494ec696c8bbd71e12460a",
-      "status": "identical"
+      "local_sha256": "14bc5655ea73575ca96663c626fe88bced272296322e2384770ef6a4bfdd43cd",
+      "status": "adapted",
+      "reason": [
+        "Pair and select slide images by their numeric page identifiers rather than lexicographic position, including sparse and thousand-page inputs."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            22,
+            25
+          ],
+          "local_lines": [
+            22,
+            28
+          ],
+          "removed_sha256": "5513201a09aca2dd7eb2197df0520761752c4e00990ff73503072f073d9356a2",
+          "added_sha256": "0770a5ffe50eca7fa6078d0798eb6aed696061c562841bce206ea301a8e44f98"
+        },
+        {
+          "upstream_lines": [
+            27,
+            28
+          ],
+          "local_lines": [
+            30,
+            32
+          ],
+          "removed_sha256": "840eec432ccf327aa74b1e550b2afc91c603e0f1f97f75f54f8328d191dd4c4b",
+          "added_sha256": "c46db57b026b279f0bb740954f2378093d9da9e2d0c623b5f00f51edd0525529"
+        }
+      ]
     },
     "scripts/extract_deck.py": {
       "upstream_sha256": "b5efabfe8b1251ec3292b4f12fd64963cc79d596f926751d3c71dd081ef5b2f2",
-      "local_sha256": "b5efabfe8b1251ec3292b4f12fd64963cc79d596f926751d3c71dd081ef5b2f2",
-      "status": "identical"
+      "local_sha256": "f74b893adf978b46cfbbb0b4132085363ccbf1607f27974dd92b85cd4bc6a008",
+      "status": "adapted",
+      "reason": [
+        "Inspect a disposable normalized copy and reject unsupported native charts with slide/shape details before changing source or extraction artifacts; retain normal text and table extraction."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            18,
+            18
+          ],
+          "local_lines": [
+            18,
+            20
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "d991061fac99eb538fe26c675c724f91d8805cebf3cf699c8c95c5d00adae623"
+        },
+        {
+          "upstream_lines": [
+            221,
+            223
+          ],
+          "local_lines": [
+            223,
+            244
+          ],
+          "removed_sha256": "19d6d1157e57d9b0e20f40ba07a56fc3e521f9d23f96e9ed2d3ae20a2bd46f6a",
+          "added_sha256": "f6f9c73fdfe35044605fcd74c6e550f045500fb86e482ae148ef03691cd0b403"
+        },
+        {
+          "upstream_lines": [
+            225,
+            227
+          ],
+          "local_lines": [
+            246,
+            246
+          ],
+          "removed_sha256": "168df385a855c382827cfd6c53ecc6f268180363dac9bbc7beba3115fef6669d",
+          "added_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
     },
     "scripts/extract_style.py": {
       "upstream_sha256": "46156b4b0e499d5e6b158ad492f1a3b38d0cfee615dc12ea9fc660cefd52f8cb",
@@ -549,8 +826,37 @@
     },
     "scripts/imagegen.py": {
       "upstream_sha256": "59a3f63bb03cb5c369158f4abd4a548afe5654724bda4a53b5cb25b32cb9615a",
-      "local_sha256": "59a3f63bb03cb5c369158f4abd4a548afe5654724bda4a53b5cb25b32cb9615a",
-      "status": "identical"
+      "local_sha256": "05111b8824210892128705644307fee36896103cc26e2757a70c40a9223542ae",
+      "status": "adapted",
+      "reason": [
+        "Reject non-positive, non-integer and boolean dimensions before dispatch/retry or command formatting; retain existing shell quoting for prompt and output paths."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            106,
+            106
+          ],
+          "local_lines": [
+            106,
+            108
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "0054fb2bed753b1f69b09934dedf9e050a91d459e1ab1cac70b8f7563ead19a0"
+        },
+        {
+          "upstream_lines": [
+            201,
+            201
+          ],
+          "local_lines": [
+            203,
+            205
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "0054fb2bed753b1f69b09934dedf9e050a91d459e1ab1cac70b8f7563ead19a0"
+        }
+      ]
     },
     "scripts/layout_info.py": {
       "upstream_sha256": "d6c91c73a67e88514cae9b34ead7c01333db82dc7db56ae0bf700fede7e70e17",
@@ -564,13 +870,191 @@
     },
     "scripts/make_assets.py": {
       "upstream_sha256": "7a8f072510d22776ac7b3051d6eb8f20d027beff08f50da3f13bf075d24f2c36",
-      "local_sha256": "7a8f072510d22776ac7b3051d6eb8f20d027beff08f50da3f13bf075d24f2c36",
-      "status": "identical"
+      "local_sha256": "8a3ad3377c3c8a9589dce684ad964b923360ba305ddaa3f6e91aa941b6f8ec6d",
+      "status": "adapted",
+      "reason": [
+        "Validate top-level and sheet-child asset IDs and resolved output paths before generation to prevent traversal and symlink escapes; write new manifests with absolute asset paths."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            79,
+            79
+          ],
+          "local_lines": [
+            79,
+            95
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "75ae50e827686e071edcef7ea000a61d83c47c143fc35726d6acffcaeac2705b"
+        },
+        {
+          "upstream_lines": [
+            82,
+            82
+          ],
+          "local_lines": [
+            98,
+            99
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "fe1a660c00f9262afc6ae3298e15e4bacf3adb5f3cf3e79df00293a5d3b96281"
+        },
+        {
+          "upstream_lines": [
+            83,
+            84
+          ],
+          "local_lines": [
+            100,
+            100
+          ],
+          "removed_sha256": "baeba412aecff14cc60f23c0afcf588cadecbafc7f98050ef24baad34b3b2098",
+          "added_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "upstream_lines": [
+            137,
+            137
+          ],
+          "local_lines": [
+            153,
+            155
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "1d9b544535914bb0053c3b43c617d7f52d3e9ecf2f470aa7e5f67d73f06b85f5"
+        },
+        {
+          "upstream_lines": [
+            139,
+            141
+          ],
+          "local_lines": [
+            157,
+            159
+          ],
+          "removed_sha256": "a4d4cdec355f5207af98496dab1a6091f33576d42a5d454afd42bdac0a00cacc",
+          "added_sha256": "4b064abc51fed7b501acace69fbf034a5a0ce96629ea8cdac62a026d28368530"
+        },
+        {
+          "upstream_lines": [
+            143,
+            144
+          ],
+          "local_lines": [
+            161,
+            161
+          ],
+          "removed_sha256": "c2eeb05c94e010160539bb34a09734d579540350d089d799eedafa5c9aba34f1",
+          "added_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "upstream_lines": [
+            148,
+            149
+          ],
+          "local_lines": [
+            165,
+            166
+          ],
+          "removed_sha256": "6b54885aed6e6e694cdafed7b04efe36f55310074a4e9818c52c300cffeee070",
+          "added_sha256": "351d8ae67845cd28d2e5e10fe39d39159cf323776b92b86f96b139515e9ff471"
+        },
+        {
+          "upstream_lines": [
+            165,
+            166
+          ],
+          "local_lines": [
+            182,
+            183
+          ],
+          "removed_sha256": "853576251d51f72bd0c8a572db3afe9bef6642e6ee127d42df69c2b9622686e6",
+          "added_sha256": "ec83c745314c83d29de20faedeacdf9d7204b6ee814de8f48ec88f1559d525cd"
+        },
+        {
+          "upstream_lines": [
+            192,
+            193
+          ],
+          "local_lines": [
+            209,
+            213
+          ],
+          "removed_sha256": "4a6c1311287920a83a7403a5b275433431082671b843cc2423cb498dafcfd252",
+          "added_sha256": "bac132eca1d88d81100e93b27d594f54ac14cdf580d5954904291d162d752af4"
+        },
+        {
+          "upstream_lines": [
+            230,
+            231
+          ],
+          "local_lines": [
+            250,
+            251
+          ],
+          "removed_sha256": "7ff8c504f8cb885752a869ff135b216594092d4900c1579df6fb5b5962f8c016",
+          "added_sha256": "82430e3d2037094923fd3d1a73ff5f5e1cb11600f86ad621429396fab8b02d21"
+        }
+      ]
     },
     "scripts/omml.py": {
       "upstream_sha256": "4660173361122ca870db6fc06764dd54a2cb907df3b4193b2302368f2487b226",
-      "local_sha256": "4660173361122ca870db6fc06764dd54a2cb907df3b4193b2302368f2487b226",
-      "status": "identical"
+      "local_sha256": "129e8e493ed4cd2245917e492748ef3237bd062866e81b05d5d0c809269e4fb9",
+      "status": "adapted",
+      "reason": [
+        "Preserve unmapped single-character superscripts/subscripts using explicit markers and parenthesize compound bases so formula meaning survives extraction."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            58,
+            59
+          ],
+          "local_lines": [
+            58,
+            59
+          ],
+          "removed_sha256": "0f06afebd3e451089bfaa2c408f6163a75aa57060304f18aff6d4b29d92a79e2",
+          "added_sha256": "3767f1c3c8db2ae4285d283af07c9838c7766533d02734c7e78fe4559f65927e"
+        },
+        {
+          "upstream_lines": [
+            78,
+            79
+          ],
+          "local_lines": [
+            78,
+            79
+          ],
+          "removed_sha256": "b04dbfc6ee846ab140687ca95f778e44845bb734e63c7fd619fa91de5de91cf2",
+          "added_sha256": "9c7de67583b614959e123f729ebdaed9adbdf860db1e235dcc2c0345fc590de6"
+        },
+        {
+          "upstream_lines": [
+            80,
+            81
+          ],
+          "local_lines": [
+            80,
+            81
+          ],
+          "removed_sha256": "24c4e4b9fb20a546722d2923407b92e5adf485824d869c673971b005b0ccb4f8",
+          "added_sha256": "e0884dabb2a8e49d9f72229c81d89715dcf2d2d8e010d54528b03649a67a67c6"
+        },
+        {
+          "upstream_lines": [
+            85,
+            86
+          ],
+          "local_lines": [
+            85,
+            86
+          ],
+          "removed_sha256": "8c039aa23e59dd9cf1ea80b239128f428a3399c3112aa991c9b1b80ac5e2377a",
+          "added_sha256": "e1e21a1ec9471864252446fcf63d88f6c94bf9bc3b225a7eb43443537bb176d6"
+        }
+      ]
     },
     "scripts/outline_check.py": {
       "upstream_sha256": "d27f32bc11d530cb1bb6cc47629c44fc9e9bfb0d12bf52f4a6a620614eb27339",
@@ -579,23 +1063,211 @@
     },
     "scripts/pipeline.py": {
       "upstream_sha256": "261a3d39596a26df9738af31d2b758b5f19002e9b57688084cd71df12398f7dd",
-      "local_sha256": "261a3d39596a26df9738af31d2b758b5f19002e9b57688084cd71df12398f7dd",
-      "status": "identical"
+      "local_sha256": "7beac41b2c24e6771340a1ac813e8a80ee217df799db906efbc36978216e3a64",
+      "status": "adapted",
+      "reason": [
+        "Propagate QA, review, comparison and unavailable-preview failures to the CLI exit status while retaining LibreOffice-to-lite fallback and reporting."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            55,
+            55
+          ],
+          "local_lines": [
+            55,
+            56
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "a129e7342795a70bb7fa4888a7b81e32b61b7d3c17333e85746032a31ceedda4"
+        },
+        {
+          "upstream_lines": [
+            56,
+            57
+          ],
+          "local_lines": [
+            57,
+            59
+          ],
+          "removed_sha256": "632bb09b9d6fc6b25199dcc8fe062434666d0597b95df605f3d94266bdd98975",
+          "added_sha256": "0e0c9fcf1f7f2c4f4977416297dcbcef7fb835c87205f8c66024c746957787f1"
+        },
+        {
+          "upstream_lines": [
+            59,
+            60
+          ],
+          "local_lines": [
+            61,
+            63
+          ],
+          "removed_sha256": "b319c4b714f9f4bc6a4a124926ed499cccd5eb386cd9174bf4328877a4093efc",
+          "added_sha256": "408d1ba612fdc9f55749ca5987f08d31d46767871353eaa2efad0c32bc4d48b0"
+        },
+        {
+          "upstream_lines": [
+            67,
+            67
+          ],
+          "local_lines": [
+            70,
+            71
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "9d80b990521f4f597c85a4c4804374c109091d45dc7c85494c2bf5beecbd37e6"
+        },
+        {
+          "upstream_lines": [
+            70,
+            71
+          ],
+          "local_lines": [
+            74,
+            75
+          ],
+          "removed_sha256": "18e99232cd3a309f50cbd6f662127eeaafce1f736292defb113d981a20c7d852",
+          "added_sha256": "963726b05d389eb0973950a0949c3e08b09acff4b688711c05c22232084b2c4e"
+        }
+      ]
     },
     "scripts/plan_deck.py": {
       "upstream_sha256": "7393213dd61bbd597941a625f991e0fcf45bfbdd03ce99c23c7123949f6cc07e",
-      "local_sha256": "7393213dd61bbd597941a625f991e0fcf45bfbdd03ce99c23c7123949f6cc07e",
-      "status": "identical"
+      "local_sha256": "d4bc59a8a0b6762c39670370b93638a31be0ef0b9d11bca8be7364e0670c7365",
+      "status": "adapted",
+      "reason": [
+        "Reapply the new level-derived hero policy when reusing an unchanged slide, while retaining compatible manual layout, relation and prompt edits."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            242,
+            242
+          ],
+          "local_lines": [
+            242,
+            249
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "29dcaefd3cfd4d12d57db1fab4ac029d449d812bafea1c66533787b68e4d1167"
+        }
+      ]
     },
     "scripts/qa_check.py": {
       "upstream_sha256": "ac790c76090aad19e57a23fb1322a67097b9b64833519b1386ad993521a5cd97",
-      "local_sha256": "ac790c76090aad19e57a23fb1322a67097b9b64833519b1386ad993521a5cd97",
-      "status": "identical"
+      "local_sha256": "7f2d12ece42140932a0a49adbf0a81750dbf8cdc060bad78eed84a31d77d44f7",
+      "status": "adapted",
+      "reason": [
+        "Preserve numeric minus signs, consume source-text matches by occurrence, keep original-image exemptions, and check horizontal as well as vertical text capacity."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            32,
+            33
+          ],
+          "local_lines": [
+            32,
+            33
+          ],
+          "removed_sha256": "614d6562ae9075d33a5c4bd135ac717e184e940f290aec3076e60882e5b1032f",
+          "added_sha256": "1be485acdf2a89d5145ee5d6fe88628fe4c8b527ef82c200f5c2b971c1168e60"
+        },
+        {
+          "upstream_lines": [
+            139,
+            142
+          ],
+          "local_lines": [
+            139,
+            144
+          ],
+          "removed_sha256": "4e656fe797422ec4fb38ad33ab39ad114e5c4823f499f4d128cd2e566113a625",
+          "added_sha256": "41d79a4e63cbaef25e55c5ae522860ff16f939a97e1eaa8a67d78e7ac9b147a8"
+        },
+        {
+          "upstream_lines": [
+            143,
+            144
+          ],
+          "local_lines": [
+            145,
+            145
+          ],
+          "removed_sha256": "c380b5d44340f4b5f6084a9bf49ae8f115444cada51663dae7494aa9b38aba54",
+          "added_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "upstream_lines": [
+            148,
+            149
+          ],
+          "local_lines": [
+            149,
+            150
+          ],
+          "removed_sha256": "65121aae5ae38009a713f69ceb9d915c6b2fd3db2312f7b163eb7ee01584856d",
+          "added_sha256": "cabcfd546b931bf9186c376fcae99fd46e76bfe9864d2bd33b1c2193c4d0745c"
+        },
+        {
+          "upstream_lines": [
+            150,
+            151
+          ],
+          "local_lines": [
+            151,
+            153
+          ],
+          "removed_sha256": "7cea9efe0ed7a657f39818e7ed4825256105226cdeeb055486eeff16ade74080",
+          "added_sha256": "8c6b4d1c3d28e4125b563ab2242a123a8bc323064897c0a4f5e0d63fb5d89967"
+        },
+        {
+          "upstream_lines": [
+            154,
+            154
+          ],
+          "local_lines": [
+            156,
+            158
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "2a317b2ca953bb380f53ce1361af49f409b399b8998ec08bbd2441d454c5591d"
+        },
+        {
+          "upstream_lines": [
+            175,
+            175
+          ],
+          "local_lines": [
+            179,
+            181
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "65bea874557d286d6e07199a00ffd26ccf88a8a6888deebd7d55112e7732afe6"
+        }
+      ]
     },
     "scripts/render.py": {
       "upstream_sha256": "163b962b61e27b413741588a6edf609e614608409cd9944041ae04ee10bc2f2b",
-      "local_sha256": "163b962b61e27b413741588a6edf609e614608409cd9944041ae04ee10bc2f2b",
-      "status": "identical"
+      "local_sha256": "dc35f0f58ba2087b27dcfbd8cad7d222ae8f48ab7163425b6c6f2ae06b299ebf",
+      "status": "adapted",
+      "reason": [
+        "Use scoped temporary directories for normalized input and LibreOffice profiles so success, missing tools, conversion errors and timeouts all release owned files."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            48,
+            71
+          ],
+          "local_lines": [
+            48,
+            71
+          ],
+          "removed_sha256": "75695e24e0812bcdf4cc2d858171c69540300b51aebf87f2e6a9b654d5230a88",
+          "added_sha256": "d82ecb87d4eeb8a2684d0d9e180e6b860123bbea694507acc1f73791ab9f31db"
+        }
+      ]
     },
     "scripts/render_lite.py": {
       "upstream_sha256": "76140360c0ccf559eb7eee6ac574b8b76df774842d6a7de872d9d9adec381130",
@@ -619,11 +1291,67 @@
     },
     "scripts/style_previews.py": {
       "upstream_sha256": "98fb8eb46684c2122d9666f62b28cb06b4b3d381ca941c270c4121c81d5d5dba",
-      "local_sha256": "98fb8eb46684c2122d9666f62b28cb06b4b3d381ca941c270c4121c81d5d5dba",
-      "status": "identical"
+      "local_sha256": "8fb4a72799ec700dbd79def3beacca8e22af27dfef1c40b6f589ec32ec29bdc0",
+      "status": "adapted",
+      "reason": [
+        "Rebase original-deck image resources before moving the mini deck and use render_lite after renderer failure, keeping the successful renderer path and original deck data unchanged."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            86,
+            86
+          ],
+          "local_lines": [
+            86,
+            87
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "85063284c4c965853dd209d5e40c1fa0ae30db187c8bc0a8f962c15951e3110f"
+        },
+        {
+          "upstream_lines": [
+            92,
+            93
+          ],
+          "local_lines": [
+            93,
+            109
+          ],
+          "removed_sha256": "611fb8f96d65cf33dc7956aceadd2ce05dfce7faa7b0892409d24ebcc3b039ba",
+          "added_sha256": "cadc237cd323e433ac9684392688d939c797bef0434c49b213076e6a8fa0b852"
+        },
+        {
+          "upstream_lines": [
+            95,
+            97
+          ],
+          "local_lines": [
+            111,
+            112
+          ],
+          "removed_sha256": "cbb1ef82bee61daca46de2dcf208972806edbd12d7e11790eaf4d9040591ca53",
+          "added_sha256": "6042492f1bcb50389235b8223491f276c8c5ea140842183b8ff2cec658ca1366"
+        },
+        {
+          "upstream_lines": [
+            100,
+            101
+          ],
+          "local_lines": [
+            115,
+            124
+          ],
+          "removed_sha256": "614f9b20b9bf048e9d2a76bbecde3448fe413d4bbd77acd14356cb669e66d09d",
+          "added_sha256": "2826cffe38b9fd0e9c44a94a97d9ae98ee072666605c9d13ecf8f2e9aea82927"
+        }
+      ]
     }
   },
   "local_only": {
-    "本地定制维护.md": "eb8915bcc5c49fd578fa0826149fbf8708c3150e61018a3dca722d1e204d16e4"
+    "tests/benchmark_measure.py": "4b412db56306151d2e5d5787c28665e194a029fc17cd29b6ec74e34bace76fcc",
+    "tests/test_install.py": "38d0500560dbec60fec66fa6092e01e8e325a30f4b7541fa932242ff94d14f79",
+    "tests/test_regressions.py": "063741c5a352af886d7c05cbe5841fb27d2d6c95d10f8e5685d2ba180c9d6614",
+    "本地定制维护.md": "b7e55fb61558451a184b4ee81b90352575bcf1335b55f6d7690ddbc588fc80cf"
   }
 }

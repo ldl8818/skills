@@ -191,6 +191,7 @@ def download_repo(github_url, ref, dest_dir):
                     raise ValueError("上游归档中的普通文件无法读取")
                 with source, open(target, "wb") as out:
                     shutil.copyfileobj(source, out)
+                os.chmod(target, member.mode & 0o777)
         for member, stripped in links:
             if member.issym():
                 linked = os.path.join(os.path.dirname(stripped), member.linkname)
@@ -204,6 +205,7 @@ def download_repo(github_url, ref, dest_dir):
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with open(linked_target, "rb") as source, open(target, "wb") as out:
                 shutil.copyfileobj(source, out)
+            os.chmod(target, os.stat(linked_target).st_mode & 0o777)
     os.unlink(archive)
     return bool(os.listdir(dest_dir))
 
@@ -397,9 +399,63 @@ def merge_skill_dir(src, dst, meta_fields, md_name="SKILL.md", baseline=None):
     return old_md, operations.get('SKILL.md', b'').decode('utf-8')
 
 
-def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False, upstream_only=False):
+def live_snapshot(directory, files=None):
+    """Transaction identity includes the real entry name and ordinary modes."""
+    root = Path(directory)
+    files = audit_upstream.local_files(root) if files is None else dict(files)
+    entry = 'SKILL.md' if (root / 'SKILL.md').is_file() else 'SKILL.md.disabled'
+    if not (root / entry).is_file():
+        raise ValueError('incomplete live Skill entry')
+    receipt = root / audit_upstream.RECEIPT
+    if receipt.is_symlink():
+        raise ValueError('redirected merge receipt')
+    if receipt.is_file():
+        files[audit_upstream.RECEIPT] = receipt.read_bytes()
+    return {'entry': entry, 'files': {
+        name: {'sha256': audit_upstream.digest(data),
+               'mode': (root / (entry if name == 'SKILL.md' else name)).stat().st_mode & 0o777}
+        for name, data in files.items()}}
+
+
+def recover_direct(skill_dir):
+    """Reconcile only the paths and complete snapshots owned by this journal."""
+    live = Path(skill_dir)
+    journal = Path(core.direct_state_dir(live)) / 'transaction.json'
+    if not journal.exists():
+        return
+    record = core.read_json(str(journal))
+    if not isinstance(record, dict) or record.get('live') != str(live):
+        raise ValueError(f'invalid update recovery record: {journal}')
+    stage = Path(record.get('stage', ''))
+    old = Path(record.get('old', ''))
+    prefix = f'.{live.name}.stage-'
+    suffix = stage.name[len(prefix):]
+    if (stage.parent != live.parent or not stage.name.startswith(prefix) or not suffix
+            or old != live.with_name(live.name + '.old-' + suffix)
+            or any(path.is_symlink() for path in (live, stage, old))):
+        raise ValueError(f'invalid update recovery paths: {journal}')
+    before, after = record.get('before'), record.get('after')
+    for path, expected in ((old, before), (stage, after)):
+        if path.exists() and live_snapshot(path) != expected:
+            raise ValueError(f'recovery material changed; inspect {journal}')
+    if live.exists():
+        if live_snapshot(live) not in (before, after):
+            raise ValueError(f'live Skill changed; inspect {journal}')
+    elif old.exists():
+        os.rename(old, live)
+    else:
+        raise ValueError(f'live and previous Skill absent; inspect {journal}')
+    for path in (old, stage):
+        if path.exists():
+            shutil.rmtree(path)
+    journal.unlink()
+
+
+def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False,
+                        upstream_only=False, target_path=None):
     core.safe_component(skill_name, "skill 名")
-    resolved, error = core.resolve_direct_path(skill_name, project)
+    resolved, error = ((target_path, None) if target_path else
+                       core.resolve_direct_path(skill_name, project))
     if error:
         print(f"❌ {error}")
         return False
@@ -407,6 +463,20 @@ def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False,
         print(f"❌ {skill_name} 不存在")
         return False
     skill_dir = os.path.realpath(resolved)
+    with core.maintenance_lock(core.direct_state_dir(skill_dir)) as acquired:
+        if not acquired:
+            print(f"❌ {skill_name} 正在维护，请稍后重试")
+            return False
+        with core.maintenance_signals():
+            try:
+                recover_direct(skill_dir)
+            except (OSError, ValueError) as error:
+                print(f"❌ {skill_name} 待恢复：{error}")
+                return False
+            return _update_direct_skill(skill_name, skill_dir, ref_arg, self_only, upstream_only)
+
+
+def _update_direct_skill(skill_name, skill_dir, ref_arg, self_only, upstream_only):
     # 禁用的 skill 入口叫 SKILL.md.disabled。不认它的话，冷藏起来的 skill
     # 就永远停在禁用那天的版本，想更新还得先启用一次——那正是用户要避开的中间态。
     md_name = "SKILL.md"
@@ -420,10 +490,6 @@ def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False,
     if md_name.endswith(".disabled"):
         print(f"💤 {skill_name} 当前是禁用状态，更新后仍保持禁用")
 
-    with open(skill_md, encoding="utf-8") as f:
-        content = f.read()
-    meta = parse_frontmatter(content)
-
     owner = lifecycle.lookup_root(skill_dir)
     if owner:
         if ref_arg:
@@ -433,6 +499,11 @@ def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False,
     if upstream_only:
         print('❌ 该 Skill 没有已接入的上游依赖维护入口。')
         return False
+
+    initial_snapshot = live_snapshot(skill_dir)
+    with open(skill_md, encoding="utf-8") as f:
+        content = f.read()
+    meta = parse_frontmatter(content)
 
     if meta.get("update_policy") == "frozen":
         print(f"🧊 {skill_name} 已声明 update_policy: frozen（绝版或深度定制），按策略不更新。"
@@ -480,7 +551,8 @@ def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False,
 
     tmp = tempfile.mkdtemp(prefix="skillupd_")
     baseline_tmp = tempfile.mkdtemp(prefix="skillbase_")
-    stage = tempfile.mkdtemp(prefix=f".{skill_name}.stage-", dir=os.path.dirname(skill_dir))
+    stage = tempfile.mkdtemp(prefix=f".{Path(skill_dir).name}.stage-", dir=os.path.dirname(skill_dir))
+    journal = Path(core.direct_state_dir(skill_dir)) / 'transaction.json'
     try:
         print(f"📥 下载 {remote_hash[:8]} ...")
         if not download_repo(github_url, remote_hash, tmp):
@@ -500,7 +572,6 @@ def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False,
             baseline_src = find_skill_source(baseline_tmp, skill_name, meta.get('github_path'))
             if not baseline_src:
                 raise ValueError('registered upstream baseline has no matching Skill')
-        initial_content = audit_upstream.local_files(Path(skill_dir))
         fields = {"github_url": github_url, "github_hash": remote_hash}
         commit_date = get_commit_date(github_url, remote_hash)
         if commit_date:
@@ -546,38 +617,47 @@ def update_direct_skill(skill_name, project=None, ref_arg=None, self_only=False,
             print(f"❌ 合并后 SKILL.md 缺少必需字段 {missing}，本地未改动")
             return False
         source_files = audit_upstream.local_files(Path(src))
+        staged_files = audit_upstream.local_files(Path(stage))
         adaptations = {name: ['Three-way merge from the registered upstream baseline, preserving local customization and managed metadata.']
                        for name, data in source_files.items()
-                       if audit_upstream.local_files(Path(stage)).get(name) != data}
+                       if staged_files.get(name) != data}
         receipt = audit_upstream.make_receipt(Path(stage), source_files,
             dict(repository=github_url, commit=remote_hash, source_path=fields.get('github_path', meta.get('github_path', '.'))), adaptations)
         core.write_json(str(Path(stage) / audit_upstream.RECEIPT), receipt)
         errors = audit_upstream.verify(Path(stage), receipt, source_files)
         if errors:
             raise ValueError('upstream merge coverage failed: ' + '; '.join(errors))
-        if audit_upstream.local_files(Path(skill_dir)) != initial_content:
+        if live_snapshot(skill_dir) != initial_snapshot:
             raise ValueError('live Skill changed during update; preserve concurrent work and retry after reconciliation')
 
-        old_live = f"{skill_dir}.old-{os.getpid()}"
-        os.rename(skill_dir, old_live)
+        suffix = Path(stage).name[len(f'.{Path(skill_dir).name}.stage-'):]
+        old_live = f"{skill_dir}.old-{suffix}"
+        core.write_json(str(journal), {'live': skill_dir, 'old': old_live, 'stage': stage,
+            'before': initial_snapshot, 'after': live_snapshot(stage, staged_files)})
         try:
+            os.rename(skill_dir, old_live)
             os.rename(stage, skill_dir)
-        except Exception:
-            os.rename(old_live, skill_dir)
+        except BaseException:
+            try:
+                recover_direct(skill_dir)
+            except BaseException as recovery_error:
+                print(f"❌ 目录切换待恢复：{journal}；{recovery_error}")
             raise
-        shutil.rmtree(old_live)
+        recover_direct(skill_dir)
 
         for line in summarize_change(old_md, new_md):
             print(f"   {line}")
         print(f"✅ {skill_name} 已三方合并到 {remote_hash[:8]}，完整核对{len(source_files)}个上游文件并保留本地差异；回执：{audit_upstream.RECEIPT}")
         return True
     except Exception as e:
-        print(f"❌ 更新失败: {e}（在线目录保持原状；备份: {backup_dir}）")
+        state = f"目录切换待恢复：{journal}" if journal.exists() else "请核对现存目录"
+        print(f"❌ 更新失败: {e}（{state}；备份: {backup_dir}）")
         return False
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         shutil.rmtree(baseline_tmp, ignore_errors=True)
-        shutil.rmtree(stage, ignore_errors=True)
+        if not journal.exists():
+            shutil.rmtree(stage, ignore_errors=True)
 
 
 # ── 插件更新：monorepo 定位 + 验证后提交 ───────────────────
@@ -798,7 +878,7 @@ def update_all(dry_run=False):
     print(f"🟡 {len(outdated)} 个待更新或待完整内容核验：")
     for r in outdated:
         tail = "" if r["enabled"] else "（未启用）"
-        print(f"   {r['name']}  {r.get('local', '—')} → {r.get('remote', '本体与上游分项维护')}{tail}")
+        print(f"   {chk.target_label(r)}  {r.get('local', '—')} → {r.get('remote', '本体与上游分项维护')}{tail}")
     print()
 
     if dry_run:
@@ -807,16 +887,15 @@ def update_all(dry_run=False):
 
     done, failed = [], []
     for i, r in enumerate(outdated, 1):
-        print(f"── [{i}/{len(outdated)}] {r['name']} " + "─" * 30)
+        print(f"── [{i}/{len(outdated)}] {chk.target_label(r)} " + "─" * 30)
         try:
-            if r.get('managed_update'):
-                ok = lifecycle.update(r['maintenance_root'])
-            else:
-                ok = update_plugin(r["name"]) if r["kind"] == "plugin" else update_direct_skill(r["name"])
+            location = {key: r[key] for key in ('project', 'target_path') if key in r}
+            ok = (update_plugin(r["name"]) if r["kind"] == "plugin"
+                  else update_direct_skill(r["name"], **location))
         except Exception as e:          # 单个炸了不能中断整批
             print(f"❌ 更新失败: {e}")
             ok = False
-        (done if ok else failed).append(r["name"])
+        (done if ok else failed).append(chk.target_label(r))
         print()
 
     print("═" * 46)

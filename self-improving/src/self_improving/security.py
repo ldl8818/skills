@@ -11,10 +11,11 @@ from typing import Iterator
 
 
 SECRET_PATTERNS: tuple[tuple[str, str], ...] = (
-    (r"(?i)(authorization\s*[:=]\s*['\"]?bearer\s+)\S+", r"\1[REDACTED]"),
-    (r"(?i)(authorization\s*[:=]\s*['\"]?basic\s+)[A-Za-z0-9+/=]+", r"\1[REDACTED]"),
-    (r"(?i)\b((?:access|refresh|id|auth)?[_-]?(?:token|secret|password|passwd|api[_-]?key|apikey|cookie))\b\s*[:=]\s*([^\s,;]+)", r"\1=[REDACTED]"),
-    (r"([A-Za-z][A-Za-z0-9+.-]*://)[^/@\s:]+:[^/@\s]+@", r"\1[REDACTED]@"),
+    (r"""(?i)(["']?authorization["']?\s*[:=]\s*['"]?bearer\s+)\S+""", r"\1[REDACTED]"),
+    (r"""(?i)(["']?authorization["']?\s*[:=]\s*['"]?basic\s+)[A-Za-z0-9+/=]+""", r"\1[REDACTED]"),
+    (r"""(?i)(\b(?:access|refresh|id|auth)?[_-]?(?:token|secret|password|passwd|api[_-]?key|apikey|cookie)\b["']?\s*[:=]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;}\]]+)""", r"\1[REDACTED]"),
+    # Only attempt a scheme at a token boundary, not at every suffix of a long word.
+    (r"(?<![A-Za-z0-9+.-])([A-Za-z][A-Za-z0-9+.-]*://)[^/@\s:]+:[^/@\s]+@", r"\1[REDACTED]@"),
     (r"\bsk-[A-Za-z0-9_-]{16,}\b", "[REDACTED_OPENAI_KEY]"),
     (r"\bgh[pousr]_[A-Za-z0-9]{20,}\b", "[REDACTED_GITHUB_TOKEN]"),
     (r"\bAKIA[0-9A-Z]{16}\b", "[REDACTED_AWS_KEY]"),

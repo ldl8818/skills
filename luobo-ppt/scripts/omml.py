@@ -56,7 +56,7 @@ def _script(s, table, mark):
         return ""
     if all(ch in table for ch in s):
         return "".join(table[ch] for ch in s)
-    if len(s) == 1 or re.fullmatch(r"[一-鿿]+", s):
+    if re.fullmatch(r"[一-鿿]+", s):
         return s  # k切: CJK labels stay on the line
     return f"{mark}({s})"
 
@@ -76,14 +76,14 @@ def lin(el):
     if tag == "t":
         return el.text or ""
     if tag in ("sSub",):
-        return _one(el, "e") + _script(_one(el, "sub"), SUB, "_")
+        return _wrap(_one(el, "e")) + _script(_one(el, "sub"), SUB, "_")
     if tag in ("sSup",):
-        base, sup = _one(el, "e"), _one(el, "sup").strip()
+        base, sup = _wrap(_one(el, "e")), _one(el, "sup").strip()
         if sup in PRIMES:
             return base + PRIMES[sup]
         return base + _script(sup, SUP, "^")
     if tag == "sSubSup":
-        base, sub, sup = _one(el, "e"), _one(el, "sub"), _one(el, "sup").strip()
+        base, sub, sup = _wrap(_one(el, "e")), _one(el, "sub"), _one(el, "sup").strip()
         tail = PRIMES.get(sup) or _script(sup, SUP, "^")
         return base + _script(sub, SUB, "_") + tail
     if tag == "sPre":

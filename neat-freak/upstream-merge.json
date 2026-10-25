@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "6c0ca2236d3518ccaad710f6db8e9c4aa7af67b685dc699ad347ae42186951e1",
-      "local_sha256": "fa6f8c7c63c8c7644d7d02f6c5bc0e30f714267b1629323a52bcededfcfffd61",
+      "local_sha256": "2887d1123c6c994df270f29569f7aeee594ad86680d0113ba703d7596ee5ed2f",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: >-\n  Knowledge and governance closeout: reconcile project docs, rule files\n  (CLAUDE.md/AGENTS.md), authorized agent memory, and workspace residue with\n  what the code and runtime actually do, so the next session or the next\n  person starts from one current answer. Trigger when the user names\n  \"neat-freak\", \"洁癖\", or \"/neat\" — and also on clear knowledge-closeout\n  intent without the name: syncing or tidying project docs/rules/memory after\n  development (\"把文档和记忆整理一下\", \"收尾时把文档同步掉\", \"docs 和代码对不上了\"),\n  stale or conflicting CLAUDE.md/memory, a clean handoff to a teammate or a\n  fresh session, or auditing whether workspace rules are actually followed.\n  Do not trigger for pure coding/refactoring/debugging tasks, tidying data or\n  prose (JSON, 周报, changelog announcements), or a bare \"整理\" with no\n  project-knowledge context.\n"
@@ -37,7 +37,7 @@
             27
           ],
           "removed_sha256": "1e4fe26a49db3fffa61420a366971ac7d8752b1833876e75d231fa87c4772faa",
-          "added_sha256": "dfcfd593f13b0e8141788cf18ec395c5fb922f22cfaa54841ffba202ac5d47cf"
+          "added_sha256": "5aab8106cb889d75c2a49744b02b6fb779ba95cd1621a0af25a750635065c7f1"
         },
         {
           "upstream_lines": [
@@ -949,23 +949,24 @@
     },
     "evals/validate.py": {
       "upstream_sha256": "6ddd014bd7e30ecf11007174029a4a3de4d49eae192701791c55c1b9a152598b",
-      "local_sha256": "454c9bd554f0b69cc4b7755beaf31d44d27f40755af50b8f6bedd6e9b9d2cc75",
+      "local_sha256": "67c2e780dd00fd467137b7e12ef07e9cebdec250e38b89f102b20f79b8f8999b",
       "status": "adapted",
       "reason": [
-        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
+        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths.",
+        "Measure the full folded or literal YAML description instead of validating the scalar marker; preserve inline descriptions and validate oversize content."
       ],
       "changes": [
         {
           "upstream_lines": [
-            18,
+            19,
             22
           ],
           "local_lines": [
-            18,
-            19
+            19,
+            20
           ],
-          "removed_sha256": "d804318048ed4e25341ce97ee4d73e4a299a7b465b487feb7647d206f577b1a3",
-          "added_sha256": "094e1e03f3c8703f27415050fcbb8ea230d0cadf1fd1ca1a8358449903bacce7"
+          "removed_sha256": "bd027e29e9718592b353a422ab6ff48dd4596ae5ae5450d57698ce363ec751dc",
+          "added_sha256": "2ea6c0179a164e68757df5619856bcc983b818b198b2b63580045e89e30bdcea"
         },
         {
           "upstream_lines": [
@@ -973,11 +974,11 @@
             30
           ],
           "local_lines": [
-            20,
-            22
+            21,
+            32
           ],
           "removed_sha256": "22602fe10c5b5b5d4279deb4f574966ab48d9cc46ee4699b8c67541569df3b72",
-          "added_sha256": "4e1edf801d93a659672b646e709f345a30ce0b2bf3cfe3964f4e4b0a2f200612"
+          "added_sha256": "bff2dbafc9825107342f38309860b889b9611c2fd5cbcf7619716c14ffc2b13a"
         },
         {
           "upstream_lines": [
@@ -985,8 +986,8 @@
             67
           ],
           "local_lines": [
-            36,
-            37
+            46,
+            47
           ],
           "removed_sha256": "855dddb6c29e9fb455b85aa6b403478807e9f1ef95ff50b9fc100384d99fbf7a",
           "added_sha256": "821f5cbaca3d7feeb19d3fe3c8b9f6d1b0a81210fa70711df87b6b31cd306695"
@@ -997,8 +998,8 @@
             139
           ],
           "local_lines": [
-            108,
-            109
+            118,
+            119
           ],
           "removed_sha256": "d8da87542313c95da26fc52d32c968a27d3ea029393b1103b7ca9fd0b0b60fcd",
           "added_sha256": "0d9ef8fcb5914d74c58bbde3821429f0e73015c61d4dde44a99c531bd0407b48"
@@ -1206,6 +1207,7 @@
     }
   },
   "local_only": {
-    "LICENSE": "b7f53d07ea4ae2eef26a4f8b28cb7d4df95586e2aa713df408f1ffde9f5a0fea"
+    "LICENSE": "b7f53d07ea4ae2eef26a4f8b28cb7d4df95586e2aa713df408f1ffde9f5a0fea",
+    "evals/test_validate.py": "7137844de0703c75ac1e9c60a613708a84c03ae3b87f32e5ec1d3edad9bd7c2c"
   }
 }

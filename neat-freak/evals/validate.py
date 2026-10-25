@@ -16,9 +16,19 @@ EXPLICIT_MARKERS = ("neat-freak", "洁癖", "/neat")
 
 
 def folded_description(frontmatter: str) -> str:
-    for line in frontmatter.splitlines():
+    lines = frontmatter.splitlines()
+    for index, line in enumerate(lines):
         if line.startswith("description:"):
-            return line.partition(":")[2].strip().strip('"')
+            value = line.partition(":")[2].strip()
+            if value not in {">", ">-", ">+", "|", "|-", "|+"}:
+                return value.strip("\"'")
+            chunks = []
+            for continuation in lines[index + 1:]:
+                if continuation and not continuation[0].isspace():
+                    break
+                chunks.append(continuation.strip())
+            separator = " " if value.startswith(">") else "\n"
+            return separator.join(chunks).strip()
     return ""
 
 

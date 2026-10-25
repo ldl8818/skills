@@ -46,29 +46,29 @@ def _font_aliases(work):
 def to_pdf(pptx, outdir, timeout=240):
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    work = Path(tempfile.mkdtemp(prefix="pb_render_"))
-    src = work / "deck.pptx"
-    normalize_pptx(pptx, src)
-    profile = Path(tempfile.mkdtemp(prefix="lo_profile_"))
-    env = os.environ.copy()
-    if sys.platform.startswith("linux"):
-        env["SAL_USE_VCLPLUGIN"] = "svp"  # headless backend, avoids hangs in sandboxes
-        conf = _font_aliases(work)
-        if conf:
-            env["FONTCONFIG_FILE"] = str(conf)
-    exe = find_soffice()
-    if not exe:
-        raise SystemExit("LibreOffice (soffice) not found. Run scripts/setup_check.py --install, "
-                         "or skip previews (the .pptx itself is still built).")
-    cmd = [exe, f"-env:UserInstallation={profile.as_uri()}", "--headless",
-           "--convert-to", "pdf", "--outdir", str(work), str(src)]
-    subprocess.run(cmd, env=env, timeout=timeout, capture_output=True)
-    pdf = work / "deck.pdf"
-    if not pdf.exists():
-        raise SystemExit("PDF conversion failed. Try opening/resaving the pptx, then retry.")
-    dst = outdir / "deck.pdf"
-    shutil.copyfile(pdf, dst)
-    shutil.rmtree(profile, ignore_errors=True)
+    with tempfile.TemporaryDirectory(prefix="pb_render_") as temp, \
+            tempfile.TemporaryDirectory(prefix="lo_profile_") as profile:
+        work = Path(temp)
+        src = work / "deck.pptx"
+        normalize_pptx(pptx, src)
+        env = os.environ.copy()
+        if sys.platform.startswith("linux"):
+            env["SAL_USE_VCLPLUGIN"] = "svp"  # headless backend, avoids hangs in sandboxes
+            conf = _font_aliases(work)
+            if conf:
+                env["FONTCONFIG_FILE"] = str(conf)
+        exe = find_soffice()
+        if not exe:
+            raise SystemExit("LibreOffice (soffice) not found. Run scripts/setup_check.py --install, "
+                             "or skip previews (the .pptx itself is still built).")
+        cmd = [exe, f"-env:UserInstallation={Path(profile).as_uri()}", "--headless",
+               "--convert-to", "pdf", "--outdir", str(work), str(src)]
+        subprocess.run(cmd, env=env, timeout=timeout, capture_output=True)
+        pdf = work / "deck.pdf"
+        if not pdf.exists():
+            raise SystemExit("PDF conversion failed. Try opening/resaving the pptx, then retry.")
+        dst = outdir / "deck.pdf"
+        shutil.copyfile(pdf, dst)
     return dst
 
 

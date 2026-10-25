@@ -104,6 +104,8 @@ class ImageGen:
     # ------------------------------------------------------------ main
     def generate(self, prompt, w, h, transparent=False, out=None):
         """Returns (PIL.Image RGBA, native_transparent: bool)."""
+        if type(w) is not int or type(h) is not int or w <= 0 or h <= 0:
+            raise ValueError("image width and height must be positive integers (not bool)")
         last = None
         for attempt in range(self.retries + 1):
             try:
@@ -199,6 +201,8 @@ class ImageGen:
 
     def _gen_command(self, prompt, w, h, transparent, out):
         from PIL import Image
+        if type(w) is not int or type(h) is not int or w <= 0 or h <= 0:
+            raise ValueError("image width and height must be positive integers (not bool)")
         out = Path(out or "gen.png")
         pf = out.with_suffix(".prompt.txt")
         pf.write_text(prompt, encoding="utf-8")

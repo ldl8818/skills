@@ -30,7 +30,7 @@ from pptx import Presentation  # noqa: E402
 
 def norm(s):
     # leading bullet glyphs ("· ", "• ") are decoration that icons or dashes replace; ignore them
-    s = re.sub(r"(?m)^\s*[·•●▪◦\-–*]\s*", "", (s or "").replace("**", ""))
+    s = re.sub(r"(?m)^\s*(?:[·•●▪◦]\s*|[-–*][ \t]+)", "", (s or "").replace("**", ""))
     s = re.sub(r"\s+", "", s)
     return s.replace("“", "\"").replace("”", "\"")
 
@@ -137,21 +137,25 @@ def main():
         n = ss["n"]
         if i >= len(out_units):
             break
-        blob = norm("".join(out_units[i]))
-        src_norms = []
-        for u in ss["units"]:
+        blob = "".join(norm(t) for t in out_units[i])
+        available = blob
+        src_norms = [norm(u["text"]) for u in ss["units"]]
+        # Consume longest units first so a short label cannot steal a larger unit's match.
+        for u in sorted(ss["units"], key=lambda u: len(norm(u["text"])), reverse=True):
             t = norm(u["text"])
-            src_norms.append(t)
             if not t:
                 continue
             if len(t) == 1 and not re.match(r"[\w一-鿿]", t):
                 continue  # decorative punctuation such as 「 replaced by an icon
-            if t not in blob and u.get("in_image") and str(u.get("id", "")).split("_svg")[0] in pic_stems.get(n, set()):
+            if u.get("in_image") and str(u.get("id", "")).split("_svg")[0] in pic_stems.get(n, set()):
                 continue  # the text lives inside the original picture, which is on the slide
-            if t not in blob:
+            pos = available.find(t)
+            if pos < 0:
                 lvl = "WARN" if u.get("in_image") else "ERROR"
                 what = "deck.json text not on slide" if gen_mode else "missing text"
                 add(lvl, n, "fidelity", f"{what}: {u['text'][:60]!r}")
+            else:
+                available = available[:pos] + "\0" * len(t) + available[pos + len(t):]
         allsrc = "".join(src_norms)
         for t in out_units[i]:
             tn = norm(t)
@@ -173,6 +177,8 @@ def main():
         for e in texts:
             ls_ = DISPLAY_LATIN if e.get("font") == "display" else 1.0
             lines = wrap_lines(e["text"], e["size"], e["w"] * 72 * (WIDTH_SAFETY + 0.02), e.get("bold", False), ls_)
+            if any(text_width_pt(line, e["size"], e.get("bold", False), ls_) > e["w"] * 72 + 0.1 for line in lines):
+                add("ERROR", n, "overflow", f"{e['text'][:30]!r} exceeds text box width")
             need = len(lines) * e["size"] * e.get("ls", 1.2) * LINE_PITCH / 72
             if need > e["h"] * 1.08 + 0.02:
                 add("ERROR", n, "overflow", f"{e['text'][:30]!r} needs {need:.2f}in, box {e['h']:.2f}in "

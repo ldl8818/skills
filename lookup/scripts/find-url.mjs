@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { isMain } from './cli-entry.mjs';
 
 const MAX_ROWS = 1000;
 const QUERY_TIMEOUT_MS = 5000;
@@ -215,6 +215,6 @@ export function main(argv = process.argv.slice(2), browserDirs = knownBrowserDat
   }
 }
 
-if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+if (isMain(import.meta.url)) {
   process.exitCode = main();
 }

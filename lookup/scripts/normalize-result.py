@@ -30,25 +30,51 @@ def error_metadata(stderr):
         return stderr
     if not isinstance(stderr, str) or not stderr.strip():
         return {}
+    lines = []
+    for line in stderr.splitlines():
+        if line.startswith("LOOKUP_UPSTREAM_NOTICE "):
+            try:
+                notice = loads(line[len("LOOKUP_UPSTREAM_NOTICE "):])
+                if (isinstance(notice, dict) and isinstance(notice.get("dependency"), str)
+                        and notice.get("action") in ("notify", "maintain", "reload_guide")
+                        and isinstance(notice.get("latest"), str)
+                        and isinstance(notice.get("message"), str)):
+                    continue
+            except (ValueError, RecursionError):
+                pass
+        lines.append(line)
+    stderr = "\n".join(lines)
     try:
         value = loads(stderr)
         return value if isinstance(value, dict) else {}
     except (ValueError, RecursionError):
         pass
-    # The local runner may emit its own error after an upstream stderr banner.
-    # Accept only its final, fully structured envelope; keep other text unknown.
-    try:
-        tail = loads(stderr.strip().splitlines()[-1])
-        error = tail.get("error") if isinstance(tail, dict) else None
+    # Banners may precede a runner envelope. Multiple envelopes cannot identify
+    # a single failure, but an explicit unknown outcome must still stop retries.
+    envelopes = []
+    for index, line in enumerate(lines):
+        try:
+            value = loads(line)
+        except (ValueError, RecursionError):
+            continue
+        error = value.get("error") if isinstance(value, dict) else None
+        if isinstance(error, dict):
+            envelopes.append((index, value))
+    if len(envelopes) > 1:
+        return {"error": {"code": "UNKNOWN"},
+                "outcome_unknown": any(value.get("outcome_unknown") is True
+                    or value["error"].get("code") in ("OUTCOME_UNKNOWN", "COMMAND_TIMEOUT", "TIMEOUT")
+                    for _, value in envelopes), "retryable": False}
+    if envelopes and not any(line.strip() for line in lines[envelopes[0][0] + 1:]):
+        tail = envelopes[0][1]
+        error = tail["error"]
         if (isinstance(error, dict)
                 and isinstance(error.get("original_code"), str)
                 and error["original_code"].startswith("OPENCLI_")
-                and tail.get("phase") in {"entry", "action"}
+                and tail.get("phase") in ("entry", "action")
                 and isinstance(tail.get("outcome_unknown"), bool)
                 and tail.get("retryable") is False):
             return tail
-    except (ValueError, RecursionError):
-        pass
     # Only read the exact flat error.code field in OpenCLI's emitted envelope.
     # This is not a general YAML parser. Complex/ambiguous YAML stays unknown.
     lines = [line for line in stderr.splitlines()

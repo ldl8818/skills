@@ -68,7 +68,9 @@ function stop(signal, code, reason) {
     message: 'CLI stopped; browser work may continue. Inspect the original outcome before retrying.'},
   phase: 'action', outcome_unknown: true, retryable: false}))
   child.kill(signal)
-  killTimer = setTimeout(() => child.kill('SIGKILL'), 500)
+  // The supervisor owns its process group and usage lock through cancellation.
+  // Killing it first would orphan the action and release ownership too early.
+  if (!selected.supervised) killTimer = setTimeout(() => child.kill('SIGKILL'), 500)
 }
 const timer = setTimeout(() => stop('SIGTERM', 75, 'OPENCLI_RUN_DEADLINE_EXCEEDED'), remaining)
 for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]]) {

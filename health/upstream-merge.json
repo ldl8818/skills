@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "690e3b44f71deaa9b45baf67adaac40efc3e4e2278b89ed6bf2db4624d5bec4e",
-      "local_sha256": "c41c48cc85549111697599d7138af8cba2f0cea628848ae59203e975220a8000",
+      "local_sha256": "fd8a926903b196a651e264ebc0f1cf0933b5af56778c528186bca7ff70cfa7c4",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Audits agent config, instruction drift, hooks or MCP, and AI maintainability. Use when Claude, Codex, or Pi setup looks wrong. Not for application bugs or PR review.\"\n",
@@ -47,7 +47,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "f97c49b5965b42782568205a15d8bdf32d9127e5e470f528406f7485696ff601"
+          "added_sha256": "02e5342bc816be3dff9a6ee3068a55a97b54161e73dee45b69ea50f408bb45e1"
         },
         {
           "upstream_lines": [
@@ -332,8 +332,37 @@
     },
     "scripts/check_maintainability.py": {
       "upstream_sha256": "e3dd6bff7114b30152b03f88a023d088551a98c144b93a1897d0eebe0e2f2ab4",
-      "local_sha256": "e3dd6bff7114b30152b03f88a023d088551a98c144b93a1897d0eebe0e2f2ab4",
-      "status": "identical"
+      "local_sha256": "232b759aeb6ec2c6211e3d1fb390dba39de1e2956917236bcfe9ceb416a009ac",
+      "status": "adapted",
+      "reason": [
+        "Treat a successful empty Git inventory as authoritative and tolerate non-object package manifests without aborting the maintainability report."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            285,
+            286
+          ],
+          "local_lines": [
+            285,
+            286
+          ],
+          "removed_sha256": "ead4e18816a4ee6f8516bc2ad7537a87d645605b83e58863900fb8c3d1a2ebb6",
+          "added_sha256": "5189ab4e17a3fb2b3d31bcf003659ea478cf9237ebcda43c797a92741dfb711e"
+        },
+        {
+          "upstream_lines": [
+            473,
+            473
+          ],
+          "local_lines": [
+            473,
+            475
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "cf7fb11e32d4d592f0e843de6d497801d38dc99193361aceb0cd306217e59105"
+        }
+      ]
     },
     "scripts/check_verifier_output.py": {
       "upstream_sha256": "15b7be020d913b2a59805e7af8bad5674f53f69a4c3bf96d817fcf0e9d4c07bb",
@@ -433,6 +462,7 @@
     "scripts/collect-project.sh": "7aff6e1e0e4934b7d651702c3e581a6e63d557c1e6fac984d514e0e40e4a7b7b",
     "scripts/collect_data.py": "1eb01548a7738f784ecd9042f5892023c80894220c8a55f69de7d8f55e2006b6",
     "tests/test_collection.py": "2c417b5c18c891da0703244b3a3cda4ce6582bf84c22e6a6bff8e53ab2c040e5",
-    "tests/test_full_collection.py": "4934e3b0a881c4b7f960226b8591b7908ed88d45f3745e0ee7f02588c53f7bf1"
+    "tests/test_full_collection.py": "4934e3b0a881c4b7f960226b8591b7908ed88d45f3745e0ee7f02588c53f7bf1",
+    "tests/test_maintainability_inventory.py": "a2364e45817c1dfe881b22fa33054934b8379903b2de7ff48ac8233d2eb82250"
   }
 }

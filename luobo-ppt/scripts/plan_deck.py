@@ -240,6 +240,13 @@ def main():
         for k, ps in enumerate(slides):
             op = old_slides.get(ps["n"])
             if op and op.get("src_hash") == ps["src_hash"]:
+                if old.get("level") != a.level:
+                    op = dict(op)
+                    # Reapply only the level-derived hero choice; keep manual layout/text edits.
+                    if ps.get("hero"):
+                        op["hero"] = ps["hero"]
+                    else:
+                        op.pop("hero", None)
                 slides[k] = op
                 kept.append(ps["n"])
                 hid = op.get("hero")

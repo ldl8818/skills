@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 import json
 from pathlib import Path
 import shutil
@@ -13,7 +12,7 @@ from self_improving.config import default_config, load_config, resolved, with_de
 from self_improving import __version__
 from self_improving.doctor import print_report
 from self_improving.hooks.common import run as run_hook
-from self_improving.installer import install_hooks, install_skill_links, uninstall_hooks, uninstall_skill_links
+from self_improving.installer import _backup_directory, install_hooks, install_skill_links, uninstall_hooks, uninstall_skill_links
 from self_improving.indexing import sync_index
 from self_improving.migration import discover_legacy, write_manifest
 from self_improving.paths import PACKAGE_ROOT, default_config_path, expand_path
@@ -219,8 +218,7 @@ def command_upgrade(_: argparse.Namespace) -> int:
     config.pop("retention", None)
     config["persistence"].pop("central_error_fallback", None)
     config_path = default_config_path()
-    backup_dir = Path(live["state_root"]) / "backups" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    backup_dir.mkdir(parents=True, exist_ok=True)
+    backup_dir = _backup_directory(Path(live["state_root"]))
     shutil.copy2(config_path, backup_dir / "self-improving-config.json")
     write_config(config)
     for platform, settings in config["agents"].items():

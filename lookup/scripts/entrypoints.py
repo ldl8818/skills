@@ -118,24 +118,40 @@ def _migrate(home, lookup, storage):
             declared = re.search(r'^name:\s*[\"\']?([a-z0-9-]+)[\"\']?\s*$', header[1], re.M) if len(header) == 3 else None
             if not declared or declared.group(1) != name:
                 raise EntryError('skill_identity_mismatch_no_changes')
-            moves.append((entry, destination))
+            moves.append({'original': str(entry), 'preserved': str(destination),
+                          'original_link': os.readlink(entry) if entry.is_symlink() else None,
+                          'target': str(entry.resolve()) if entry.is_symlink() else None})
+    relocated = {Path(record['original']): Path(record['preserved'])
+                 for record in moves if record['original_link'] is None}
+    for record in moves:
+        if record['target']:
+            target = Path(record['target'])
+            for original in sorted(relocated, key=lambda path: len(path.parts), reverse=True):
+                if target.is_relative_to(original):
+                    target = relocated[original] / target.relative_to(original)
+                    break
+            record['archive_target'] = str(target)
     storage.mkdir(parents=True, exist_ok=True, mode=0o700)
     storage.chmod(0o700)
     migrated = []
     created = []
     try:
-        for entry, destination in moves:
+        for record in moves:
+            entry, destination = Path(record['original']), Path(record['preserved'])
             destination.parent.mkdir(parents=True, exist_ok=True)
-            original_link = os.readlink(entry) if entry.is_symlink() else None
-            target = str(entry.resolve()) if entry.is_symlink() else None
-            record = {'original': str(entry), 'preserved': str(destination),
-                      'original_link': original_link, 'target': target}
             entry.rename(destination)
             migrated.append(record)
-            if target:
-                # Relative links would break after a plain rename.
-                destination.unlink()
-                destination.symlink_to(target, target_is_directory=True)
+            if record['target']:
+                # Resolve every link before moving its shared source. Replace
+                # atomically so a failed rewrite still has its original link.
+                temporary = destination.with_name('.link-' + uuid.uuid4().hex)
+                try:
+                    temporary.symlink_to(record['archive_target'], target_is_directory=True)
+                    temporary.replace(destination)
+                finally:
+                    temporary.unlink(missing_ok=True)
+        if any(not (Path(record['preserved']) / 'SKILL.md').is_file() for record in migrated):
+            raise EntryError('archived_source_unreadable')
         for row in rows:
             if row['lookup'] == 'missing':
                 entry = Path(row['root']) / 'lookup'

@@ -45,6 +45,7 @@ python3 -m self_improving init \
 ```
 
 The installer merges Hook configuration and backs up existing files. It does not replace unrelated Hooks.
+Each configuration or replaced Skill entry receives a separately allocated backup directory, so repeated runs and equal filenames do not overwrite earlier backups. Legacy Hook removal requires an exact known script name at a known self-improving installation location; third-party scripts with the same name and unmarked compound commands are retained. Enabling Codex Hooks preserves indentation and comments around an existing boolean setting.
 Source commands run from `src/`; documents, templates and Skill links remain at the Skill root. A wheel installation uses the installed package and bundled resources instead.
 In an interactive terminal it asks before enabling correction capture. In
 non-interactive use, correction capture stays off unless
@@ -134,6 +135,8 @@ worktrees, and `project:/absolute/path` for one directory tree. Every approval
 also names its formal promotion target and receives review/expiry dates. Legacy
 v1 approvals and Markdown rows remain audit history rather than instructions.
 See [configuration](docs/configuration.md) for the switches.
+
+Approval events must pass the same content and lifecycle checks used when reading the ledger. An invalid or still-sensitive answer is rejected before either the ledger or candidate status changes; existing malformed records continue to disable injection until repaired.
 
 Claude Code can run a user-confirmed review command and let the user approve it
 in the client permission dialog. Codex deliberately cannot run review commands

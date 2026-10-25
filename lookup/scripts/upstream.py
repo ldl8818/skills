@@ -1393,20 +1393,11 @@ def rollback(store):
 
 
 def use(store, expected, args):
-    with store.lock('usage', shared=True) as lock_fd:
+    with store.lock('usage', shared=True):
         binary = resolve_opencli(store)
         if not binary or Path(binary).resolve() != Path(expected).resolve():
             raise MaintenanceError('EXECUTABLE_CHANGED_BEFORE_DISPATCH')
-        child = subprocess.Popen([binary, *args], pass_fds=(lock_fd,))
-        prior = {}
-        for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-            prior[signum] = signal.signal(signum, lambda sig, frame: child.send_signal(sig))
-        try:
-            code = child.wait()
-            return code if code >= 0 else 128 - code
-        finally:
-            for signum, handler in prior.items():
-                signal.signal(signum, handler)
+        return owned_process.call([binary, *args])
 
 
 def human_result(result):
@@ -1460,11 +1451,24 @@ def human_result(result):
     return json.dumps(result, ensure_ascii=False)
 
 
+def maintenance_result(result, dependency=None):
+    result = dict(result)
+    if dependency:
+        result.setdefault('dependency', dependency)
+    if result.get('status') == 'batch':
+        result['results'] = [maintenance_result(item) for item in result['results']]
+    elif (result.get('status') in ('pending', 'outcome_unknown', 'interrupted')
+          or result.get('outcome_unknown') is True or result.get('current_preserved') is False):
+        result.update(outcome_unknown=True, retry_safe=False)
+    return result
+
+
 def result_failed(result):
     if result.get('status') == 'batch':
         return any(result_failed(item) for item in result['results'])
-    return result.get('status') in ('failed', 'error', 'check_failed', 'manual_review',
-                                     'interrupted', 'pending', 'outcome_unknown')
+    return (result.get('outcome_unknown') is True
+            or result.get('status') in ('failed', 'error', 'check_failed', 'manual_review', 'deferred',
+                                       'interrupted', 'pending', 'outcome_unknown'))
 
 
 def main(argv=None, human=False):
@@ -1568,11 +1572,16 @@ def main(argv=None, human=False):
                 result = update(store, args.dependency, args.auto, retry=True)
             else:
                 result = update(store, args.dependency, args.auto)
+        if args.action in ('update', 'upgrade'):
+            result = maintenance_result(result, args.dependency)
         print(human_result(result) if human else json.dumps(result, ensure_ascii=False))
         return 1 if result_failed(result) else 0
     except (MaintenanceError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         code = str(error) if isinstance(error, (MaintenanceError, customization.ReviewError, self_update.SourceError)) else type(error).__name__
-        print(json.dumps({'status': 'error', 'error': code}), file=sys.stderr)
+        result = {'status': 'error', 'error': code}
+        if args.action in ('update', 'upgrade') and args.dependency:
+            result['dependency'] = args.dependency
+        print(json.dumps(result), file=sys.stderr)
         return 75 if code == 'DEPENDENCY_BUSY' else 78
 
 

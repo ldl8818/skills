@@ -1,9 +1,40 @@
 from pathlib import Path
+import importlib.util
 import subprocess
 import sys
 import unittest
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/check_punctuation.py'
+SPEC = importlib.util.spec_from_file_location("check_punctuation", SCRIPT)
+PUNCTUATION = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(PUNCTUATION)
+
+
+class InlineCodeTests(unittest.TestCase):
+    def test_different_delimiters_and_unmatched_runs(self):
+        for text, expected in [
+            ("`one` ``two ` three``", ["`one`", "``two ` three``"]),
+            ("`one `` two` three``", ["`one `` two`"]),
+            ("``` literal `one`", ["`one`"]),
+            ("` `` ```", []),
+        ]:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    [text[start:end] for start, end in PUNCTUATION._inline_code_spans(text)],
+                    expected,
+                )
+
+    def test_unmatched_delimiters_do_not_repeatedly_scan_suffixes(self):
+        class CountedText(str):
+            reads = 0
+
+            def __getitem__(self, key):
+                self.reads += 1
+                return super().__getitem__(key)
+
+        text = CountedText(" ".join("`" * size for size in range(1, 100)))
+        self.assertEqual(list(PUNCTUATION._inline_code_spans(text)), [])
+        self.assertLessEqual(text.reads, 8 * len(text))
 
 
 class WikilinkPreservationTests(unittest.TestCase):

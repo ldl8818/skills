@@ -84,21 +84,44 @@ def mini_deck(deck):
 
 
 def build_one(work, preset, deck):
+    work = Path(work).resolve()
     d = work / "previews" / preset
     if d.exists():
         shutil.rmtree(d)
     d.mkdir(parents=True)
     style = load_json(style_file(preset))
     save_json(style, d / "style.json")
-    save_json(mini_deck(deck), d / "deck.json")
+    def rebase(obj):
+        if isinstance(obj, list):
+            return [rebase(item) for item in obj]
+        if isinstance(obj, dict):
+            result = {}
+            for key, value in obj.items():
+                if key in ("image", "path") and isinstance(value, str) and value:
+                    p = Path(value)
+                    if not p.exists():
+                        p = work / p
+                    result[key] = str(p.resolve()) if p.exists() else value
+                else:
+                    result[key] = rebase(value)
+            return result
+        return obj
+    save_json(rebase(mini_deck(deck)), d / "deck.json")
     for step in ([HERE / "plan_deck.py", d, "--level", "standard"],
                  [HERE / "make_assets.py", d, "--procedural"],
-                 [HERE / "build_deck.py", d],
-                 [HERE / "render.py", d / "out" / "beautified.pptx", d / "png", "--dpi", "60"]):
+                 [HERE / "build_deck.py", d]):
         r = run(step)
         if r.returncode:
             raise SystemExit(f"{preset}: {Path(str(step[0])).name} failed\n{r.stdout[-400:]}{r.stderr[-400:]}")
-    return sorted((d / "png").glob("slide-*.png"))
+    r = run([HERE / "render.py", d / "out" / "beautified.pptx", d / "png", "--dpi", "60"])
+    png = d / "png"
+    if r.returncode:
+        r = run([HERE / "render_lite.py", d, "--dpi", "60"])
+        if r.returncode:
+            raise SystemExit(f"{preset}: render_lite.py failed\n{r.stdout[-400:]}{r.stderr[-400:]}")
+        png = d / "out" / "png"
+        print(f"{preset}: using approximate render_lite previews")
+    return sorted(png.glob("slide-*.png"))
 
 
 def sheet(rows, out, labels):

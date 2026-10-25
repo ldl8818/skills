@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { isMain } from './cli-entry.mjs';
 
 function aliasValue(value) {
   const trimmed = value.trim();
@@ -132,7 +132,7 @@ export function main(argv = process.argv.slice(2), patternsDir = path.join(os.ho
   return 0;
 }
 
-if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+if (isMain(import.meta.url)) {
   try { process.exitCode = main(); }
   catch { console.error('站点经验读取失败；请检查本地文件后重试。'); process.exitCode = 1; }
 }

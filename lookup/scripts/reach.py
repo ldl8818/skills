@@ -229,7 +229,7 @@ def prepare(manifest, files):
                 target.chmod(manifest['files'][name]['mode'] & 0o755)
             subprocess.run([uv, 'venv', '--python', sys.executable, str(directory / 'venv')], check=True)
             subprocess.run([uv, 'pip', 'install', '--python', str(python_path(directory)), str(source)], check=True)
-            probe = subprocess.run([str(python_path(directory)), '-c',
+            probe = subprocess.run([str(python_path(directory)), '-I', '-B', '-c',
                                     'import agent_reach; from pathlib import Path; '
                                     'print(Path(agent_reach.__file__).parent)'],
                                    check=True, text=True, capture_output=True)
@@ -255,7 +255,7 @@ def run_native(args, manifest, files):
     if not status['ready']:
         raise IntegrationError('runtime_not_prepared_run_prepare_explicitly')
     environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
-    return subprocess.call([status['python'], '-m', 'agent_reach.cli', *args], env=environment)
+    return subprocess.call([status['python'], '-I', '-B', '-m', 'agent_reach.cli', *args], env=environment)
 
 
 def main(argv=None):
@@ -299,7 +299,7 @@ def main(argv=None):
             status = runtime_status(manifest, files)
             if not status['ready']:
                 raise IntegrationError('runtime_not_prepared_run_prepare_explicitly')
-            return subprocess.call([status['python'], '-m', 'agent_reach.integrations.mcp_server'],
+            return subprocess.call([status['python'], '-I', '-B', '-m', 'agent_reach.integrations.mcp_server'],
                                    env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
         else:
             return run_native(args.args, manifest, files)

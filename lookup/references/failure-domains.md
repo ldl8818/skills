@@ -56,6 +56,8 @@ ego-lite 不可用或能力不足时报告浏览器路径阻塞，不切换 Chro
 
 ## 统一结果语义
 
+stderr 中仅过滤格式完整的独立 `LOOKUP_UPSTREAM_NOTICE` 通知行，再识别结构化错误。多个错误信封不选择其中一个充当唯一结果；任何信封明确表示执行结果未知时，归一化后仍保留未知状态。
+
 `scripts/normalize-result.py` 从 stdin 读取已捕获的信封：
 
 ```json

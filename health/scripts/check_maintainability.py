@@ -283,7 +283,7 @@ def iter_files(root: Path) -> list[Path]:
             stderr=subprocess.DEVNULL,
             check=False,
         )
-        if proc.returncode == 0 and proc.stdout:
+        if proc.returncode == 0:
             files = []
             for raw_path in proc.stdout.split(b"\0"):
                 if not raw_path:
@@ -471,6 +471,8 @@ def parse_package_json(root: Path) -> tuple[set[str], list[str], dict[str, str]]
     try:
         data = json.loads(read_text(package, root))
     except json.JSONDecodeError:
+        return script_names, commands, script_specs
+    if not isinstance(data, dict):
         return script_names, commands, script_specs
     scripts = data.get("scripts", {})
     if not isinstance(scripts, dict):

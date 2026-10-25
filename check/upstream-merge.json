@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "dbf7cc3adfab3b2e9735f2bce9e1a89290767f66d29ec715bc7e39b8367ba4fa",
-      "local_sha256": "edf71009727565d3ad63f09c77bb77c1fa49d32295c3aba8f1dc7ca6b33c8b3e",
+      "local_sha256": "39b19a8a99ce3c3a1114ca613250c4869fa745b156aaf6e1dca8d091f871ddbf",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Reviews diffs, PRs, release readiness, and publishing follow-through. Use when asked to review, triage issues or PRs, or ship. Not for debugging root causes or prose.\"\n",
@@ -47,7 +47,7 @@
             17
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "69fbbfea620fc580c1b95b53ccb995fa2b9f4297c47e4bc25eff200281bba837"
+          "added_sha256": "a2e34e71288a2be6ea689da77e2f0c8aba769513fe2382050811dfd424b1200d"
         },
         {
           "upstream_lines": [
@@ -343,8 +343,37 @@
     },
     "scripts/audit_signals.py": {
       "upstream_sha256": "a9fc0aa115917850f73b89fb05780ebf83c0db2f6ced270e10fb18a5343a534b",
-      "local_sha256": "a9fc0aa115917850f73b89fb05780ebf83c0db2f6ced270e10fb18a5343a534b",
-      "status": "identical"
+      "local_sha256": "dbc68073a41ee621a6352eca448580186b54a608b1e725222803c8ed0297a1fa",
+      "status": "adapted",
+      "reason": [
+        "Treat a successful empty Git inventory as authoritative and tolerate non-object package manifests without aborting remaining audit signals."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            151,
+            152
+          ],
+          "local_lines": [
+            151,
+            152
+          ],
+          "removed_sha256": "ead4e18816a4ee6f8516bc2ad7537a87d645605b83e58863900fb8c3d1a2ebb6",
+          "added_sha256": "5189ab4e17a3fb2b3d31bcf003659ea478cf9237ebcda43c797a92741dfb711e"
+        },
+        {
+          "upstream_lines": [
+            330,
+            330
+          ],
+          "local_lines": [
+            330,
+            332
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "1aa046744ad53144db3e0d5af59aabb42610c2ddb420caf759f7f03acf8061c1"
+        }
+      ]
     },
     "scripts/release_gate.py": {
       "upstream_sha256": "726106652bc2f9fcfe1556f9cc826e2a4c260254303005290c305efb4614ed7e",
@@ -383,6 +412,7 @@
     "references/review-scope.md": "2ef95302ef91d31f9d9f0dcdcdd9959ba810b8c7f76bee63e7f341fca1d92a63",
     "references/深入审查.md": "ddf90e58e040cf3e9955e58e0c27c7b7bc35b7734c2e98698b72a36855fca878",
     "scripts/review_scope.py": "972559ba0a50a190c40185259b5cb0540e2e5be32772fbabbfdcc8ae76d35157",
+    "tests/test_audit_inventory.py": "e49d27e97a4e3b0d1b864e98f1022a59b96e80ea2e6d80f86ed54bc0d4b9dee9",
     "tests/test_review_scope.py": "fb9de3be156e3855b79d74cee4d557338c57e3268eedf48df79d9e904512e39d"
   }
 }

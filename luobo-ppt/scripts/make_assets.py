@@ -77,11 +77,27 @@ def sheet_grid(n):
     return 3, (n + 2) // 3
 
 
+def asset_file(directory, asset_id, suffix):
+    """Keep generated files inside their directory, including existing symlinks."""
+    if (not isinstance(asset_id, str) or not asset_id or asset_id in (".", "..")
+            or any(c in asset_id for c in "/\\:")
+            or any(ord(c) < 32 for c in asset_id)):
+        raise ValueError(f"invalid asset id: {asset_id!r}")
+    directory = Path(directory)
+    base = directory.parent.resolve() / directory.name
+    path = base / f"{asset_id}{suffix}"
+    try:
+        path.resolve().relative_to(base)
+    except ValueError:
+        raise ValueError(f"asset path escapes its directory: {asset_id!r}") from None
+    return path
+
+
 def prompt_file(work, asset, style, kind, rewrite=False):
     """The prompt file is the source of truth once written."""
     pdir = Path(work) / "prompts"
+    path = asset_file(pdir, asset["id"], ".md")
     pdir.mkdir(exist_ok=True)
-    path = pdir / f"{asset['id']}.md"
     if path.exists() and not rewrite:
         return path.read_text(encoding="utf-8").strip(), path
     text = compose_prompt(asset, style, kind)
@@ -135,18 +151,19 @@ def ai_make(gen, asset, style, out, prompt):
 
 def ai_sheet(gen, asset, adir, prompt):
     items = asset.get("items", [])
+    sheet_out = asset_file(adir, asset["id"], ".png")
+    paths = {it["id"]: asset_file(adir, it["id"], ".png") for it in items}
     cols, rows = sheet_grid(len(items))
     img, native = gen.generate(prompt, 1024 * cols, 1024 * rows, transparent=True,
-                               out=str(adir / f"{asset['id']}.png"))
-    img.save(adir / f"{asset['id']}.png")
+                               out=str(sheet_out))
+    img.save(sheet_out)
     W, H = img.size
     cw, ch = W / cols, H / rows
-    paths = {}
     for i, it in enumerate(items):
         c, r = i % cols, i // cols
         cell = img.crop((int(c * cw), int(r * ch), int((c + 1) * cw), int((r + 1) * ch)))
         w, h = it.get("size", [1400, 1200])
-        out = adir / f"{it['id']}.png"
+        out = paths[it["id"]]
         finish_hero(cell, native, True, w, h, out)
         paths[it["id"]] = out
     return paths
@@ -163,7 +180,7 @@ def main():
     ap.add_argument("--status", action="store_true", help="only report which image provider would be used")
     ap.add_argument("--rewrite-prompts", action="store_true", help="rebuild prompt files from plan.json")
     a = ap.parse_args()
-    work = Path(a.work)
+    work = Path(a.work).resolve()
     cfg = find_config(a.config, work)
     gen = ImageGen(cfg)
     ok, why = gen.available()
@@ -190,7 +207,10 @@ def main():
         if not wanted(asset):
             continue
         ext = ".jpg" if asset["kind"] == "background" else ".png"
-        out = adir / f"{asset['id']}{ext}"
+        out = asset_file(adir, asset["id"], ext)
+        for it in asset.get("items", []):
+            asset_file(adir, it["id"], ".png")
+        asset_file(work / "prompts", asset["id"], ".md")
         if asset["kind"] == "sheet":
             fresh = all((adir / f"{it['id']}.png").exists() and it["id"] in done for it in asset.get("items", []))
         else:
@@ -228,7 +248,7 @@ def main():
             else:
                 err = None
             for it in asset.get("items", []):
-                o = adir / f"{it['id']}.png"
+                o = asset_file(adir, it["id"], ".png")
                 procedural(dict(it, kind="hero"), style, o, plan)
                 r = dict(base, id=it["id"], path=str(o), method="procedural" + (" (after AI error)" if err else ""))
                 if err:

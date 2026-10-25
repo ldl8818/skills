@@ -246,9 +246,10 @@ elif outcome=='missing-skill':
         entry = skill/'SKILL.md'
         entry.write_text('old guide\nlocal capability\n')
         # A separate editor process writes while the native command is active.
+        editor_code = f"from pathlib import Path;Path({str(entry)!r}).write_text('unique concurrent edit\\n')"
         with binary.open('a') as handle:
             handle.write('if args==["upgrade"]:\n import subprocess\n'
-                         f' subprocess.run([sys.executable,"-c",{("from pathlib import Path;Path("+repr(str(entry))+").write_text(\"unique concurrent edit\\n\")")!r}],check=True)\n')
+                         f' subprocess.run([sys.executable,"-c",{editor_code!r}],check=True)\n')
         result = upstream.update(self.store, 'ego-browser')
         self.assertEqual(result['status'], 'pending', result)
         protected = self.store.read('native-ego-browser.json')['protected_skills']

@@ -54,6 +54,8 @@ python3 scripts/reach.py run doctor --json
 
 运行时位于 `XDG_DATA_HOME/lookup/agent-reach/<commit>-<integration-id>`，未设置时使用 `~/.local/share/lookup/agent-reach/<commit>-<integration-id>`。integration-id 绑定本地适配，适配变化时准备新环境并保留旧环境。准备需要 Python ≥3.10、已有 uv 和下载 Python 依赖的网络；不安装全局 CLI，不调用模型、读取浏览器账号或查询业务站点。准备失败只清理本次创建的环境，已有未知残留保持原状；同一来源重复准备不重装。配置仍沿用上游的 `~/.agent-reach/`，不会在来源快照中保存凭据。
 
+CLI 与 MCP 使用已核验环境的隔离 Python 导入模式，忽略工作目录、`PYTHONPATH` 和用户级 Python 包，避免同名包替换实际执行来源；不生成字节码缓存。
+
 | 流程 | lookup 内的执行方式与完成条件 |
 |---|---|
 | 环境安装与渠道配置 | 读取 `reference install` 及所选分类，核对计划与授权后调用 `run install --env=local --system --channels=<name>`；默认 `run install --env=local` 仅检查。安装器保留全部渠道安装能力；明确选择渠道时跳过无关的全局核心工具与 Exa 配置，只诊断所选渠道，缺少该渠道的必要依赖则据实际错误定向处理。默认完整安装或显式 all 保留原流程；客户端 Skill 注册统一关闭。安装后核对 [发现入口](#客户端发现与恢复) |
@@ -112,6 +114,8 @@ python3 scripts/entrypoints.py apply --lookup-root /absolute/lookup
 ```
 
 apply 只处理已有客户端目录中的已识别竞争入口，保留其原始来源与恢复记录到 `~/.local/share/lookup/execution-skills/`，并给这些客户端建立直达同一 lookup 源码的单跳链接。首次安装尚无客户端目录时只创建共享入口。同名 lookup 真目录与选定源码不同、链接指向其他源码或保留目标冲突时保持原状，不覆盖；选定目录本身作为唯一源码时可直接使用。它不安装尚不存在的客户端，不修改应用自带 Skill 或插件缓存。
+
+共享真身与客户端软链同批迁出时，先解析整批链接，再将归档链接映射到对应的归档真身。迁移完成前检查来源可读；中途失败恢复原目录与原始链接。重复执行不重复迁移；原发现位置以后重新注册新版时，旧归档仍指向原来保存的版本。
 
 新机恢复和上游安装／更新后重新检查发现入口，防止安装器注册新的竞争 Skill；chezmoi 的 V3、旧模板与 WorkBuddy 映射复用本入口。已有会话可能保留旧 Skill 清单，磁盘验收通过仍须用新会话核对自然选择。
 

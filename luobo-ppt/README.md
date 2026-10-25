@@ -25,6 +25,23 @@
 
 </div>
 
+## 本地冻结版说明
+
+本地版本为 **1.0.2**，基于上游 **2.5.0**；上方徽章及下方更新记录保留上游版本含义。来源 commit、许可和冻结策略保持不变，维护边界见 [本地定制维护.md](本地定制维护.md)。
+
+本地必要修复覆盖安装失败回滚、公式和文本保真、素材及命令参数校验、预览资源路径、失败退出码和重复运行清理。原生图表尚不能完整抽取；解析含原生图表的 PPTX 会明确失败并列出位置，保留原稿及已有工作文件，不能把不完整结果当成成功。生成路线已有的原生图表功能不变。
+
+未安装 LibreOffice 时，普通预览和风格样张均可使用近似画法。长词按可用宽度换行，QA 检查文本宽高；切换到 `light` 时不再保留旧计划中的插画。
+
+离线回归使用现有项目虚拟环境中的 python-pptx、Pillow、numpy、lxml，不调用模型或网络：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s luobo-ppt/tests -v
+python3 luobo-ppt/tests/benchmark_measure.py
+```
+
+以上命令从 Skills 仓库根目录执行；独立分发时，在 Skill 根目录使用 `-s tests` 和 `tests/benchmark_measure.py`。测试只创建并清理系统临时夹具；基准程序输出原始统计，不以固定耗时阈值判断通过。
+
 ---
 
 ## 效果示例

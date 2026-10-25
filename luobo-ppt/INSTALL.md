@@ -1,5 +1,9 @@
 # luobo-ppt 安装说明
 
+本地冻结版1.0.2的源码入口与更新边界见 [本地定制维护.md](本地定制维护.md)，不要用通用安装器覆盖已有冻结源码。下述通用 `install.sh` 在同一文件系统暂存并检查副本后替换目标，保留已有 `config.json`；复制或发布失败时保留／恢复旧安装。若恢复本身失败，会保留备份并打印位置，需先处理该错误再重试。
+
+通过目录软链运行时按物理路径判断源和目标；安装到自身跳过复制，源与目标互相包含时拒绝。需要只复制文件、避免安装依赖时使用 `bash install.sh --dest /path/to/skills --skip-deps`。
+
 luobo-ppt（萝卜 PPT）能从零生成 PPT，也能按参考图美化现有 PPT。它就是之前的 ppt-studio 和更早的 ppt-beautify，改了名字，安装脚本会自动移除旧名字的版本，并把旧版里的生图配置带过来。
 
 这个 skill 遵循 SKILL.md 开放标准，Claude、Codex、Gemini CLI、Cursor、GitHub Copilot 等支持 skill 的 Agent 都能装。

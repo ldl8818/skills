@@ -9,7 +9,7 @@ metadata:
   github_hash: "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929"
   github_date: "10-15"
   github_ref: "main"
-  version: "6.1.0"
+  version: "6.1.1"
   author: Tw93
   homepage: https://github.com/tw93/Waza
   github_path: "skills/check"

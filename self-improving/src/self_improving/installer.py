@@ -8,6 +8,7 @@ from pathlib import Path
 import shlex
 import shutil
 import sys
+import tempfile
 from typing import Any
 import re
 import tomllib
@@ -63,11 +64,16 @@ def _load_json(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _backup_directory(state_root: Path) -> Path:
+    parent = state_root / "backups"
+    parent.mkdir(parents=True, exist_ok=True)
+    return Path(tempfile.mkdtemp(prefix=datetime.now().strftime("%Y%m%d-%H%M%S-"), dir=parent))
+
+
 def _backup(path: Path, state_root: Path) -> Path | None:
     if not path.exists():
         return None
-    backup_dir = state_root / "backups" / datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup_dir.mkdir(parents=True, exist_ok=True)
+    backup_dir = _backup_directory(state_root)
     backup = backup_dir / path.name
     shutil.copy2(path, backup)
     return backup
@@ -98,6 +104,40 @@ def _groups(platform: str, config: dict[str, Any]) -> dict[str, list[dict[str, A
     return result
 
 
+def _legacy_hook(command: str) -> bool:
+    expanded = command.replace("${HOME}", str(Path.home())).replace("$HOME", str(Path.home()))
+    if "$(" in expanded or "`" in expanded:
+        return False
+    try:
+        lexer = shlex.shlex(expanded, posix=True, punctuation_chars=";&|()<>\n")
+        lexer.whitespace = " \t\r"
+        lexer.whitespace_split = True
+        tokens = list(lexer)
+    except ValueError:
+        return False
+    if not tokens or any(token and all(char in ";&|()<>\n" for char in token) for token in tokens):
+        # A compound command can also run third-party code; do not remove it.
+        return False
+    program = Path(tokens[0]).name
+    if program in {"sh", "bash", "zsh", "dash"} or re.fullmatch(r"python(?:\d+(?:\.\d+)*)?", program):
+        index = 1
+        while index < len(tokens) and tokens[index].startswith("-"):
+            if tokens[index] in {"-c", "-m"}:
+                return False
+            index += 1
+        if index == len(tokens):
+            return False
+        script = tokens[index]
+    else:
+        script = tokens[0]
+    candidate = Path(script).expanduser()
+    directories = {PACKAGE_ROOT / "scripts", Path.home() / ".claude/scripts"}
+    for agent in (".claude", ".codex"):
+        directories.add(Path.home() / agent / "skills/self-improving/scripts")
+    return (candidate.is_absolute() and candidate.name in LEGACY_HOOK_NAMES
+            and candidate.parent in directories)
+
+
 def _without_managed(groups: object) -> list[dict[str, Any]]:
     if not isinstance(groups, list):
         return []
@@ -116,7 +156,7 @@ def _without_managed(groups: object) -> list[dict[str, Any]]:
                 isinstance(hook, dict)
                 and (
                     MARKER in str(hook.get("command", ""))
-                    or any(name in str(hook.get("command", "")) for name in LEGACY_HOOK_NAMES)
+                    or _legacy_hook(str(hook.get("command", "")))
                 )
             )
         ]
@@ -206,11 +246,14 @@ def ensure_codex_hooks_feature(config: dict[str, Any]) -> Path:
         raise ValueError(f"invalid Codex TOML, not modified: {path}: {exc}") from exc
     if parsed.get("features", {}).get("hooks") is True:
         return path
-    feature = re.search(r"(?ms)^\[features\][^\n]*\n?(.*?)(?=^\[|\Z)", text)
+    feature = re.search(r"""(?ms)^[ \t]*\[(?:features|"features"|'features')\][^\n]*\n?(.*?)(?=^[ \t]*\[|\Z)""", text)
     if feature:
         body = feature.group(1)
-        if re.search(r"(?m)^hooks\s*=", body):
-            body = re.sub(r"(?m)^hooks\s*=.*$", "hooks = true", body, count=1)
+        key = r"""(?m)^([ \t]*(?:hooks|"hooks"|'hooks')[ \t]*=[ \t]*)(?:true|false)([ \t]*(?:#[^\n]*)?)$"""
+        if re.search(key, body):
+            body = re.sub(key, r"\g<1>true\2", body, count=1)
+        elif "hooks" in parsed.get("features", {}):
+            raise ValueError("features.hooks must be a boolean in the features table")
         else:
             body = ("hooks = true\n" + body)
         text = text[: feature.start(1)] + body + text[feature.end(1) :]
@@ -242,8 +285,7 @@ def install_skill_links(config: dict[str, Any]) -> list[tuple[Path, Path | None]
             continue
         backup: Path | None = None
         if destination.exists() or destination.is_symlink():
-            backup_dir = state_root / "backups" / datetime.now().strftime("%Y%m%d-%H%M%S")
-            backup_dir.mkdir(parents=True, exist_ok=True)
+            backup_dir = _backup_directory(state_root)
             backup = backup_dir / f"{destination.parent.parent.name}-{destination.parent.name}-{destination.name}"
             shutil.move(destination, backup)
         destination.symlink_to(PACKAGE_ROOT, target_is_directory=True)

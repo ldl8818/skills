@@ -169,6 +169,8 @@ class Builder:
         if not path or not Path(path).exists():
             self.warnings.append(f"missing image {path}")
             return None
+        path = str(Path(path).resolve())
+        e["path"] = path
         x, y, w, h = e["x"], e["y"], e["w"], e["h"]
         if e.get("fit", "contain") == "contain":
             with Image.open(path) as im:

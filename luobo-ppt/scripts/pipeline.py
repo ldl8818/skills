@@ -53,11 +53,14 @@ def main():
         # so the look-over and the five-dimension review still have pictures to work with
         lite = run([HERE / "render_lite.py", w, "--dpi", a.dpi]) == 0
     rc = run([HERE / "qa_check.py", w])
+    failed = rc or (0 if rendered or lite else 1)
     if rendered and (w / "source_png").exists():
-        run([HERE / "compare_sheet.py", w])
+        compare_rc = run([HERE / "compare_sheet.py", w])
+        failed = failed or compare_rc
     elif (w / "source_text.json").exists():
         print("NOTE 原稿没有渲染图（解析原稿时缺 LibreOffice），前后对比图跳过；美化版的逐页预览不受影响")
-    run([HERE / "review.py", w])
+    review_rc = run([HERE / "review.py", w])
+    failed = failed or review_rc
     if lite:
         print("NOTE " + ("按 --lite 跳过了 LibreOffice" if a.lite else "没找到 LibreOffice") +
               "，预览图是按排版数据直接画的近似图（render_lite），排版和溢出照样能看，"
@@ -65,7 +68,8 @@ def main():
     elif not rendered:
         print("NOTE 没有生成预览图，视觉检查只能跳过，pptx 已正常生成")
     print("\nQA", "has ERRORS, fix before delivering" if rc else "passed (review WARN lines)")
+    return failed
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

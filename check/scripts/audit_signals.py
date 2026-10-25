@@ -149,7 +149,7 @@ def iter_files(root: Path) -> list[Path]:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, check=False,
         )
-        if proc.returncode == 0 and proc.stdout:
+        if proc.returncode == 0:
             out = []
             for raw_path in proc.stdout.split(b"\0"):
                 if not raw_path:
@@ -328,6 +328,8 @@ def _package_bin_entrypoints(root: Path) -> list[str]:
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
+        return []
+    if not isinstance(data, dict):
         return []
     bin_field = data.get("bin")
     name = str(data.get("name") or "package")

@@ -213,7 +213,7 @@ class SourceTests(unittest.TestCase):
         with patch.object(reach, 'runtime_status', return_value={'ready':True,'python':'/synthetic/python'}), \
              patch.object(reach.subprocess, 'call', return_value=3) as call:
             self.assertEqual(reach.main(['mcp']), 3)
-        self.assertEqual(call.call_args.args[0], ['/synthetic/python','-m','agent_reach.integrations.mcp_server'])
+        self.assertEqual(call.call_args.args[0], ['/synthetic/python','-I','-B','-m','agent_reach.integrations.mcp_server'])
 
     def test_missing_mcp_runtime_never_installs(self):
         with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, XDG_DATA_HOME=temporary), \
@@ -375,7 +375,7 @@ with reach.preparation_lock(Path(sys.argv[2])):
         with patch.object(reach, 'runtime_status', return_value=status), \
              patch.object(reach.subprocess, 'call', return_value=3) as call:
             self.assertEqual(reach.run_native(['transcribe', query], self.manifest, self.files), 3)
-        self.assertEqual(call.call_args.args[0], ['/synthetic/python', '-m', 'agent_reach.cli', 'transcribe', query])
+        self.assertEqual(call.call_args.args[0], ['/synthetic/python', '-I', '-B', '-m', 'agent_reach.cli', 'transcribe', query])
         self.assertNotIn('shell', call.call_args.kwargs)
 
 

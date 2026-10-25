@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.4
+
+- Redact quoted credential fields and values, including JSON and dictionary text. Bound URL scheme matching so long non-URL examples do not exhaust the knowledge worker deadline.
+- Resolve static Shell write operands from the event working directory, including absolute executable paths and common command prefixes; preserve existing read-only exemptions and conservative bare-ledger protection.
+- Run authority decisions independently of schema observations. Damaged observation caches and schema write failures no longer prevent protection or ordinary Hook handling.
+- Share individual ledger-event validation between reads and writes. Reject unsafe new approvals before changing the ledger or candidate status; malformed existing events still disable injection.
+- Recognize legacy Hooks only by exact script names in known self-improving installation locations, preserving third-party same-name commands and unmarked compound commands.
+- Allocate unique backup directories atomically for configuration files and replaced Skill entries, including repeated operations within one second.
+- Preserve indentation and comments when enabling Codex Hooks in a features table.
+
 ## 3.1.3
 
 - Move the Python package to src/self_improving while keeping imports and CLI names unchanged. Source commands and managed Hooks now run from src; templates and Skill links still resolve to the Skill root. Existing source installations must run upgrade from src to refresh Hooks.

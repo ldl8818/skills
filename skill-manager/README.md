@@ -4,6 +4,8 @@
 
 Grok、Claude Code、Gemini CLI、Google Antigravity、OpenAI Codex 和 WorkBuddy 的 Skill 生命周期管理器：**列出、溯源、查更新、启停、定版本、自检、删除**。
 
+当前版本 **2.11.1**：修复更新中断恢复、启停并发保护、项目范围传递、归档权限、删除回滚和原生维护重试判定；staging 校验使用本轮快照，文件读取量随文件数线性增长。
+
 一台机器上的 Skill 通常分为三大类：**全局直装、项目级、插件**。其中全局直装再按共享范围细分：
 
 - **全局直装**：共享全局 `~/.agents/skills/`；客户端全局 `~/.claude/skills/`、`~/.codex/skills/`、`~/.gemini/skills/`、`~/.grok/skills/`、`~/.gemini/config/skills/`、`~/.gemini/antigravity/skills/`、`~/.gemini/antigravity-cli/skills/`、`~/.workbuddy-ai/skills/`。
@@ -65,8 +67,8 @@ ln -s ~/.agents/skills/skill-manager ~/.claude/skills/skill-manager
 /skill-manager update --dry-run          # 只列出将要更新的，不动手
 /skill-manager update <名字> --ref main    # 改跟上游主分支的未发版提交（通道有粘性）
 /skill-manager update <名字> --ref release # 退回最新发布 tag
-/skill-manager enable  <名字>            # 启用直装 Skill 或 Claude 插件
-/skill-manager disable <名字>            # 禁用直装 Skill 或 Claude 插件
+/skill-manager enable  <名字> [--project <路径>]  # 启用直装 Skill 或 Claude 插件
+/skill-manager disable <名字> [--project <路径>]  # 禁用直装 Skill 或 Claude 插件
 /skill-manager bump <名字> [patch|minor|major] [--project <路径>] # 递增版本号
 /skill-manager doctor [--fix]            # 自检 10 项；--fix 只做有依据的补录
 /skill-manager delete <名字> [--project <路径>] [--dry-run] # 归档删除直装 Skill 或 Claude 插件
@@ -74,6 +76,10 @@ ln -s ~/.agents/skills/skill-manager ~/.claude/skills/skill-manager
 
 任何脚本加 `--help` 都能看完整用法说明。
 Codex 插件由 `list` 和 `doctor` 只读盘点；启停、更新和删除仍使用 Codex 自身机制。
+
+无参批量更新按真实安装目录去重，全局和项目内同名 Skill 分别处理。单项更新／启停默认使用全局范围，项目对象用 `--project` 指定；裸名先匹配直装 Skill，同名插件可写完整的 `名字@市场名`。同一范围存在多个同名直装实体时拒绝猜测并列出目录。空安装环境下，`check` 正常返回空结果，`--json` 输出 `[]`。
+
+普通直装更新在切换前记录恢复信息，并用内容、实际入口名和普通文件权限检测并发修改。更新和启停互斥；捕获中断时尝试恢复完整的旧版或新版目录。SIGKILL 后可能需要再次运行同一对象的 `update` 恢复，恢复材料有变化时会明确报告待人工核对。事务位置和中断边界见 [安全与事务边界](references/maintenance.md#安全与事务边界)。
 
 几个设计要点：
 

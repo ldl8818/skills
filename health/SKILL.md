@@ -9,7 +9,7 @@ metadata:
   github_hash: "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929"
   github_date: "10-15"
   github_ref: "main"
-  version: "4.1.0"
+  version: "4.1.1"
   github_path: "skills/health"
   github_url: "https://github.com/tw93/waza"
   update_policy: "frozen"

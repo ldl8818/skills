@@ -262,19 +262,23 @@ def probe_video(path: Path) -> dict[str, Any]:
 
 
 def deep_verify(path: Path) -> None:
-    result = run_command(["ffmpeg", "-v", "error", "-i", str(path), "-f", "null", "-"])
+    result = run_command(["ffmpeg", "-v", "error", "-xerror", "-i", str(path), "-f", "null", "-"])
     if result.returncode != 0:
         raise RuntimeError(f"完整解码失败：{compact_error(result.stderr)}")
 
 
-def find_existing(output_dir: Path, stem: str) -> Path | None:
-    for path in sorted(output_dir.glob(f"{stem}.*")):
-        if path.is_file() and path.suffix.lower() in VIDEO_SUFFIXES:
+def find_existing(output_dir: Path, stem: str) -> tuple[Path, dict[str, Any]] | None:
+    candidates = (
+        path for path in output_dir.iterdir()
+        if path.stem == stem and path.suffix.lower() in VIDEO_SUFFIXES
+    )
+    for path in sorted(candidates):
+        if path.is_file():
             try:
-                probe_video(path)
+                details = probe_video(path)
             except RuntimeError:
                 continue
-            return path
+            return path, details
     return None
 
 
@@ -288,9 +292,8 @@ def safe_destination(output_dir: Path, stem: str, suffix: str) -> Path:
 
 
 def download_media(url: str, output_dir: Path, stem: str, args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
-    temp_root = Path.home() / "tmp"
-    temp_root.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="download-video-", dir=temp_root) as temp_name:
+    with tempfile.TemporaryDirectory(prefix=".download-video-", dir=output_dir) as temp_name:
+        temp_root = Path(temp_name).resolve()
         template = str(Path(temp_name) / "source.%(ext)s")
         command = [
             "yt-dlp",
@@ -320,20 +323,27 @@ def download_media(url: str, output_dir: Path, stem: str, args: argparse.Namespa
         if result.returncode != 0:
             raise RuntimeError(compact_error(result.stderr, result.stdout))
         printed_paths = [Path(line.strip()) for line in result.stdout.splitlines() if line.strip()]
-        source = next((path for path in reversed(printed_paths) if path.is_file()), None)
+
+        def owned_video(path: Path) -> bool:
+            return (
+                not path.is_symlink()
+                and path.resolve().is_relative_to(temp_root)
+                and path.is_file()
+                and path.suffix.lower() in VIDEO_SUFFIXES
+            )
+
+        source = next((path for path in reversed(printed_paths) if owned_video(path)), None)
         if source is None:
-            source = next((path for path in Path(temp_name).iterdir() if path.is_file()), None)
+            source = next((path for path in temp_root.iterdir() if owned_video(path)), None)
         if source is None:
             raise RuntimeError("下载命令成功，但未找到输出文件")
+        details = probe_video(source)
+        if args.deep_verify:
+            deep_verify(source)
+        details["deep_verified"] = bool(args.deep_verify)
         with DESTINATION_LOCK:
             destination = safe_destination(output_dir, stem, source.suffix.lower() or ".mp4")
-            shutil.move(str(source), destination)
-    details = probe_video(destination)
-    if args.deep_verify:
-        deep_verify(destination)
-        details["deep_verified"] = True
-    else:
-        details["deep_verified"] = False
+            source.rename(destination)
     return destination, details
 
 
@@ -365,12 +375,16 @@ def process_one(spec: DownloadSpec, args: argparse.Namespace) -> dict[str, Any]:
             }
         existing = find_existing(args.output_dir, stem)
         if existing:
+            path, details = existing
+            if args.deep_verify:
+                deep_verify(path)
+            details["deep_verified"] = bool(args.deep_verify)
             return {
                 **base,
                 "status": "existing",
-                "path": str(existing.resolve()),
+                "path": str(path.resolve()),
                 "date_source": date_source,
-                **probe_video(existing),
+                **details,
             }
         path, details = download_media(spec.url, args.output_dir, stem, args)
         return {

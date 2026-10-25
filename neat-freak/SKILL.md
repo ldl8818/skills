@@ -21,7 +21,7 @@ metadata:
   github_date: "10-01"
   github_ref: "main"
   github_hash: "322346ded8129436b3f64707789a73e732ae24d9"
-  version: "3.1.0"
+  version: "3.1.1"
   update_policy: "frozen"
   github_path: "neat-freak"
   github_url: "https://github.com/KKKKhazix/Khazix-Skills"

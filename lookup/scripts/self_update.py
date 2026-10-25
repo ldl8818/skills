@@ -205,9 +205,11 @@ def validate(candidate):
             'business_verified': False}
 
 
-def publish(store, root, candidate, upstream, revision, audit, expected_source):
+def publish(store, root, candidate, upstream, revision, audit, expected_source, expected_local):
     """A complete backup and staged directory preserve runtime files and local Git state."""
     before = complete_state(root)
+    if audit.files(root) != expected_local:
+        raise SourceError('LOOKUP_SOURCE_CHANGED_BEFORE_SWITCH')
     if source_files(candidate, audit) != expected_source:
         raise SourceError('LOOKUP_SOURCE_APPROVED_CANDIDATE_CHANGED')
     previous_source = store.read('self-source.json')
@@ -267,6 +269,7 @@ def update(store, root, audit):
         if pending:
             return pending
         with source(store, root, audit) as (base, upstream, revision):
+            expected_local = audit.files(root)
             current, latest = version(root), version(upstream)
             unchanged_source = base is not None and audit.files(base) == audit.files(upstream)
             if number(current) > number(latest) and unchanged_source:
@@ -292,6 +295,7 @@ def update(store, root, audit):
                             audit.assert_inputs(directory, request)
                             return audit.pending(store, 'lookup')
                         directory, request, receipt = audit.approved(store, 'lookup', revision)
+                        expected_local = request['scopes'][0]['live_state']
                         candidate = directory / '0/merged'
                         expected_source = receipt['merged'][0]
                     else:
@@ -303,4 +307,4 @@ def update(store, root, audit):
                     return audit.pending(store, 'lookup')
             if number(version(candidate)) < max(number(current), number(latest)):
                 raise SourceError('LOOKUP_SOURCE_CANDIDATE_VERSION_MISMATCH')
-            return publish(store, root, candidate, upstream, revision, audit, expected_source)
+            return publish(store, root, candidate, upstream, revision, audit, expected_source, expected_local)

@@ -21,8 +21,9 @@ class NativeError(RuntimeError):
 
 
 def run(argv, timeout=30):
-    with subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          text=True, start_new_session=True) as proc:
+    with core.maintenance_signals(), subprocess.Popen(
+            argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, start_new_session=True) as proc:
         try:
             stdout, stderr = proc.communicate(timeout=timeout)
         except BaseException:
@@ -332,8 +333,21 @@ def error_name(error):
     return str(error) if isinstance(error, NativeError) else type(error).__name__
 
 
+def unsafe_retry(result):
+    if not isinstance(result, dict):
+        return True
+    if (result.get('retry_safe') is False or result.get('outcome_unknown') is True
+            or result.get('current_preserved') is False):
+        return True
+    if result.get('status') == 'batch':
+        items = result.get('results')
+        return not isinstance(items, list) or not items or any(unsafe_retry(item) for item in items)
+    retryable = {'updated', 'up_to_date', 'local_ahead', 'not_installed', 'reference_only',
+                 'manual_review', 'deferred', 'failed', 'error', 'check_failed'}
+    return bool(result) and result.get('status') not in retryable
+
+
 def _guard_lookup(callback):
-    import fcntl
     root = Path(core.STATE_DIR) / 'native/lookup'
     no_link_parents(root)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -341,13 +355,11 @@ def _guard_lookup(callback):
     lock_path = root / 'maintenance.lock'
     no_link_parents(state)
     no_link_parents(lock_path)
-    with lock_path.open('a') as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
+    with core.maintenance_lock(root) as acquired:
+        if not acquired:
             return {'status': 'deferred', 'error': 'MAINTENANCE_IN_PROGRESS'}, 1
         previous = read_state(state)
-        if previous.get('config_unchanged') is False:
+        if previous.get('config_unchanged') is False or unsafe_retry(previous):
             return {**previous, 'status': 'manual_review',
                     'error': previous.get('error') or 'INSPECT_PRIOR_LOOKUP_OPERATION',
                     'retry_safe': False}, 1
@@ -427,7 +439,6 @@ def _update_lark(dry_run=False):
                 'scope': 'CLI and on-demand guide layout', 'remote_checked': False,
                 'steps': ['check', 'archive_entries', 'native_update_if_needed',
                           'reconcile_entries', 'verify_config_and_bridge']}, 0
-    import fcntl
     root = Path(core.STATE_DIR) / 'native/lark-cli'
     no_link_parents(root)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -436,10 +447,8 @@ def _update_lark(dry_run=False):
     no_link_parents(state_file)
     lock_path = root / 'maintenance.lock'
     no_link_parents(lock_path)
-    with lock_path.open('a') as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
+    with core.maintenance_lock(root) as acquired:
+        if not acquired:
             return {'status': 'deferred', 'dependency': 'lark-cli',
                     'error': 'MAINTENANCE_IN_PROGRESS'}, 1
         previous = read_state(state_file)

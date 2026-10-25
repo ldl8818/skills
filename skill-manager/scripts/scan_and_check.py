@@ -138,14 +138,18 @@ def build_targets():
     targets, seen = [], set()
 
     for s in skills:
+        path = str(Path(s.md_path).parent.resolve())
+        identity = ('skill', path)
+        scope = s.get('scope', 'global')
+        location = {'target_path': path, 'project': None if scope == 'global' else scope}
         owner = lifecycle.lookup_root(Path(s.md_path).parent) if s.name == 'lookup' else None
-        if owner and s.name not in seen:
-            seen.add(s.name)
+        if owner and identity not in seen:
+            seen.add(identity)
             targets.append(('skill', s.name, '', '', {'local': s.version,
-                'enabled': s.enabled, 'maintenance_root': str(owner)}))
+                'enabled': s.enabled, 'maintenance_root': str(owner), **location}))
             continue
-        if s.source in ("github", "frozen") and s.name not in seen:
-            seen.add(s.name)
+        if s.source in ("github", "frozen") and identity not in seen:
+            seen.add(identity)
             coverage = 'unverified'
             if s.github_url:
                 try:
@@ -159,6 +163,7 @@ def build_targets():
                 {"local": s.version, "enabled": s.enabled,
                  "frozen": s.source == "frozen",
                  "merge_coverage": coverage,
+                 **location,
                  "ref": s.get("github_ref", "")},
             ))
 
@@ -188,6 +193,18 @@ ICON = {"current": "🟢", "outdated": "🟡", "frozen": "🔒",
 ORDER = {"outdated": 0, "error": 1, "unknown": 2, "current": 3, "frozen": 4, "local": 5}
 
 
+def target_label(result):
+    return result['name'] + (f" [{result['target_path']}]" if result.get('target_path') else '')
+
+
+def update_command(result):
+    import shlex
+    command = f"/skill-manager update {shlex.quote(result['name'])}"
+    if result.get('project'):
+        command += ' --project ' + shlex.quote(result['project'])
+    return command
+
+
 def main():
     targets = build_targets()
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
@@ -197,8 +214,12 @@ def main():
         print(json.dumps(results, ensure_ascii=False, indent=2))
         return
 
+    if not results:
+        print("没有可检查更新的 Skill 或插件。")
+        return
+
     results.sort(key=lambda r: (ORDER.get(r["status"], 9), r["name"]))
-    rows = [(f"{ICON.get(r['status'], '·')} {r['name']}",
+    rows = [(f"{ICON.get(r['status'], '·')} {target_label(r)}",
              "生效" if r["enabled"] else "未启用",
              str(r.get("local", "—")), r["message"]) for r in results]
 
@@ -218,7 +239,7 @@ def main():
         print(f"\n🟡 {len(outdated)} 个有新版：")
         for r in outdated:
             tail = "" if r["enabled"] else "   ← 未启用，可以不管"
-            print(f"   /skill-manager update {r['name']}{tail}")
+            print(f"   {update_command(r)}{tail}")
     else:
         print("\n没有检测到可自动更新项；冻结项与查询失败项见上表。")
 
@@ -226,7 +247,7 @@ def main():
     if ahead:
         print(f"\n🌿 {len(ahead)} 个已装到最新发布版，但上游 main 还有未发版提交：")
         for r in ahead:
-            print(f"   /skill-manager update {r['name']} --ref main")
+            print(f"   {update_command(r)} --ref main")
         print("   （不是待办：上游未发版是常态，只在需要那批改动时才跟）")
     print()
 

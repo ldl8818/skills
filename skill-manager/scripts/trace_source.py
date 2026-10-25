@@ -109,8 +109,15 @@ def fetch_at(slug, ref, dest):
 
 
 def find_skill_dir(root, name, hint=""):
-    if hint and os.path.isfile(os.path.join(root, hint, "SKILL.md")):
-        return os.path.join(root, hint)
+    if hint:
+        if os.path.isabs(hint) or ".." in hint.split(os.sep):
+            raise ValueError("source hint must stay inside the downloaded snapshot")
+        candidate = core.contained_path(root, hint)
+        entry = os.path.join(candidate, "SKILL.md")
+        if os.path.isfile(entry):
+            if core.parse_skill_md(entry).get("name") != name:
+                raise ValueError("source hint has a different Skill identity")
+            return candidate
     # 单 skill 仓库：仓库根就是 skill 本体。解压后的临时目录名是随机的，
     # 不能靠「目录名 == skill 名」认出它，要看 frontmatter 里的 name。
     root_md = os.path.join(root, "SKILL.md")

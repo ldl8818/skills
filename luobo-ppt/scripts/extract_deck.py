@@ -16,6 +16,8 @@ import argparse
 import re
 import sys
 import html
+import shutil
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -219,12 +221,29 @@ def main():
     ap.add_argument("work")
     ap.add_argument("--no-render", action="store_true")
     a = ap.parse_args()
-    work = Path(a.work)
-    work.mkdir(parents=True, exist_ok=True)
+    # Inspect a disposable normalized copy before replacing any extraction artifacts.
+    with tempfile.TemporaryDirectory(prefix="luobo-extract-") as temp:
+        normalized = Path(temp) / "source.pptx"
+        normalize_pptx(a.pptx, normalized)
+        candidate = Presentation(str(normalized))
+        def chart_names(shapes):
+            for shape in shapes:
+                if getattr(shape, "has_chart", False):
+                    yield shape.name
+                if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                    yield from chart_names(shape.shapes)
+        unsupported = [(n, name) for n, slide in enumerate(candidate.slides, 1)
+                       for name in chart_names(slide.shapes)]
+        if unsupported:
+            details = "; ".join(f"slide {n}: {name}" for n, name in unsupported)
+            raise SystemExit("Native chart extraction is unsupported; chart data and labels would be lost. "
+                             f"Source and existing work files are unchanged. {details}")
+        work = Path(a.work)
+        work.mkdir(parents=True, exist_ok=True)
+        src = work / "source.pptx"
+        shutil.copyfile(normalized, src)
     media = work / "media"
     media.mkdir(exist_ok=True)
-    src = work / "source.pptx"
-    normalize_pptx(a.pptx, src)
     # equations typed with the equation editor become plain formula text, so they are
     # extracted, previewed and checked like every other line (LibreOffice draws none of them)
     from omml import flatten_math

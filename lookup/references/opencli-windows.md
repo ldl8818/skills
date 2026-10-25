@@ -18,7 +18,7 @@ node scripts/opencli-run.mjs <site> <command> ...
 - `OPENCLI_CONFIG_DIR` 可指定已有 OpenCLI 配置目录；health 与 runner 必须使用同一环境。切目录或 Profile 不能作为绕过失败依赖的证明。
 - Ego Lite 是基于 Chromium 的浏览器，可安装 OpenCLI 的 Chrome 扩展；OpenCLI 通过该扩展执行，`ego-browser` Skill 通过浏览器自身接口执行。两者可使用同一个 Ego Lite 浏览器，无需另开原版 Chrome。换执行接口仍须核对共同的进程、Profile 与站点登录态。
 - OpenCLI Profile 选择值可以是实际连接 `contextId` 或本机配置的别名，不是浏览器产品或 Skill 名称。别名与默认连接均不能证明实际浏览器和账号身份。
-- `LOOKUP_OPENCLI_TIMEOUT_MS` 默认90秒，包含版本检查与执行等待；超时或收到中止信号时只终止本次 CLI 子进程，浏览器动作可能继续，返回结果未知，不自动重派。旧 `OPENCLI_RUN_IMPORT_TIMEOUT_MS`／`OPENCLI_RUN_HARD_TIMEOUT_MS` 已退役；旧 `OPENCLI_DAEMON_PORT` 必须移除，不再自行管理端口。
+- `LOOKUP_OPENCLI_TIMEOUT_MS` 默认90秒，包含版本检查与执行等待；超时或收到中止信号时取消本次 CLI。启用 Python 监督层时，runner 等待它回收本次创建的 CLI 进程组后释放使用锁；监督层先给进程组最多2秒退出时间，再终止仍未退出的自有进程。runner 不抢先强杀监督层，不处理其他任务的进程。浏览器动作可能继续，仍返回结果未知，不自动重派。旧 `OPENCLI_RUN_IMPORT_TIMEOUT_MS`／`OPENCLI_RUN_HARD_TIMEOUT_MS` 已退役；旧 `OPENCLI_DAEMON_PORT` 必须移除，不再自行管理端口。
 - 普通结果默认为 `{ok:true,data:...}`，失败为 `{ok:false,error:...}` 并使用非零退出码；日志在 stderr。帮助、版本和流式输出有各自格式，不统一当业务信封。保留实际 exit code、stdout 和 stderr；归一化按 [failure-domains.md](failure-domains.md)。
 
 ## Profile 绑定

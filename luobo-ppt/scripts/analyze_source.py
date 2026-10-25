@@ -90,6 +90,8 @@ def measure(text):
         frag = m.group(0).strip()
         if frag and frag not in data:
             data.append(frag)
+            if len(data) == 30:
+                break
     lang = "zh" if cjk >= latin_words else "en"
     return {"cjk_chars": cjk, "latin_words": latin_words, "units": units, "headings": headings,
             "paragraphs": len(paras), "data_points": data[:30], "language": lang}

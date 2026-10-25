@@ -99,6 +99,8 @@ def _record_schema(state_root: Path, platform: str, event: str, payload: dict) -
         previous = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, json.JSONDecodeError):
         previous = {}
+    if not isinstance(previous, dict):
+        previous = {}
     if (
         previous.get("package_version") == __version__
         and previous.get("shape") == shape["shape"]
@@ -251,6 +253,53 @@ def _session_context_output(
     return rendered
 
 
+def _shell_write_targets(command: str) -> list[str]:
+    """Extract static operands of supported writes without evaluating Shell code."""
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|()<>\n")
+        lexer.whitespace = " \t\r"
+        lexer.whitespace_split = True
+        lexer.commenters = "#"
+        segments: list[list[str]] = [[]]
+        for token in lexer:
+            if token and all(char in ";&|()\n" for char in token):
+                segments.append([])
+            else:
+                segments[-1].append(token)
+    except ValueError:
+        return []
+    targets: list[str] = []
+    for segment in segments:
+        for index, token in enumerate(segment[:-1]):
+            if token in {">", ">>", ">|", "&>", "&>>"}:
+                targets.append(segment[index + 1])
+        if not segment:
+            continue
+        invocation = list(segment)
+        while invocation and re.match(r"^[A-Za-z_][A-Za-z_0-9]*=", invocation[0]):
+            invocation.pop(0)
+        if not invocation:
+            continue
+        program = Path(invocation[0]).name
+        if program in {"env", "command", "sudo", "nohup"}:
+            # Preserve conservative handling of common wrappers and their options.
+            invocation = next(
+                (invocation[index:] for index, token in enumerate(invocation[1:], 1)
+                 if Path(token).name in {"tee", "rm", "mv", "cp", "truncate", "sed", "perl"}),
+                [],
+            )
+            if not invocation:
+                continue
+            program = Path(invocation[0]).name
+        writes_files = program in {"tee", "rm", "mv", "cp", "truncate"}
+        in_place = program in {"sed", "perl"} and any(
+            token.startswith("-i") for token in invocation[1:]
+        )
+        if writes_files or in_place:
+            targets.extend(token for token in invocation[1:] if not token.startswith("-"))
+    return targets
+
+
 def _dangerous_authority_write(event, memory_root: Path) -> bool:
     if event.event != "PreToolUse":
         return False
@@ -295,23 +344,27 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
         return True
     if _interpreter_authority_reference(expanded, tokens):
         return True
-    write_signal = (
-        any(token in {"tee", "rm", "mv", "cp", "truncate"} for token in tokens)
-        or any(
-            token in {">", ">>"}
-            and (index + 1 >= len(tokens) or tokens[index + 1] != "/dev/null")
-            for index, token in enumerate(tokens)
-        )
-        or any(token in {"sed", "perl"} and index + 1 < len(tokens) and tokens[index + 1] == "-i" for index, token in enumerate(tokens))
-    )
-    if not write_signal:
-        return False
-    if any(str(authority) in expanded for authority in authorities):
-        return True
     cwd = Path(event.cwd).expanduser().resolve() if event.cwd else None
-    if cwd == memory_root.resolve() and "verified-corrections.jsonl" in expanded:
-        return True
-    return bool(str(memory_root.resolve()) in expanded and "verified-corrections.jsonl" in expanded)
+    targets = _shell_write_targets(expanded)
+    for target in targets:
+        if "$" in target or "`" in target:
+            continue
+        if cwd == memory_root.resolve() and target == "verified-corrections.jsonl":
+            return True  # Keep the existing conservative bare-name protection.
+        try:
+            candidate = Path(target).expanduser()
+            if not candidate.is_absolute():
+                if cwd is None:
+                    continue
+                candidate = cwd / candidate
+            if candidate.resolve() in authorities:
+                return True
+        except (OSError, ValueError):
+            continue
+    # Retain conservative detection when a write also contains Shell expansion.
+    return bool(targets and ("$" in expanded or "`" in expanded)
+                and str(memory_root.resolve()) in expanded
+                and "verified-corrections.jsonl" in expanded)
 
 
 def dispatch(platform: str, declared_event: str, payload: dict) -> int:
@@ -319,7 +372,6 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
     event = normalize(platform, declared_event, payload)
     root = Path(config["memory_root"])
     state_root = Path(config["state_root"])
-    _record_schema(state_root, platform, event.event, payload)
     if _dangerous_authority_write(event, root):
         permission_decision = "deny" if platform == "codex" else "ask"
         reason = (
@@ -336,6 +388,10 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
             }
         }, ensure_ascii=False))
         return 0
+    try:
+        _record_schema(state_root, platform, event.event, payload)
+    except (OSError, ValueError, TypeError, RecursionError):
+        pass  # Observability must not prevent protection or normal Hook handling.
     if event.event == "SessionStart":
         from self_improving.knowledge import CATALOG, context as knowledge_context
         injection = config.get("injection", {})

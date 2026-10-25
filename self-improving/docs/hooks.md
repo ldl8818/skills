@@ -5,6 +5,7 @@ Since 3.1.3, source-checkout Hook commands change directory to `src/` before inv
 Legacy Markdown history may be archived without changing Hook registration or injection. This does not disable candidate capture or v2 approvals. Since 3.1.2, authorized edits and moves of memory.md and corrections.md follow ordinary document permissions, without extra Hook approval. The verified ledger and mutating review commands remain guarded.
 
 Claude Code and Codex payloads are normalized before core memory logic runs.
+Authority decisions run before schema observations. Schema caches are diagnostic only: a malformed cache is replaced on an ordinary event, and an observation write failure does not prevent the Hook from handling the event. A protected call returns its permission decision without waiting for schema recording.
 
 The adapters are tested against sanitized payload fixtures captured from real
 Claude Code and Codex sessions. Only field names and synthetic example values
@@ -97,6 +98,12 @@ smoke results must be reported separately from fixture replay.
 ## Knowledge routing (3.1)
 
 With a private catalog, SessionStart resets the knowledge stage, including resume, and compact restores eligible last-requested IDs or full-read pointers. UserPromptSubmit may emit reviewed original text independently of persistence. Both events share the configured final-output estimate, default1200 tokens; knowledge runs in an isolated one-second worker. See [knowledge contract](knowledge.md) for invalidation, source safety, deduplication and explicit reads. Existing PreToolUse guards are unchanged.
+
+## Static Shell paths (3.1.4)
+
+The authority guard resolves static output-redirection and supported file-operation operands against the event's `cwd`, including calls from a memory directory's parent or child. It recognizes executable basenames such as `/bin/rm` and preserves conservative handling of common command prefixes. Ordinary reads remain available. Dynamic Shell evaluation and arbitrary program side effects remain outside this accidental-write guard's guarantees.
+
+Ledger readers and writers share event validation. A new unsafe approval is rejected before persistence; a malformed existing ledger still disables correction injection. Credential detection includes quoted keys and values, and redaction markers do not exempt an answer from the ledger's sensitive-content check.
 
 ## Read-only Python inspection
 

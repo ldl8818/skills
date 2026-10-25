@@ -177,6 +177,7 @@ def delete_plugin(key, dry_run=False):
 
     zh = core.read_json(core.DESCRIPTIONS_ZH, {})
     sub_skills = [s for s in _plugin_skill_names(install_path) if s in zh]
+    original_zh = copy.deepcopy(zh)
     settings_hits = _settings_with_plugin(key)
     original_settings = {path: core.read_json(path, {}) for path in settings_hits}
     data_dirs = _plugin_data_dirs(key)
@@ -218,14 +219,24 @@ def delete_plugin(key, dry_run=False):
             data = copy.deepcopy(original_settings[path])
             del data["enabledPlugins"][key]
             core.write_json(path, data)
-    except Exception:
-        core.write_json(core.INSTALLED_PLUGINS_JSON, original_registry)
-        for path, data in original_settings.items():
-            core.write_json(path, data)
+    except BaseException:
+        # Each restore is independent: a locked settings file must not strand
+        # the archived cache or prevent the other ledgers from being restored.
         for archived, original in reversed(moved):
-            if os.path.exists(archived) and not os.path.exists(original):
-                os.makedirs(os.path.dirname(original), exist_ok=True)
-                shutil.move(archived, original)
+            try:
+                if os.path.exists(archived) and not os.path.exists(original):
+                    os.makedirs(os.path.dirname(original), exist_ok=True)
+                    shutil.move(archived, original)
+            except BaseException as error:
+                print(f"❌ 待恢复目录 {archived} → {original}: {error}")
+        records = [(core.INSTALLED_PLUGINS_JSON, original_registry),
+                   (core.DESCRIPTIONS_ZH, original_zh), *original_settings.items()]
+        for path, data in records:
+            try:
+                if core.read_json(path, {}) != data:
+                    core.write_json(path, data)
+            except BaseException as error:
+                print(f"❌ 待恢复登记 {path}: {error}")
         raise
 
     print(f"\n✅ 已删除插件 {key}")

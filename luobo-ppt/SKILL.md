@@ -6,7 +6,7 @@ description: 做 PPT 和美化 PPT 的一站式 skill，输出可编辑的原生
 license: MIT
 metadata:
   zh_description: "生成或美化可编辑的原生 PPT；用户提供题目、文章、大纲、PPT 或参考图并要求制作、改写或美化时使用。"
-  version: "1.0.1"
+  version: "1.0.2"
   github_url: https://github.com/zhouwei713/luobo-ppt
   github_hash: b6dcb0f325b3ea38a7ca3cd3c211bbba7fb436b2
   github_date: "10-08"
@@ -49,6 +49,7 @@ metadata:
 ## 路线 A 美化
 
 1. **解析原稿** `python3 $S/extract_deck.py 原稿.pptx $W`，然后看 `source_png/sheet.png`。脚本会修复 LibreOffice 打不开的 zip，也能读出藏在 descr 属性里的口播备注。
+   原生图表目前不能完整抽取；检测到时脚本非零退出并列出页码及图表名称，保留原稿和已有工作文件。先处理这些图表再重新解析，不得用旧的抽取结果继续交付。
 2. **读参考图** `python3 $S/extract_style.py 参考图.png $W`，再亲自看图，按 `references/style_extraction.md` 写 `$W/style.json`，然后 `python3 $S/style_card.py $W` 出风格卡。用户在场就发风格卡确认。
 3. **整理 deck.json**，按 `references/deck_schema.md` 从 `deck.draft.json` 转写。文字逐字复制，局部加粗写成 `**片段**`；图片里的文字重建成 `diagram` 等原生结构；`notes` 原样带上；写好 `meta.anchor` 视觉锚点。原稿页面上的小标签（"01 · 概览"这类章节胶带）写进该页的 `kicker`，条目自带的编号（01、02）写进条目的 `num`，这样换任何列表符号都不会丢字。原稿里用公式编辑器打的公式，解析时会自动转成普通文字公式（如 V′(x) = (a−2x)(a−6x)），照常逐字转写；公式多的讲解页用 `explain` 页型。SVG 图会顺手转一份 PNG（raw.json 里的 png 字段），版式里用 PNG。logo、"AI 生成"标识这类小图写进 `stamps` 原样保留。原稿里的软件截图（`media/` 下的图片）用 `screenshot` 或 `screenshots` 页型，截图会放进统一的窗口外框，讲解点可以用 `at` 打在截图上。
 4. 接着走下面的"版式、出图与检查"。
@@ -67,6 +68,7 @@ metadata:
 
 1. **版式规划** `python3 $S/plan_deck.py $W --level full`（有生图模型时加 `--sheets`，一张大图切出几张小插画，风格更统一也更省）。
    重跑时内容没变的页会保留原来的规划（包括手改过的版式和插画提示词），要全部重排加 `--reset`。
+   切换 `--level` 时重新应用插画策略；`light` 移除计划中的插画，其他手改内容保留。
    审 plan.json：版式贴不贴内容（`references/layouts.md`）、图标达不达意（`references/icons.md`）、插画提示词具不具体（`references/image_prompts.md`）。内容超出版式容量时脚本会自动换版式，并写进 design_spec.md 的"容量提醒"，出图前先处理掉。
    把生成的 design_spec.md 发给用户确认后再出图，出图最花钱。快速模式跳过确认。
 2. **出图、组装、自检**一条命令：
@@ -74,6 +76,7 @@ metadata:
    python3 $S/pipeline.py $W
    ```
    依次运行 make_assets（插画、背景、装饰，AI 提示词先落盘到 `prompts/`）、build_deck、render、qa_check、compare_sheet、review。
+   QA、必需检查或两种预览方式都失败时，pipeline 非零退出；修复失败项后再交付。风格样张也会在 LibreOffice 不可用时改用近似预览。
 
    | 检查 | 级别 | 处理 |
    |---|---|---|

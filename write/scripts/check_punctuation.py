@@ -61,35 +61,24 @@ FULLPAREN = {"(": "（", ")": "）"}
 
 
 def _inline_code_spans(line: str):
-    """Yield (start, end) for each inline-code span, CommonMark-style: a run of
-    n backticks opens and the next run of exactly n backticks closes. A pure
-    linear scan with no regex backtracking, so a pathological long backtick run
-    cannot blow up -- and a real short span on the same line as a long run keeps
-    its exemption (the old regex guard dropped inline-code for the whole line)."""
-    i, n = 0, len(line)
-    while i < n:
-        if line[i] != "`":
-            i += 1
-            continue
-        j = i
-        while j < n and line[j] == "`":
-            j += 1
-        run = j - i
-        k = j
-        while k < n:
-            if line[k] == "`":
-                end = k
-                while end < n and line[end] == "`":
-                    end += 1
-                if end - k == run:
-                    yield (i, end)
-                    i = end
-                    break
-                k = end
-            else:
-                k += 1
+    """Pair equal-length backtick runs without rescanning unmatched suffixes."""
+    runs = [(match.start(), match.end()) for match in re.finditer(r"`+", line)]
+    next_equal: dict[int, int] = {}
+    closers: dict[int, int] = {}
+    for index in range(len(runs) - 1, -1, -1):
+        start, end = runs[index]
+        length = end - start
+        if length in next_equal:
+            closers[index] = next_equal[length]
+        next_equal[length] = index
+    index = 0
+    while index < len(runs):
+        closer = closers.get(index)
+        if closer is None:
+            index += 1
         else:
-            i = j  # no matching closer; the backticks are literal text
+            yield runs[index][0], runs[closer][1]
+            index = closer + 1
 
 
 def exempt_mask(line: str) -> list[bool]:

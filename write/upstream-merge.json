@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "ed57ea5d024b9352b5fa1d4e809d288228706a28382b9fbce658cd9e95634818",
-      "local_sha256": "35132a0c4256508f6d188d6f5f81e05f8277c5460c9c48efcd874698751cb955",
+      "local_sha256": "c93e888d88179cd8f05dd290dd759579479c5e629c3ff6eb14390d8a2f62d2f4",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Rewrites and polishes Chinese or English prose, technical instructions, and product copy. Use when drafting, editing, localizing, or cutting AI tone. Not for code comments or commit messages.\"\n",
@@ -43,7 +43,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "f2323c0644f0c3098a8cf241c8a63cdc79649233ebc805da7d8dcff570e990ce"
+          "added_sha256": "4af2e54f98e25cdcad75ef1f1270b60143ba233a90c1a39da13289c783652f5c"
         },
         {
           "upstream_lines": [
@@ -263,11 +263,12 @@
     },
     "scripts/check_punctuation.py": {
       "upstream_sha256": "e05fa402dd5a176e9a4b5d4b9fe49a98f30de17cd51361f7dbc851dd6fdfe03f",
-      "local_sha256": "6f9d9e88e9d7074184e03b28ca70876c9140d868650d7eb3d813d13b11bd82ba",
+      "local_sha256": "ca3b8868521be3ed0861b257f5a3a7e81942beb5954236b26f030e3834a95673",
       "status": "adapted",
       "reason": [
         "Mask the wikilink target before the pipe; inspect the rendered alias after it.",
-        "Correct the comment to match Obsidian target|label syntax."
+        "Correct the comment to match Obsidian target|label syntax.",
+        "Pair backtick delimiters with indexed next matches to avoid repeated suffix scans while preserving inline-code exemptions."
       ],
       "changes": [
         {
@@ -284,12 +285,36 @@
         },
         {
           "upstream_lines": [
+            63,
+            90
+          ],
+          "local_lines": [
+            63,
+            78
+          ],
+          "removed_sha256": "b738f8fc41d035b4ad7a4c565da8e33dfd9494a540bed5f41193e30e894db6df",
+          "added_sha256": "0110e63df6cbedd803c6d09e9e6b476642582f83bef8392c6c88588281cce7cb"
+        },
+        {
+          "upstream_lines": [
+            91,
+            92
+          ],
+          "local_lines": [
+            79,
+            81
+          ],
+          "removed_sha256": "a79bcfaf6457cb9750e8a9888e4ca4e499f3dedd797c84a92c22e053d79a6bb2",
+          "added_sha256": "766b108f4d900ee98597888f06b3b241382f46c029de34d86175d98c7c9c495b"
+        },
+        {
+          "upstream_lines": [
             105,
             106
           ],
           "local_lines": [
-            105,
-            106
+            94,
+            95
           ],
           "removed_sha256": "8210d8eb69c73c59522781b3ba14d2ea70e8aa66675cf29183162c6b827c75f2",
           "added_sha256": "1f00f7fce49fca3f582eafebe65ced7baabf40b362530319507f015a3f208d27"
@@ -300,6 +325,6 @@
   "local_only": {
     "LICENSE": "83ef2e3caa22ff257740df8684627ef8c4e21102986cf943e3fdd31ca7b430d5",
     "references/技术说明消歧.md": "2c221a89a63610ce59c0efbb8d242ade694566789b4d1b0a022f23f1b52bcd88",
-    "tests/test_punctuation.py": "ce8eff5c370a68b6565b1bdb26315f2a5afc8a5cbec7ab61a4ed310c61b8e9f7"
+    "tests/test_punctuation.py": "30d9344037cea52a99249317d247c028980025b6b561523a1d79d1ef4ff839fd"
   }
 }

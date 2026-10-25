@@ -20,12 +20,16 @@ def main():
     ap.add_argument("--width", type=int, default=1800)
     a = ap.parse_args()
     work = Path(a.work)
-    before = sorted((work / "source_png").glob("slide-*.png"))
-    after = sorted((work / "out" / "png").glob("slide-*.png"))
-    pairs = list(zip(before, after))
+    def pages(directory):
+        return {int(p.stem.split("-")[-1]): p for p in directory.glob("slide-*.png")
+                if p.stem.split("-")[-1].isdigit()}
+    before = pages(work / "source_png")
+    after = pages(work / "out" / "png")
+    numbers = sorted(before.keys() & after.keys())
     if a.slides:
         keep = {int(x) for x in a.slides.split(",")}
-        pairs = [p for i, p in enumerate(pairs, 1) if i in keep]
+        numbers = [n for n in numbers if n in keep]
+    pairs = [(before[n], after[n]) for n in numbers]
     if not pairs:
         raise SystemExit("no rendered slides found; run extract_deck.py and render.py first")
     pad, lab = 16, 34

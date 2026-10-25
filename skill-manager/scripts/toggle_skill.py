@@ -9,8 +9,7 @@
   直装 skill → 重命名 SKILL.md ↔ SKILL.md.disabled
   插件       → 改 settings.json 的 enabledPlugins（全局或项目级）
 
---project 只对插件有意义：把插件启用在某个项目而非全局
-（baoyu 就是这么用的：全局关、~/creative 开）。
+--project 指定项目内的直装 Skill 或插件启用配置；省略时使用全局范围。
 """
 import io
 import os
@@ -25,21 +24,10 @@ else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 
-def resolve_plugin_key(name):
-    """支持简写：baoyu-skills → baoyu-skills@baoyu-skills。歧义则报错让用户写全。"""
-    registry = core.read_json(core.INSTALLED_PLUGINS_JSON, {}).get("plugins", {})
-    if name in registry:
-        return name
-    hits = [k for k in registry if k.split("@")[0] == name]
-    if len(hits) == 1:
-        return hits[0]
-    if len(hits) > 1:
-        print(f"❌ {name} 有多个匹配，请写全：{', '.join(hits)}")
-        sys.exit(1)
-    return None
-
-
 def toggle_plugin(key, enable, project):
+    if key not in core.read_json(core.INSTALLED_PLUGINS_JSON, {}).get("plugins", {}):
+        print(f"❌ 插件 {key} 未安装")
+        return False
     settings_path = (os.path.join(os.path.abspath(project), ".claude", "settings.json")
                      if project else core.GLOBAL_SETTINGS)
     where = f"项目 {os.path.basename(os.path.abspath(project))} " if project else "全局"
@@ -48,28 +36,32 @@ def toggle_plugin(key, enable, project):
     plugins = data.setdefault("enabledPlugins", {})
     if plugins.get(key) is enable:
         print(f"ℹ️  {key} 在{where}已经是{'启用' if enable else '禁用'}状态，无需改动")
-        return
+        return True
     plugins[key] = enable
     core.write_json(settings_path, data)
     print(f"✅ {key} 已在{where}{'启用' if enable else '禁用'}")
     print(f"   写入 {settings_path}")
     print("   重启 Claude Code 会话后生效")
+    return True
 
 
 def toggle_direct(name, enable, project=None):
-    """在全局和所有已登记项目里找这个 skill。"""
-    core.safe_component(name, "skill 名")
-    scopes = ([(os.path.abspath(project), f"项目 {os.path.basename(os.path.abspath(project))}")]
-              if project else [(None, "全局")] + [
-                  (p, f"项目 {os.path.basename(p)}") for p in core.load_projects()])
-
-    for scope, where in scopes:
-        d, error = core.resolve_direct_path(name, scope)
-        if error:
-            print(f"❌ {error}")
+    """Use the same scope and entity lock as a direct update."""
+    d, error = core.resolve_direct_path(name, project)
+    if error:
+        print(f"❌ {error}")
+        return None
+    if not d:
+        return False
+    where = f"项目 {os.path.abspath(project)}" if project else "全局"
+    root = core.direct_state_dir(d)
+    with core.maintenance_lock(root) as acquired:
+        if not acquired:
+            print(f"❌ {name} 正在维护，请稍后重试")
             return None
-        if not d:
-            continue
+        if os.path.exists(os.path.join(root, "transaction.json")):
+            print(f"❌ {name} 有待恢复更新，请先对同一对象运行 update")
+            return None
         md = os.path.join(d, "SKILL.md")
         md_dis = os.path.join(d, "SKILL.md.disabled")
         if enable:
@@ -120,16 +112,13 @@ def main():
             print(f"❌ 项目路径不存在：{project}")
             sys.exit(1)
 
-    project_direct = False
-    if project:
-        direct_path, direct_error = core.resolve_direct_path(name, project)
-        if direct_error:
-            print(f"❌ {direct_error}")
+    kind, key, error = core.resolve_target(name, project=project)
+    if error:
+        print(f"❌ {error}")
+        sys.exit(1)
+    if kind == "plugin":
+        if not toggle_plugin(key, enable, project):
             sys.exit(1)
-        project_direct = direct_path is not None
-    key = None if project_direct else resolve_plugin_key(name)
-    if key:
-        toggle_plugin(key, enable, project)
         return
 
     result = toggle_direct(name, enable, project)

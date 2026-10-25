@@ -174,6 +174,63 @@ def pending_correction_count(root: Path) -> int:
     return sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.rstrip().endswith("| candidate |"))
 
 
+def validate_verified_record(record: object) -> dict:
+    """Validate one event identically before persistence and during ledger reads."""
+    if not isinstance(record, dict):
+        raise ValueError("verified correction event must be an object")
+    event = record.get("event", "approve")
+    event_at_text = record.get("event_at", record.get("approved_at", ""))
+    fingerprint = record.get("fingerprint", "")
+    version = record.get("version")
+    if (not isinstance(version, int) or isinstance(version, bool)
+            or version not in {1, VERIFIED_VERSION}
+            or not isinstance(event, str) or event not in {"approve", "revoke", "promote"}
+            or not isinstance(event_at_text, str)
+            or not isinstance(fingerprint, str) or not FINGERPRINT.fullmatch(fingerprint)):
+        raise ValueError("invalid verified correction event fields")
+    try:
+        event_at = datetime.fromisoformat(event_at_text)
+        if event_at.tzinfo is None:
+            raise ValueError("approval time must have a timezone")
+        approved_utc = event_at.astimezone(timezone.utc)
+    except (ValueError, OverflowError) as exc:
+        raise ValueError("invalid approval time") from exc
+    normalized = {**record, "event": event, "event_at": event_at_text}
+    if event != "approve":
+        return normalized
+    answer = record.get("answer")
+    scope = record.get("scope")
+    source_id = record.get("source_id", f"candidate:{fingerprint}")
+    if (not isinstance(answer, str) or not answer.strip()
+            or "verified-corrections" in answer.lower() or contains_secret(answer)
+            or not isinstance(scope, str)
+            or not isinstance(source_id, str) or not source_id.strip()):
+        raise ValueError("invalid or unsafe verified correction content")
+    if normalize_scope(scope, require_project=False) != scope:
+        raise ValueError("verified correction scope must be normalized")
+    priority = record.get("priority", "normal")
+    promotion_target = record.get("promotion_target", "legacy" if version == 1 else "")
+    review_at = expires_at = None
+    if version == VERIFIED_VERSION:
+        try:
+            review_at = datetime.fromisoformat(record.get("review_at", ""))
+            expires_at = datetime.fromisoformat(record.get("expires_at", ""))
+            if (review_at.tzinfo is None or expires_at.tzinfo is None
+                    or not event_at < review_at < expires_at
+                    or not isinstance(priority, str) or priority not in PRIORITIES
+                    or not isinstance(promotion_target, str) or not promotion_target.strip()):
+                raise ValueError("invalid verified correction lifecycle")
+            review_at = review_at.astimezone(timezone.utc)
+            expires_at = expires_at.astimezone(timezone.utc)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("invalid verified correction lifecycle") from exc
+    normalized.update(
+        source_id=source_id, priority=priority, promotion_target=promotion_target,
+        _approved_utc=approved_utc, _review_utc=review_at, _expires_utc=expires_at,
+    )
+    return normalized
+
+
 def load_verified_records(root: Path) -> tuple[list[dict], int]:
     """Fold the append-only approval event ledger into current active records."""
     path = root / VERIFIED_RELATIVE
@@ -186,27 +243,12 @@ def load_verified_records(root: Path) -> tuple[list[dict], int]:
         if not line.strip():
             continue
         try:
-            record = json.loads(line)
-        except json.JSONDecodeError:
+            record = validate_verified_record(json.loads(line))
+        except (OSError, ValueError):
             malformed += 1
             continue
-        if not isinstance(record, dict):
-            malformed += 1
-            continue
-        event = record.get("event", "approve")
-        event_at_text = record.get("event_at", record.get("approved_at", ""))
-        try:
-            event_at = datetime.fromisoformat(event_at_text)
-        except (TypeError, ValueError):
-            event_at = None
-        fingerprint = record.get("fingerprint", "")
-        version = record.get("version")
-        common_valid = (version in {1, VERIFIED_VERSION} and isinstance(event, str) and event in {"approve", "revoke", "promote"}
-                        and isinstance(event_at_text, str) and event_at is not None and event_at.tzinfo is not None
-                        and isinstance(fingerprint, str) and FINGERPRINT.fullmatch(fingerprint))
-        if not common_valid:
-            malformed += 1
-            continue
+        event = record["event"]
+        fingerprint = record["fingerprint"]
         if event in {"revoke", "promote"}:
             current = active.pop(fingerprint, None)
             if current is None:
@@ -221,48 +263,11 @@ def load_verified_records(root: Path) -> tuple[list[dict], int]:
                 active_sources.pop(source_id, None)
             continue
 
-        required = isinstance(record.get("answer"), str) and isinstance(record.get("scope"), str)
-        scope = record.get("scope", "")
-        try:
-            scope_valid = normalize_scope(scope, require_project=False) == scope
-        except (OSError, ValueError):
-            scope_valid = False
-        priority = record.get("priority", "normal")
-        promotion_target = record.get("promotion_target", "legacy" if version == 1 else "")
-        review_at = None
-        expires_at = None
-        lifecycle_valid = True
-        if version == VERIFIED_VERSION:
-            try:
-                review_at = datetime.fromisoformat(record.get("review_at", ""))
-                expires_at = datetime.fromisoformat(record.get("expires_at", ""))
-                lifecycle_valid = (
-                    review_at.tzinfo is not None
-                    and expires_at.tzinfo is not None
-                    and event_at < review_at < expires_at
-                    and priority in PRIORITIES
-                    and isinstance(promotion_target, str)
-                    and bool(promotion_target.strip())
-                )
-            except (TypeError, ValueError):
-                lifecycle_valid = False
-        source_id = record.get("source_id", f"candidate:{fingerprint}")
-        if (not required or not isinstance(source_id, str) or not source_id.strip()
-                or fingerprint in active or source_id in active_sources or not scope_valid or not lifecycle_valid
-                or not record.get("answer", "").strip()
-                or "verified-corrections" in record.get("answer", "").lower() or contains_secret(record.get("answer", ""))):
+        source_id = record["source_id"]
+        if fingerprint in active or source_id in active_sources:
             malformed += 1
             continue
-        normalized = dict(record)
-        normalized["event"] = "approve"
-        normalized["event_at"] = event_at_text
-        normalized["source_id"] = source_id
-        normalized["priority"] = priority
-        normalized["promotion_target"] = promotion_target
-        normalized["_approved_utc"] = event_at.astimezone(timezone.utc)
-        normalized["_review_utc"] = review_at.astimezone(timezone.utc) if review_at else None
-        normalized["_expires_utc"] = expires_at.astimezone(timezone.utc) if expires_at else None
-        active[fingerprint] = normalized
+        active[fingerprint] = record
         active_sources[source_id] = fingerprint
     records = list(active.values())
     records.sort(key=lambda item: item["_approved_utc"], reverse=True)
@@ -281,7 +286,7 @@ def append_verified_correction(
     review_after_days: int = 30,
     expires_after_days: int = 90,
 ) -> bool:
-    if not FINGERPRINT.fullmatch(fingerprint):
+    if not isinstance(fingerprint, str) or not FINGERPRINT.fullmatch(fingerprint):
         raise ValueError("invalid correction fingerprint")
     scope = normalize_scope(scope)
     if priority not in PRIORITIES:
@@ -296,11 +301,12 @@ def append_verified_correction(
     records, malformed = load_verified_records(root)
     if malformed:
         raise ValueError("verified correction ledger is malformed")
-    source_id = source_id or f"candidate:{fingerprint}"
+    source_id = f"candidate:{fingerprint}" if source_id is None else source_id
     for existing in records:
         if existing["fingerprint"] == fingerprint or existing.get("source_id") == source_id:
             same = (
-                existing["fingerprint"] == fingerprint
+                existing["version"] == VERIFIED_VERSION
+                and existing["fingerprint"] == fingerprint
                 and existing["answer"] == answer
                 and existing["scope"] == scope
                 and existing.get("source_id") == source_id
@@ -326,6 +332,7 @@ def append_verified_correction(
         "review_at": (approved_at + timedelta(days=review_after_days)).isoformat(timespec="seconds"),
         "expires_at": (approved_at + timedelta(days=expires_after_days)).isoformat(timespec="seconds"),
     }
+    validate_verified_record(record)
     atomic_write(path, current + json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
     return True
 
@@ -381,6 +388,7 @@ def revoke_verified_correction(root: Path, fingerprint: str) -> bool:
         "event_at": datetime.now(timezone.utc).isoformat(timespec="microseconds"),
         "fingerprint": fingerprint,
     }
+    validate_verified_record(event)
     atomic_write(path, current + json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
     return True
 
@@ -406,6 +414,7 @@ def promote_verified_correction(root: Path, fingerprint: str) -> str:
         "fingerprint": fingerprint,
         "promotion_target": record["promotion_target"],
     }
+    validate_verified_record(event)
     atomic_write(path, current + json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
     return record["promotion_target"]
 

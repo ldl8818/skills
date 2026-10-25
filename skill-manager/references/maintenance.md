@@ -136,16 +136,19 @@ update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有�
 - 所有外部名字先过 `core.safe_component`，所有派生路径再过 `core.contained_path`；
   两层都不能省。插件登记表和上游 manifest 都是不可信输入。
 - 远端归档通过 Python 下载和解包，不允许 `shell=True`，并拒绝路径逃逸、外部链接和设备文件；只将合法的归档内链接实体化为普通文件。
+- 归档中的普通文件和实体化链接保留 `mode & 0777`，不复制 setuid／setgid／sticky 位；溯源路径必须位于完整下载快照内，显式路径还须匹配 Skill 身份。
 - JSON 只对“文件不存在”使用默认值；损坏、权限错误必须硬失败。写入统一走同目录
   临时文件、`fsync`、`os.replace`。
-- 直装更新先在相邻 staging 目录完成合并与校验，再原子替换在线目录；在线目录不能
-  在校验完成前逐文件覆盖。
+- 直装更新与启停复用 `core.maintenance_lock`，锁按真实安装目录定位。批量目标传递真实目录和项目范围，别名只执行一次；裸名解析复用 `core.resolve_target`。
+- 直装更新先在相邻 staging 目录完成合并与校验，缓存本轮源文件比较所需的 staging 快照，再通过两次 rename 切换目录。切换前的 live 快照包含文件哈希、实际入口名、普通权限和现有合并回执；它与内容审计的入口归一化口径分开。
+- 切换前将旧／新快照及目录位置写入 `~/.skill-manager/direct/<实体摘要>/transaction.json`。两次 rename 的 `BaseException` 触发恢复，SIGTERM／SIGHUP 在主线程转换为可清理中断，退出时恢复原 handler。恢复失败保留原异常、事务记录和剩余材料，不声称在线目录原状。
+- SIGKILL 无法捕获，两次 rename 之间可能暂时没有在线目录；下次对同一对象运行 `update` 时在锁内核对记录并恢复。完整旧版或新版可以接续，目录漂移或恢复材料不完整则报告待恢复并保留现场；不保证断电耐久或不可捕获终止下的零缺口切换。
 - **直装更新流程**：frozen 转完整隔离合并流程 → ls-remote 定位目标（相同 hash 不代替内容核验）→ 整目录备份 → 下载旧／新源快照并按
   `github_path` 定位 → 三方合并落盘（保留同名文件本地改造、PRESERVE 字段、User-Learned 段、本地独有文件，
   同步上游 `VERSION` 到 version 字段）→ **落盘后自检**（`validate_skill_md`：新
   `SKILL.md` 解析不出 `name`/`description` 就判定合并出坏文件，从整目录备份回滚，
   不当成功）→ 完整源文件／本地差异回执核验及并发改动核对 → **打印变更摘要**（`summarize_change`：description 变了 / 章节增减，
-  避免「hash 换了但没人知道换了什么」的静默更新）→ 失败不改本地。
+  避免「hash 换了但没人知道换了什么」的静默更新）。候选校验失败不切换；切换故障按持久事务核对和恢复。
 - **Claude 插件更新流程**：先核对安装目录与登记旧基线，未知或存在本地差异时保持原状并转隔离对账；无差异才下载新 tarball 定位插件目录（仓库根 → `plugins/<名>` → `external_plugins/<名>` →
   浅层扫描；判据 = `.claude-plugin/plugin.json` 或 `marketplace.json`+`skills/`）→
   结构验证通过才写登记表 → 同步 `descriptions_zh.json`。
@@ -153,6 +156,8 @@ update 更到最新 tag，check 就拿 tag 比（拿 HEAD 比会永远报「有�
   `descriptions_zh.json`）；Claude 插件清 4 处（缓存目录连父目录、`installed_plugins.json`、
   旗下 skill 的中文描述、全局与各项目的 `enabledPlugins`）。两条路径必须对称维护。
   注意 `--dry-run` **列表为空和函数没扫到长得一模一样**，改代码后要单独验证「确实没有」。
+- 插件删除遇到异常时，缓存／数据目录、登记表、中文描述与每份设置逐项独立恢复；某一项失败仍继续其他项，并保留原始异常。
+- 原生命令的 SIGTERM／SIGHUP 清理只终止本次创建的子进程组，并恢复调用方 signal handler；SIGKILL 无法运行该清理。lookup 回执即使配置未变，只要为未知、pending、中断状态，或顶层／任一批量子项声明 `retry_safe: false`、`outcome_unknown: true`、`current_preserved: false`，就阻止自动重复委派并保留原回执；历史回执没有 `retry_safe` 字段时也按这些语义标记判定。没有此类标记的语义待判断结果仍可在核实后接续。
 
 ## 独立事故（不对应上面某条规则，但别再犯）
 

@@ -34,6 +34,9 @@ import hashlib
 import subprocess
 import tempfile
 import unicodedata
+import signal
+import threading
+from contextlib import contextmanager
 from datetime import datetime, date
 
 # 用到了 removesuffix（3.9+）。不在这里拦，老版本会在 update/trace 跑到一半才抛
@@ -152,6 +155,49 @@ MANAGED_FIELDS = ("version", "zh_description", "github_url",
 
 
 # ── 基础 IO ──────────────────────────────────────────────
+
+@contextmanager
+def maintenance_lock(root):
+    """Share one nonblocking flock for each maintenance entity."""
+    import fcntl
+    os.makedirs(root, mode=0o700, exist_ok=True)
+    path = os.path.join(root, "maintenance.lock")
+    if os.path.islink(path):
+        raise ValueError("redirected maintenance lock")
+    with open(path, "a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            yield False
+        else:
+            yield True
+
+
+def direct_state_dir(path):
+    identity = hashlib.sha256(os.fsencode(os.path.realpath(path))).hexdigest()
+    return os.path.join(STATE_DIR, "direct", identity)
+
+
+@contextmanager
+def maintenance_signals():
+    """Route termination through cleanup; restore the caller's handlers."""
+    previous = {}
+
+    def interrupt(signum, frame):
+        for sig in previous:
+            signal.signal(sig, signal.SIG_IGN)
+        raise KeyboardInterrupt(f"maintenance interrupted by signal {signum}")
+
+    try:
+        if threading.current_thread() is threading.main_thread():
+            for sig in (signal.SIGTERM, signal.SIGHUP):
+                previous[sig] = signal.getsignal(sig)
+                signal.signal(sig, interrupt)
+        yield
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
 
 def read_json(path, default=None):
     _ensure_data_migrated(path)
@@ -895,14 +941,14 @@ def marketplace_repo(marketplace):
 
 # ── 名字解析：用户只写裸名，市场名由这里补 ──────────────────
 
-def resolve_target(name, quiet=False):
+def resolve_target(name, quiet=False, project=None):
     """用户给的名字 → (kind, 真实 key, 错误说明)。kind ∈ {"skill", "plugin"}。
 
     插件的真实 key 是 `插件名@市场名`（codex@openai-codex），但市场名是安装来源的
     内部标识，用户没理由记得住。这里替他补全：裸名字在登记表里唯一命中就直接补。
     撞名（同名插件装在两个市场）时列候选让人挑 —— 猜一个的代价是操作错对象。
 
-    update / delete 共用此解析，别再各写一份（收集逻辑单源，见 SKILL.md 状态模型）。
+    update / delete / toggle 共用此解析（收集逻辑单源，见 SKILL.md 状态模型）。
     """
     registry = read_json(INSTALLED_PLUGINS_JSON, {}).get("plugins", {})
 
@@ -916,7 +962,7 @@ def resolve_target(name, quiet=False):
     except ValueError as exc:
         return None, None, str(exc)
 
-    direct_path, direct_error = resolve_direct_path(name)
+    direct_path, direct_error = resolve_direct_path(name, project)
     if direct_error:
         return None, None, direct_error
     if direct_path:
@@ -1168,6 +1214,15 @@ def resolve_direct_path(name, project=None):
             continue
         matches.sort(key=lambda e: (not e["enabled"], e["priority"], e["path"]))
         candidates.append(matches[0]["path"])
+    # A killed update may have retired the live directory. Keep that entity
+    # addressable so update can recover it under the same installation lock.
+    identities = {os.path.realpath(path) for path in candidates}
+    for _, root in roots:
+        path = os.path.join(root, name)
+        if (os.path.isfile(os.path.join(direct_state_dir(path), "transaction.json"))
+                and os.path.realpath(path) not in identities):
+            candidates.append(path)
+            identities.add(os.path.realpath(path))
     if len(candidates) == 1:
         return candidates[0], None
     if len(candidates) > 1:

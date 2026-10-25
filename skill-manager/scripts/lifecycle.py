@@ -97,8 +97,9 @@ def _invoke(root, action='update', self_only=False, upstream_only=False, dry_run
         return {'status': 'outcome_unknown', 'error': 'LOOKUP_MAINTENANCE_TIMEOUT',
                 'root': str(root), 'retry_safe': False}, 1
     except (OSError, ValueError):
-        return {'status': 'error', 'error': 'LOOKUP_MAINTENANCE_RESULT_UNAVAILABLE',
-                'root': str(root)}, 1
+        return {'status': 'error' if action == 'check' else 'outcome_unknown',
+                'error': 'LOOKUP_MAINTENANCE_RESULT_UNAVAILABLE',
+                'root': str(root), 'retry_safe': action == 'check'}, 1
 
 
 def invoke_tool(name, dry_run=False):
