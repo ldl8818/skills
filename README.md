@@ -15,7 +15,7 @@
 | [`self-improving`](self-improving/) | Claude Code 与 Codex 共用的可配置、自我进化记忆系统；公开程序与私人记忆分离 |
 | [`skill-manager`](skill-manager/) | Skill 的列出、溯源、查更新、更新、启停、定版本、自检和归档删除 |
 | [`download-video`](download-video/) | 按中文内容标题和发布日期下载视频，并用 `ffprobe` 验证本地文件 |
-| [`luobo-ppt`](luobo-ppt/) | 生成与美化可编辑的原生 PPT；本地定制冻结版，项目以单跳软链引用 |
+| [`luobo-ppt`](luobo-ppt/) | 生成与美化可编辑的原生 PPT，支持公司模板、品牌规范及普通原生图表；本地定制冻结版 |
 
 每个 Skill 的依赖、安装和验证命令以其目录内的 `README.md` 与 `SKILL.md` 为准。
 

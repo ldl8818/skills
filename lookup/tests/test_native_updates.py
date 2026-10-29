@@ -167,6 +167,95 @@ elif outcome=='missing-skill':
             self.assertEqual(upstream.update(self.store, 'ego-browser')['status'], 'updated')
         self.assertEqual(calls.read_text(), 'upgrade\n')
 
+    def register_during_ego_upgrade(self, binary):
+        skill = self.home / '.agents/skills/ego-browser'
+        with binary.open('a') as handle:
+            handle.write('if args==["upgrade"]:\n'
+                         f' skill=pathlib.Path({str(skill)!r});skill.mkdir(parents=True,exist_ok=True)\n'
+                         ' (skill/"SKILL.md").write_text("---\\nname: ego-browser\\n---\\nnew bundled guide\\n")\n')
+        return skill
+
+    def assert_new_discovery_handled(self, behavior, expected):
+        binary, _, calls = self.ego(behavior)
+        skill = self.register_during_ego_upgrade(binary)
+        if behavior == 'error':
+            # Registration precedes a failing native command.
+            text = binary.read_text().replace("elif behavior=='error':raise SystemExit(1)",
+                "elif behavior=='error':pass")
+            binary.write_text(text + 'if args==["upgrade"]:raise SystemExit(1)\n')
+        first = upstream.update(self.store, 'ego-browser')
+        self.assertEqual(first['status'], expected, first)
+        self.assertFalse(skill.exists(), first)
+        self.assertFalse(first['discovery_pending'])
+        receipt = json.loads((self.home / '.local/share/lookup/execution-skills/entries.json').read_text())
+        preserved = Path(receipt['entries'][-1]['preserved']) / 'SKILL.md'
+        self.assertIn('new bundled guide', preserved.read_text())
+        if behavior in ('pending', 'error'):
+            # A late installer registration is caught by recovery too.
+            skill.mkdir(parents=True)
+            (skill / 'SKILL.md').write_text('---\nname: ego-browser\n---\nlate registration\n')
+            again = upstream.update(self.store, 'ego-browser')
+            self.assertEqual(again['status'], 'outcome_unknown', again)
+            self.assertFalse(skill.exists())
+            self.assertEqual(calls.read_text(), 'upgrade\n')
+
+    def test_pending_native_update_archives_new_discovery_without_promoting_status(self):
+        self.assert_new_discovery_handled('pending', 'pending')
+
+    def test_failed_native_update_archives_new_discovery_without_promoting_status(self):
+        self.assert_new_discovery_handled('error', 'outcome_unknown')
+
+    def test_successful_native_update_archives_new_discovery(self):
+        self.assert_new_discovery_handled('updated', 'updated')
+
+    def test_current_native_update_archives_new_discovery(self):
+        self.assert_new_discovery_handled('current', 'up_to_date')
+
+    def test_unconfirmed_discovery_conflict_resumes_without_reinvoking_native_update(self):
+        binary, _, calls = self.ego('pending')
+        skill = self.register_during_ego_upgrade(binary)
+        shared = self.home / '.agents/skills'
+        shared.mkdir(parents=True)
+        conflicting = self.home / 'other-lookup'
+        conflicting.mkdir()
+        link = shared / 'lookup'
+        link.symlink_to(conflicting)
+        result = upstream.update(self.store, 'ego-browser')
+        self.assertEqual(result['status'], 'pending', result)
+        self.assertTrue(result['discovery_pending'])
+        self.assertTrue(skill.exists())
+        link.unlink()
+        link.symlink_to(SCRIPT.parents[1])
+        result = upstream.update(self.store, 'ego-browser', retry=True)
+        self.assertEqual(result['status'], 'outcome_unknown', result)
+        self.assertFalse(result['discovery_pending'])
+        self.assertFalse(skill.exists())
+        self.assertFalse(result['native_reinvoked'])
+        self.assertEqual(calls.read_text(), 'upgrade\n')
+
+    def test_pending_discovery_conflict_can_reconcile_a_later_completed_upgrade(self):
+        binary, version, calls = self.ego('pending')
+        skill = self.register_during_ego_upgrade(binary)
+        shared = self.home / '.agents/skills'
+        shared.mkdir(parents=True)
+        conflicting = self.home / 'other-lookup'
+        conflicting.mkdir()
+        link = shared / 'lookup'
+        link.symlink_to(conflicting)
+        first = upstream.update(self.store, 'ego-browser')
+        self.assertEqual(first['status'], 'pending')
+        self.assertTrue(first['discovery_pending'])
+        # The original operation finishes while its discovery conflict is pending.
+        version.write_text('0.6.0.17')
+        link.unlink()
+        link.symlink_to(SCRIPT.parents[1])
+        result = upstream.update(self.store, 'ego-browser')
+        self.assertEqual(result['status'], 'updated', result)
+        self.assertFalse(result['discovery_pending'])
+        self.assertFalse(skill.exists())
+        self.assertTrue(result['recovered_after_interrupt'])
+        self.assertEqual(calls.read_text(), 'upgrade\n')
+
     def test_ego_changed_local_skill_is_retained_then_merged_without_reupgrade(self):
         header = '---\nname: ego-browser\ndescription: Synthetic browser execution guide.\n---\n'
         binary, _, calls = self.ego()

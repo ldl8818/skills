@@ -100,11 +100,11 @@ class ReachImportTests(unittest.TestCase):
             manifest = {'commit': 'a' * 40, 'archive_sha256': 'b' * 64,
                         'version': '1.0.0', 'adaptations': []}
             files = {'agent_reach/__init__.py': b'',
-                     'agent_reach/integrations/__init__.py': b''}
-            for name in ('cli.py', 'integrations/mcp_server.py'):
+                     'agent_reach/runtime/__init__.py': b''}
+            for name in ('cli.py', 'runtime/manage.py'):
                 files['agent_reach/' + name] = (
                     'import json,sys\nfrom pathlib import Path\n'
-                    'print(json.dumps({"source":str(Path(__file__).resolve()),"args":sys.argv[1:]}))\n'
+                    'print(json.dumps({"source":str(Path(__file__).resolve()),"args":sys.argv[1:]}))\nraise SystemExit(0)\n'
                 ).encode()
             with patch.dict(os.environ, env):
                 directory = reach.runtime_dir(manifest)
@@ -137,7 +137,7 @@ class ReachImportTests(unittest.TestCase):
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text('print("UNVERIFIED_WORKSPACE_PACKAGE")\n')
                 for action, name in ((['run', 'version'], 'cli.py'),
-                                     (['mcp'], 'integrations/mcp_server.py')):
+                                     (['mcp'], 'runtime/manage.py')):
                     for cwd, pythonpath in ((neutral, ''), (shadow, ''), (neutral, str(shadow)),
                                             (shadow, str(shadow))):
                         with self.subTest(action=action, cwd=cwd.name, pythonpath=bool(pythonpath)):

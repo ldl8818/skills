@@ -4,7 +4,7 @@
 
 lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 全部执行能力，以及联网搜索、媒体和本地 UI 验收。能用 API、连接器、CLI 或系统命令完成时先用它们；确需浏览器时，先按 [浏览器选路「操作前选路」](references/浏览器选路.md#操作前选路)核实任务与浏览器身份，再打开、接管或导航标签。本地 UI 开发与验收使用当前桌面客户端窗口内的浏览器面板；没有可用面板或无法完成目标时使用 ego-lite。其他浏览器任务使用 ego-lite，由 Agent 自动识别入口，不要求用户提供技术参数。ego-lite 不可用时报告阻塞，不切 Chrome 或其他浏览器。只将 lookup 注册为自动入口，由当前 Agent 按需读取平台／工具指南并执行；工具随附的通用优先声明不重做选路。完整能力、依赖和适配见 [Agent Reach 融合](references/Agent-Reach融合.md) 与 [OpenCLI 融合](references/OpenCLI融合.md)，选路分别见 [任务选路](references/任务选路.md) 与 [浏览器选路](references/浏览器选路.md)。
 
-lookup 2.4.5完整纳入 Agent Reach 主分支 `94f06c1` 的121个来源文件、16个渠道、11类 CLI、7类参考、5份设置指南、MCP 和公开 Python 接口；同时纳入 OpenCLI 正式版2.0.2的170个站点、1,223条站点命令和66条内置命令，以及全部5套 Skill。Agent Reach 来源随压缩快照保存；OpenCLI 完整源码／发布包以逐文件回执固定，完整源码可校验后按需缓存，原始 Skill 不进入自动发现。平台可用性仍取决于本机工具、账号和当前真实结果；完整融合不表示所有站点已逐项实测。
+lookup 2.5.0完整纳入 Agent Reach 1.6.0主分支 `14c2134` 的118个来源文件、14个原生渠道及40个动作、15类 CLI 和3份参考；原16类任务通过原生能力与 lookup 直接路线分别保留，旧 Python／命令迁移、状态 MCP 薄适配与浏览器授权边界单独核对；同时纳入 OpenCLI 正式版2.0.2的170个站点、1,223条站点命令和66条内置命令，以及全部5套 Skill。Agent Reach 来源随压缩快照保存；OpenCLI 完整源码／发布包以逐文件回执固定，完整源码可校验后按需缓存，原始 Skill 不进入自动发现。平台可用性仍取决于本机工具、账号和当前真实结果；完整融合不表示所有站点已逐项实测。
 
 平台抓取优先发现并实测 OpenCLI 动作，保留 yt-dlp 等更合适的专用 CLI；网站改版导致适配失效时先修复，经过3轮有效修复仍未完成目标才允许 ego-lite 通用浏览器抓取兜底。轮次、记录与停止条件统一见 [适配器修复与浏览器兜底](references/failure-domains.md#适配器修复与浏览器兜底)，普通重跑不算修复，成功即停。连接探针不能代替业务调用；用户指定、视觉／交互目标和账号／权限边界分别判断。全网搜索顺序只用于全网搜索。小红书新版布局的定向修复见[执行与诊断](references/opencli-windows.md#小红书新版搜索适配)。
 
@@ -63,7 +63,7 @@ Ego Lite 是基于 Chromium 的浏览器，OpenCLI 是独立项目。两条路�
 flowchart TB
     agent["Codex / Claude Code / Hermes<br/>理解用户任务并推理"]
     lookup["lookup Skill<br/>统一检索与浏览器选路<br/>识别证据需求 · 授权边界 · 选路"]
-    reach["完整 Agent Reach 基础<br/>16渠道 · 配置安装 · Doctor · 转写"]
+    reach["完整 Agent Reach 基础<br/>14原生渠道 · 40动作<br/>直接路线保留RSS/Exa"]
     choose{"按任务与优先条件选路"}
     official["官方 API / 已连接服务 / 搜索"]
     adapters["OpenCLI 站点 Adapter / 专用 CLI"]
@@ -127,7 +127,7 @@ lookup upgrade ego-browser
 
 `lookup update` 维护本体和已安装的 OpenCLI、Agent Reach 与 Ego；`--self-only` 只更新本体，`lookup upgrade` 只更新上游，指定名称只更新该项。旧 `lookup update <dependency>` 保留兼容。缺失依赖跳过，不自动新增安装。本体仅处理官方选定通道的完整 `lookup/`，保留其他 Skill、Git HEAD、禁用状态和本机运行文件；无法核实旧源或发现定制时先生成比较材料。源码切换后加载新维护器，再验证上游。Skill Manager 的 `update lookup`、单项和批量检查调用同一维护入口；它不是运行终端命令的必装依赖。
 
-OpenCLI 候选验证后才切换有效版本；Agent Reach 使用原管理器或虚拟环境，保留来源并备份；Ego 调用原生 `ego-browser upgrade`，可能重启浏览器或等待界面确认。各项分别报告，部分完成或结果未知不算总更新成功。
+OpenCLI 候选验证后才切换有效版本；Agent Reach 使用原管理器或虚拟环境，保留来源并备份；Ego 调用原生 `ego-browser upgrade`，可能重启浏览器或等待界面确认。各项分别报告，部分完成或结果未知不算总更新成功。原生安装器即使仍在等待或返回失败，也会核对并归档它重新注册的已识别竞争 Skill；入口恢复与运行程序升级结果分别报告，不凭归档成功重发原生升级。
 
 更新会检查包内补丁、adapter、plugin 及独立 Skill。由维护 Agent 比较旧上游、本地与新上游，确认新版已支持的定制采用上游实现，尚未支持的定制继续保留。命令、自然语言和托管使用相同机制；独立终端需要语义判断时返回可接续材料，由 Agent 完成合并并核验后继续，不直接覆盖。回执用法及未知基线的处理见 [定制核对与合并](references/上游更新.md#定制核对与合并)。
 

@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/Waza",
-  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
   "source_path": "skills/check",
   "files": {
     "SKILL.md": {
-      "upstream_sha256": "dbf7cc3adfab3b2e9735f2bce9e1a89290767f66d29ec715bc7e39b8367ba4fa",
-      "local_sha256": "39b19a8a99ce3c3a1114ca613250c4869fa745b156aaf6e1dca8d091f871ddbf",
+      "upstream_sha256": "bb5a25a40a842d3e0df267c661f67b628f9fe9fc8e9ab77794e5031690892cbe",
+      "local_sha256": "30e1caad06b8f2d5962fe2ecd7994d233cd3c3a88abb5db4852d14fc1184ae61",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Reviews diffs, PRs, release readiness, and publishing follow-through. Use when asked to review, triage issues or PRs, or ship. Not for debugging root causes or prose.\"\n",
@@ -22,7 +22,10 @@
         "Keep repair classification aligned with existing authorization.",
         "Respect existing authorization in autofix routing.",
         "Keep the existing OCR adapter, complete task scope and proportional verification alongside the restored upstream review modes.",
-        "Document the discovery default and explicit execution path."
+        "Document the discovery default and explicit execution path.",
+        "Retain all new main-channel review coverage, release-channel baseline, incident replay, cache verification and reporting guidance. Risk depth continues to follow behavior rather than file count. Apply only project-required human gates; path matching does not create redundant approval under existing authorization.",
+        "Pre-existing in-scope material defects continue to affect readiness and authorized repair; label their origin without excluding them from the task verdict.",
+        "Repeated review rounds trigger reassessment of the shared approach, not an arbitrary three-round termination while authorized progress remains possible."
       ],
       "changes": [
         {
@@ -47,7 +50,7 @@
             17
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "a2e34e71288a2be6ea689da77e2f0c8aba769513fe2382050811dfd424b1200d"
+          "added_sha256": "9bbe2ef655904dcf7a5804efaa0e8430b9dd43a0ae12a4475f9d28032c17a8f0"
         },
         {
           "upstream_lines": [
@@ -87,60 +90,96 @@
         },
         {
           "upstream_lines": [
-            96,
-            99
+            97,
+            100
           ],
           "local_lines": [
-            108,
-            111
+            109,
+            112
           ],
           "removed_sha256": "f1ad807c0063c6ff7af22ee0c96c78a69c22eb97529a3abbaa1168d928969772",
           "added_sha256": "06cc7c334154405f79bc05e3d6356a390b0b50d3da2d1f7964dc4a650886e9e3"
         },
         {
           "upstream_lines": [
-            170,
-            171
+            103,
+            104
           ],
           "local_lines": [
-            182,
-            183
+            115,
+            116
+          ],
+          "removed_sha256": "1223fe37a36db3df1f58f7806b44f8bc27a661c662f6ce2cce5e18afbca49228",
+          "added_sha256": "9d48f63e2b7186de1739bcb200d6ffd7a97a13e4411350af3aec497ec0860fe4"
+        },
+        {
+          "upstream_lines": [
+            159,
+            160
+          ],
+          "local_lines": [
+            171,
+            172
+          ],
+          "removed_sha256": "68b3eb55766ccbe0d23cfdeea4308502e1e06de4abf9cf25f7c2006cb063e179",
+          "added_sha256": "3e914155851de6a195c51ef71149c57f3d6488af11409bb32adad2e84cb313a0"
+        },
+        {
+          "upstream_lines": [
+            161,
+            162
+          ],
+          "local_lines": [
+            173,
+            174
+          ],
+          "removed_sha256": "8f3d0e810c1f7b204509c39bcb361fb9585c0408430820e8cf0884f4976741ac",
+          "added_sha256": "4517a4bff082ad8f1e0701897dc47370bf5347143a8ed4c81b0507f1d24eb073"
+        },
+        {
+          "upstream_lines": [
+            177,
+            178
+          ],
+          "local_lines": [
+            189,
+            190
           ],
           "removed_sha256": "92ff2cdb46007ab5374676fd1e60042f2060e752e40aa5c8746773b926556514",
           "added_sha256": "640df6baceb908a91e6c6ba4c7b66a79482adb11d203d6e1550c733ee5554375"
         },
         {
           "upstream_lines": [
-            175,
-            176
+            182,
+            183
           ],
           "local_lines": [
-            187,
-            188
+            194,
+            195
           ],
           "removed_sha256": "354366270ea08022e007302c9a2b58a8e1e74958aab913c6fdab44f51d6f8c03",
           "added_sha256": "c3591ea0f20f39690db4286dc186f6540a18f893fc8bfb6a7a4a996115d7410c"
         },
         {
           "upstream_lines": [
-            189,
-            190
+            196,
+            197
           ],
           "local_lines": [
-            201,
-            202
+            208,
+            209
           ],
           "removed_sha256": "5945351061a3ab3275c54726e4f1419ff94e1fa003d7991b271bbb04b1554595",
           "added_sha256": "6116f7f6f361a4a94110c19b8c0a134916638086aa8bf56c98145acdcef2a70c"
         },
         {
           "upstream_lines": [
-            228,
-            228
+            236,
+            236
           ],
           "local_lines": [
-            240,
-            246
+            248,
+            254
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "added_sha256": "ae25cebc674bf6c179a6b27811e93b1debd5c2a63ea33402b36a3fe3914215c4"
@@ -207,6 +246,35 @@
         "## Scope": "## Scope"
       }
     },
+    "references/incident-ledger.md": {
+      "upstream_sha256": "aa381be281c337f7bd61965256d5c8b46ed0e7a85d31de47a1acae4e24292531",
+      "local_sha256": "cc0cc69e105f0d8675535a0e87a38ba1a49eee8fb35b237725cc2a8007515124",
+      "status": "adapted",
+      "reason": [
+        "Use incident ledgers only under the project documentation/privacy policy or existing authorization; the new replay reference does not by itself require creating a public project archive. Preserve all source sections, row fields, checker invocation and replay procedure."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            6,
+            7
+          ],
+          "local_lines": [
+            6,
+            7
+          ],
+          "removed_sha256": "640316f6d4a16aa0c464d9ab4ccbca093c5608fcb67e84f2fb394d8f14ae942f",
+          "added_sha256": "349d05fa6ac7c3e2d118b8ac0b1460d5f6b7cbc7255a31f36ec32b5fc8466618"
+        }
+      ],
+      "sections": {
+        "# Incident Ledger And Review Evals": "# Incident Ledger And Review Evals",
+        "## Incidents": "## Incidents",
+        "## Recurring classes": "## Recurring classes",
+        "## Replay eval": "## Replay eval",
+        "## The ledger": "## The ledger"
+      }
+    },
     "references/mode-audit.md": {
       "upstream_sha256": "074ae61d94fc1508c1299d6bd256bec29fe014dcb645ec9df9a9946d523e8b0e",
       "local_sha256": "074ae61d94fc1508c1299d6bd256bec29fe014dcb645ec9df9a9946d523e8b0e",
@@ -216,8 +284,8 @@
       }
     },
     "references/mode-ship.md": {
-      "upstream_sha256": "3d5c88991cb3480be7c1d5373b4649a2198b9734c311b2cd4bb99ad675922592",
-      "local_sha256": "3d5c88991cb3480be7c1d5373b4649a2198b9734c311b2cd4bb99ad675922592",
+      "upstream_sha256": "7f03c75194432a806bf65d8e8588c95fecee72712efcad7681f6408451489023",
+      "local_sha256": "7f03c75194432a806bf65d8e8588c95fecee72712efcad7681f6408451489023",
       "status": "identical",
       "sections": {
         "# Release Worthiness And Ship Follow-through": "# Release Worthiness And Ship Follow-through",
@@ -283,9 +351,26 @@
       }
     },
     "references/project-context.md": {
-      "upstream_sha256": "3da5ec64a9b7e2a4514716d6d58d273c73d705844f7f8b139cb8a739a08f7dc1",
-      "local_sha256": "3da5ec64a9b7e2a4514716d6d58d273c73d705844f7f8b139cb8a739a08f7dc1",
-      "status": "identical",
+      "upstream_sha256": "8a57d673cecea4cb561072e2b585cd395f5652870d7870a24c8b787d662c5898",
+      "local_sha256": "3573b24af38ffd8d484d54f2f5390ac175ba8a3f5b418d72315e15cb8e235206",
+      "status": "adapted",
+      "reason": [
+        "Preserve the new path-based risk-tier method, verifier evidence and rollback contract. Use the gates actually required by the project and current authorization instead of imposing unconditional full tests and an additional human approval on every matched path."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            134,
+            135
+          ],
+          "local_lines": [
+            134,
+            135
+          ],
+          "removed_sha256": "44e12709cabaa7d05ae198b23f64529f52fa381f22a20bf67cc623a6a1dacb47",
+          "added_sha256": "be742c8b723477c9ffbefd8dff507fdf641c5270cbb9d5e46dd2194dc2944a55"
+        }
+      ],
       "sections": {
         "# Project Review Context Template": "# Project Review Context Template",
         "## CLI Command Surface": "## CLI Command Surface",
@@ -300,7 +385,8 @@
         "## Skill Or Plugin Install Surface": "## Skill Or Plugin Install Surface",
         "## What Belongs In Project Context": "## What Belongs In Project Context",
         "## What Belongs In Waza `/check`": "## What Belongs In Waza `/check`",
-        "## What Does Not Belong In Public Context": "## What Does Not Belong In Public Context"
+        "## What Does Not Belong In Public Context": "## What Does Not Belong In Public Context",
+        "### Risk tiers by path": "### Risk tiers by path"
       }
     },
     "references/public-reply.md": {
@@ -312,8 +398,8 @@
       }
     },
     "references/release-surfaces.md": {
-      "upstream_sha256": "d1969e7bd947a4b23b21b349271b9c4cac835a2c8b449d947dd2ff228c4f018b",
-      "local_sha256": "d1969e7bd947a4b23b21b349271b9c4cac835a2c8b449d947dd2ff228c4f018b",
+      "upstream_sha256": "53c139b1b5579d6acb5727f72235c9026a8ab0b18b59f9ccc11ad8753f4b98f4",
+      "local_sha256": "53c139b1b5579d6acb5727f72235c9026a8ab0b18b59f9ccc11ad8753f4b98f4",
       "status": "identical",
       "sections": {
         "# Release Surface Review Methods": "# Release Surface Review Methods",
@@ -375,6 +461,88 @@
         }
       ]
     },
+    "scripts/incident_ledger.py": {
+      "upstream_sha256": "6c2461878b7cde2b90ecce019a8b77610fa14dea9920c4c1a5de9d55f7df6a9f",
+      "local_sha256": "12cfeada92d69db6a980f7316e3a9c98421c27d72c8ac59d2c5f5309fd1ec822",
+      "status": "adapted",
+      "reason": [
+        "Reject impossible calendar dates, deleted tracked catcher files, calls to missing tests and arbitrary quoted mentions that the upstream checker accepted as live catchers. Resolve named function and JS/Bats test declarations while retaining read-only CLI, replay planning and explicit shallow-clone limitations. CLI regressions first reproduced three false-green cases before this repair."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            12,
+            14
+          ],
+          "local_lines": [
+            12,
+            14
+          ],
+          "removed_sha256": "2d998a2cfeca4745ad46d7960a027760e6c011c7b542de4a37e905c136951c02",
+          "added_sha256": "b02d9a5e7dba74f2ffeb292457357cf0f330df94ff19d6d03dc6e9388c39891f"
+        },
+        {
+          "upstream_lines": [
+            32,
+            32
+          ],
+          "local_lines": [
+            32,
+            33
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "13c2f172bd52847446aadb022d225d1d8c6da43cad86894e5fc45d9bdeffbfbd"
+        },
+        {
+          "upstream_lines": [
+            133,
+            134
+          ],
+          "local_lines": [
+            134,
+            139
+          ],
+          "removed_sha256": "dacbedfbe6c9090143f57c1ba1926ffd45b245bfa0395735619e2dcc4dad9718",
+          "added_sha256": "c3b1f22bd127b262471726637e2c50a43d42d2740ac86a0923370dfcffd6fbb0"
+        },
+        {
+          "upstream_lines": [
+            135,
+            136
+          ],
+          "local_lines": [
+            140,
+            144
+          ],
+          "removed_sha256": "8c54ad30bcbb5aa849b735f3d3a17d7cb74e6e47acff178030672104f18c00de",
+          "added_sha256": "bf89e7d2fba5c6608adc68354c1f2423ef32aca1781e8c079d14ce8a74c7f788"
+        },
+        {
+          "upstream_lines": [
+            157,
+            159
+          ],
+          "local_lines": [
+            165,
+            172
+          ],
+          "removed_sha256": "052ab3ce9ec260c15b1b94c71f5ff5fcf315f1cf9908b865650d902d8ce34642",
+          "added_sha256": "b4bc83dec9c8c0bb2cdd5d60c3efb389b276d2b609d305eab95d3c7ee8d36d92"
+        },
+        {
+          "upstream_lines": [
+            218,
+            219
+          ],
+          "local_lines": [
+            231,
+            233
+          ],
+          "removed_sha256": "930b13572bd245a5a4d1cd29d90abf0fda12f54397d7d0d6d49c319302bed2a7",
+          "added_sha256": "f0531eb09a1a85c7e23d90981347ca7cb38dd6acac92171141b103a95d1763f2"
+        }
+      ]
+    },
     "scripts/release_gate.py": {
       "upstream_sha256": "726106652bc2f9fcfe1556f9cc826e2a4c260254303005290c305efb4614ed7e",
       "local_sha256": "726106652bc2f9fcfe1556f9cc826e2a4c260254303005290c305efb4614ed7e",
@@ -413,6 +581,7 @@
     "references/深入审查.md": "ddf90e58e040cf3e9955e58e0c27c7b7bc35b7734c2e98698b72a36855fca878",
     "scripts/review_scope.py": "972559ba0a50a190c40185259b5cb0540e2e5be32772fbabbfdcc8ae76d35157",
     "tests/test_audit_inventory.py": "e49d27e97a4e3b0d1b864e98f1022a59b96e80ea2e6d80f86ed54bc0d4b9dee9",
+    "tests/test_incident_ledger.py": "4aac2d2fccefd0d7efc404c9028f8798f742f6f2e138daa13e3963a61388e425",
     "tests/test_review_scope.py": "fb9de3be156e3855b79d74cee4d557338c57e3268eedf48df79d9e904512e39d"
   }
 }

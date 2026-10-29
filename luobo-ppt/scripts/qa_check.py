@@ -11,26 +11,38 @@ Checks
   overflow   text needs more height than its box (measured with CJK font metrics) = ERROR
   overlap    two text boxes intersect = ERROR; text over the opaque part of an
              illustration = WARN
-  bounds     element outside the slide = WARN
+  bounds     element outside the slide = WARN; a text box off the slide or with no size = ERROR
   contrast   text vs what is under it below WCAG thresholds = WARN
   tiny       font below 10pt = WARN
-Writes WORK_DIR/out/qa_report.json. Exit code 1 when any ERROR.
+  animation  a build pointing at a missing shape = ERROR; more than 6 clicks on one page = WARN
+  chart      every chart of the original (or of deck.json) is on the slide with the same categories,
+             series names and values; numbers read the same (35% stays 35%, not 35); chart and
+             axis titles appear on the chart or the slide = ERROR otherwise
+  fine-print notes, sources, unit lines and footnote marks (*, ※, ¹) kept exactly, marks included
+             = ERROR otherwise. Both are listed side by side in out/fine_print.md
+  brand-*    with a brand kit (style.json "brand"): a colour outside the manual's palette, a
+             gradient the manual forbids, something inside the logo's clear space or a logo below
+             its minimum size = ERROR; a page without the logo, or brand fonts not installed = WARN
+  free       a free-layout page with no elements = ERROR
+Writes WORK_DIR/out/qa_report.json (an old one is removed first, so a crash leaves no report).
+Exit code 1 when any ERROR, 2 when the check itself crashed.
 """
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import (load_json, save_json, load_style, wrap_lines, contrast, rgb_to_hex, text_width_pt, DISPLAY_LATIN, WIDTH_SAFETY, LINE_PITCH,  # noqa: E402
+from common import (page_style, load_json, save_json, load_style, wrap_lines, contrast, rgb_to_hex, text_width_pt, DISPLAY_LATIN, WIDTH_SAFETY, LINE_PITCH,  # noqa: E402
                     mix, CANVAS_W, CANVAS_H)
 
 from pptx import Presentation  # noqa: E402
 
 
 def norm(s):
-    # leading bullet glyphs ("· ", "• ") are decoration that icons or dashes replace; ignore them
-    s = re.sub(r"(?m)^\s*(?:[·•●▪◦]\s*|[-–*][ \t]+)", "", (s or "").replace("**", ""))
+    # Ignore list markers, but require space after a dash to preserve negative numbers.
+    s = re.sub(r"(?m)^[^\S\r\n]*(?:[·•●▪◦*][^\S\r\n]*|[\-–][^\S\r\n]+)", "", (s or "").replace("**", ""))
     s = re.sub(r"\s+", "", s)
     return s.replace("“", "\"").replace("”", "\"")
 
@@ -91,12 +103,138 @@ def sample_bg(path, box):
     im = _BG_CACHE[path]
     x0, y0, x1, y1 = box
     sx, sy = 400 / CANVAS_W, 225 / CANVAS_H
-    crop = im.crop((int(max(0, x0) * sx), int(max(0, y0) * sy), int(min(CANVAS_W, x1) * sx) + 1, int(min(CANVAS_H, y1) * sy) + 1))
+    l, r = sorted((min(max(x0, 0), CANVAS_W), min(max(x1, 0), CANVAS_W)))
+    t, b = sorted((min(max(y0, 0), CANVAS_H), min(max(y1, 0), CANVAS_H)))
+    l, t = min(int(l * sx), 399), min(int(t * sy), 224)
+    crop = im.crop((l, t, max(min(int(r * sx) + 1, 400), l + 1), max(min(int(b * sy) + 1, 225), t + 1)))
     import numpy as np
     arr = np.asarray(crop).reshape(-1, 3)
     if not len(arr):
         return "FFFFFF"
     return rgb_to_hex(arr.mean(0))
+
+
+def installed_fonts():
+    """Font family names on this computer (None when they cannot be listed)."""
+    import os
+    import subprocess
+    try:
+        out = subprocess.run(["fc-list", ":", "family"], capture_output=True, text=True, timeout=20).stdout
+        if out.strip():
+            return {f.strip().lower() for line in out.splitlines() for f in line.split(",")}
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    dirs = [Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts",
+            Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Windows" / "Fonts",
+            Path.home() / "Library" / "Fonts", Path("/Library/Fonts"), Path("/System/Library/Fonts")]
+    names = set()
+    from PIL import ImageFont
+    for d in dirs:
+        if not d.is_dir():
+            continue
+        for f in d.iterdir():
+            if f.suffix.lower() in (".ttf", ".otf", ".ttc"):
+                try:
+                    fam, sty = ImageFont.truetype(str(f), 12).getname()
+                    names.add(fam.lower())
+                    names.add(f"{fam} {sty}".lower())
+                except Exception:  # noqa: BLE001
+                    names.add(f.stem.lower())
+    return names or None
+
+
+def brand_checks(style, pptx, dump, deck, add):
+    """A brand deck keeps to the manual: only its colours, no gradients when forbidden, the logo
+    with its clear space free and not below its minimum size, and fonts that are installed."""
+    import zipfile
+    from collections import defaultdict
+    b = style.brand
+    allowed = set(style.allowed)
+    where = defaultdict(set)
+    grads = set()
+    with zipfile.ZipFile(pptx) as z:
+        names = {n: n for n in z.namelist()}
+        for n in names:
+            if not n.endswith(".xml") or not (n.startswith("ppt/slides/slide") or n.startswith("ppt/charts/chart")):
+                continue
+            x = z.read(n).decode("utf-8", "ignore")
+            label = n.split("/")[-1]
+            if n.startswith("ppt/slides/slide"):
+                k = int(re.search(r"slide(\d+)\.xml", n).group(1))
+            else:
+                k = 0
+                # a chart belongs to the slide that links it
+                for m_ in names:
+                    if m_.startswith("ppt/slides/_rels/") and label in z.read(m_).decode("utf-8", "ignore"):
+                        k = int(re.search(r"slide(\d+)\.xml", m_).group(1))
+            for c in re.findall(r'srgbClr val="([0-9A-Fa-f]{6})"', x):
+                if c.upper() not in allowed:
+                    where[c.upper()].add(k)
+            if "<a:gradFill" in x:
+                grads.add(k)
+    for c, ks in sorted(where.items()):
+        ns = sorted(ks)
+        add("ERROR", ns[0] if ns else 0, "brand-color",
+            f"用了手册以外的颜色 #{c}（第 {', '.join(map(str, ns))} 页）；色板只有 " + " ".join("#" + a for a in style.allowed))
+    if b.get("forbid", {}).get("gradients", True):
+        # page backgrounds are pictures: a gradient there shows as different top and bottom bands
+        from PIL import Image
+        from common import color_dist
+        seen = {}
+        for sd in dump["slides"]:
+            for e in sd["elements"]:
+                if e.get("role") == "background" and e.get("t") == "image" and Path(e["path"]).exists():
+                    if e["path"] not in seen:
+                        im = Image.open(e["path"]).convert("RGB").resize((64, 36))
+                        top = im.crop((0, 0, 64, 4)).resize((1, 1)).getpixel((0, 0))
+                        bot = im.crop((0, 32, 64, 36)).resize((1, 1)).getpixel((0, 0))
+                        seen[e["path"]] = color_dist("%02X%02X%02X" % top, "%02X%02X%02X" % bot) > 25
+                    if seen[e["path"]]:
+                        grads.add(sd["n"])
+        for k in sorted(grads):
+            add("ERROR", k, "brand-gradient", "手册不用渐变，这一页有渐变（背景或填充）")
+    cfg = b.get("logo", {})
+    min_h = cfg.get("min_height", 0.3)
+    has_logo = bool(b.get("logos"))
+    for sd in dump["slides"]:
+        n = sd["n"]
+        els = sd["elements"]
+        logos = [e for e in els if e.get("role") == "logo" and e.get("t") == "image"]
+        sl = next((x for x in deck["slides"] if x.get("n") == n), {})
+        header = cfg.get("content") == "header" and sd.get("master", "content") == "content"
+        if header and not any(e.get("brand_header") for e in els) and sl.get("logo") is not False:
+            add("WARN", n, "brand-logo", "这一页没有品牌页眉")
+        if has_logo and not logos and not header and sl.get("logo") is not False:
+            add("WARN", n, "brand-logo", "这一页没有放 logo（不要的话在这一页写 \"logo\": false）")
+        for lg in logos:
+            h = lg.get("rh", lg["h"])
+            if h < min_h - 0.005:
+                add("ERROR", n, "brand-logo", f"logo 高 {h:.2f} 英寸，小于手册的最小尺寸 {min_h}")
+            cs = lg.get("clear", 0)
+            x0, y0 = lg.get("rx", lg["x"]), lg.get("ry", lg["y"])
+            box = (x0 - cs, y0 - cs, x0 + lg.get("rw", lg["w"]) + cs, y0 + h + cs)
+            for e in els:
+                if e is lg or e.get("role") in ("background", "logo") or e.get("t") == "chart_bg":
+                    continue
+                ex = (e.get("rx", e["x"]), e.get("ry", e["y"]),
+                      e.get("rx", e["x"]) + e.get("rw", e.get("w", 0)), e.get("ry", e["y"]) + e.get("rh", e.get("h", 0)))
+                if e.get("t") == "text":
+                    lines = str(e.get("text", "")).replace("**", "").split("\n")
+                    lw = min(e["w"], max(text_width_pt(l_, e["size"], e.get("bold", False)) for l_ in lines) / 72)
+                    al = e.get("align", "l")
+                    tx = e["x"] if al == "l" else (e["x"] + e["w"] - lw if al == "r" else e["x"] + (e["w"] - lw) / 2)
+                    ex = (tx, e["y"], tx + lw, e["y"] + e["h"])
+                if rect_inter(box, ex) > 0.002:
+                    what = e.get("text", "")[:16] if e.get("t") == "text" else (Path(e.get("path", "")).name or e["t"])
+                    add("ERROR", n, "brand-logo", f"logo 的安全空间里有别的东西：{what!r}")
+                    break
+    fonts = {v for k, v in style.fonts.items() if v}
+    have = installed_fonts()
+    if have is not None:
+        miss = sorted(f for f in fonts if f.lower() not in have)
+        if miss:
+            add("WARN", 0, "brand-font", "这台电脑没装手册字体 " + "、".join(miss) +
+                "，打开时会被换成别的字体。装上再看一遍，发给别人时提醒对方也装，或者在 PowerPoint 里嵌入字体")
 
 
 def main():
@@ -106,8 +244,15 @@ def main():
     a = ap.parse_args()
     work = Path(a.work)
     pptx = Path(a.pptx) if a.pptx else work / "out" / "beautified.pptx"
+    (pptx.parent / "qa_report.json").unlink(missing_ok=True)
     style = load_style(work / "style.json")
     dump = load_json(pptx.parent / "layout_dump.json")
+    layout_by_n = {sl["n"]: sl.get("layout") for sl in dump["slides"]}
+    for sd in dump["slides"]:
+        for e in sd["elements"]:
+            if e.get("t") == "line" and "x" not in e:  # hand-written lines carry only their end points
+                e["x"], e["y"] = min(e["x1"], e["x2"]), min(e["y1"], e["y2"])
+                e["w"], e["h"] = abs(e["x2"] - e["x1"]), abs(e["y2"] - e["y1"])
     deck = load_json(work / "deck.json")
     src_path = work / "source_text.json"
     gen_mode = not src_path.exists()
@@ -117,7 +262,7 @@ def main():
         _s.path.insert(0, str(Path(__file__).resolve().parent))
         from outline_check import screen_text
         src = {"slides": [{"n": sl["n"], "units": [{"id": f"d{sl['n']}_{i}", "text": t}
-                                                   for i, t in enumerate(screen_text(sl)) if t.strip()]}
+                                                   for i, t in enumerate(screen_text(sl, layout=layout_by_n.get(sl["n"]))) if t.strip()]}
                           for sl in deck["slides"]]}
     else:
         src = load_json(src_path)
@@ -162,17 +307,82 @@ def main():
             if tn and tn not in allsrc:
                 add("INFO", n, "added", f"added text: {t[:40]!r}")
 
+    # ---------------- charts and fine print: the body text can be right while a unit, an axis
+    # title, a series name or a footnote mark has changed the meaning. Checked on their own,
+    # and listed side by side in out/fine_print.md for a last look before delivery.
+    import chartcheck as CC
+    fp = ["# 图表和小字对照", "",
+          "正文逐字核对之外，单位、坐标轴、系列名、注释和来源单独对一遍。左边是原稿（生成时是 deck.json），右边是成品。", ""]
+    for i, ss in enumerate(src["slides"]):
+        if i >= len(prs.slides):
+            break
+        n = ss["n"]
+        slide = prs.slides[i]
+        text_blob = "".join(out_units[i])
+        if gen_mode:
+            dsl = deck["slides"][i] if i < len(deck["slides"]) else {}
+            refs = [CC.from_spec(c) for c in CC.spec_charts(dsl)]
+            units_all = ss["units"]
+        else:
+            refs = [c for c in ss.get("charts", []) if c]
+            units_all = ss["units"]
+        outs = CC.charts_on_slide(slide)
+        section = []
+        if len(outs) < len(refs):
+            add("ERROR", n, "chart", f"原稿有 {len(refs)} 个图表，成品只有 {len(outs)} 个；图表要写成 chart 页型，"
+                                     "数据从 deck.draft.json 的 charts 里照抄")
+        left = list(outs)
+        for k, ref in enumerate(refs):
+            if not left:
+                break
+            # pair by shared categories, then by type, then by drawing order
+            best = max(left, key=lambda o: (len(set(o["categories"]) & set(ref["categories"])),
+                                            o.get("type") == ref.get("type"), -left.index(o)))
+            left.remove(best)
+            probs, rows = CC.compare(ref, best, text_blob)
+            for lvl, msg in probs:
+                add(lvl, n, "chart", msg)
+            section.append(f"图表 {k + 1}" + ("，有问题" if probs else "，一致"))
+            section.append("")
+            section.append("| 项目 | 原稿 | 成品 |")
+            section.append("|---|---|---|")
+            section += [f"| {a} | {b} | {c} |" for a, b, c in rows]
+            section.append("")
+        smalls = CC.fine_print_units(units_all)
+        sblob = CC.strict(text_blob)
+        for u in smalls:
+            ok = CC.strict(u["text"]) in sblob
+            if not ok and norm(u["text"]) in norm(text_blob):
+                add("ERROR", n, "fine-print", f"小字被改了（注释符号、星号或括号没带过来）：{u['text'][:50]!r}")
+        if smalls:
+            section.append("| 小字 | 成品里 |")
+            section.append("|---|---|")
+            for u in smalls:
+                ok = CC.strict(u["text"]) in sblob
+                section.append(f"| {u['text'][:80].replace('|', '/')} | {'原样' if ok else '变了或缺了'} |")
+            section.append("")
+        if section:
+            fp += [f"## 第 {n} 页", ""] + section
+    if len(fp) == 4:
+        fp.append("这份稿子没有图表，也没有注释、来源、单位这类小字。")
+    (pptx.parent / "fine_print.md").write_text("\n".join(fp) + "\n", encoding="utf-8")
+
     # ---------------- geometry
     for sd in dump["slides"]:
+        pst = page_style(sd, style)  # a company template's red cover or dark closing has its own palette
         n = sd["n"]
         els = sd["elements"]
         texts = [e for e in els if e["t"] == "text" and e.get("role") != "decor"]  # watermarks are decoration
+        if sd.get("empty_free"):
+            add("ERROR", n, "free", "free layout has no elements, the page is empty: write them in deck.json or plan.json")
         for e in els:
             if e.get("role") == "background":
                 continue
             x, y = e["x"], e["y"]
             w, h = e.get("w", e.get("size", 0)), e.get("h", e.get("size", 0))
-            if x < -0.01 or y < -0.01 or x + w > CANVAS_W + 0.01 or y + h > CANVAS_H + 0.01:
+            if e["t"] == "text" and (w <= 0 or h <= 0 or x >= CANVAS_W or y >= CANVAS_H or x + w <= 0 or y + h <= 0):
+                add("ERROR", n, "bounds", f"text {e.get('text', '')[:18]!r} is off the slide or has no size at ({x:.2f},{y:.2f},{w:.2f},{h:.2f})")
+            elif x < -0.01 or y < -0.01 or x + w > CANVAS_W + 0.01 or y + h > CANVAS_H + 0.01:
                 add("WARN", n, "bounds", f"{e['t']} outside slide at ({x:.2f},{y:.2f},{w:.2f},{h:.2f})")
         for e in texts:
             ls_ = DISPLAY_LATIN if e.get("font") == "display" else 1.0
@@ -210,7 +420,8 @@ def main():
                     add("WARN", n, "overlap", f"text {t['text'][:18]!r} sits on illustration {Path(himg['path']).name}")
         # contrast
         bg_img = next((e["path"] for e in els if e.get("role") == "background" and e["t"] == "image"), None)
-        bg_fill = next((style.c(e["fill"]) for e in els if e.get("role") == "background" and e["t"] == "rect"), "FFFFFF")
+        bg_fill = next((pst.c(e["fill"]) for e in els if e.get("role") == "background" and e["t"] == "rect"),
+                       pst.c("bg_top") if sd.get("template") else "FFFFFF")
         for idx, t in enumerate(els):
             if t["t"] != "text" or t.get("role") == "decor":
                 continue
@@ -223,14 +434,28 @@ def main():
                         break
             if under:
                 behind = sample_bg(bg_img, (cx - 0.3, cy - 0.1, cx + 0.3, cy + 0.1)) if bg_img else bg_fill
-                col = mix(behind, style.c(under["fill"]), under.get("alpha", 1.0))
+                col = mix(behind, pst.c(under["fill"]), under.get("alpha", 1.0))
             else:
                 col = sample_bg(bg_img, (t["x"], t["y"], t["x"] + t["w"], t["y"] + t["h"])) if bg_img else bg_fill
-            cr = contrast(style.c(t["color"]), col)
+            cr = contrast(pst.c(t["color"]), col)
             large = t["size"] >= 18 or (t.get("bold") and t["size"] >= 14)
             need = 3.0 if large else 4.5
             if cr < need:
-                add("WARN", n, "contrast", f"{t['text'][:24]!r} contrast {cr:.1f} < {need} (text #{style.c(t['color'])} on #{col})")
+                add("WARN", n, "contrast", f"{t['text'][:24]!r} contrast {cr:.1f} < {need} (text #{pst.c(t['color'])} on #{col})")
+
+    # ---------------- structural lines that vanish into the page (a pale yellow connector on white)
+    for sd in dump["slides"]:
+        pst = page_style(sd, style)
+        bgc = pst.c("bg_top")
+        for e in sd["elements"]:
+            if e.get("t") == "line" and e.get("lw", 1.5) >= 1.0 and e.get("role") not in ("decor", "background") \
+                    and sd.get("master", "content") == "content":
+                col = pst.c(e.get("color", "line"))
+                if pst.brand and contrast(col, bgc) < 1.5:
+                    col = pst.c("primary_dark")  # what build_deck draws instead
+                if contrast(col, bgc) < 1.25:
+                    add("WARN", sd["n"], "contrast", f"连接线 #{col} 在底色 #{bgc} 上几乎看不见")
+                    break
 
     # ---------------- rail: content stays above the takeaway pill / footer row
     for sd in dump["slides"]:
@@ -289,12 +514,27 @@ def main():
     floor = 14 if proj else 12
     for sd in dump["slides"]:
         for e in sd["elements"]:
-            if e["t"] == "text" and e["size"] < floor and len(e["text"]) > 12 and (proj or e.get("color") not in ("muted", "subtle")):
+            if e["t"] == "text" and e["size"] < floor and len(e["text"]) > 12 and not e.get("brand_header") \
+                    and (proj or e.get("color") not in ("muted", "subtle")):
                 add("WARN", sd["n"], "small-text", f"{e['text'][:24]!r} 只有 {e['size']}pt，"
                     + ("投影模式下文字不小于 14pt" if proj else "正文建议不小于 12pt"))
     if len(deck["slides"]) > 15 and not any(sl.get("type") == "section" for sl in deck["slides"]):
         add("WARN", 0, "structure", "超过 15 页，没有章节分隔页")
-    ghost = [f"{sl['n']}. {(sl.get('title') or sl.get('headline') or sl.get('question') or sl.get('quote') or '').replace('**', '')}" for sl in deck["slides"]]
+    # ---------------- animation: every build must point at a shape on its own page
+    import animate as _A
+    for i, slide in enumerate(prs.slides):
+        n = dump["slides"][i]["n"] if i < len(dump["slides"]) else i + 1
+        missing = _A.animated_ids(slide) - {sh.shape_id for sh in slide.shapes}
+        if missing:
+            add("ERROR", n, "animation", f"动画指向不存在的形状 {sorted(missing)}，重新运行 build_deck.py")
+        an = dump["slides"][i].get("animation", {}) if i < len(dump["slides"]) else {}
+        if an.get("mode") == "click" and an.get("builds", 0) > 6:
+            add("WARN", n, "animation", f"这一页要点 {an['builds']} 次才出完，讲的时候容易乱，考虑拆页或改 auto")
+    # ---------------- brand: colours, gradients, logo clear space, fonts (style.json "brand")
+    if getattr(style, "brand", None):
+        brand_checks(style, pptx, dump, deck, add)
+    from outline_check import slide_title
+    ghost = [f"{sl['n']}. {slide_title(sl, layout_by_n.get(sl['n'])).replace('**', '')}" for sl in deck["slides"]]
 
     order = {"ERROR": 0, "WARN": 1, "INFO": 2}
     issues.sort(key=lambda i: (order[i["level"]], i["slide"]))
@@ -312,4 +552,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        print("QA CRASHED: the deck was not checked and no qa_report.json was written")
+        sys.exit(2)

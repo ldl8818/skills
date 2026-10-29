@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/waza",
-  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
   "source_path": "skills/write",
   "files": {
     "SKILL.md": {
-      "upstream_sha256": "ed57ea5d024b9352b5fa1d4e809d288228706a28382b9fbce658cd9e95634818",
-      "local_sha256": "c93e888d88179cd8f05dd290dd759579479c5e629c3ff6eb14390d8a2f62d2f4",
+      "upstream_sha256": "c341449a298b348f50860a50ed96ae80de122d232e3a979292e8dcc4b19146b0",
+      "local_sha256": "7e8c1edc67397fe1ff6f58a5455b17c7e8880533dd936a53a49d5b54cc20e163",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Rewrites and polishes Chinese or English prose, technical instructions, and product copy. Use when drafting, editing, localizing, or cutting AI tone. Not for code comments or commit messages.\"\n",
@@ -43,7 +43,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "4af2e54f98e25cdcad75ef1f1270b60143ba233a90c1a39da13289c783652f5c"
+          "added_sha256": "aac821add7fd6523b7d4a09898c8633732da11b3db1470f9a798aff88e37cac6"
         },
         {
           "upstream_lines": [
@@ -71,36 +71,36 @@
         },
         {
           "upstream_lines": [
-            95,
-            96
+            96,
+            97
           ],
           "local_lines": [
-            105,
-            106
+            106,
+            107
           ],
           "removed_sha256": "60ecb4956452dedce4a69f5b52d331c963512ad866fcd8388b90e152d441a7eb",
           "added_sha256": "01db66b3ae0896ca1ebb653008dc7657d3ed164ef47ca3648016f582265e6a77"
         },
         {
           "upstream_lines": [
-            97,
-            98
+            98,
+            99
           ],
           "local_lines": [
-            107,
-            108
+            108,
+            109
           ],
           "removed_sha256": "5453bf608870c186fe410c5739d9a0687afcea3e121a9e1c29357b8901985e06",
           "added_sha256": "84b8ccbc003ac0ee277ced15e98d1e226830b67ff51dcf22853545b777737da8"
         },
         {
           "upstream_lines": [
-            128,
-            128
+            129,
+            129
           ],
           "local_lines": [
-            138,
-            142
+            139,
+            143
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "added_sha256": "c09fa9e11413eeea7ad081601ca75a4cb5c174cf8104008a0493abe1fd820d89"
@@ -158,6 +158,14 @@
         "# Release Note Template Mode": "# Release Note Template Mode",
         "### Release Notes Content Rules": "### Release Notes Content Rules",
         "### Release Notes Pre-flight": "### Release Notes Pre-flight"
+      }
+    },
+    "references/mode-revision-review.md": {
+      "upstream_sha256": "266c6008a015043d0c06af069a9cc2d55485d8198de234d77e1ad9cc46460ca4",
+      "local_sha256": "266c6008a015043d0c06af069a9cc2d55485d8198de234d77e1ad9cc46460ca4",
+      "status": "identical",
+      "sections": {
+        "# Revision Review Mode": "# Revision Review Mode"
       }
     },
     "references/write-en.md": {

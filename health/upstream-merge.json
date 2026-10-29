@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/waza",
-  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
   "source_path": "skills/health",
   "files": {
     "SKILL.md": {
       "upstream_sha256": "690e3b44f71deaa9b45baf67adaac40efc3e4e2278b89ed6bf2db4624d5bec4e",
-      "local_sha256": "fd8a926903b196a651e264ebc0f1cf0933b5af56778c528186bca7ff70cfa7c4",
+      "local_sha256": "09fadc8b18893702ed9a8178f9b1ec75b85ced94e0097e0dea389c671ffabaf1",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Audits agent config, instruction drift, hooks or MCP, and AI maintainability. Use when Claude, Codex, or Pi setup looks wrong. Not for application bugs or PR review.\"\n",
@@ -47,7 +47,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "02e5342bc816be3dff9a6ee3068a55a97b54161e73dee45b69ea50f408bb45e1"
+          "added_sha256": "157cb797f303a6d7a3d4c712964d56d453ed8f2caed9525ccb881cc0e2e0c2ca"
         },
         {
           "upstream_lines": [
@@ -245,8 +245,8 @@
       }
     },
     "references/maintainability-findings.md": {
-      "upstream_sha256": "bc48226145aa15ce959f04e5636d20c6e308ad3426e58c07718f23fc1bfc2054",
-      "local_sha256": "bc48226145aa15ce959f04e5636d20c6e308ad3426e58c07718f23fc1bfc2054",
+      "upstream_sha256": "399bc6f2c98d30add35ff39492cb6be6dcbea59adcc7b8e2bab7d33827c5e5d8",
+      "local_sha256": "399bc6f2c98d30add35ff39492cb6be6dcbea59adcc7b8e2bab7d33827c5e5d8",
       "status": "identical",
       "sections": {
         "# AI Maintainability Structural Findings": "# AI Maintainability Structural Findings"
@@ -278,8 +278,8 @@
       "status": "identical"
     },
     "scripts/check_agent_context.py": {
-      "upstream_sha256": "5cd3282c7a59e0ccc0ed9f1964029c05aa62fa848e6b77e39e86e98c44ca459d",
-      "local_sha256": "ebcc1423ec8899ea4d299083c96a39e0ed566e591cffdf7017793972f7e0a24c",
+      "upstream_sha256": "f2f15313ca15607791c37ced9f74b83f9ea6613a2432714903ddacdfc4be7651",
+      "local_sha256": "ade645c7a779245caae1fd8107eeafaf226d515fb4a3decd47cc8eead262a7cf",
       "status": "adapted",
       "reason": [
         "Keep global configuration opt-in on the restored context analyzer.",
@@ -289,36 +289,36 @@
       "changes": [
         {
           "upstream_lines": [
-            1556,
-            1556
+            1561,
+            1561
           ],
           "local_lines": [
-            1556,
-            1557
+            1561,
+            1562
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "added_sha256": "d8aca8fd69090c5a372298e302108bbe847529c0c6fa5e4f8a22f71387168335"
         },
         {
           "upstream_lines": [
-            1565,
-            1566
+            1570,
+            1571
           ],
           "local_lines": [
-            1566,
-            1567
+            1571,
+            1572
           ],
           "removed_sha256": "f5de515a30b11c5eb1ed8a734d87d0da27a7324f8323b60541a1a848f742adf8",
           "added_sha256": "e8386d0a03025b48527653621862326128f186a2cd1c970f9b4aab9dfd4443ed"
         },
         {
           "upstream_lines": [
-            1594,
-            1594
+            1599,
+            1599
           ],
           "local_lines": [
-            1595,
-            1606
+            1600,
+            1611
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "added_sha256": "4807a0bccbb903696787f75235a9fe0e81f4bfa0ef2dcc010f0100595f826e5b"
@@ -463,6 +463,7 @@
     "scripts/collect_data.py": "1eb01548a7738f784ecd9042f5892023c80894220c8a55f69de7d8f55e2006b6",
     "tests/test_collection.py": "2c417b5c18c891da0703244b3a3cda4ce6582bf84c22e6a6bff8e53ab2c040e5",
     "tests/test_full_collection.py": "4934e3b0a881c4b7f960226b8591b7908ed88d45f3745e0ee7f02588c53f7bf1",
-    "tests/test_maintainability_inventory.py": "a2364e45817c1dfe881b22fa33054934b8379903b2de7ff48ac8233d2eb82250"
+    "tests/test_maintainability_inventory.py": "a2364e45817c1dfe881b22fa33054934b8379903b2de7ff48ac8233d2eb82250",
+    "tests/test_project_instructions.py": "d135694578b652605951310ce57d683138a5a97d19cc8923e7e7454568bd3fe6"
   }
 }

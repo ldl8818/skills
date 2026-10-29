@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/waza",
-  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
   "source_path": "skills/ui",
   "files": {
     "SKILL.md": {
-      "upstream_sha256": "30ac6005c3563d43803c6c40e4ae0e1b35960a0bd9af0b3b388b73914ca8330a",
-      "local_sha256": "74038fdb53b50453632207b804e72deb17fceb11ab7c0e836531c1c92f489c0f",
+      "upstream_sha256": "c07c412447abdda865bf94a31f414c20532b09e99604d339ffbc6eded4b148b4",
+      "local_sha256": "5083b86f22088b355d56ee4dd7ad0e8271a5be28d89a31dda41388a0123032e2",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Produces distinctive production UI and screenshot-grounded visual polish. Use when building or restyling pages, components, or typography. Not for backend logic or data pipelines.\"\n",
@@ -44,7 +44,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "6ff375d183bcd66ebb967e2210a00051ae5a24d8be285b3a9068cf35c3072ca9"
+          "added_sha256": "d0078e8b27200242505395f60c0b8d21f359c6242a77c3ab0cad75efd71243aa"
         },
         {
           "upstream_lines": [
@@ -124,8 +124,8 @@
       }
     },
     "references/design-native-motion.md": {
-      "upstream_sha256": "d2c81da29e92c23ec058f99c7d87b3acb2d8f963e8fabf6c13b991c06e757ac7",
-      "local_sha256": "d2c81da29e92c23ec058f99c7d87b3acb2d8f963e8fabf6c13b991c06e757ac7",
+      "upstream_sha256": "75486e75bf27d9ea43ca57f81a5e5ce3b0e3a1802c2789f18eb10b10f58c70a6",
+      "local_sha256": "75486e75bf27d9ea43ca57f81a5e5ce3b0e3a1802c2789f18eb10b10f58c70a6",
       "status": "identical",
       "sections": {
         "# Native Motion Mapping": "# Native Motion Mapping",
@@ -134,8 +134,8 @@
       }
     },
     "references/design-reference.md": {
-      "upstream_sha256": "959d62859014bd6f7e9a38104e18a6afe77f1985da11e7daac09c2217ef757b1",
-      "local_sha256": "959d62859014bd6f7e9a38104e18a6afe77f1985da11e7daac09c2217ef757b1",
+      "upstream_sha256": "c62bde17af65bf8d0f4cefca8a93337da298d1a2649c069547ef6589e0b582f8",
+      "local_sha256": "c62bde17af65bf8d0f4cefca8a93337da298d1a2649c069547ef6589e0b582f8",
       "status": "identical",
       "sections": {
         "# Design Reference": "# Design Reference",

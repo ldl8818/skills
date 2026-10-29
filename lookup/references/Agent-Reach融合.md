@@ -4,23 +4,23 @@
 
 ## 来源与加载
 
-完整来源为 [Agent Reach](https://github.com/Panniantong/Agent-Reach/tree/94f06c1969dfc1834001269d79d3ad0972d9dee6)，主分支基线 `94f06c1969dfc1834001269d79d3ad0972d9dee6`，上游版本1.5.0。本地融合版本独立记录在 lookup 入口。正式 tag v1.5.0只有13个渠道，同版本号不能证明覆盖当前16个渠道。
+完整来源为 [Agent Reach 1.6.0 main 固定快照](https://github.com/Panniantong/Agent-Reach/tree/14c213405669414492bda0f8d52cc6531d062c45)，commit 为 `14c213405669414492bda0f8d52cc6531d062c45`。1.6重写了命令、状态与渠道接口；版本标签不能代替文件与能力核对。
 
-- 原始仓库的121个文件完整保存为 [源快照](../upstream/agent-reach.tar.gz)，逐文件清单、大小、哈希及本地运行适配归 [来源回执](../upstream/agent-reach.json)，原 [MIT 许可](../upstream/LICENSE-agent-reach) 保留。
-- 原始 `SKILL.md`、英文入口和7类参考均保留原文，存于压缩快照中，不能被客户端当成另一个 Skill 自动发现。不要将解包目录链接到客户端的 skills 目录。
-- 按当前任务读取一个完整分类，不全量加载：`python3 scripts/reach.py reference social`。分类为 `search / social / career / dev / web / video / finance`；安装与更新原文分别使用 `install / update`。
-- 5份原始设置指南同样按需读取：`reference setup-exa / setup-groq / setup-reddit / setup-twitter / setup-xiaohongshu`；指南原文、脚本和公开 Python 接口均在完整能力门禁中登记。
-- 读取上游参考后，命令参数仍须核对实际版本帮助。OpenCLI 动作通过 [执行入口](opencli-windows.md) 调用；上游 `agent-reach ...` 在本组合中对应 `python3 scripts/reach.py run ...`。用户输入作为独立参数传入，不复制模板作为 Shell source 执行。
+- 完整仓库118个文件保存在 [源快照](../upstream/agent-reach.tar.gz)，逐文件清单、大小、哈希及运行适配归 [来源回执](../upstream/agent-reach.json)，[MIT 许可](../upstream/LICENSE-agent-reach) 保留。原始中英文 Skill 及所有参考保持原文，处于自动发现目录之外。
+- 当前上游参考为 `capabilities / sessions / maintenance` 三份。按任务读取一份完整原文：`python3 scripts/reach.py reference capabilities`。安装和更新分别使用 `reference install / update`。旧的7类分类名和5个 `setup-*` 读取名保留为新版完整指南的别名，不声称旧文件仍存在。
+- 上游命令在本组合中通过 `python3 scripts/reach.py run ...` 调用；先用 `run channels` 查看当前动作、参数和后端。用户输入作为独立 argv 传入。上游的浏览器、登录复用、安装和更新建议不能覆盖 lookup 的当前选路与授权。
 
 ## 完整渠道
 
-下表逐项登记上游16个渠道的入口、动作、环境和成功判据。它是能力映射，不是实际平台已通过的声明。详细命令只在对应上游参考与当前工具帮助中维护；机器可核对清单归 [能力清单](../upstream/capabilities.json)。
+lookup 保留原16类任务路线。1.6原生引擎注册14个渠道、40个动作：独立 Exa 渠道并入 `web search`，RSS 从原生注册表退役，继续按 lookup 的直接路线处理。下表描述整个组合的能力，不表示每项都是原生 Reach 命令，也不表示真实账号已通过。原生渠道、全部动作、CLI、Python 接口及直接路线分别登记在 [能力清单](../upstream/capabilities.json)；候选验证不能用直接路线冒充原生注册。
+
+原生动作以 `run channels` 为准。YouTube 是 `read/search/subtitle/transcribe`，B站是 `search/read/hot/subtitle`，X 是 `search/profile/tweets/thread`；旧版额外动作仍按现有 OpenCLI／专用工具路线发现和验收，不从名称相近推断新引擎提供相同动作。
 
 | 渠道 | 分类 | 可执行动作 | 环境与验收 |
 |---|---|---|---|
 | 全网搜索 Exa | search | 网页与技术资料搜索 | 沿用 [搜索接入](search-routing.md) 的 Exa／Tavily／豆包策略；核对相关内容、原始来源和免费边界 |
 | 普通网页 | web | 原站正文、Jina Reader、Web Reader MCP | 优先原站与适用连接器；第三方 reader 仅接收允许外发的公开 URL；核对真实正文 |
-| RSS／Atom | web | 获取并解析 feed 条目、标题、日期和链接 | 可用 feedparser；解析一次不等于已创建订阅或定时监控；空源、错误页和截断分别判断 |
+| RSS／Atom | web | 获取并解析 feed 条目、标题、日期和链接 | 按任务环境显式使用 feedparser；1.6不再随包安装或报告 RSS 就绪。解析一次不等于已创建订阅或监控；错误页、空源和截断分别判断 |
 | GitHub | dev | 仓库与代码搜索、Issue／PR、Actions／Release、API 阅读 | 当前连接器或 gh；私有资源须有授权身份；创建、Fork、发布等写能力交相应授权流程 |
 | X | social | 搜索、推文与回复、长文、用户资料及时间线、首页、本人 likes | 优先当前已授权的可用后端；twitter-cli 凭据仅在目标子进程显式提供；核对作者、时间及目标范围 |
 | Reddit | social | 搜索、正文与评论、subreddit、热门、Popular、元信息 | OpenCLI 或已配置 rdt；需登录态，不把匿名失败当空结果；核对评论分页 |
@@ -31,13 +31,13 @@
 | LinkedIn | career | 人员资料、人才搜索、公司资料、岗位搜索、公开页 | 已配置 LinkedIn MCP；公开页可在外发允许时用 reader；受限页面不能由摘要冒充 |
 | Boss直聘 | career | 专用浏览器链路体检、职位搜索与 JD 全文 | 严格 existing-browser／CDP；用户确认登录，区分本地 session 与浏览器登录；账号或环境风险立即停止 |
 | YouTube | video | 视频搜索、元数据、人工／自动字幕、有限评论、音轨转写 | yt-dlp／OpenCLI／已配置 ASR；评论为尽力获取，字幕不证明画面；完整口播按 [转写规则](youtube-subtitles.md) |
-| 小宇宙 | video | 单集音频转写、按需标点与分段增强 | ffmpeg 与已配置 Groq；增强另有模型调用和外发，需核对条件；不默认启用或承诺永久免费 |
+| 播客单集 | video | 单集音频转写、按需标点与分段增强 | ffmpeg 与已配置 Groq；增强另有模型调用和外发，需核对条件；不默认启用或承诺永久免费 |
 | 雪球 | finance | 会话核对、股票搜索、行情、热门内容与热门股票 | OpenCLI 或明确配置的最小 Cookie；HTTP 400不当股票不存在；返回代码、价格、时间或真实非空列表 |
 | V2EX | social | 热门、节点主题、主题详情与回复、用户资料 | 公开 API 或上游 Channel 方法；核对主题 ID、回复范围及分页，不把热门列表当全站搜索 |
 
 lookup 已有的公众号、Douyin、其他搜索服务、浏览器操作、本地 UI 验收、历史检索与媒体证据继续使用各自现行参考；不因上游未登记这些渠道而移除。
 
-V2EX 原始 Channel 方法只取回复第一页，且将回复请求失败降成空列表。融合运行时保留正文并补充 `replies_complete / replies_error`，失败和未取全均不能认定为无回复；需要完整回复时沿公开 replies API 分页，并核对返回范围与总数。原始来源不改写，修正记录在来源回执的运行适配中。
+V2EX 1.6的 `read` 只取回复第一页，回复请求失败还会丢弃已取正文。融合运行时保留正文，并在 `items[].raw` 补充 `replies_complete / replies_error`；失败和未取全均不能认定为无回复。需要完整回复时沿公开 replies API 分页，核对总数与范围。原始快照不改写，修正归运行适配。
 
 ## 配置、诊断与维护
 
@@ -49,7 +49,7 @@ python3 scripts/reach.py status
 # 明确安装授权后执行；只安装私有 Python 环境，不注册客户端 Skill。
 python3 scripts/reach.py prepare
 python3 scripts/reach.py run --version
-python3 scripts/reach.py run doctor --json
+python3 scripts/reach.py run doctor
 ```
 
 运行时位于 `XDG_DATA_HOME/lookup/agent-reach/<commit>-<integration-id>`，未设置时使用 `~/.local/share/lookup/agent-reach/<commit>-<integration-id>`。integration-id 绑定本地适配，适配变化时准备新环境并保留旧环境。准备需要 Python ≥3.10、已有 uv 和下载 Python 依赖的网络；不安装全局 CLI，不调用模型、读取浏览器账号或查询业务站点。准备失败只清理本次创建的环境，已有未知残留保持原状；同一来源重复准备不重装。配置仍沿用上游的 `~/.agent-reach/`，不会在来源快照中保存凭据。
@@ -58,42 +58,42 @@ CLI 与 MCP 使用已核验环境的隔离 Python 导入模式，忽略工作目
 
 | 流程 | lookup 内的执行方式与完成条件 |
 |---|---|
-| 环境安装与渠道配置 | 读取 `reference install` 及所选分类，核对计划与授权后调用 `run install --env=local --system --channels=<name>`；默认 `run install --env=local` 仅检查。安装器保留全部渠道安装能力；明确选择渠道时跳过无关的全局核心工具与 Exa 配置，只诊断所选渠道，缺少该渠道的必要依赖则据实际错误定向处理。默认完整安装或显式 all 保留原流程；客户端 Skill 注册统一关闭。安装后核对 [发现入口](#客户端发现与恢复) |
-| 交互设置与凭据配置 | `run setup` 或 `run configure <key>`；优先隐藏输入，管道输入用 `--stdin`；不把值写进命令、日志或回复。浏览器 Cookie 读取须有明确的平台与 Profile 授权，只采所需字段；X／小红书仍使用用户提供的 Cookie-Editor 导出，不自动登录或更换账号 |
-| doctor 与状态 | `run doctor --json`／`run doctor`；只在用户要求或能消除具体环境疑点时运行，不固定每次全渠道体检；结合探针覆盖判断 active_backend，最终仍验目标内容 |
-| 字幕与通用音频转写 | `run transcribe <public-url-or-local-file>`；核对 ffmpeg、服务商、费用、外发与完整音轨；默认不跨服务商切换，显式 fallback 另核授权 |
-| 小宇宙单集与增强 | 读取 video，显式安装所需渠道后调用原生 transcribe.sh；单集转写与增强分别记录实际服务、覆盖范围及费用条件 |
-| 输出格式整理 | `run format xhs` 接收已捕获内容；格式整理不联网、不证明字段真实，也不能把未知互动数补成0 |
-| 版本与更新检查 | `run version`／`run check-update` 保留原生能力；常规更新提醒与维护沿用已有 `lookup update agent-reach`，不复制原文中的整批升级链或修改当前安装来源 |
-| 健康观察 | `run watch` 仅执行一次原生健康与更新检查，不因此建立定时任务或守护进程 |
-| MCP 状态接口 | `python3 scripts/reach.py mcp` 直接运行原始 integrations/mcp_server.py，公开能力为 get_status；默认 Python 依赖不含 MCP，且上游未声明 mcp extra。需要时明确安装所需 MCP SDK 到隔离运行时；不误称为搜索／阅读 MCP，也不自动注册服务 |
-| 卸载与恢复 | 原生 `run uninstall --dry-run` 可预览；真正卸载须核对它会删除的配置、凭据和 Skill 范围，按明确授权执行；私有融合运行时与原生独立安装分别处理 |
-| 原生 Skill 管理 | 原始 skill 命令与完整触发原文保留在源快照中；融合运行入口拒绝重新注册它，改由 lookup 的 entrypoints.py 管理唯一入口 |
+| 原生内容动作 | `run channels` 查看14渠道与40个动作，再用 `run <channel> <action> ...`。公开摘要、正文、评论和字幕分别验收；原生 `ok: true` 不替代 lookup 的完整性判断 |
+| 环境与渠道准备 | 明确安装授权后用 `run setup` 或 `run add <channel>`。所选渠道只安装自身所需工具；涉及 Reach 专用浏览器的渠道在任何安装前返回 `NEED_SETUP`，改由 lookup 既有 OpenCLI／浏览器路线准备。不会新装 Cloak／Chrome，不删除旧 pipx／venv，不注册竞争 Skill |
+| 配置 | `run configure <key> --stdin`；交互终端使用隐藏输入。只处理具名配置，不回显凭据。已有平台登录与 Cookie 按 lookup 的平台／Profile 授权处理，不调用原生自动复制流程 |
+| doctor 与真实检查 | `run doctor` 默认输出 JSON，`run doctor --text` 可读文本；doctor 只读本地状态。需要真实探针时显式 `run check <channel>`，诊断和内容成功分别报告 |
+| 登录、退出与浏览器 | `run login/logout/browser` 在执行前拒绝；使用 lookup 的原绑定环境人工交接和既有浏览器选路。私有引擎同时阻止隐式浏览器启动、安装和 Cookie 复制，不因站点动作自动改 Profile |
+| 音频与字幕 | 原生 `run youtube subtitle/transcribe <url>`；通用本地文件／URL 转写仍可调用私有环境的 `agent_reach.transcribe.transcribe`，保留服务商和显式 fallback 参数。完整音轨、费用和外发分别验收；旧 `run transcribe` 不再是原生命令 |
+| 播客单集 | 原生 `run xiaoyuzhou transcribe <url>` 与随包 `source/agent_reach/scripts/transcribe_xiaoyuzhou.sh`；Groq 和增强步骤各按实际条件验收 |
+| 格式整理 | 1.6统一返回 `items/raw`，旧 `format xhs` 已删除；已有内容需要整理时用 lookup 的结果归一化流程。未知值不补0，不以整理证明真实抓取 |
+| 版本与更新 | `run version`；`run --version` 保留为对应别名，旧 `doctor --json` 也可读取。只读原生检查可用 `run update --check`；真正升级统一走 Skill Manager 委派的 lookup 维护器，原生整批升级入口拒绝 |
+| 状态观察 | 新版 `doctor` 是本地快照，`check` 是显式真实探针；不自动建立原 `watch` 的定时任务或守护进程 |
+| MCP 状态 | `python3 scripts/reach.py mcp` 运行 lookup 的薄适配器，唯一工具 `get_status` 调用新版原生 doctor。原上游 MCP 模块已删除，不再称为原始模块；不自动注册或安装 SDK |
+| 卸载 | `run uninstall --dry-run` 预览原生对象；真正删除须核对其配置、工具与数据范围。融合运行时和原生独立安装分别处理 |
+| 原生 Skill 管理 | 完整模板留在源快照；运行入口拒绝 `skill` 注册，内部安装流程也关闭注册，唯一发现入口仍由 lookup 管理 |
 
 ### 设置指南、MCP 与 Python 接口
 
-准备引擎后，`python3 scripts/reach.py status` 返回已核验环境的 Python 路径。原始公开 Python 接口可用该解释器调用，不要求重新安装独立 Agent Reach，不复制实现。输入作为独立 argv 传入，输出继续按 lookup 的目标与证据规则验收。
+`reach.py status` 返回已核验私有解释器。公开 Python 能力改用1.6原生接口，不保留一套旧实现；每项旧接口的去向记在 [能力清单的 legacy_migrations](../upstream/capabilities.json)。
 
-| 接口 | 保留的能力与边界 |
+| 原用途 | 当前接口与边界 |
 |---|---|
-| get_channel／get_all_channels、Channel、AgentReach | 渠道 URL 识别、后端顺序、探针和状态报告；探针通过不替代业务内容 |
-| WebChannel.read | 通过 Jina 读取公开网页；第三方外发限制、反爬与响应大小检查沿用，不用于敏感或内网 URL |
-| V2EXChannel | 热门、节点主题、详情／回复、用户；search 方法原本只返回不支持搜索的错误及候选建议，不能把接口存在说成真实全站搜索 |
-| XueqiuChannel | 原生股票搜索、行情、热门帖子和热门股票；与 OpenCLI 路线并存，认证和数据完整性分别验收 |
-| YouTubeChannel.transcribe、format_xhs_result | 原生音频转写和结果格式整理；格式整理不联网，不使未知字段变成事实 |
-| Cookie 与 Config 接口 | 具名浏览器 Profile、显式单平台最小 Cookie 提取和配置读写；X／小红书的完整域自动提取仍禁用，不因函数名 extract_all 而读取所有平台 |
-| transcribe_xiaoyuzhou.sh | 原脚本随私有运行时的 source/agent_reach/scripts/ 保留；读取 video 及实际脚本前提后调用，不从宿主 PATH 猜测脚本位置 |
+| 渠道识别与后端 | `channels.get_channel/get_all_channels`、`Channel.actions`、`runtime.dispatch.run_action`；原 `ordered_backends/check` 方法已替换，40个原生动作单独验收 |
+| 状态报告 | `runtime.manage.doctor`；原 `core.AgentReach` 已删除，真实联网探针另用 `runtime.manage.run_checks` |
+| 公开网页与 Exa | `WebChannel.read` 和 `web search/read`；lookup 搜索服务顺序、公开 URL 外发限制继续适用 |
+| V2EX 与雪球 | 统一渠道动作或对应当前方法；V2EX 完整回复需核对分页，雪球行情与社区认证各验 |
+| 通用音频 | `transcribe.transcribe` 保留 URL／本地文件、服务商与显式 fallback；也可用 YouTube／播客原生动作 |
+| 配置与登录 | `Config.get/set/delete/load/save` 处理具名字段；原批量配置转储和 Cookie 提取模块已退役，不用宽泛枚举替代平台授权 |
+| 参考与资源 | 三份当前指南、播客脚本、统一 CLI／dispatch／manage 均受候选门禁核对；不把已删除的旧指南登记为仍存在 |
 
-完整符号和资源映射归 [能力清单](../upstream/capabilities.json)。需要 MCP 或 Cookie 可选依赖时，在已明确授权的隔离环境中安装原声明所需 SDK，例如：
+MCP 适配器沿用原状态工具的 MIT 实现方式，依赖 SDK 1.x 装饰器。仅在已获授权的私有运行时明确安装兼容 SDK：
 
 ```bash
 uv pip install --python /absolute/runtime/python 'mcp[cli]>=1.0,<2'
 python3 scripts/reach.py mcp
 ```
 
-原 MCP 使用 SDK 1.x 的 Server 装饰器；SDK 2.x 已移除该接口。融合适配将上游 all 可选依赖限定为 `mcp[cli]>=1.0,<2`，原始源码快照不改写；独立安装 MCP SDK 同样使用上述范围。
-
-这不修改全局 Python、不自动注册 MCP、不导出 Cookie。MCP 的 initialize／tools/list 只证明协议与状态工具可发现；调用 get_status 另会执行原生诊断，不在普通查询中强制运行。Cookie 可选依赖与浏览器访问还须满足目标平台和 Profile 的实际授权。
+不修改全局 Python，不自动注册服务，不导出 Cookie。initialize／tools/list 证明协议与工具可发现；本任务的隔离 get_status 还需核对14渠道状态，均不等于真实平台业务通过。
 
 ## 重叠规则的适配
 
@@ -123,10 +123,10 @@ apply 只处理已有客户端目录中的已识别竞争入口，保留其原�
 
 原生独立包和平台工具的更新继续由既有 `lookup update` 维护流程承担。融合快照随 lookup 源码维护，不能用“原生包版本相同／已升级”替代融合验收，也不让原生包更新覆盖本地入口。
 
-候选包的离线能力门禁为 `python3 scripts/reach.py contract --package-root /absolute/candidate/agent_reach`。既有 `lookup update agent-reach` 在原生包验证中调用同一门禁，核对当前融合所需的16个渠道、11类 CLI 流程、7类参考、5份设置指南、MCP／播客脚本与公开 Python 接口；缺项、未知注册方式或解析失败时沿既有备份恢复，不把同为1.5.0的13渠道包认定为等价。门禁通过仍不证明业务站点、账号或新增上游能力已验收。
+候选包的离线能力门禁为 `python3 scripts/reach.py contract --package-root /absolute/candidate/agent_reach`。原生包维护复用同一门禁，分别核对14个原生渠道、全部40个动作、15类 CLI、3份当前参考、播客与运行模块、34个公开 Python 符号及现行 lookup 直接路线。缺项、未知注册、删除动作或解析失败时拒绝切换；升级前后的版本读取同时支持旧 `--version` 与1.6的 JSON `version`。门禁通过不证明业务站点、账号或新增能力已验收。
 
-原生更新成功后，在同一维护锁内检查客户端发现入口并迁出重新注册的竞争 Skill。发生身份、来源或目标冲突时保留内容，返回 `discovery_pending`；消除冲突后重跑原命令只接续入口处理，不重复原生升级。运行版本已变化时先核对结果，不以旧回执继续。完整接续规则见 [上游更新](上游更新.md)。
+原生更新返回成功、等待或失败后，在同一维护锁内检查客户端发现入口并迁出重新注册的竞争 Skill，入口归档不提升原生升级状态。发生身份、来源或目标冲突时保留内容，返回 `discovery_pending`；消除冲突后重跑原命令只接续入口处理，不重复原生升级。等待中的原操作后来完成时先核对版本与指南，再按原事务恢复；其他运行版本变化不以旧回执继续。完整接续规则见 [上游更新](上游更新.md)。
 
-更新融合来源时，取得选定通道的完整仓库快照，比较旧来源／本地适配／新来源，更新完整文件清单、commit、压缩包哈希与能力映射；核对原始路由字段完整保留、7类参考、渠道注册和 CLI 流程。对运行适配重新验证并在干净 HOME 准备候选环境，失败时保持旧来源与运行时。版本相同而 commit 不同也必须比较。不得直接用13渠道的正式包覆盖16渠道的融合基线。
+更新融合来源时，取得选定通道的完整仓库快照，比较旧来源／本地适配／新来源，更新完整文件清单、commit、压缩包哈希与能力映射；核对原始路由字段完整保留、3份当前参考、全部渠道动作、CLI 流程和旧能力的明确迁移。对运行适配重新验证并在干净 HOME 准备候选环境，失败时保持旧来源与运行时。版本相同而 commit 不同也必须比较。不能因新版删除旧入口而跳过迁移说明，也不能通过删掉所需动作或门禁来接受不完整候选。
 
 离线检查命令为 `python3 scripts/reach.py verify`；完整来源与能力测试为 `python3 -m unittest discover -s tests -p 'test_reach.py'`。新机安装和发现流程还须在干净 HOME 实跑；具体平台账号和另一台设备须分别取得真实证据。

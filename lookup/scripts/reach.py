@@ -17,9 +17,12 @@ import tarfile
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'upstream'
 REFERENCES = {name: f'agent_reach/skill/references/{name}.md'
-              for name in ('search', 'social', 'career', 'dev', 'web', 'video', 'finance')}
+              for name in ('capabilities', 'sessions', 'maintenance')}
 REFERENCES.update(install='docs/install.md', update='docs/update.md')
-REFERENCES.update({f'setup-{name}': f'agent_reach/guides/setup-{name}.md'
+# Keep earlier classification names as read-only aliases to the current complete guide.
+REFERENCES.update({name: REFERENCES['capabilities']
+                   for name in ('search', 'social', 'career', 'dev', 'web', 'video', 'finance')})
+REFERENCES.update({f'setup-{name}': REFERENCES['maintenance']
                    for name in ('exa', 'groq', 'reddit', 'twitter', 'xiaohongshu')})
 
 
@@ -70,59 +73,81 @@ def adapted_files(manifest, files):
 
 
 def package_contract(package, capabilities=None):
-    """Offline candidate contract shared with dependency maintenance."""
-    capabilities = capabilities or json.loads((SOURCE / 'capabilities.json').read_text())
-    registry = ast.parse((package / 'channels/__init__.py').read_text())
-    imports = {alias.name: node.module for node in registry.body if isinstance(node, ast.ImportFrom)
-               for alias in node.names}
-    calls = next((node.value.elts for node in registry.body if isinstance(node, ast.AnnAssign)
-                  and isinstance(node.target, ast.Name) and node.target.id == 'ALL_CHANNELS'
-                  and isinstance(node.value, ast.List)), None)
-    if calls is None:
-        raise IntegrationError('candidate_registry_unknown')
-    names = set()
-    for call in calls:
-        if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Name) or call.func.id not in imports:
+    """Verify native actions/APIs and explicit lookup replacements, offline."""
+    try:
+        package = Path(package)
+        capabilities = capabilities or json.loads((SOURCE / 'capabilities.json').read_text())
+        registry = ast.parse((package / 'channels/__init__.py').read_text())
+        imports = {alias.name: node.module for node in registry.body if isinstance(node, ast.ImportFrom)
+                   for alias in node.names}
+        calls = next((node.value.elts for node in registry.body if isinstance(node, ast.AnnAssign)
+                      and isinstance(node.target, ast.Name) and node.target.id == 'ALL_CHANNELS'
+                      and isinstance(node.value, ast.List)), None)
+        if calls is None:
             raise IntegrationError('candidate_registry_unknown')
-        module = imports[call.func.id]
-        tree = ast.parse((package / 'channels' / (module + '.py')).read_text())
-        cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == call.func.id)
-        names.add(next(node.value.value for node in cls.body if isinstance(node, ast.Assign)
-                       and isinstance(node.value, ast.Constant)
-                       and any(isinstance(target, ast.Name) and target.id == 'name' for target in node.targets)))
-    cli = ast.parse((package / 'cli.py').read_text())
-    commands = {node.args[0].value for node in ast.walk(cli) if isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute) and node.func.attr == 'add_parser'
-                and isinstance(node.func.value, ast.Name) and node.func.value.id == 'sub'
-                and node.args and isinstance(node.args[0], ast.Constant)}
-    missing_channels = sorted(set(capabilities['channels']) - names)
-    missing_commands = sorted(set(capabilities['cli']) - commands)
-    missing_references = [name for name in capabilities['source_references']
-                          if not (package / 'skill/references' / (name + '.md')).is_file()]
-    missing_resources = [name for name in capabilities.get('runtime_resources', [])
-                         if not (package / name.removeprefix('agent_reach/')).is_file()]
-    missing_api = []
-    for name, expected in capabilities.get('python_api', {}).items():
-        path = package / name
-        actual = set()
-        if path.is_file():
-            for node in ast.parse(path.read_text()).body:
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    actual.add(node.name)
-                elif isinstance(node, ast.ClassDef):
-                    actual.update(node.name + '.' + child.name for child in node.body
-                                  if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)))
-        missing_api.extend(name + ':' + symbol for symbol in set(expected) - actual)
-    if missing_channels or missing_commands or missing_references or missing_resources or missing_api:
-        raise IntegrationError(json.dumps({'candidate_contract_failed': True,
-                              'missing_channels': missing_channels, 'missing_commands': missing_commands,
-                              'missing_references': missing_references, 'missing_resources': missing_resources,
-                              'missing_python_api': sorted(missing_api)}))
-    return {'ok': True, 'channels': sorted(names), 'commands': sorted(commands),
-            'reference_categories': capabilities['source_references'],
-            'runtime_resources': capabilities.get('runtime_resources', []),
-            'python_api_symbols': sum(map(len, capabilities.get('python_api', {}).values())),
-            'business_verified': False}
+        names, actions = set(), {}
+        for call in calls:
+            if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Name) or call.func.id not in imports:
+                raise IntegrationError('candidate_registry_unknown')
+            module = imports[call.func.id]
+            tree = ast.parse((package / 'channels' / (module + '.py')).read_text())
+            cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == call.func.id)
+            name = next(node.value.value for node in cls.body if isinstance(node, ast.Assign)
+                        and isinstance(node.value, ast.Constant)
+                        and any(isinstance(target, ast.Name) and target.id == 'name' for target in node.targets))
+            names.add(name)
+            action_nodes = next((node.value.elts for node in cls.body if isinstance(node, ast.Assign)
+                                 and any(isinstance(t, ast.Name) and t.id == 'actions' for t in node.targets)
+                                 and isinstance(node.value, (ast.Tuple, ast.List))), [])
+            actions[name] = {node.args[0].value for node in action_nodes if isinstance(node, ast.Call)
+                             and node.args and isinstance(node.args[0], ast.Constant)}
+        cli = ast.parse((package / 'runtime/cli.py').read_text())
+        commands = set()
+        for node in cli.body:
+            if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == '_MANAGEMENT' for t in node.targets):
+                commands.update(ast.literal_eval(node.value))
+            if isinstance(node, ast.FunctionDef) and node.name == 'main':
+                commands.update(part.comparators[0].value for part in ast.walk(node)
+                                if isinstance(part, ast.Compare) and isinstance(part.left, ast.Name)
+                                and part.left.id == 'head' and len(part.comparators) == 1
+                                and isinstance(part.ops[0], ast.Eq) and isinstance(part.comparators[0], ast.Constant))
+        expected = capabilities['native_channels']
+        missing_channels = sorted(set(expected) - names)
+        missing_actions = [name + ':' + action for name, required in expected.items()
+                           for action in required if action not in actions.get(name, set())]
+        missing_commands = sorted(set(capabilities['cli']) - commands)
+        missing_references = [name for name in capabilities['source_references']
+                              if not (package / 'skill/references' / (name + '.md')).is_file()]
+        missing_resources = [name for name in capabilities.get('runtime_resources', [])
+                             if not (package / name.removeprefix('agent_reach/')).is_file()]
+        missing_api = []
+        for name, expected_symbols in capabilities.get('python_api', {}).items():
+            path, actual = package / name, set()
+            if path.is_file():
+                for node in ast.parse(path.read_text()).body:
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        actual.add(node.name)
+                    elif isinstance(node, ast.ClassDef):
+                        actual.update(node.name + '.' + child.name for child in node.body
+                                      if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)))
+            missing_api.extend(name + ':' + symbol for symbol in set(expected_symbols) - actual)
+        direct = capabilities['lookup_routes']
+        missing_lookup = [path for route in direct.values() for path in route['resources']
+                          if not (ROOT / path).is_file()]
+        if missing_channels or missing_actions or missing_commands or missing_references or missing_resources or missing_api or missing_lookup:
+            raise IntegrationError(json.dumps({'candidate_contract_failed': True,
+                                  'missing_channels': missing_channels, 'missing_actions': missing_actions,
+                                  'missing_commands': missing_commands, 'missing_references': missing_references,
+                                  'missing_resources': missing_resources, 'missing_python_api': sorted(missing_api),
+                                  'missing_lookup_routes': missing_lookup}))
+        return {'ok': True, 'channels': sorted(names), 'commands': sorted(commands),
+                'native_actions': sum(map(len, actions.values())), 'lookup_routes': sorted(direct),
+                'reference_categories': capabilities['source_references'],
+                'runtime_resources': capabilities.get('runtime_resources', []),
+                'python_api_symbols': sum(map(len, capabilities.get('python_api', {}).values())),
+                'business_verified': False}
+    except (StopIteration, SyntaxError, AttributeError, TypeError) as error:
+        raise IntegrationError('candidate_contract_unknown: ' + type(error).__name__) from error
 
 
 def data_root():
@@ -251,6 +276,14 @@ def run_native(args, manifest, files):
     operation = next((item for item in args if not item.startswith('-')), None)
     if operation == 'skill' and '--help' not in args and '-h' not in args:
         raise IntegrationError('skill_registration_owned_by_lookup')
+    if operation in ('browser', 'login', 'logout'):
+        raise IntegrationError('browser_and_login_owned_by_lookup')
+    if operation == 'update' and '--check' not in args:
+        raise IntegrationError('updates_owned_by_lookup_maintenance')
+    if args == ['--version']:
+        args = ['version']
+    elif operation == 'doctor':
+        args = [item for item in args if item != '--json']
     status = runtime_status(manifest, files)
     if not status['ready']:
         raise IntegrationError('runtime_not_prepared_run_prepare_explicitly')
@@ -268,7 +301,7 @@ def main(argv=None):
     item.add_argument('category', choices=REFERENCES)
     sub.add_parser('status', help='Read isolated runtime identity without probing platforms')
     sub.add_parser('prepare', help='Explicitly install private Python dependencies; no client registration')
-    sub.add_parser('mcp', help='Run the original status MCP over stdio; requires explicitly installed MCP SDK')
+    sub.add_parser('mcp', help='Run the status compatibility MCP using native 1.6 doctor; requires explicit MCP SDK')
     item = sub.add_parser('run', help='Call the integrated Agent Reach CLI; never installs implicitly')
     item.add_argument('args', nargs=argparse.REMAINDER)
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -299,7 +332,7 @@ def main(argv=None):
             status = runtime_status(manifest, files)
             if not status['ready']:
                 raise IntegrationError('runtime_not_prepared_run_prepare_explicitly')
-            return subprocess.call([status['python'], '-I', '-B', '-m', 'agent_reach.integrations.mcp_server'],
+            return subprocess.call([status['python'], '-I', '-B', str(Path(__file__).with_name('reach_mcp.py'))],
                                    env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
         else:
             return run_native(args.args, manifest, files)

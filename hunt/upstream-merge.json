@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/waza",
-  "commit": "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929",
+  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
   "source_path": "skills/hunt",
   "files": {
     "SKILL.md": {
       "upstream_sha256": "8ae2315c6242a7f59a938650e398d977569831ade1346e0fceee5a12cf69d1a1",
-      "local_sha256": "affbe36416239adfe34cc4f5589dabf815260e3bd17ff27a640f0e5298886607",
+      "local_sha256": "853667073ab93e7ba86ed2d7267b5548a12599c84544f8f1a565ec84654fa93c",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Finds root cause before any fix. Use when something errors, crashes, regresses, or used to work. Not for code review or new features.\"\n",
@@ -46,7 +46,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "87aee9638502f30cbab6252d3d38fe6e79c9f1a05e3c94a3c58d76c994cd7cdf"
+          "added_sha256": "bae757e7d322ddae34d44fd68d8ce187dbba2c3957fdf528384627ede0c147b2"
         },
         {
           "upstream_lines": [

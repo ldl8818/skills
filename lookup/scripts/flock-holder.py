@@ -8,6 +8,7 @@ import fcntl
 import os
 from pathlib import Path
 import signal
+import stat
 import sys
 import time
 
@@ -34,8 +35,14 @@ def main() -> int:
 
     deadline = time.monotonic() + max(0, wait_ms) / 1000
     try:
-        with lock_path.open("a", encoding="ascii") as lock_file:
-            os.chmod(lock_path, 0o600)
+        descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(descriptor, "a", encoding="ascii") as lock_file:
+            metadata = os.fstat(lock_file.fileno())
+            if (not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1
+                    or metadata.st_uid != os.getuid()):
+                report(78)
+                return 78
+            os.fchmod(lock_file.fileno(), 0o600)
             while True:
                 if stop_requested or os.getppid() != expected_parent:
                     return 130

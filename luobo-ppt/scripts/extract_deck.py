@@ -7,7 +7,8 @@ Usage:
 Writes into WORK_DIR:
   source.pptx          normalized copy (fixes zips LibreOffice cannot open)
   raw.json             every shape: position (inches), fill, text runs, pictures, notes
-  source_text.json     every text unit per slide (used by qa_check for fidelity)
+  source_text.json     every text unit per slide (used by qa_check for fidelity), and every chart
+                       read out with its data, number format and axis titles
   deck.draft.json      first guess of the semantic deck; Claude edits it into deck.json
   media/               pictures from the deck (svg kept as svg, text inside svg listed)
   source_png/          one PNG per slide + sheet.png (unless --no-render)
@@ -25,6 +26,7 @@ from common import normalize_pptx, save_json  # noqa: E402
 
 from pptx import Presentation  # noqa: E402
 from pptx.enum.shapes import MSO_SHAPE_TYPE  # noqa: E402
+from pptx.oxml.ns import qn  # noqa: E402
 from pptx.util import Emu  # noqa: E402
 
 EMU_IN = 914400
@@ -57,16 +59,18 @@ def run_info(run):
 
 
 def para_text_marked(p):
-    """Paragraph text with **bold** markers for partially-bold runs."""
+    """Paragraph text with **bold** markers for partially-bold runs.
+
+    Soft line breaks (<a:br>, Shift+Enter) come out as "\v", the same convention
+    python-pptx uses, so they stay distinct from the "\n" that joins paragraphs.
+    """
     runs = [r for r in p.runs if r.text]
     if not runs:
         return p.text if hasattr(p, "text") else ""
     all_bold = all(r.font.bold for r in runs)
-    if all_bold:
-        return "".join(r.text for r in runs)
-    out = ""
-    for r in runs:
-        out += f"**{r.text}**" if r.font.bold and r.text.strip() else r.text
+    marked = {r._r: f"**{r.text}**" if not all_bold and r.font.bold and r.text.strip() else r.text
+              for r in runs}
+    out = "".join("\v" if child.tag == qn("a:br") else marked.get(child, "") for child in p._p)
     return out.replace("****", "")
 
 
@@ -126,6 +130,14 @@ def walk(shapes, out, media_dir, slide_n, counter):
         if getattr(sh, "has_table", False) and sh.has_table:
             rows = [[c.text for c in r.cells] for r in sh.table.rows]
             out.append(dict(base, kind="table", rows=rows))
+            continue
+        if getattr(sh, "has_chart", False) and sh.has_chart:
+            # data, units and axis titles are checked on their own (qa_check, chart and fine print)
+            from chartcheck import read_chart
+            try:
+                out.append(dict(base, kind="chart", chart=read_chart(sh.chart)))
+            except Exception as e:  # noqa: BLE001
+                out.append(dict(base, kind="chart", chart=None, error=str(e)[:200]))
             continue
         item = dict(base, kind="shape", fill=fill_hex(sh))
         if getattr(sh, "is_placeholder", False):
@@ -191,6 +203,11 @@ def guess_role(t, sw, sh_, max_size_top):
     if re.fullmatch(r"\d{1,3}\s*/\s*\d{1,3}", txt):
         return "page"
     if t["y"] > sh_ * 0.82 and size <= 12:
+        # a note, source or starred line at the bottom belongs to this page (deck.json
+        # "footnote" / "source"), not to the footer repeated on every page
+        from chartcheck import FINE_PRINT, FOOT_MARK
+        if FINE_PRINT.match(txt) or FOOT_MARK.match(txt):
+            return "footnote"
         return "footer"
     if t["y"] < sh_ * 0.25 and size >= max_size_top - 0.1 and size >= 24:
         return "title"
@@ -226,17 +243,33 @@ def main():
         normalized = Path(temp) / "source.pptx"
         normalize_pptx(a.pptx, normalized)
         candidate = Presentation(str(normalized))
-        def chart_names(shapes):
+        def unsupported_charts(shapes):
+            from chartcheck import read_chart, SPEC_TYPES, C_NS, _sheet_format
             for shape in shapes:
                 if getattr(shape, "has_chart", False):
-                    yield shape.name
+                    try:
+                        chart = shape.chart
+                        info = read_chart(chart)
+                        # Combo and normalized stacks cannot be represented faithfully
+                        # by a single current deck.json chart specification.
+                        kind = str(chart.chart_type).split(".")[-1].split(" ")[0]
+                        series = list(chart._chartSpace.iter(C_NS + "ser"))
+                        formats = {_sheet_format(ser) or "General" for ser in series}
+                        custom_labels = any(label.find(C_NS + "tx") is not None
+                                            for label in chart._chartSpace.iter(C_NS + "dLbl"))
+                        if (info["type"] not in SPEC_TYPES or len(chart.plots) != 1
+                                or "100" in kind or not info["series"]
+                                or custom_labels or len(formats) > 1):
+                            yield shape.name
+                    except Exception:
+                        yield shape.name
                 if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
-                    yield from chart_names(shape.shapes)
+                    yield from unsupported_charts(shape.shapes)
         unsupported = [(n, name) for n, slide in enumerate(candidate.slides, 1)
-                       for name in chart_names(slide.shapes)]
+                       for name in unsupported_charts(slide.shapes)]
         if unsupported:
             details = "; ".join(f"slide {n}: {name}" for n, name in unsupported)
-            raise SystemExit("Native chart extraction is unsupported; chart data and labels would be lost. "
+            raise SystemExit("Unsupported native chart type; chart data and labels would be lost. "
                              f"Source and existing work files are unchanged. {details}")
         work = Path(a.work)
         work.mkdir(parents=True, exist_ok=True)
@@ -286,7 +319,8 @@ def main():
                     for c in r:
                         if c.strip():
                             units_src.append({"id": p["id"] + "_cell", "text": c})
-        source_text["slides"].append({"n": n, "units": units_src})
+        charts = [p["chart"] for p in shapes if p["kind"] == "chart" and p.get("chart")]
+        source_text["slides"].append({"n": n, "units": units_src, "charts": charts})
 
         top_sizes = [t.get("size") or 0 for t in texts if t["y"] < sh_ * 0.25]
         max_top = max(top_sizes) if top_sizes else 0
@@ -304,8 +338,24 @@ def main():
                  "x": p["x"], "y": p["y"], "w": p["w"], "h": p["h"]}
                 for p in shapes if p["kind"] == "picture"]
         title = next((u["text"] for u in units if u["role"] == "title"), "")
-        draft["slides"].append({"n": n, "type": guess_type(n, total, bg, units), "title": title,
-                                "notes": notes, "units": units, "pictures": pics})
+        d_slide = {"n": n, "type": guess_type(n, total, bg, units), "title": title,
+                   "notes": notes, "units": units, "pictures": pics}
+        if charts:
+            from chartcheck import draft_spec
+            # a ready chart spec: copy it into deck.json as-is (type "chart"), keeping number_format,
+            # title and axis titles, or the labels lose their unit; two or three charts on one
+            # page go into "charts" of a single chart page
+            d_slide["charts"] = [draft_spec(c) for c in charts]
+            if len(charts) <= 3 and d_slide["type"] == "content":
+                d_slide["type"] = "chart"
+        tables = [p for p in shapes if p["kind"] == "table"]
+        if tables:
+            # a table's cells are content too: ready "columns" and "rows" for a table page
+            d_slide["tables"] = [{"columns": t_["rows"][0] if t_["rows"] else [], "rows": t_["rows"][1:]}
+                                 for t_ in tables]
+            if len(tables) == 1 and not charts and d_slide["type"] == "content":
+                d_slide["type"] = "table"
+        draft["slides"].append(d_slide)
         for u in units:
             if u["role"] == "footer" and not draft["meta"]["footer"]:
                 draft["meta"]["footer"] = u["text"]

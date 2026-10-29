@@ -164,7 +164,14 @@ def command(argv, timeout=10, env=None, include_stderr=False):
 
 
 def read_version(binary, dependency):
-    lines = command([str(binary), '--version'], timeout=4, include_stderr=True).splitlines()
+    try:
+        output_text = command([str(binary), '--version'], timeout=4, include_stderr=True)
+    except MaintenanceError:
+        if dependency != 'agent-reach':
+            raise
+        # Agent Reach 1.6 moved version reporting to its JSON `version` command.
+        output_text = command([str(binary), 'version'], timeout=4, include_stderr=True)
+    lines = output_text.splitlines()
     if not lines:
         raise MaintenanceError('VERSION_OUTPUT_EMPTY')
     output = lines[0].strip()
@@ -1029,7 +1036,8 @@ def agent_official_skill(environment, review_directory=None):
 
 def finish_native_discovery(dependency, result):
     script = Path(__file__).with_name('entrypoints.py')
-    if not script.is_file() or result.get('status') not in ('updated', 'up_to_date'):
+    if not script.is_file() or result.get('status') not in (
+            'updated', 'up_to_date', 'pending', 'outcome_unknown', 'failed'):
         return result
     native_status = result['status']
     spec = importlib.util.spec_from_file_location('lookup_entry_policy', script)
@@ -1038,7 +1046,10 @@ def finish_native_discovery(dependency, result):
     try:
         discovery = entries.migrate(Path.home(), ROOT, Path.home() / '.local/share/lookup/execution-skills')
     except Exception as error:
-        return {**result, 'status': 'manual_review', 'native_status': native_status,
+        # Discovery repair cannot turn an unconfirmed native operation into a
+        # completed one, even when the installer already registered its Skill.
+        status = 'manual_review' if native_status in ('updated', 'up_to_date') else native_status
+        return {**result, 'status': status, 'native_status': native_status,
                 'discovery_pending': True, 'discovery_error': str(error)}
     return {**result, 'discovery': discovery, 'discovery_pending': False,
             'discovery_error': None}
@@ -1052,10 +1063,15 @@ def native_update(store, dependency, retry=False):
         record_name = 'native-' + dependency + '.json'
         prior = store.read(record_name)
         original_version = prior.get('before_version', prior.get('current'))
-        if prior.get('discovery_pending'):
+        if (prior.get('discovery_pending') and not (
+                prior.get('native_status') in ('pending', 'outcome_unknown')
+                and current['current'] != prior.get('current'))):
             if current['current'] != prior.get('current'):
                 return {**prior, 'status': 'outcome_unknown', 'reason': 'DISCOVERY_RUNTIME_CHANGED'}
-            result = finish_native_discovery(dependency, {**prior, 'status': prior['native_status'],
+            native_status = prior['native_status']
+            result = finish_native_discovery(dependency, {**prior,
+                                                          'status': ('outcome_unknown' if native_status == 'pending'
+                                                                     else native_status),
                                                           'native_reinvoked': False})
             store.write(record_name, result)
             return result
@@ -1119,8 +1135,12 @@ def native_update(store, dependency, retry=False):
                 store.write(record_name, {**prior, **result})
                 observe(store, dependency, current)
                 return result
-            return {'status': 'outcome_unknown', 'dependency': dependency,
-                    'current': current['current'], 'reason': 'INSPECT_NATIVE_UPDATER_BEFORE_RETRY'}
+            result = finish_native_discovery(dependency, {
+                **prior, 'status': 'outcome_unknown', 'dependency': dependency,
+                'current': current['current'], 'reason': 'INSPECT_NATIVE_UPDATER_BEFORE_RETRY',
+                'native_reinvoked': False})
+            store.write(record_name, result)
+            return result
         if dependency == 'agent-reach':
             release = check(store, dependency, force=True)
             if release['status'] != 'update_available':
@@ -1230,6 +1250,7 @@ def native_update(store, dependency, retry=False):
                 restore_external_skills(protected)
             except (OSError, ValueError) as restore_error:
                 result['skill_recovery_error'] = type(restore_error).__name__
+            result = finish_native_discovery(dependency, result)
             store.write(record_name, {**record, **result})
             if isinstance(error, (KeyboardInterrupt, SystemExit)):
                 raise

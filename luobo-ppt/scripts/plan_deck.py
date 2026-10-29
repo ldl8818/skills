@@ -14,6 +14,7 @@ Levels
 """
 import argparse
 import sys
+import re
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -136,20 +137,49 @@ def main():
     ap.add_argument("--reset", action="store_true",
                     help="re-plan every slide; by default slides whose deck.json content did not change keep their "
                          "existing plan (layout, icons, hand-edited hero prompts)")
+    ap.add_argument("--replan", help="page numbers to re-plan even if their content did not change, e.g. 3,7")
     a = ap.parse_args()
+    replan = {int(x) for x in a.replan.split(",") if x.strip()} if a.replan else set()
     work = Path(a.work)
     deck = load_json(work / "deck.json")
     meta = deck.get("meta", {})
     anchor = (meta.get("anchor") or {}).get("description") or f"a glossy rounded app icon for {meta.get('title', 'the topic')}"
-    glyph = (meta.get("anchor") or {}).get("glyph") or (meta.get("title", "") or "A")[:1].upper()
+    # the tile carries the title's first character when it is a letter; "2026 年…" would put a
+    # lone "2" (or a stray "年") on the cover, so then the first latin letter, else an icon
+    tt = (meta.get("title", "") or "").strip()
+    first = tt[:1] if re.match(r"[A-Za-z\u4e00-\u9fff]", tt) else (re.search(r"[A-Za-z]", tt) or [None])[0]
+    glyph = (meta.get("anchor") or {}).get("glyph") or (first.upper() if first else None)
     topic = meta.get("topic") or meta.get("title", "")
     slides, assets = [], []
+    # what the user locked on a page ("locked": ["layout", "icons", "prompt"]) survives any re-plan, --reset too
+    old_path = work / "plan.json"
+    old_plan = load_json(old_path) if old_path.exists() else {}
+    old_by_n = {p["n"]: p for p in old_plan.get("slides", [])}
+    old_hero = {}
+    for x in old_plan.get("assets", []):
+        for it in (x.get("items", []) if x.get("kind") == "sheet" else [x]):
+            old_hero[it["id"]] = it
     try:
         _st = load_json(work / "style.json")
         style_prefs = _st.get("prefer_layouts", {})
         style_skip = set((_st.get("illustration") or {}).get("skip_layouts", []))
     except Exception:
-        style_prefs, style_skip = {}, set()
+        _st, style_prefs, style_skip = {}, {}, set()
+    # a brand's mascot is not wallpaper: it shows on the cover, section and closing pages and
+    # on pages that ask for it ("art": true or a mood such as "question"), large, a few times
+    brand = _st.get("brand") or {}
+    arts = [a if isinstance(a, dict) else {"file": a} for a in brand.get("art", [])]
+    art_max = brand.get("art_max", 4)
+    BIG = ("cover_hero", "cover_center", "cover_type", "section", "closing")
+    art_used = []
+
+    def pick_art(asked):
+        if isinstance(asked, str):
+            for a in arts:
+                if asked in (a.get("mood"), Path(a["file"]).stem, a["file"]) or asked in (a.get("moods") or []):
+                    return a["file"]
+        fresh = [a["file"] for a in arts if a["file"] not in art_used]
+        return (fresh or [a["file"] for a in arts])[0]
     assets += [{"id": "bg_content", "kind": "background", "variant": "content"},
                {"id": "bg_cover", "kind": "background", "variant": "cover"},
                {"id": "bg_closing", "kind": "background", "variant": "closing"},
@@ -163,6 +193,9 @@ def main():
         short = items_ and 2 <= len(items_) <= 6 and all(len((it.get("text") or "") + (it.get("title") or "")) <= 22 for it in items_)
         if s.get("type") == "list" and short:
             cands = ["grid_cards", "list_icons"]  # few short points read better as big cards
+        first_choice = cands[0]
+        op = old_by_n.get(s["n"]) or {}
+        locked = set(op.get("locked", []))
         import capacity
         capacity.set_projection(meta.get("projection"))
         fits = [c for c in cands if not capacity.check(s, c)]
@@ -174,6 +207,8 @@ def main():
         layout = s.get("layout") or cands[0]
         if layout == prev and len(cands) > 1 and not s.get("layout"):
             layout = cands[1] if not capacity.check(s, cands[1]) else layout
+        if "layout" in locked and op.get("layout"):
+            layout = op["layout"]  # kept even when the content no longer fits; capacity_warnings says so
         prev = layout
         cap_probs = capacity.check(s, layout)
         items = s.get("items", [])
@@ -188,10 +223,18 @@ def main():
         else:
             src = s.get("callout") or s.get("lead") or s.get("pill") or s.get("cta") or ""
             icons.append(pick_icon(src, used, defaults[0]))
+        if "icons" in locked and op.get("icons"):
+            icons = list(op["icons"])
         ps = {"n": s["n"], "layout": layout, "icons": icons,
               "purpose": s.get("purpose", ""), "focus": FOCUS.get(layout, ""), "relation": ""}
         if cap_probs:
             ps["capacity_warnings"] = cap_probs
+        if not s.get("layout") and "layout" not in locked and layout != first_choice:
+            why = capacity.check(s, first_choice)
+            if why:  # say why the page did not get the layout its type asks for first
+                ps["layout_auto"] = {"wanted": first_choice, "reason": why}
+        if locked:
+            ps["locked"] = sorted(locked)
         if s.get("lead"):
             ps["lead_icon"] = pick_icon(s["lead"], set(), "message-circle")
         if s.get("takeaway"):
@@ -200,6 +243,16 @@ def main():
         want = slot and (a.level == "full" or (a.level == "standard" and (slot in ("large", "top") or layout == "cover_hero")))
         if layout in style_skip:
             want = False  # the style lets typography carry these pages
+        asked = s.get("art")
+        if arts:
+            if asked is False:
+                want = False
+            elif asked:
+                want = bool(slot)
+            else:
+                want = bool(slot) and layout in BIG
+            if want and layout not in BIG and len(art_used) >= art_max:
+                want = False
         if want:
             hid = f"hero_{s['n']:02d}"
             idea, scene = HERO_IDEAS.get(layout, HERO_IDEAS["list_icons"])
@@ -207,7 +260,12 @@ def main():
             assets.append({"id": hid, "kind": "hero", "slide": s["n"], "size": [w, h], "transparent": True,
                            "prompt": idea.format(anchor=anchor, topic=topic),
                            "fallback": {"scene": scene, "glyph": glyph if scene == "tile" else None}})
+            if "prompt" in locked and old_hero.get(op.get("hero")):
+                assets[-1]["prompt"] = old_hero[op["hero"]]["prompt"]
             ps["hero"] = hid
+            if arts:
+                assets[-1]["art"] = pick_art(asked)
+                art_used.append(assets[-1]["art"])
         slides.append(ps)
     if a.sheets:
         small = [x for x in assets if x["kind"] == "hero" and x["size"][1] <= 900]
@@ -220,15 +278,15 @@ def main():
             rest.append({"id": f"sheet_{k // 4 + 1:02d}", "kind": "sheet", "items": grp})
         assets = rest
     # keep hand edits: a slide whose content is unchanged since the last plan keeps its old plan entry
+    # (notes, the uid and the page's animation do not change its layout: editing them must not re-plan it)
     import hashlib
     import json as _json
     def h(sl):
-        return hashlib.sha1(_json.dumps({k: v for k, v in sl.items() if k != "notes"}, ensure_ascii=False,
+        return hashlib.sha1(_json.dumps({k: v for k, v in sl.items() if k not in ("notes", "uid", "animation")}, ensure_ascii=False,
                                         sort_keys=True).encode("utf-8")).hexdigest()[:12]
     deck_by_n = {sl["n"]: sl for sl in deck["slides"]}
     for ps in slides:
         ps["src_hash"] = h(deck_by_n[ps["n"]])
-    old_path = work / "plan.json"
     kept = []
     if old_path.exists() and not a.reset:
         old = load_json(old_path)
@@ -239,7 +297,7 @@ def main():
                 old_assets[it["id"]] = it
         for k, ps in enumerate(slides):
             op = old_slides.get(ps["n"])
-            if op and op.get("src_hash") == ps["src_hash"]:
+            if op and op.get("src_hash") == ps["src_hash"] and ps["n"] not in replan:
                 if old.get("level") != a.level:
                     op = dict(op)
                     # Reapply only the level-derived hero choice; keep manual layout/text edits.
@@ -262,6 +320,14 @@ def main():
                         return False
                     if not swap(assets):
                         assets.append(old_assets[hid])
+            elif op and ps["layout"] == "free" and op.get("elements") and not deck_by_n[ps["n"]].get("elements"):
+                # content changed, but hand-placed elements only exist in the old plan
+                ps["elements"] = op["elements"]
+                if op.get("master"):
+                    ps["master"] = op["master"]
+    for ps in slides:
+        if ps["layout"] == "free" and not ps.get("elements") and not deck_by_n[ps["n"]].get("elements"):
+            print(f"ERROR slide {ps['n']}: free 版式没有 elements，页面会是空的；写进 deck.json 或 plan.json 这一页")
     plan = {"level": a.level, "confirmed": False, "slides": slides, "assets": assets}
     save_json(plan, work / "plan.json")
     if kept:

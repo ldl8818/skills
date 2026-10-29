@@ -4,7 +4,7 @@
 
 ## 来源
 
-保留 [Waza 的完整 Think 原版](https://github.com/tw93/Waza/tree/2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929/skills/think)：`SKILL.md` 及3份参考文档原样保留，来源 commit 及发布版本见 [Waza 来源维护说明](../skill-manager/references/冻结版本维护.md)。MIT 许可见 [LICENSE](LICENSE)。本目录增加来源及安装说明，不修改上游工作流或路由字段。
+保留 [Waza 的完整 Think 原版](https://github.com/tw93/Waza/tree/b55809013be84b1f59418b557c1e8bad66380705/skills/think)：`SKILL.md` 及3份参考文档原样保留，来源 commit 及发布版本见 [Waza 来源维护说明](../skill-manager/references/冻结版本维护.md)。MIT 许可见 [LICENSE](LICENSE)。本目录增加来源及安装说明，不修改上游工作流或路由字段。
 
 ## 安装
 

@@ -24,7 +24,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import (load_json, load_style, wrap_lines, get_font, hex_to_rgb, mix, CANVAS_W, CANVAS_H,  # noqa: E402
+from common import (page_style, load_json, load_style, wrap_lines, get_font, hex_to_rgb, mix, CANVAS_W, CANVAS_H,  # noqa: E402
                     LINE_PITCH)
 
 SS = 2  # supersampling: draw at 2x, shrink at the end for smooth edges
@@ -72,6 +72,8 @@ class Painter:
         self.work = Path(work)
         self.px = dpi * SS  # pixels per inch on the working canvas
         self.W, self.H = round(CANVAS_W * self.px), round(CANVAS_H * self.px)
+        tj = self.work / "template.json"
+        self.tpl = load_json(tj) if (style.data.get("template") and tj.exists()) else None
 
     # ---------------------------------------------------------- helpers
     def P(self, v):
@@ -330,8 +332,10 @@ class Painter:
         size = e.get("size", 12)
         x, y, w, h = e["x"], e["y"], e["w"], e["h"]
         cols = ["primary", "accent", "primary@0.45", "muted", "primary_dark", "accent@0.5"]
-        if not cats or not series:
-            return
+        if kind not in ("column", "bar", "line", "stacked", "scatter", "pie", "doughnut"):
+            raise ValueError(f"unsupported preview chart type: {kind}")
+        if not series or (kind != "scatter" and not cats):
+            raise ValueError("chart preview needs series and category or scatter x values")
         if kind in ("pie", "doughnut"):
             vals = [max(0, float(v)) for v in series[0]["values"]]
             tot = sum(vals) or 1
@@ -369,62 +373,123 @@ class Painter:
                 self.text_el(im, {"x": lx + 0.28, "y": ly, "w": x + w - lx - 0.3, "h": 0.34,
                                   "text": f"{c}  {series[0]['values'][i]}", "size": size, "color": "muted", "valign": "m"})
             return
-        allv = [float(v) for s in series for v in s["values"]]
+        from chartcheck import render as format_number, spec_label_format
+        fmt = spec_label_format(spec)
+        allv = [float(v) for sr in series for v in sr["values"] if v is not None]
+        if not allv or not all(math.isfinite(v) for v in allv):
+            raise ValueError("chart preview needs finite numeric values")
         stacked = kind == "stacked"
-        vmax = max([sum(float(s["values"][i]) for s in series) for i in range(len(cats))] if stacked else allv + [0]) or 1
+        if stacked:
+            highs = [sum(max(0, float(sr["values"][i] or 0)) for sr in series) for i in range(len(cats))]
+            lows = [sum(min(0, float(sr["values"][i] or 0)) for sr in series) for i in range(len(cats))]
+            vmin, vmax = min(lows + [0]), max(highs + [0])
+        else:
+            vmin, vmax = min(allv + [0]), max(allv + [0])
+        span = vmax - vmin or 1.0
         lab_h = 0.4
         top = y + (0.35 if len(series) > 1 else 0.1)
-        base = y + h - lab_h
-        ph = base - top
-        n = len(cats)
-        slot = w / n
-        if kind == "bar":
-            slot_h = ph / n
+        bottom = y + h - lab_h
+        ph = bottom - top
+        def py(value):
+            return bottom - ph * (value - vmin) / span
+        zero = py(0)
+        if kind == "scatter":
+            xs = [float(v) for sr in series for v in sr.get("x", [])]
+            if not xs or not all(math.isfinite(v) for v in xs):
+                raise ValueError("scatter preview needs finite x values")
+            xmin, xmax = min(xs + [0]), max(xs + [0])
+            xspan = xmax - xmin or 1.0
+            left, right = x + 0.3, x + w - 0.3
+            def px(value):
+                return left + (right - left) * (value - xmin) / xspan
+            self.line(im, {"x1": left, "y1": zero, "x2": right, "y2": zero, "color": "line", "lw": 1})
+            self.line(im, {"x1": px(0), "y1": top, "x2": px(0), "y2": bottom, "color": "line", "lw": 1})
+            for si, sr in enumerate(series):
+                if len(sr.get("x", [])) != len(sr["values"]):
+                    raise ValueError("scatter x and values lengths differ")
+                for xv, yv in zip(sr["x"], sr["values"]):
+                    if yv is None:
+                        continue
+                    self.rect(im, {"x": px(float(xv)) - 0.06, "y": py(float(yv)) - 0.06,
+                                   "w": 0.12, "h": 0.12, "fill": cols[si % len(cols)]}, oval=True)
+            for xx, value, align in ((left, xmin, "l"), (right - 0.8, xmax, "r")):
+                self.text_el(im, {"x": xx, "y": bottom + 0.05, "w": 0.8, "h": 0.3,
+                                  "text": format_number(value), "size": size, "color": "muted", "align": align})
+        elif kind == "bar":
+            slot_h = ph / len(cats)
+            left, pw = x + 1.5, w - 2.2
+            origin = left + pw * (0 - vmin) / span
+            self.line(im, {"x1": origin, "y1": top, "x2": origin, "y2": bottom, "color": "line", "lw": 1})
             for i, c in enumerate(cats):
-                v = float(series[0]["values"][i])
-                bw = (w - 1.6) * v / vmax
                 yy = top + i * slot_h + slot_h * 0.2
+                bh = slot_h * 0.6 / len(series)
                 self.text_el(im, {"x": x, "y": yy, "w": 1.4, "h": slot_h * 0.6, "text": c, "size": size,
                                   "color": "muted", "align": "r", "valign": "m"})
-                self.rect(im, {"x": x + 1.5, "y": yy, "w": max(0.02, bw), "h": slot_h * 0.6,
-                               "fill": ("primary" if hl == i else "primary@0.45") if hl is not None else "primary"})
-                self.text_el(im, {"x": x + 1.55 + bw, "y": yy, "w": 1.0, "h": slot_h * 0.6, "text": str(series[0]["values"][i]),
-                                  "size": size, "color": "text", "valign": "m"})
-            return
-        if kind == "line":
-            for si, s in enumerate(series):
-                pts = [(x + slot * (i + 0.5), base - ph * float(v) / vmax) for i, v in enumerate(s["values"])]
-                for a_, b_ in zip(pts, pts[1:]):
-                    self.line(im, {"x1": a_[0], "y1": a_[1], "x2": b_[0], "y2": b_[1], "color": cols[si % len(cols)], "lw": 2.5})
-                for px_, py_ in pts:
-                    self.rect(im, {"x": px_ - 0.06, "y": py_ - 0.06, "w": 0.12, "h": 0.12, "fill": cols[si % len(cols)]}, oval=True)
-                if pts:
-                    lx_, ly_ = pts[-1]
-                    self.text_el(im, {"x": lx_ + 0.1, "y": ly_ - 0.16, "w": 0.9, "h": 0.32, "text": str(s["values"][-1]),
-                                      "size": size, "color": cols[si % len(cols)], "bold": True, "valign": "m"})
+                for si, sr in enumerate(series):
+                    value = sr["values"][i]
+                    if value is None:
+                        continue
+                    v = float(value)
+                    end = left + pw * (v - vmin) / span
+                    fill = (("primary" if hl == i else "primary@0.45") if hl is not None and len(series) == 1
+                            else cols[si % len(cols)])
+                    self.rect(im, {"x": min(origin, end), "y": yy + si * bh,
+                                   "w": max(0.001, abs(end - origin)), "h": bh, "fill": fill})
+                    self.text_el(im, {"x": end + 0.05 if v >= 0 else max(x, end - 0.7), "y": yy + si * bh,
+                                      "w": 0.65, "h": bh, "text": format_number(value, fmt),
+                                      "size": size, "color": "text", "align": "l" if v >= 0 else "r", "valign": "m"})
         else:
-            ns = 1 if stacked else len(series)
-            bw = slot * 0.6 / ns
-            for i in range(n):
-                acc = 0.0
-                for si, s in enumerate(series):
-                    v = float(s["values"][i])
-                    bh = ph * v / vmax
-                    bx = x + slot * i + slot * 0.2 + (0 if stacked else si * bw)
-                    by = base - bh - (acc if stacked else 0)
-                    if hl is not None and len(series) == 1:
-                        fill = "primary" if hl == i else "primary@0.45"
-                    else:
-                        fill = cols[si % len(cols)]
-                    self.rect(im, {"x": bx, "y": by, "w": bw, "h": max(0.01, bh), "fill": fill})
-                    if not stacked:
-                        self.text_el(im, {"x": bx - 0.2, "y": by - 0.3, "w": bw + 0.4, "h": 0.28, "text": str(s["values"][i]),
-                                          "size": size, "color": "text", "align": "c", "valign": "b"})
-                    acc += bh if stacked else 0
-        self.line(im, {"x1": x, "y1": base, "x2": x + w, "y2": base, "color": "line", "lw": 1})
-        for i, c in enumerate(cats):
-            self.text_el(im, {"x": x + slot * i, "y": base + 0.05, "w": slot, "h": lab_h - 0.05, "text": c, "size": size,
-                              "color": "muted", "align": "c", "valign": "t"})
+            n = len(cats)
+            slot = w / n
+            if kind == "line":
+                for si, sr in enumerate(series):
+                    pts = [(x + slot * (i + 0.5), py(float(v))) if v is not None else None
+                           for i, v in enumerate(sr["values"])]
+                    for a_, b_ in zip(pts, pts[1:]):
+                        if a_ is not None and b_ is not None:
+                            self.line(im, {"x1": a_[0], "y1": a_[1], "x2": b_[0], "y2": b_[1],
+                                           "color": cols[si % len(cols)], "lw": 2.5})
+                    for point in pts:
+                        if point is not None:
+                            px_, py_ = point
+                            self.rect(im, {"x": px_ - 0.06, "y": py_ - 0.06, "w": 0.12, "h": 0.12,
+                                           "fill": cols[si % len(cols)]}, oval=True)
+                    if pts and pts[-1] is not None:
+                        lx_, ly_ = pts[-1]
+                        self.text_el(im, {"x": lx_ + 0.1, "y": ly_ - 0.16, "w": 0.9, "h": 0.32,
+                                          "text": format_number(sr["values"][-1], fmt), "size": size,
+                                          "color": cols[si % len(cols)], "bold": True, "valign": "m"})
+            else:
+                ns = 1 if stacked else len(series)
+                bw = slot * 0.6 / ns
+                for i in range(n):
+                    positive, negative = 0.0, 0.0
+                    for si, sr in enumerate(series):
+                        value = sr["values"][i]
+                        if value is None:
+                            continue
+                        v = float(value)
+                        start = (positive if v >= 0 else negative) if stacked else 0
+                        end = start + v
+                        if stacked:
+                            if v >= 0:
+                                positive = end
+                            else:
+                                negative = end
+                        bx = x + slot * i + slot * 0.2 + (0 if stacked else si * bw)
+                        by = min(py(start), py(end))
+                        fill = (("primary" if hl == i else "primary@0.45") if hl is not None and len(series) == 1
+                                else cols[si % len(cols)])
+                        self.rect(im, {"x": bx, "y": by, "w": bw, "h": max(0.001, abs(py(end) - py(start))), "fill": fill})
+                        if not stacked:
+                            ly = by - 0.3 if v >= 0 else py(v)
+                            self.text_el(im, {"x": bx - 0.2, "y": ly, "w": bw + 0.4, "h": 0.28,
+                                              "text": format_number(value, fmt), "size": size, "color": "text",
+                                              "align": "c", "valign": "b"})
+            self.line(im, {"x1": x, "y1": zero, "x2": x + w, "y2": zero, "color": "line", "lw": 1})
+            for i, c in enumerate(cats):
+                self.text_el(im, {"x": x + slot * i, "y": bottom + 0.05, "w": slot, "h": lab_h - 0.05,
+                                  "text": c, "size": size, "color": "muted", "align": "c", "valign": "t"})
         if len(series) > 1:
             lx = x
             for si, s in enumerate(series):
@@ -435,7 +500,35 @@ class Painter:
 
     # ---------------------------------------------------------- slide
     def slide(self, sd):
+        tp = sd.get("template")
+        if tp:
+            return self.template_slide(sd, tp)
         im = Image.new("RGBA", (self.W, self.H), self.rgba("bg_bottom"))
+        self.draw(im, sd)
+        return im.convert("RGB").resize((self.W // SS, self.H // SS), Image.LANCZOS)
+
+    def template_slide(self, sd, tp):
+        """A company template page: the template's own layout picture (when template_kit could
+        render one) or its page colour underneath, the content scaled into the free area on top."""
+        base_s = self.S
+        self.S = page_style(sd, base_s)
+        W, H = self.tpl["size"] if self.tpl else (CANVAS_W, CANVAS_H)
+        tw, th = round(W * self.px), round(H * self.px)
+        lay = (self.tpl or {}).get("layouts", {}).get(str(tp.get("layout_index")), {})
+        prev = lay.get("preview")
+        if prev and Path(prev).exists():
+            page = Image.open(prev).convert("RGBA").resize((tw, th), Image.LANCZOS)
+        else:
+            page = Image.new("RGBA", (tw, th), self.rgba("bg_bottom"))
+        im = Image.new("RGBA", (self.W, self.H), (0, 0, 0, 0))
+        self.draw(im, sd)
+        k, ox, oy = tp["frame"]
+        im = im.resize((max(1, round(self.W * k)), max(1, round(self.H * k))), Image.LANCZOS)
+        page.alpha_composite(im, (round(ox * self.px), round(oy * self.px)))
+        self.S = base_s
+        return page.convert("RGB").resize((tw // SS, th // SS), Image.LANCZOS)
+
+    def draw(self, im, sd):
         for e in sd["elements"]:
             t = e["t"]
             try:
@@ -455,9 +548,10 @@ class Painter:
                     self.table(im, e)
                 elif t == "chart":
                     self.chart(im, e)
-            except Exception as ex:  # one odd element should not cost the whole preview
+            except Exception as ex:  # incomplete charts must not look like a successful preview
+                if t == "chart":
+                    raise ValueError(f"slide {sd['n']}: chart preview failed: {ex}") from ex
                 print(f"  slide {sd['n']}: skipped {t} ({ex})")
-        return im.convert("RGB").resize((self.W // SS, self.H // SS), Image.LANCZOS)
 
 
 def main():
@@ -465,14 +559,19 @@ def main():
     ap.add_argument("work")
     ap.add_argument("--dpi", type=int, default=80)
     ap.add_argument("--cols", type=int, default=3)
+    ap.add_argument("--pages", help="draw only these pages (e.g. 3,7) and keep the other previews; no contact sheet")
     a = ap.parse_args()
     work = Path(a.work).resolve()
     dump = load_json(work / "out" / "layout_dump.json")
     style = load_style(work / "style.json")
     out = work / "out" / "png"
     out.mkdir(parents=True, exist_ok=True)
+    total = len(dump["slides"])
+    only = {int(x) for x in a.pages.split(",") if x.strip()} if a.pages else None
     for f in out.glob("slide-*.png"):
-        f.unlink()
+        n = int(f.stem.split("-")[1]) if f.stem.split("-")[1].isdigit() else 0
+        if only is None or n in only or n > total:  # pages past the end belong to a longer old deck
+            f.unlink()
     # pictures in the dump are relative to the work dir
     cwd = os.getcwd()
     os.chdir(work)
@@ -480,12 +579,17 @@ def main():
         p = Painter(style, work, a.dpi)
         files = []
         for i, sd in enumerate(dump["slides"], 1):
+            if only is not None and i not in only:
+                continue
             f = out / f"slide-{i:02d}.png"
             p.slide(sd).save(f)
             files.append(f)
             print(f)
     finally:
         os.chdir(cwd)
+    if only is not None:
+        print("NOTE 只画了指定的页，其余页的预览图保留原样，没有拼总览图")
+        return
     from render import contact_sheet
     contact_sheet(files, work / "out" / "sheet.png", a.cols)
     print("sheet:", work / "out" / "sheet.png")

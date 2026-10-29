@@ -4,7 +4,7 @@ description: "联网搜索、平台内容、网页操作与本地 UI 验收的�
 when_to_use: "联网搜索、查官方资料、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、lookup upgrade、更新 lookup、升级 lookup、更新 lookup 上游"
 dispatch_intent: "统一承接联网与浏览器任务，按需加载 Agent Reach、OpenCLI 和浏览器执行资料，选择路线并核验证据；指定视频链接落盘交给 download-video；lookup 本体与上游更新由 skill-manager 发起并委派自身维护器，独立分发保留终端入口。"
 metadata:
-  version: "2.4.5"
+  version: "2.5.0"
   source: local
 ---
 
@@ -16,7 +16,7 @@ lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 的全部站�
 
 只将 lookup 注册为联网与浏览器任务的自动触发 Skill。Agent Reach、OpenCLI 的5套 Skill、ego-browser 与 web-access 的完整来源和执行指南保留在自动发现目录之外，选中后才读取；不得先让它们自动触发再回转 lookup。用户指定工具时，lookup 按指定条件选择执行路径；浏览器直接指令与标签／账号线索按 [浏览器选路「使用与验收」](references/浏览器选路.md#使用与验收) 区分。
 
-Agent Reach 的16个渠道、7类完整参考、配置、诊断、转写、安装与维护流程统一见 [Agent Reach 融合与能力映射](references/Agent-Reach融合.md)。平台任务、环境配置或诊断先读该入口的对应项；普通网页与已有搜索接入仍使用下文的直接路径，不强制体检或安装。原始上游触发说明只作来源记录，不作为第二套当前选路规则。
+Agent Reach 的14个原生渠道与40个动作、3份完整参考，以及 lookup 保留的 RSS／Exa 等直接路线、配置、诊断、转写、安装与维护流程统一见 [Agent Reach 融合与能力映射](references/Agent-Reach融合.md)。平台任务、环境配置或诊断先读该入口的对应项；普通网页与已有搜索接入仍使用下文的直接路径，不强制体检或安装。原始上游触发说明只作来源记录，不作为第二套当前选路规则。
 
 OpenCLI 的全部站点／内置命令、浏览器与原生 Chrome 接口、CDP、认证／Profile、插件、适配器开发与修复统一见 [OpenCLI 完整能力](references/OpenCLI融合.md)。现有 providers.json 只登记常用动作合约，不限制可发现能力的范围；其他动作从当前原生注册表与帮助选取，按任务核对读写授权。
 

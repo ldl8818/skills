@@ -6,10 +6,10 @@ dispatch_intent: "Error, crash, regression, screenshot-reported defect, test fai
 license: MIT
 metadata:
   zh_description: "诊断并修复报错、崩溃、测试失败、回归或性能异常；不用于一般代码审查。"
-  github_hash: "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929"
-  github_date: "10-15"
+  github_hash: "b55809013be84b1f59418b557c1e8bad66380705"
+  github_date: "10-29"
   github_ref: "main"
-  version: "4.3.1"
+  version: "4.3.2"
   github_path: "skills/hunt"
   github_url: "https://github.com/tw93/waza"
   update_policy: "frozen"

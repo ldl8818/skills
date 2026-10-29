@@ -69,6 +69,42 @@ def ICON(name, x, y, size, color="primary", bg="tint", bg_alpha=1.0, circle=True
             "bg_alpha": bg_alpha, "circle": circle, "pad": pad}
 
 
+# ------------------------------------------------------------------ build steps (animation)
+# Elements made inside an item loop carry "step": i, so the builder can bring each item in on
+# its own (one click, or one beat of the automatic build). Layouts call step(i) at the top of
+# the loop body and step_end() after the loop; untagged elements (title, background, chrome)
+# are on the slide from the start.
+_STEP = {"cur": None, "n": -1}
+
+
+def step(i=None):
+    if i is None:
+        i = _STEP["n"] + 1
+    _STEP["cur"] = i
+    _STEP["n"] = max(_STEP["n"], i)
+
+
+def step_end():
+    _STEP["cur"] = None
+
+
+def step_reset():
+    _STEP.update(cur=None, n=-1)
+
+
+def _stepped(fn):
+    def make(*a, **k):
+        d = fn(*a, **k)
+        if _STEP["cur"] is not None:
+            d["step"] = _STEP["cur"]
+        return d
+    make.__name__, make.__doc__ = fn.__name__, fn.__doc__
+    return make
+
+
+T, R, E, LN, IMG, ICON = (_stepped(f) for f in (T, R, E, LN, IMG, ICON))
+
+
 
 def item_mark(ctx, items, i, default, x, y, size, **kw):
     """Icon in front of an item, or the item's own number when the source deck numbered it
@@ -90,6 +126,14 @@ def card(ctx, x, y, w, h, kind="glass"):
     S = ctx.S
     r = S.shape.get("radius", 0.16)
     d = getattr(S, "depth", "shadow")
+    if d == "outline":
+        # sticker look (thick ink edge + hard offset shadow), as in pop / comic brand manuals
+        lw = S.shape.get("outline_w", 2.25)
+        if kind == "primary":
+            return R(x, y, w, h, fill="primary", radius=r, line="line", line_w=lw, shadow="hard")
+        if kind == "tint":
+            return R(x, y, w, h, fill="tint", radius=r, line="line", line_w=lw, shadow="hard")
+        return R(x, y, w, h, fill="surface", radius=r, line="line", line_w=lw, shadow="hard")
     sh = {"shadow": True, "whisper": "soft"}.get(d, False)
     line = None if d in ("flat", "whisper") else "line"
     if kind == "primary":
@@ -111,12 +155,17 @@ def title_block(ctx, s, w=CW, x=MX, y=TITLE_Y):
         els.append(k)
     if not title:
         return els, y
+    bar = ctx.S.decor.get("title_mark") == "bar"
+    if bar:
+        # a brand's title bar: a short vertical stripe in the accent colour left of the title
+        els.append(R(x, y + 0.14, 0.09, 0.52, fill=ctx.S.decor.get("title_bar_color", "accent"), radius=0.03))
+        x, w = x + 0.27, w - 0.27
     size = fit_size(title, w, 0.8, 36, 24, bold=True, max_lines=1)
     t = T(title, x, y, w, 0.8, size, "text", True, "heading", valign="m")
     t["dgrp"] = "title"  # unified across the deck in build_deck
     els.append(t)
     bottom = y + 0.8
-    if ctx.S.decor.get("title_mark", True):
+    if ctx.S.decor.get("title_mark", True) and not bar:
         els.append(R(x, bottom + 0.06, 0.62, 0.08, fill="primary", radius=0.04))
         els.append(R(x + 0.7, bottom + 0.06, 0.14, 0.08, fill="primary@0.4", radius=0.04))
         bottom += 0.14
@@ -129,8 +178,15 @@ def hero_or_none(ctx, x, y, w, h, key="hero"):
 
 
 def corner_hero(ctx, w=3.2, h=1.9):
-    """Small illustration in the top-right corner, next to the title."""
-    return hero_or_none(ctx, CANVAS_W - MX - w + 0.2, 0.55, w, h)
+    """Small illustration in the top-right corner, next to the title. A brand's mascot is a
+    full figure, not a cut-off decoration: it stays above the content (no feet on the cards)."""
+    y = 0.55
+    b = getattr(ctx.S, "brand", None)
+    if b:
+        if (b.get("logo") or {}).get("content") == "header":
+            y = 0.75  # below the running header's hairline
+        h = min(h, CONTENT_Y - y - 0.12)
+    return hero_or_none(ctx, CANVAS_W - MX - w + 0.2, y, w, h)
 
 
 def brush_behind(ctx, x, y, w, h):
@@ -271,21 +327,31 @@ def statement_number(s, ctx):
     x = MX + 0.1
     top = CONTENT_Y + 0.2
     lines = s.get("lines", [])
+    full_w = right - x
+    stacked = False
     if num:
-        nw = max(1.6, 1.1 * len(num))
-        els += brush_behind(ctx, x - 0.2, top + 1.05, nw + 0.5, 1.15)
-        els.append(T(num, x, top - 0.25, nw, 2.5, min(160, int(150 / max(1, len(num) ** 0.5))), "highlight", True,
-                     "display", align="c", valign="m", ls=1.0))
-        lx = x + nw + 0.35
+        ns = min(160, int(150 / max(1, len(num) ** 0.5)))
+        nw = max(1.6, text_width_pt(num, ns, True, DISPLAY_LATIN) / 72 + 0.3)
+        # a wide number ("≤ 0.5 元 / 秒") leaves no room beside it: lines go underneath
+        stacked = bool(lines) and full_w - nw - 0.35 < 2.6
+        if nw > full_w or stacked:
+            ns = fit_size(num, full_w - 0.3, 1.4, ns, 40, bold=True, max_lines=1, latin_scale=DISPLAY_LATIN)
+            nw = min(full_w, text_width_pt(num, ns, True, DISPLAY_LATIN) / 72 + 0.3)
+        nh = 1.6 if stacked else 2.5
+        ny = top - 0.25
+        els += brush_behind(ctx, x - 0.2, ny + nh * 0.52, nw + 0.5, nh * 0.46)
+        els.append(T(num, x, ny, nw, nh, ns, "highlight", True, "display", align="l" if stacked else "c", valign="m", ls=1.0))
+        lx = x if stacked else x + nw + 0.35
     else:
         lx = x
     lw = right - lx
     if lines:
         joined = "\n".join(lines)
-        ls_ = fit_size(joined, lw, 1.9, 42, 22, bold=True)
-        els.append(T(joined, lx, top + 0.05, lw, 1.9, ls_, "text", True, "heading", valign="m", ls=1.3))
+        ly, lh = (top + 1.45, 1.2) if stacked else (top + 0.05, 1.9)
+        ls_ = fit_size(joined, lw, lh, 42, 18 if stacked else 22, bold=True)
+        els.append(T(joined, lx, ly, lw, lh, ls_, "text", True, "heading", valign="m", ls=1.3))
     if s.get("body"):
-        by = top + 2.35
+        by = top + (2.8 if stacked else 2.35)
         bw = right - x
         els.append(T(s["body"], x, by, bw, 0.9, body_size(s["body"], bw, 0.9, 20, 13), "muted", False, valign="t", ls=1.4))
     if hero:
@@ -336,6 +402,7 @@ def rows_side(s, ctx):
     total = n * rh + (n - 1) * gap
     y = ly + (CONTENT_B - ly - total) / 2
     for i, it in enumerate(items):
+        step(i)
         kind = "tint" if it.get("emphasis") in ("primary", "soft") or (i == 0 and s.get("first_emphasis", True)) else "glass"
         els.append(card(ctx, rx, y, rw, rh, kind))
         els.append(item_mark(ctx, s.get("items", []), i, "sparkles", rx + 0.22, y + (rh - 0.56) / 2, 0.56,
@@ -352,6 +419,7 @@ def rows_side(s, ctx):
             els.append(T(it["text"], tx, y + 0.1, tw, rh - 0.2,
                          body_size(it["text"], tw, rh - 0.2, 17 if it.get("title") else 20, 11), "text", valign="m"))
         y += rh + gap
+    step_end()
     return els, {"master": "content"}
 
 
@@ -369,6 +437,7 @@ def stats_row(s, ctx):
     h = (2.2 if has_note else 2.0) if below else 2.75
     cw = (CW - gap * (n - 1)) / n
     for i, it in enumerate(items):
+        step(i)
         x = MX + i * (cw + gap)
         els.append(card(ctx, x, y, cw, h))
         isz = 0.5 if below else 0.62
@@ -389,6 +458,7 @@ def stats_row(s, ctx):
                   "muted", align="c", valign="t")
             e["grp"] = "stat_note"
             els.append(e)
+    step_end()
     by = y + h + 0.3
     if s.get("body"):
         bh = CONTENT_B - by
@@ -483,6 +553,7 @@ def side_cards(s, ctx):
     total = sum(heights) + gap * (len(items) - 1)
     y = CONTENT_Y + max(0, (CONTENT_B - CONTENT_Y - total) / 2)
     for i, (it, hh) in enumerate(zip(items, heights)):
+        step(i)
         prim = it.get("emphasis") == "primary"
         els.append(card(ctx, rx, y, rw, hh, "primary" if prim else "glass"))
         els.append(item_mark(ctx, s.get("items", []), i, "check-circle", rx + 0.25, y + (hh - 0.56) / 2, 0.56,
@@ -498,6 +569,7 @@ def side_cards(s, ctx):
             txt = it.get("text") or it.get("title", "")
             els.append(T(txt, tx, y + 0.12, tw, hh - 0.24, body_size(txt, tw, hh - 0.24, 18, 11, bold=prim), tcol, prim, valign="m"))
         y += hh + gap
+    step_end()
     return els, {"master": "content"}
 
 
@@ -514,11 +586,13 @@ def quote_cards(s, ctx):
     gap = 0.2
     ch = min(1.0, (CONTENT_B - y - gap * (n - 1)) / n)
     for i, it in enumerate(items):
+        step(i)
         txt = it.get("text", "")
         els.append(card(ctx, MX, y, CW, ch))
         els.append(ICON("quote", MX + 0.22, y + (ch - 0.5) / 2, 0.5, bg="tint"))
         els.append(T(txt, MX + 0.95, y + 0.08, CW - 1.2, ch - 0.16, body_size(txt, CW - 1.2, ch - 0.16, 18, 11), "text", valign="m"))
         y += ch + gap
+    step_end()
     return els, {"master": "content"}
 
 
@@ -565,6 +639,7 @@ def cards_quote(s, ctx):
     total = n * ch + (n - 1) * gap
     y = CONTENT_Y + (CONTENT_B - CONTENT_Y - total) / 2
     for i, it in enumerate(items):
+        step(i)
         els.append(card(ctx, MX, y, lw, ch))
         els.append(item_mark(ctx, s.get("items", []), i, "alert-triangle", MX + 0.25, y + (ch - 0.6) / 2, 0.6,
                         color="text" if ctx.S.dark else "primary_dark", bg="accent" if ctx.S.dark else "accent@0.45"))
@@ -581,6 +656,7 @@ def cards_quote(s, ctx):
             ty_ = top + th
             els.append(T(it["text"], tx, ty_, tw, y + ch - 0.08 - ty_, bs_, "muted"))
         y += ch + gap
+    step_end()
     qx = MX + lw + 0.5
     qw = CANVAS_W - MX - qx
     ql = s.get("quote_lines", [])
@@ -606,6 +682,7 @@ def list_icons(s, ctx):
     total = n * rh + (n - 1) * gap
     y = top + max(0, (CONTENT_B - top - total) / 2) * 0.6  # sit a little above centre
     for i, it in enumerate(items):
+        step(i)
         txt = it.get("text") or it.get("title", "")
         if it.get("title") and it.get("text"):
             txt = f"**{it['title']}**  {it['text']}"
@@ -616,6 +693,7 @@ def list_icons(s, ctx):
         els.append(T(txt, tx, y + 0.06, CANVAS_W - MX - tx - 0.25, rh - 0.12,
                      body_size(txt, CANVAS_W - MX - tx - 0.25, rh - 0.12, 20, 11), "text", valign="m"))
         y += rh + gap
+    step_end()
     return els, {"master": "content"}
 
 
@@ -633,6 +711,7 @@ def grid_cards(s, ctx):
     top = CONTENT_Y + 0.1
     ch = min(1.9, (CONTENT_B - top - gap * (rows - 1)) / rows)
     for i, it in enumerate(items):
+        step(i)
         x = MX + (i % cols) * (cw + gap)
         y = top + (i // cols) * (ch + gap)
         prim = it.get("emphasis") == "primary"
@@ -650,6 +729,7 @@ def grid_cards(s, ctx):
             txt = it.get("text") or it.get("title", "")
             els.append(T(txt, tx, y + 0.15, tw, ch - 0.3, body_size(txt, tw, ch - 0.3, 24, 12, bold=True), tcol, True,
                          "heading", valign="m"))
+    step_end()
     return els, {"master": "content"}
 
 
@@ -684,6 +764,7 @@ def steps_flow(s, ctx):
         return nd
     no_icons = any(_need(it) > ch - 0.9 for it in items)
     for i, it in enumerate(items):
+        step(i)
         x = MX + i * (cw + gap)
         els.append(E(x + cw / 2 - bs / 2, by, bs, bs, "primary"))
         els.append(T(f"{i + 1:02d}", x + cw / 2 - bs / 2, by, bs, bs, 20, "on_primary", True, "display",
@@ -709,6 +790,7 @@ def steps_flow(s, ctx):
             els.append(T(text, tx, ty, tw, cy + ch - ty - 0.2, body_size(text, tw, cy + ch - ty - 0.2, 18, 11),
                          "muted", ls=1.35))
             els[-1]["grp"] = "steps_text"
+    step_end()
     return els, {"master": "content"}
 
 
@@ -724,6 +806,7 @@ def compare_split(s, ctx):
     if need < h:  # few items: shorter cards, centred
         y, h = y + (h - need) / 2, need
     for side, x, prim in ((left, MX, False), (right, MX + cw + gap, True)):
+        step()
         els.append(card(ctx, x, y, cw, h))
         els.append(R(x, y, cw, 0.8, fill="primary" if prim else "tint", radius=ctx.S.shape.get("radius", 0.16)))
         if side.get("title"):
@@ -749,6 +832,7 @@ def compare_split(s, ctx):
             e["grp"] = "cmp_text"
             els.append(e)
             iy += rh
+    step_end()
     if s.get("vs_label", "VS"):  # "" = two parallel columns, no versus badge
         vs = 0.72
         els.append(E(MX + cw + gap / 2 - vs / 2, y + h / 2 - vs / 2, vs, vs, "accent"))
@@ -773,11 +857,13 @@ def cycle(s, ctx):
                      "heading", align="c", valign="m"))
     ns = 0.7
     for i in range(len(items)):
+        step(i)
         a = -math.pi / 2 + 2 * math.pi * i / n
         nx, ny = cx + r * math.cos(a), cy + r * math.sin(a)
         els.append(E(nx - ns / 2, ny - ns / 2, ns, ns, "primary"))
         els.append(T(f"{i + 1:02d}", nx - ns / 2, ny - ns / 2, ns, ns, 17, "on_primary", True, "display",
                      align="c", valign="m"))
+    step_end()
     lx = cx + r + 0.9
     lw = CANVAS_W - MX - lx
     gap = 0.16
@@ -785,6 +871,7 @@ def cycle(s, ctx):
     total = len(items) * rh + (len(items) - 1) * gap
     y = CONTENT_Y + (CONTENT_B - CONTENT_Y - total) / 2
     for i, it in enumerate(items):
+        step(i)
         els.append(card(ctx, lx, y, lw, rh))
         els.append(T(f"{i + 1:02d}", lx + 0.2, y, 0.6, rh, 18, "highlight", True, "display", valign="m"))
         tx, tw = lx + 0.85, lw - 1.05
@@ -792,6 +879,7 @@ def cycle(s, ctx):
         els.append(T(txt.strip(), tx, y + 0.05, tw, rh - 0.1, body_size(txt, tw, rh - 0.1, 17, 11), "text", valign="m"))
         els[-1]["grp"] = "cycle_text"
         y += rh + gap
+    step_end()
     return els, {"master": "content"}
 
 
@@ -807,6 +895,7 @@ def pyramid(s, ctx):
     axis = MX + 2.7
     wmin, wmax = 2.0, 5.3
     for i, it in enumerate(items):
+        step(i)
         w = wmin + (wmax - wmin) * (i / max(1, n - 1))
         # top layer solid, the rest light tints (mid-tones fail contrast with both white and dark text)
         strength = 1.0 if i == 0 else max(0.18, 0.5 - 0.32 * (i - 1) / max(1, n - 2))
@@ -823,6 +912,7 @@ def pyramid(s, ctx):
             els.append(T(it["text"], tx, y, CANVAS_W - MX - tx, rh,
                          body_size(it["text"], CANVAS_W - MX - tx, rh - 0.05, 17, 11), "text", valign="m"))
         y += rh + gap
+    step_end()
     return els, {"master": "content"}
 
 
@@ -976,6 +1066,7 @@ def rank_grid(s, ctx):
     chh = min(1.35, (area_b - CONTENT_Y - gap * (rows - 1)) / rows)
     k = chh / 1.13  # inner offsets scale with the card height
     for i, it in enumerate(items):
+        step(i)
         x = MX + (i % cols) * (cw + gap)
         y = CONTENT_Y + (i // cols) * (chh + gap)
         prim = i < 3 and s.get("top3", False)
@@ -995,6 +1086,7 @@ def rank_grid(s, ctx):
                   fit_size(it["text"], cw - 0.3, 0.26, 12, 9, max_lines=1), "muted", valign="t")
             e["grp"] = "rank_text"
             els.append(e)
+    step_end()
     if fd:
         fy = CONTENT_Y + rows * chh + (rows - 1) * gap + 0.25
         fbh = min(fh_box, CONTENT_B - fy)
@@ -1077,6 +1169,7 @@ def toc(s, ctx):
     ms = min(0.76, row * 0.66)
     has_text = any(it["text"] for it in items)
     for i, it in enumerate(items):
+        step(i)
         y = top + i * row
         mk, mw = num_mark(ctx, it["num"], x0, y + (row - ms) / 2, ms)
         els += mk
@@ -1098,6 +1191,7 @@ def toc(s, ctx):
             els.append(e)
         if i < n - 1:
             els.append(LN(x0, y + row, x0 + w0, y + row, "line", 0.75))
+    step_end()
     return els, {"master": "content", "header": False}
 
 
@@ -1116,6 +1210,7 @@ def toc_row(s, ctx):
     y = 3.05
     ms = 0.9
     for i, it in enumerate(items):
+        step(i)
         x = MX + i * (cw + gap)
         mk, mw = num_mark(ctx, it["num"], x, y, ms)
         els += mk
@@ -1128,6 +1223,7 @@ def toc_row(s, ctx):
             e = T(it["text"], x, y + ms + 1.15, cw, 0.9, body_size(it["text"], cw, 0.9, 15, 11), "muted", valign="t")
             e["grp"] = "toc_text"
             els.append(e)
+    step_end()
     return els, {"master": "content", "header": False}
 
 
@@ -1198,6 +1294,7 @@ def timeline_layout(s, ctx):
     ay = CONTENT_Y + 1.05 + max(0, (CONTENT_B - CONTENT_Y - 1.45 - ch_est) / 2)
     els.append(LN(MX, ay, CANVAS_W - MX, ay, "primary@0.45", 2.5, arrow=True))
     for i, it in enumerate(items):
+        step(i)
         cx = MX + cw * (i + 0.5)
         emph = it.get("emphasis") == "primary"
         d = 0.42 if emph else 0.28
@@ -1223,6 +1320,7 @@ def timeline_layout(s, ctx):
             els.append(T(it["text"], tx, ty, tw, cy + ch - ty - 0.15, body_size(it["text"], tw, cy + ch - ty - 0.15, 17, 10),
                          "muted", align="c", ls=1.3))
             els[-1]["grp"] = "tl_text"
+    step_end()
     return els, {"master": "content"}
 
 
@@ -1245,6 +1343,7 @@ def funnel_layout(s, ctx):
         nums.append(float(m.group()) if m else None)
     prop = all(v is not None and v > 0 for v in nums) and len(nums) > 1
     for i, it in enumerate(items):
+        step(i)
         if prop:
             w = max(wmin, wmax * nums[i] / max(nums))
         else:
@@ -1260,6 +1359,7 @@ def funnel_layout(s, ctx):
             els.append(T(it["text"], tx, y, CANVAS_W - MX - tx, rh,
                          body_size(it["text"], CANVAS_W - MX - tx, rh - 0.05, 17, 11), "text", valign="m"))
         y += rh + gap
+    step_end()
     return els, {"master": "content"}
 
 
@@ -1298,6 +1398,7 @@ def hub_layout(s, ctx):
                      fit_size(ct, 2 * r - 0.3, 2 * r - 0.5, 24, 12, bold=True), "on_primary", True, "heading",
                      align="c", valign="m"))
     for i, (it, x, y, rh) in enumerate(cards):
+        step(i)
         els.append(card(ctx, x, y, colw, rh))
         isz = min(0.5, rh - 0.3)
         els.append(item_mark(ctx, s.get("items", []), i, "sparkles", x + 0.2, y + (rh - isz) / 2, isz))
@@ -1305,6 +1406,7 @@ def hub_layout(s, ctx):
         txt = f"**{it['title']}**  {it.get('text', '')}" if it.get("title") else it.get("text", "")
         els.append(T(txt.strip(), tx, y + 0.06, tw, rh - 0.12, body_size(txt, tw, rh - 0.12, 17, 10), "text", valign="m"))
         els[-1]["grp"] = "hub_text"
+    step_end()
     return els, {"master": "content"}
 
 
@@ -1320,6 +1422,7 @@ def matrix_layout(s, ctx):
     qw, qh = (ax1 - ax0 - gap) / 2, (ay1 - ay0 - gap) / 2
     pos = [(ax0, ay0), (ax0 + qw + gap, ay0), (ax0, ay0 + qh + gap), (ax0 + qw + gap, ay0 + qh + gap)]
     for q, (x, y) in zip(quads, pos):
+        step()
         emph = q.get("emphasis") == "primary"
         els.append(R(x, y, qw, qh, fill="primary" if emph else "surface", alpha=1.0 if emph else ctx.S.shape.get("card_alpha", 0.86),
                      radius=ctx.S.shape.get("radius", 0.16), line=None if emph else "line", shadow=emph))
@@ -1332,6 +1435,7 @@ def matrix_layout(s, ctx):
             body = "\n".join(f"· {t}" for t in its)
             els.append(T(body, x + 0.25, y + 0.72, qw - 0.5, qh - 0.85, body_size(body, qw - 0.5, qh - 0.85, 16, 10),
                          "on_primary" if emph else "text", ls=1.35))
+    step_end()
     # axes
     els.append(LN(ax0 - 0.12, ay1 + 0.12, ax0 - 0.12, ay0 - 0.05, "muted", 1.5, arrow=True))
     els.append(LN(ax0 - 0.12, ay1 + 0.12, ax1 + 0.05, ay1 + 0.12, "muted", 1.5, arrow=True))
@@ -1381,20 +1485,56 @@ def table_layout(s, ctx):
     return els, {"master": "content"}
 
 
-def chart_layout(s, ctx):
-    """Native chart on the left, 1-3 insight cards on the right."""
-    els, tb = title_block(ctx, s)
-    spec = s.get("chart") or {}
-    ins = s.get("insights", [])
-    kind = spec.get("type", "column")
-    cw = 7.5 if ins else CW
-    y0, h = CONTENT_Y, CONTENT_B - CONTENT_Y
-    els.append(card(ctx, MX, y0, cw, h))
+def _chart_panel(ctx, spec, x, y0, cw, h):
+    """One chart in a card: its own title, unit line above, category-axis line below."""
+    els = [card(ctx, x, y0, cw, h)]
     if spec.get("title"):
-        els.append(T(spec["title"], MX + 0.3, y0 + 0.15, cw - 0.6, 0.4, 14, "muted", True, valign="m"))
+        els.append(T(spec["title"], x + 0.3, y0 + 0.15, cw - 0.6, 0.4, 14, "muted", True, valign="m"))
     top = y0 + (0.55 if spec.get("title") else 0.2)
-    els.append({"t": "chart", "x": MX + 0.2, "y": top, "w": cw - 0.4, "h": y0 + h - top - 0.15, "chart": spec,
-                "size": 14})
+    bottom = y0 + h - 0.15
+    # axis titles carry the unit or the meaning of the scale ("单位：万元"); the value axis is
+    # hidden, so they sit as small text above and below the plot instead of on the axes
+    if spec.get("y_title"):
+        els.append(T(spec["y_title"], x + 0.3, top, cw - 0.6, 0.32, 12, "muted", valign="m"))
+        top += 0.36
+    if spec.get("x_title"):
+        bottom -= 0.36
+        els.append(T(spec["x_title"], x + 0.3, bottom + 0.04, cw - 0.6, 0.32, 12, "muted", align="c", valign="m"))
+    els.append({"t": "chart", "x": x + 0.2, "y": top, "w": cw - 0.4, "h": bottom - top, "chart": spec, "size": 14})
+    return els
+
+
+def chart_layout(s, ctx):
+    """Native chart on the left, 1-3 insight cards on the right. With "charts" (two or three
+    charts on one page, as in many originals) the charts sit side by side, one card each, and
+    the insights run as a row of short cards underneath."""
+    els, tb = title_block(ctx, s)
+    specs = [c for c in (s.get("charts") or [s.get("chart") or {}]) if c is not None]
+    ins = s.get("insights", [])
+    y0, h = CONTENT_Y, CONTENT_B - CONTENT_Y
+    if len(specs) > 1:
+        rh = 0.95 if ins else 0
+        ch_h = h - (rh + 0.2 if ins else 0)
+        gap = 0.3
+        n = len(specs)
+        cw = (CW - gap * (n - 1)) / n
+        for i, spec in enumerate(specs):
+            els += _chart_panel(ctx, spec, MX + i * (cw + gap), y0, cw, ch_h)
+        if ins:
+            iy = y0 + ch_h + 0.2
+            m = len(ins)
+            iw = (CW - gap * (m - 1)) / m
+            for i, t in enumerate(ins):
+                x = MX + i * (iw + gap)
+                step(i)
+                els.append(card(ctx, x, iy, iw, rh, "tint" if i == 0 else "glass"))
+                els.append(T(t, x + 0.25, iy + 0.08, iw - 0.5, rh - 0.16, body_size(t, iw - 0.5, rh - 0.16, 17, 11),
+                             "text", i == 0, valign="m"))
+            step_end()
+        return els, {"master": "content"}
+    spec = specs[0] if specs else {}
+    cw = 7.5 if ins else CW
+    els += _chart_panel(ctx, spec, MX, y0, cw, h)
     if ins:
         x = MX + cw + 0.4
         w = CANVAS_W - MX - x
@@ -1467,9 +1607,11 @@ def framework_layout(s, ctx):
         w, h = (CW - gap) / 2, (y1 - y0 - gap) / 2
         spec = [("s", "S", "primary"), ("w", "W", "accent"), ("o", "O", "primary"), ("t", "T", "accent")]
         for i, (k, letter, fill) in enumerate(spec):
+            step(i)
             x = MX + (i % 2) * (w + gap)
             y = y0 + (i // 2) * (h + gap)
             els += _block(ctx, x, y, w, h, lab[k], B.get(k), letter, fill, size_max=18)
+        step_end()
     elif kind == "pest":
         gap = 0.25
         w = (CW - 3 * gap) / 4
@@ -1477,9 +1619,11 @@ def framework_layout(s, ctx):
         h = min(y1 - y0, 1.2 + 0.62 * most + 0.3)
         yy = y0 + (y1 - y0 - h) / 2
         for i, k in enumerate(["p", "e", "s", "t"]):
+            step(i)
             x = MX + i * (w + gap)
             els += _block(ctx, x, yy, w, h, lab[k], B.get(k), k.upper(), "primary" if i % 2 == 0 else "accent",
                           size_max=18)
+        step_end()
     elif kind == "five_forces":
         cx, cy = CANVAS_W / 2, (y0 + y1) / 2
         cw_, ch_ = 3.8, 1.4
@@ -1493,7 +1637,9 @@ def framework_layout(s, ctx):
         for a in arrows:
             els.append(LN(*a, color="primary@0.5", w=1.75, arrow=True))
         for k, (x, y, w, h) in boxes.items():
+            step()
             els += _block(ctx, x, y, w, h, lab[k], B.get(k), None, emph=(k == "center"), size_max=14)
+        step_end()
     elif kind == "canvas":
         gap = 0.1
         bh = 0.72
@@ -1515,7 +1661,9 @@ def framework_layout(s, ctx):
 
 def closing(s, ctx):
     dark = ctx.S.decor.get("closing_dark", True)
-    on = "on_primary" if dark else "strong"
+    # text on the dark closing ground (a brand with a light primary closes on its darkest colour)
+    on = ("on_dark" if "on_dark" in ctx.S.palette else "on_primary") if dark else "strong"
+    soft = ("on_dark" if "on_dark" in ctx.S.palette else "primary@0.18") if dark else None
     els = []
     hero = ctx.asset("hero")
     y = 0.7
@@ -1526,7 +1674,7 @@ def closing(s, ctx):
         y = 2.2
     head = s.get("headline") or s.get("title", "")
     if s.get("kicker"):
-        els.append(T(s["kicker"], MX, y, CW, 0.4, 14, "primary@0.18" if dark else "highlight", True, "body",
+        els.append(T(s["kicker"], MX, y, CW, 0.4, 14, soft if dark else "highlight", True, "body",
                      align="c", valign="m", spc=2))
         y += 0.5
     els.append(T(head, MX, y, CW, 0.95, fit_size(head, CW, 0.95, 46, 26, bold=True, max_lines=1), on, True, "heading",
@@ -1534,7 +1682,7 @@ def closing(s, ctx):
     y += 1.05
     if s.get("body"):
         els.append(T(s["body"], MX + 1, y, CW - 2, 0.6, body_size(s["body"], CW - 2, 0.6, 19, 12),
-                     "primary@0.18" if dark else "muted", align="c", valign="m"))
+                     soft if dark else "muted", align="c", valign="m"))
         y += 0.95
     if s.get("cta"):
         from common import text_width_pt
@@ -1645,6 +1793,7 @@ def shot_notes(s, ctx):
         top = y0 + (y1 - y0 - (rh * n + gap * (n - 1))) / 2
         d = 0.42
         for i, it in enumerate(items):
+            step(i)
             num = it.get("num") or str(i + 1)
             yy = top + i * (rh + gap)
             els += _pin(ctx, num, nx + d / 2, yy + d / 2 + 0.02, d)
@@ -1669,6 +1818,7 @@ def shot_notes(s, ctx):
                 ax, ay = it["at"]
                 ix, iy, iw, ih = box
                 els += _pin(ctx, num, ix + iw * float(ax), iy + ih * float(ay), 0.36)
+        step_end()
     if cap:
         ix, iy, iw, ih = box
         bottom = max(e["y"] + e["h"] for e in els if e["t"] in ("rect", "image") and e.get("role") != "marker")
@@ -1844,14 +1994,25 @@ def explain(s, ctx):
     fsizes = [_formula_size(b["formula"], sizes[i], inner_w) for i, c in enumerate(cols)
               for b in c.get("blocks", []) if "formula" in b]
     fsz = min(fsizes) if fsizes else None
+    # builds: several columns come in one column at a time; a single column comes in by its
+    # groups: a new group at each label or rule, and at text that follows a formula (the next
+    # step of a derivation); formulas and notes ride along with the group before them
+    k = -1
+    prev = None
     for i, c in enumerate(cols):
         fs = sizes[i]
         cx = x0 + i * (colw + gap)
         blocks = c.get("blocks", [])
+        if n > 1:
+            step(i)
         if boxed:
             els.append(card(ctx, cx, y0, colw, y1 - y0))
         bx, by, bw = cx + pad, y0 + pad, inner_w
         for b in blocks:
+            if n == 1 and (k < 0 or "label" in b or "rule" in b or ("text" in b and prev == "formula")):
+                k += 1
+                step(k)
+            prev = next((t for t in ("label", "formula", "rule", "note") if t in b), "text")
             h = _block_h(b, fs, bw, fsz)
             if "label" in b:
                 t = T(b["label"], bx, by, bw, h, fs, "label", True, valign="t")
@@ -1874,6 +2035,7 @@ def explain(s, ctx):
                 t["grp"] = f"ex_text{i}"
             els.append(t)
             by += h + gaps
+    step_end()
     if not boxed:
         # a short diagram-and-notes page sits in the middle of the free height, not at its top
         body = els[head:]
@@ -1886,8 +2048,10 @@ def explain(s, ctx):
 
 
 def free(s, ctx):
-    """Claude supplies ready elements in plan slide 'elements' (13.333x7.5 canvas)."""
-    return list(ctx.p.get("elements", [])), {"master": ctx.p.get("master", "content")}
+    """Claude supplies ready elements in the plan or deck slide 'elements' (13.333x7.5 canvas)."""
+    els = ctx.p.get("elements") or s.get("elements") or []
+    master = ctx.p.get("master") or s.get("master") or "content"
+    return list(els), {"master": master, "empty": not els}
 
 
 LAYOUTS = {
@@ -1996,6 +2160,7 @@ def apply_markers(els, ctx, layout=""):
             out.append(e)
             continue
         s_ = e["size"]
+        n0 = len(out)
         on_fill = e.get("bg") == "surface"  # icons sitting on a primary card use a surface disc
         if mode == "number":
             # the box grows to fit the digits (small icons used to squeeze 12pt numbers into 0.17in)
@@ -2010,4 +2175,10 @@ def apply_markers(els, ctx, layout=""):
         elif mode == "dash":
             out.append(R(e["x"], e["y"] + s_ / 2 - 0.035, min(0.34, s_ * 0.7), 0.07,
                          fill="on_primary" if on_fill else "primary", radius=0.035))
+        # the marker comes in with the item it stands for
+        for m in out[n0:]:
+            if e.get("step") is not None:
+                m["step"] = e["step"]
+            else:
+                m.pop("step", None)
     return out

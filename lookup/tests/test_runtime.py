@@ -549,6 +549,26 @@ else if(args.includes('--help')) {
         self.assertEqual(code, 1)
         self.assertIn('optional/search 缺失、变为写操作', out)
 
+    def test_selftest_lock_never_changes_an_unrelated_link_target(self):
+        lock = self.home / 'tmp/lookup-runtime/lookup-selftest.v2.flock'
+        lock.parent.mkdir(parents=True)
+        target = self.base / 'unrelated-file'
+        target.write_text('preserve this content')
+        for kind in ('symlink', 'hardlink'):
+            with self.subTest(kind=kind):
+                target.chmod(0o644)
+                if kind == 'symlink':
+                    lock.symlink_to(target)
+                else:
+                    os.link(target, lock)
+                try:
+                    code, _, _ = self.run_cmd(self.command, timeout=12)
+                    self.assertEqual(target.read_text(), 'preserve this content')
+                    self.assertEqual(target.stat().st_mode & 0o777, 0o644)
+                    self.assertEqual(code, 78)
+                finally:
+                    lock.unlink()
+
     def test_kernel_lock_blocks_only_parallel_selftest(self):
         lock = self.home / 'tmp/lookup-runtime/lookup-selftest.v2.flock'
         lock.parent.mkdir(parents=True)

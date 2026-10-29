@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "commit": "94f06c1969dfc1834001269d79d3ad0972d9dee6",
+  "schema_version": 2,
+  "commit": "14c213405669414492bda0f8d52cc6531d062c45",
   "channels": {
     "exa_search": {
       "reference": "search",
@@ -249,15 +249,20 @@
       "guide": "references/Agent-Reach融合.md#配置诊断与维护",
       "policy": "task_authorization"
     },
-    "install": {
-      "entry": "scripts/reach.py run install",
+    "add": {
+      "entry": "scripts/reach.py run add",
       "guide": "references/Agent-Reach融合.md#配置诊断与维护",
       "policy": "task_authorization"
     },
-    "configure": {
-      "entry": "scripts/reach.py run configure",
+    "remove": {
+      "entry": "scripts/reach.py run remove",
       "guide": "references/Agent-Reach融合.md#配置诊断与维护",
       "policy": "task_authorization"
+    },
+    "update": {
+      "entry": "scripts/reach.py run update",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "lookup_maintenance_only"
     },
     "doctor": {
       "entry": "scripts/reach.py run doctor",
@@ -269,28 +274,8 @@
       "guide": "references/Agent-Reach融合.md#配置诊断与维护",
       "policy": "task_authorization"
     },
-    "skill": {
-      "entry": "scripts/reach.py run skill",
-      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
-      "policy": "registration_disabled"
-    },
-    "format": {
-      "entry": "scripts/reach.py run format",
-      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
-      "policy": "task_authorization"
-    },
-    "transcribe": {
-      "entry": "scripts/reach.py run transcribe",
-      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
-      "policy": "task_authorization"
-    },
-    "check-update": {
-      "entry": "scripts/reach.py run check-update",
-      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
-      "policy": "task_authorization"
-    },
-    "watch": {
-      "entry": "scripts/reach.py run watch",
+    "configure": {
+      "entry": "scripts/reach.py run configure",
       "guide": "references/Agent-Reach融合.md#配置诊断与维护",
       "policy": "task_authorization"
     },
@@ -298,91 +283,246 @@
       "entry": "scripts/reach.py run version",
       "guide": "references/Agent-Reach融合.md#配置诊断与维护",
       "policy": "task_authorization"
+    },
+    "channels": {
+      "entry": "scripts/reach.py run channels",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "check": {
+      "entry": "scripts/reach.py run check",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "read": {
+      "entry": "scripts/reach.py run read",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "task_authorization"
+    },
+    "login": {
+      "entry": "scripts/reach.py run login",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "lookup_browser_route"
+    },
+    "logout": {
+      "entry": "scripts/reach.py run logout",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "lookup_browser_route"
+    },
+    "browser": {
+      "entry": "scripts/reach.py run browser",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "lookup_browser_route"
+    },
+    "skill": {
+      "entry": "scripts/reach.py run skill",
+      "guide": "references/Agent-Reach融合.md#配置诊断与维护",
+      "policy": "registration_disabled"
     }
   },
   "mcp": {
-    "module": "agent_reach.integrations.mcp_server",
+    "module": null,
+    "adapter": "scripts/reach_mcp.py",
     "tools": [
       "get_status"
     ],
     "auto_registered": false,
-    "entry": "scripts/reach.py mcp"
+    "entry": "scripts/reach.py mcp",
+    "optional_dependency": "mcp[cli]>=1.0,<2"
   },
   "source_references": [
-    "search",
-    "social",
-    "career",
-    "dev",
-    "web",
-    "video",
-    "finance"
+    "capabilities",
+    "sessions",
+    "maintenance"
   ],
   "setup_guides": {
-    "exa": "agent_reach/guides/setup-exa.md",
-    "groq": "agent_reach/guides/setup-groq.md",
-    "reddit": "agent_reach/guides/setup-reddit.md",
-    "twitter": "agent_reach/guides/setup-twitter.md",
-    "xiaohongshu": "agent_reach/guides/setup-xiaohongshu.md"
+    "native": "agent_reach/skill/references/maintenance.md",
+    "login": "agent_reach/skill/references/sessions.md"
   },
   "runtime_resources": [
     "agent_reach/scripts/transcribe_xiaoyuzhou.sh",
-    "agent_reach/integrations/mcp_server.py",
-    "agent_reach/guides/setup-exa.md",
-    "agent_reach/guides/setup-groq.md",
-    "agent_reach/guides/setup-reddit.md",
-    "agent_reach/guides/setup-twitter.md",
-    "agent_reach/guides/setup-xiaohongshu.md"
+    "agent_reach/runtime/cli.py",
+    "agent_reach/runtime/manage.py",
+    "agent_reach/runtime/dispatch.py",
+    "agent_reach/skill/references/capabilities.md",
+    "agent_reach/skill/references/sessions.md",
+    "agent_reach/skill/references/maintenance.md"
   ],
   "python_api": {
     "channels/__init__.py": [
       "get_channel",
       "get_all_channels"
     ],
-    "core.py": [
-      "AgentReach.doctor",
-      "AgentReach.doctor_report"
+    "runtime/manage.py": [
+      "doctor",
+      "setup",
+      "add",
+      "remove",
+      "configure",
+      "skill_status"
+    ],
+    "runtime/dispatch.py": [
+      "run_action",
+      "find_action"
     ],
     "channels/base.py": [
       "Channel.can_handle",
-      "Channel.ordered_backends",
-      "Channel.check"
+      "Channel.validate_params",
+      "Channel.setup_problems"
     ],
     "channels/web.py": [
-      "WebChannel.read"
+      "WebChannel.read",
+      "WebChannel._exa_search",
+      "WebChannel._exa_read"
     ],
     "channels/v2ex.py": [
-      "V2EXChannel.get_hot_topics",
-      "V2EXChannel.get_node_topics",
-      "V2EXChannel.get_topic",
-      "V2EXChannel.get_user",
-      "V2EXChannel.search"
+      "V2EXChannel._api_hot",
+      "V2EXChannel._api_node",
+      "V2EXChannel._api_read",
+      "V2EXChannel._api_user"
     ],
     "channels/xueqiu.py": [
-      "XueqiuChannel.get_stock_quote",
-      "XueqiuChannel.search_stock",
-      "XueqiuChannel.get_hot_posts",
-      "XueqiuChannel.get_hot_stocks"
+      "XueqiuChannel._tencent_quote",
+      "XueqiuChannel._tencent_search",
+      "XueqiuChannel._xq_quote",
+      "XueqiuChannel._xq_search",
+      "XueqiuChannel._xq_hot_posts",
+      "XueqiuChannel._xq_hot_stocks"
     ],
     "channels/youtube.py": [
-      "YouTubeChannel.transcribe"
+      "YouTubeChannel._ytdlp_subtitle",
+      "YouTubeChannel._whisper_transcribe"
     ],
-    "channels/xiaohongshu.py": [
-      "format_xhs_result"
-    ],
-    "cookie_extract.py": [
-      "list_browser_profiles",
-      "extract_all",
-      "configure_from_browser"
+    "transcribe.py": [
+      "transcribe"
     ],
     "config.py": [
       "Config.load",
       "Config.save",
       "Config.get",
       "Config.set",
-      "Config.delete",
-      "Config.is_configured",
-      "Config.get_configured_features",
-      "Config.to_dict"
+      "Config.delete"
     ]
+  },
+  "native_channels": {
+    "bilibili": [
+      "search",
+      "read",
+      "hot",
+      "subtitle"
+    ],
+    "boss": [
+      "search",
+      "read"
+    ],
+    "facebook": [
+      "search",
+      "profile"
+    ],
+    "github": [
+      "search",
+      "read"
+    ],
+    "instagram": [
+      "search",
+      "profile",
+      "posts"
+    ],
+    "linkedin": [
+      "jobs",
+      "read"
+    ],
+    "reddit": [
+      "search",
+      "read",
+      "subreddit"
+    ],
+    "twitter": [
+      "search",
+      "profile",
+      "tweets",
+      "thread"
+    ],
+    "v2ex": [
+      "hot",
+      "node",
+      "read",
+      "user"
+    ],
+    "web": [
+      "search",
+      "read"
+    ],
+    "xiaohongshu": [
+      "search",
+      "read",
+      "comments"
+    ],
+    "xiaoyuzhou": [
+      "transcribe"
+    ],
+    "xueqiu": [
+      "quote",
+      "search",
+      "hot_posts",
+      "hot_stocks"
+    ],
+    "youtube": [
+      "read",
+      "search",
+      "subtitle",
+      "transcribe"
+    ]
+  },
+  "lookup_routes": {
+    "rss": {
+      "resources": [
+        "references/Agent-Reach融合.md"
+      ],
+      "implementation": "Explicit feedparser use under the task environment; RSS is retired from native 1.6 and no readiness is asserted."
+    },
+    "exa_search": {
+      "resources": [
+        "references/search-routing.md",
+        "scripts/search-check.py"
+      ],
+      "implementation": "Existing lookup Exa route; native 1.6 also exposes web search."
+    },
+    "subtitles": {
+      "resources": [
+        "references/youtube-subtitles.md",
+        "scripts/clean-subtitles.py"
+      ],
+      "implementation": "Existing yt-dlp/OpenCLI subtitle and configured ASR routes."
+    },
+    "browser_platforms": {
+      "resources": [
+        "references/platform-routing.md",
+        "references/opencli-windows.md",
+        "references/浏览器选路.md",
+        "scripts/opencli-run.mjs"
+      ],
+      "implementation": "Existing approved OpenCLI/Profile and lookup browser route; no Reach dedicated browser or implicit cookie copy."
+    },
+    "status_mcp": {
+      "resources": [
+        "scripts/reach_mcp.py"
+      ],
+      "implementation": "Status-only compatibility MCP calls native runtime.manage.doctor; optional SDK1 required explicitly."
+    }
+  },
+  "legacy_migrations": {
+    "core.AgentReach.doctor/doctor_report, doctor.check_all": "runtime.manage.doctor (local state, no network); runtime.manage.run_checks for explicit live checks",
+    "Channel.ordered_backends/check": "Channel.actions backend declarations; runtime.dispatch.run_action and runtime.manage.doctor",
+    "V2EXChannel.get_hot_topics/get_node_topics/get_topic/get_user": "v2ex hot/node/read/user; raw.replies_complete and raw.replies_error retained",
+    "XueqiuChannel.get_stock_quote/search_stock/get_hot_posts/get_hot_stocks": "xueqiu quote/search/hot_posts/hot_stocks",
+    "YouTubeChannel.transcribe": "youtube transcribe; transcribe.transcribe retains generic URL/local-file provider API",
+    "format_xhs_result": "Native normalized items/raw plus lookup result normalization; unknown values remain unknown",
+    "cookie_extract.*": "Retired upstream; use authorized lookup platform/Profile handoff, no automatic cookie export/import",
+    "Config.to_dict/is_configured/get_configured_features": "Config.get for requested keys and runtime.manage.doctor; no broad credential dump",
+    "rss Channel": "lookup direct RSS/feedparser route, explicitly not a native 1.6 channel",
+    "exa_search Channel": "native web search + lookup existing Exa route",
+    "seven category references/five setup guides": "three complete native capability/session/maintenance guides; prior reference names are aliases",
+    "old install/check-update/watch/transcribe/format CLI": "setup/add; update --check; doctor/check; youtube transcribe or direct transcribe API; normalized item envelopes"
   }
 }

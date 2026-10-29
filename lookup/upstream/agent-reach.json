@@ -2,45 +2,40 @@
   "schema_version": 1,
   "repository": "https://github.com/Panniantong/Agent-Reach",
   "channel": "main",
-  "commit": "94f06c1969dfc1834001269d79d3ad0972d9dee6",
-  "version": "1.5.0",
+  "commit": "14c213405669414492bda0f8d52cc6531d062c45",
+  "version": "1.6.0",
   "archive": "agent-reach.tar.gz",
-  "archive_url": "https://codeload.github.com/Panniantong/Agent-Reach/tar.gz/94f06c1969dfc1834001269d79d3ad0972d9dee6",
-  "archive_sha256": "d608cc619e460ca982dc11ab72897677837c8d73ea23851026c6374cff864f93",
+  "archive_url": "https://codeload.github.com/Panniantong/Agent-Reach/tar.gz/14c213405669414492bda0f8d52cc6531d062c45",
+  "archive_sha256": "fcd21410d817ce4829bb028824d54e5288dc036d21ad2076a3f9ef72f58ba539",
   "files": {
-    ".env.example": {
-      "sha256": "5d0cc1b4c9259128343cb821c6688e9c1ea30c28b7e95f1458fa841e6dc38bce",
-      "size": 646,
+    ".github/release-acceptance.json": {
+      "sha256": "71bb8e3d8bc47087d969a8066df9d877efe0584dd6ea37dd2719e2333f2f7def",
+      "size": 13626,
       "mode": 436
     },
     ".github/workflows/pytest.yml": {
-      "sha256": "43cb9a0d50afe00d9ea44c64dd358adf1bb65baa332938944e6b58264b7b2451",
-      "size": 2927,
+      "sha256": "9b5d37de5397c25ffdb180371c53c04cc136089891d6bd9ff46da6b3f4e26fdb",
+      "size": 6539,
+      "mode": 436
+    },
+    ".github/workflows/release.yml": {
+      "sha256": "2fd95bb7aa389a9f864fa32368140aea8ef9d0d9efcf7bfa49957f1a5ef23534",
+      "size": 2626,
       "mode": 436
     },
     ".gitignore": {
-      "sha256": "df38ca2596744326bc65576375c237933f16d54f75ccbada4a3c08f42cd480fd",
-      "size": 199,
-      "mode": 436
-    },
-    ".openteams/specs/2026-07-10-agent-skills-hub-friend-link-design.html": {
-      "sha256": "a1ea3c4cbd71f95c1a56b6063b825483a4edd583c014f43d845d68318e01c971",
-      "size": 2136,
-      "mode": 436
-    },
-    ".openteams/specs/2026-08-04-readme-partner-section-design.html": {
-      "sha256": "54d6764d4078836c3fa9cccb766792853ee44b0c390a0230e514d5682347f5d1",
-      "size": 4797,
+      "sha256": "3211a16797962cbf0915bd013418037888392f47bad232a59ba7d6a7b6efbeb5",
+      "size": 242,
       "mode": 436
     },
     "CHANGELOG.md": {
-      "sha256": "86b808f43f281436cfa17d9b34f081ca24ad2444ec1b72f9ecde9086a413704f",
-      "size": 7596,
+      "sha256": "b43a11741998e3f009e3142ab81f97897c36c288920c8e967d09b22ffe62c37a",
+      "size": 20396,
       "mode": 436
     },
     "CONTRIBUTING.md": {
-      "sha256": "5959326ac01f6c46994489768555bbcaf87eb2dc8411b2103da2b6e90c71644c",
-      "size": 2258,
+      "sha256": "d280975e7c9d49fd1cb7efbac75d70b17571183c12db1075fdfd1381221273c6",
+      "size": 6574,
       "mode": 436
     },
     "LICENSE": {
@@ -49,8 +44,8 @@
       "mode": 436
     },
     "README.md": {
-      "sha256": "7b723bcd4e5992c37ad1c25c3a2badd89c723a105b787fde9d1aa19a215f7ff7",
-      "size": 22830,
+      "sha256": "679ed9b797891acf06d4605addaef032993b63af67c97ac2bd8be76ea854ce34",
+      "size": 16010,
       "mode": 436
     },
     "SECURITY.md": {
@@ -59,253 +54,273 @@
       "mode": 436
     },
     "agent_reach/__init__.py": {
-      "sha256": "46e5bdeb6202ac629098d931b49525adb85b859ba21ebde95ff0db27617e2ab4",
-      "size": 212,
+      "sha256": "68ba93d5f100691d20a82102a55dfafae44b6695463618e98f4dea82f17cb003",
+      "size": 127,
       "mode": 436
     },
     "agent_reach/backends/__init__.py": {
-      "sha256": "3c4f9224d20b020b0e54bb539c707370cef59937d68c6a441797b5ae672d5667",
-      "size": 429,
+      "sha256": "d94bb273299126e5fca5beea64ba8320a951fa6c04ae577f88832e1e7ad93914",
+      "size": 312,
+      "mode": 436
+    },
+    "agent_reach/backends/boss_native.py": {
+      "sha256": "7f67b2a6e54c0db38e1565a38db0063555a898f823bd958ce576db7d87ed1815",
+      "size": 4689,
+      "mode": 436
+    },
+    "agent_reach/backends/cloak.py": {
+      "sha256": "552e2a0ba40d4bbd9577f24dde4883369a053f1f3210432f5a57beefb7024107",
+      "size": 1822,
       "mode": 436
     },
     "agent_reach/backends/opencli.py": {
-      "sha256": "7ef04df9bb739b23d0c80534a7a143e7ec982c1a0699af2f10708d8014876342",
-      "size": 7942,
+      "sha256": "5897705237f7aa1fc086581f52c2fe3c8e6a3c20b07bf82aa4c7a72f5d97c745",
+      "size": 5978,
       "mode": 436
     },
     "agent_reach/channels/__init__.py": {
-      "sha256": "2f4630cc6a0b5b9d7a597aa02fb2d7f809cd171335c623b2f9bfdb28ec7b94f3",
-      "size": 1519,
+      "sha256": "8c19e8f4988542a0371cabde5aaa2bb3d68b742909d7b7324bac982a2c9cb015",
+      "size": 1397,
       "mode": 436
     },
     "agent_reach/channels/_opencli_site.py": {
-      "sha256": "f12896f94aa672bc8d4d08d7e51bbbc34cacbf0f12b4519f31447332cb5b945c",
-      "size": 1495,
+      "sha256": "10466fa1df27b4e1e7153a19e3c7023f3e27929e8acd9e2ac0ca4574ccf56cf9",
+      "size": 2382,
       "mode": 436
     },
     "agent_reach/channels/base.py": {
-      "sha256": "5eaa803fd593acb7bee8bb29ef33ef373f101ea1e346bc0a9a3b304efd2073c0",
-      "size": 3048,
+      "sha256": "0c98d7f0eea3b00e5594fc5ae0ec7cd95f883b2859b27d5b841a35baeb18f99e",
+      "size": 4416,
       "mode": 436
     },
     "agent_reach/channels/bilibili.py": {
-      "sha256": "0117e8055bf1b7acab3f1800104155b60fffa9bceacdc07c573cb0f1d691f64a",
-      "size": 4610,
+      "sha256": "d07cecb98609f571ccbeb83da1a88b98f7f964c999290c5c785466eac7cd2779",
+      "size": 10008,
       "mode": 436
     },
     "agent_reach/channels/boss.py": {
-      "sha256": "daa5496f163479314814022f13a2bd8949e3b851ea18e297d01e81de644f5e2d",
-      "size": 14515,
-      "mode": 436
-    },
-    "agent_reach/channels/exa_search.py": {
-      "sha256": "63c85f659442a7d48704a9c8d9a67ad723cd24326344d565978a805ff5d647c6",
-      "size": 1623,
+      "sha256": "2596919aff1d1b3c4b9be837a7c59583e6f158c9a42778daaa6e93e57558319b",
+      "size": 7379,
       "mode": 436
     },
     "agent_reach/channels/facebook.py": {
-      "sha256": "bf4760cfe0edcc8454404399eb133cd774b248fa208a9289c4daab6c2e3cbe63",
-      "size": 443,
+      "sha256": "2cf6c6d74b0730e15a40be7044d09aab1272bed06fb4ab1f327146cafd47ec5d",
+      "size": 1550,
       "mode": 436
     },
     "agent_reach/channels/github.py": {
-      "sha256": "442cc56755a4fa60ad6c8fad59ce4b703f1233a8bec3d2d19fb12ddd2a2f9d6f",
-      "size": 4767,
+      "sha256": "10125630c66efe8bf86058a4d000af5cb4a2ca065c3ab3bb2be22c311faa1c29",
+      "size": 7167,
       "mode": 436
     },
     "agent_reach/channels/instagram.py": {
-      "sha256": "ea713be88caac5389c22a814da3f5b5e010ec53f531aaff2d7b459139f2ce731",
-      "size": 456,
+      "sha256": "261068afe26b2b823de1e2ce8f31d9c1bf966b3c0ecfa149d62949b1cd323644",
+      "size": 2060,
       "mode": 436
     },
     "agent_reach/channels/linkedin.py": {
-      "sha256": "7e752c083cc62c6750ea3ccfd3533182661ba1aad4f71fac1a3257d26b8adc47",
-      "size": 2612,
-      "mode": 436
-    },
-    "agent_reach/channels/mcporter.py": {
-      "sha256": "56a19db49d1a8abcc099adb37282af75d3cdbf2cfd5aa830aaffd1f7ae72b17c",
-      "size": 5356,
+      "sha256": "491b9744f81a5ccc0a3775c1efed92d485ed6129423d60b98b25e8fae94a537f",
+      "size": 2361,
       "mode": 436
     },
     "agent_reach/channels/reddit.py": {
-      "sha256": "5018079ee6752d9242dd96227afffe72c3267f0aa4a1b48c62745f000c401cf0",
-      "size": 6322,
-      "mode": 436
-    },
-    "agent_reach/channels/rss.py": {
-      "sha256": "bb8d24e4705dd86abcf0ead333c19306df735fc54bb2d2c03390d5aa3614bbda",
-      "size": 958,
+      "sha256": "98678f44f489c53bd7e15f27123f3516d7aaec0c6a4aa748f33cb6c0ff694986",
+      "size": 3709,
       "mode": 436
     },
     "agent_reach/channels/twitter.py": {
-      "sha256": "97180dfbff13c3327309649b8a74668b534e642adeacb0cf170705e796ffe0c1",
-      "size": 5249,
+      "sha256": "636de3216a65b8b0bba5e2b2244ea15cdf8cd5228162a4665799bc5735911cd5",
+      "size": 3180,
       "mode": 436
     },
     "agent_reach/channels/v2ex.py": {
-      "sha256": "df334a13ba7004ce517b7046e7625211efbe0eb35a7f5db4551cc29254c4e662",
-      "size": 11831,
+      "sha256": "6be0ea9a126addeb9fb8984bd1527c3a4d76e142b2459ad6f81689397e03c67f",
+      "size": 8876,
       "mode": 436
     },
     "agent_reach/channels/web.py": {
-      "sha256": "d59271dcf9e2ab94f7ae927f0c1a13e9c4308b116de13e1a617a0c4582a7b8e3",
-      "size": 2505,
+      "sha256": "8c881350a067f2677ef4be5aea4f861c93e6845d9756cd43289294f68cbc1521",
+      "size": 8866,
       "mode": 436
     },
     "agent_reach/channels/xiaohongshu.py": {
-      "sha256": "e323aed7163f048c32716e36f8a096b6bcded6424cf793ba544df6edca33ac6a",
-      "size": 11717,
+      "sha256": "e8de999ffb23118e0248e859acdd4375e054435ecbb80570378429ac58c52647",
+      "size": 5334,
       "mode": 436
     },
     "agent_reach/channels/xiaoyuzhou.py": {
-      "sha256": "bf7503e3c745d2d1de3421c7e55d555948890be2292420417c49b9c4033eae04",
-      "size": 2443,
-      "mode": 436
-    },
-    "agent_reach/channels/xueqiu.py": {
-      "sha256": "d9c03c3934ad2381f61a621d4a6dc57b439c0b16e506b275a8b9a944e6794ee9",
-      "size": 10605,
-      "mode": 436
-    },
-    "agent_reach/channels/youtube.py": {
-      "sha256": "b7b9869dd732d65810b2699ccdf9c6c0e3aed2194bded9f7ccd3552b51607565",
-      "size": 5429,
-      "mode": 436
-    },
-    "agent_reach/cli.py": {
-      "sha256": "b7b104c7b4d207331aa4d0862cfd9c992dee7606e952ac55638c3396b69a374f",
-      "size": 89749,
-      "mode": 436
-    },
-    "agent_reach/config.py": {
-      "sha256": "55c66ab71ed856f171aae6475edf4916005a0a39a4cbde1e630aa2be7b33cdf1",
-      "size": 7390,
-      "mode": 436
-    },
-    "agent_reach/cookie_extract.py": {
-      "sha256": "57ac723501fb980a6d9147a64b2b79dee13a5397b84f342e5619e8e7cf5de6ba",
-      "size": 16398,
-      "mode": 436
-    },
-    "agent_reach/core.py": {
-      "sha256": "5ad4744d62276cb63a7ab0a678c2b2b1a4bb56a56b57bba18da5015f43f27d79",
-      "size": 1277,
-      "mode": 436
-    },
-    "agent_reach/doctor.py": {
-      "sha256": "84bb212880e138eb404576162dffd4f2ced442d60a75694ed272e2fa750db851",
-      "size": 5304,
-      "mode": 436
-    },
-    "agent_reach/guides/setup-exa.md": {
-      "sha256": "3671600cdbee522cb9ea4f6c2f9d4535bb0dbab347ffe14dbc9fcbe883a5c9dc",
-      "size": 1277,
-      "mode": 436
-    },
-    "agent_reach/guides/setup-groq.md": {
-      "sha256": "9bb9b04a20d895dcf8293b4f1588d5f4aed99d7fa3c1fb7ad9d30035405290cc",
-      "size": 1221,
-      "mode": 436
-    },
-    "agent_reach/guides/setup-reddit.md": {
-      "sha256": "90fe5919b2b39fb5c88a73484143d68279abe14b0fb77612dd0015efecfa3f44",
-      "size": 1441,
-      "mode": 436
-    },
-    "agent_reach/guides/setup-twitter.md": {
-      "sha256": "32f842e2703bd5f37522a2dd37dc876885452a46becd4796f209ef9e4956844c",
+      "sha256": "f71618d4dbd2cc297d8e84c642d5229f187e5a32fb2f7498cea92cf2f7c2f343",
       "size": 2911,
       "mode": 436
     },
-    "agent_reach/guides/setup-xiaohongshu.md": {
-      "sha256": "5db860c7ef7e955a441ebd7dcee9306bfce5476efaf712d292829cb2863c0758",
-      "size": 2586,
+    "agent_reach/channels/xueqiu.py": {
+      "sha256": "febd5504b8edae7fd1c672bbcfbd72d274162fdfad066dae28c5f6e05f02616f",
+      "size": 13789,
       "mode": 436
     },
-    "agent_reach/integrations/__init__.py": {
-      "sha256": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
-      "size": 24,
+    "agent_reach/channels/youtube.py": {
+      "sha256": "173681f5df7bac08519ab23a2eeaaaca1b28f4212c4b08d07f725f6674805b56",
+      "size": 8467,
       "mode": 436
     },
-    "agent_reach/integrations/mcp_server.py": {
-      "sha256": "b113eeb6ebe64b3488be02058fd02642765c01d1c4495ceb1286de4d93b4a3fe",
-      "size": 2247,
+    "agent_reach/cli.py": {
+      "sha256": "78a609e0d451b6948e8b02bdee49ee70d7a1f8212466fc1949a39a69d872131a",
+      "size": 1397,
       "mode": 436
     },
-    "agent_reach/probe.py": {
-      "sha256": "8f9c19ccda841b7a84647aa333536e85ca392e8f2c509cd12e50e49c85484a09",
-      "size": 4019,
+    "agent_reach/config.py": {
+      "sha256": "ad416d1f701512c93212ebb22ffe1fbdd07a55ce56ec3b77f885bdff2ec553c2",
+      "size": 6181,
+      "mode": 436
+    },
+    "agent_reach/runtime/__init__.py": {
+      "sha256": "1e7cc98b89f5582373d8d75f2fca9bd3f3358dfe9ed3f75e24c3233f4bdbd25c",
+      "size": 80,
+      "mode": 436
+    },
+    "agent_reach/runtime/bridge.py": {
+      "sha256": "3a429c3efd21fec9f820dcbaf56f5489439dd8f0024e0b09ffc5d4b94bb2ad46",
+      "size": 3446,
+      "mode": 436
+    },
+    "agent_reach/runtime/browser.py": {
+      "sha256": "20811a73980b44a076c22223af4e7f8cb9f5976940827e03778b39eced13b879",
+      "size": 37047,
+      "mode": 436
+    },
+    "agent_reach/runtime/browser_binding.py": {
+      "sha256": "5b25d1b543f706a3fddc1946a500b0d00a44790606baf056624b1ac9c26639e0",
+      "size": 5403,
+      "mode": 436
+    },
+    "agent_reach/runtime/browser_watcher.py": {
+      "sha256": "8fd77267ec87ad75fc2d4ee4aa79ea2bfa98a566864caa6b75821e93126db421",
+      "size": 8623,
+      "mode": 436
+    },
+    "agent_reach/runtime/cdp.py": {
+      "sha256": "e4e619960842683887ca0f5a40384e1be8d9f36a0210d993de37c81640df7bd6",
+      "size": 8783,
+      "mode": 436
+    },
+    "agent_reach/runtime/cli.py": {
+      "sha256": "2e86cad74b0dd4a605d78f2620e19ddfecce28d7762eabe25ece4414780d51ac",
+      "size": 23869,
+      "mode": 436
+    },
+    "agent_reach/runtime/clock.py": {
+      "sha256": "abbd33a24c88fe5e8baa6f8d3ec0ffe99b417e472da9bc583f64a9586ad76603",
+      "size": 1656,
+      "mode": 436
+    },
+    "agent_reach/runtime/dispatch.py": {
+      "sha256": "a0678e7806dc0ada2384a2d0e9c4e6236063ea13aaf6af386cc157ed0c752548",
+      "size": 12865,
+      "mode": 436
+    },
+    "agent_reach/runtime/legacy.py": {
+      "sha256": "7befb2c6c069b0f0cb15dcb8c01322238cc6642cc4fc66cddd41108393f2a74b",
+      "size": 4707,
+      "mode": 436
+    },
+    "agent_reach/runtime/manage.py": {
+      "sha256": "2dee4dc761d46eca5ff687b763dc4801871bf827effcfa26f1620c244bafd54f",
+      "size": 42731,
+      "mode": 436
+    },
+    "agent_reach/runtime/onboarding.py": {
+      "sha256": "a3439286482c7cfb5aac453a8ac3bcb0825809f79bfe19939aad050d5e2998a2",
+      "size": 13070,
+      "mode": 436
+    },
+    "agent_reach/runtime/public_web.py": {
+      "sha256": "17666cd9efa158737cdaffb8d9d1a341b0ce23d34193d9a2896d2065f9263e26",
+      "size": 4199,
+      "mode": 436
+    },
+    "agent_reach/runtime/result.py": {
+      "sha256": "42668a1529c8f94af93253f47df4a75f5e3bc292411929bf0b91d44c5459667f",
+      "size": 5601,
+      "mode": 436
+    },
+    "agent_reach/runtime/run.py": {
+      "sha256": "dd3b8c07e21fe9a7cddcbfead36fe35241359519ece80f5d47faf69bedc50f02",
+      "size": 5077,
+      "mode": 436
+    },
+    "agent_reach/runtime/session_reuse.py": {
+      "sha256": "cc150cacdc6e85d29c66158a5aeb67e2ecad4164041a954898bd719acbf98eba",
+      "size": 6436,
+      "mode": 436
+    },
+    "agent_reach/runtime/sessions.py": {
+      "sha256": "e60b61f2d36f266b320814686676938f43802bba7d8d41db720d6af81b761e47",
+      "size": 2310,
+      "mode": 436
+    },
+    "agent_reach/runtime/state.py": {
+      "sha256": "781604c019f5c88261ecf8b99020ae9a01fc8ad990a2c301784a0c2d41d99d55",
+      "size": 4162,
+      "mode": 436
+    },
+    "agent_reach/runtime/tools.py": {
+      "sha256": "ca1f51445d43b0ba0ca092befafcb58af68c5ef931d86f0a087d0f0c65383ff9",
+      "size": 26624,
+      "mode": 436
+    },
+    "agent_reach/runtime/update_notice.py": {
+      "sha256": "6e47885ef8fee167ef18d95d521a3be2aff59a51c89d688d0d20ada2cf0be695",
+      "size": 2288,
       "mode": 436
     },
     "agent_reach/scripts/transcribe_xiaoyuzhou.sh": {
-      "sha256": "569317a6e5f24f84192067d951da93a50542fa14285d07557a3bbeb366bdc3fc",
-      "size": 13161,
+      "sha256": "1df5763c6fc8017382a271bf97393768b54bdfbfadd870f23af538be124aa11d",
+      "size": 13770,
       "mode": 509
     },
     "agent_reach/skill/SKILL.md": {
-      "sha256": "0df9cd22ade17b77cc3698a14f1224c4aad9df5d533a1878dbe5df11b62f8377",
-      "size": 8636,
+      "sha256": "86f6bd3d377f30ec553e8fdac801fc41fe3eda3e0a9a2aa7690d5adb30e8ad7e",
+      "size": 7119,
       "mode": 436
     },
     "agent_reach/skill/SKILL_en.md": {
-      "sha256": "b0c2f6ed398921f6b61b9998a46af506c5732bed76bc8451e97d691ba91ab118",
-      "size": 8294,
+      "sha256": "b6f00572f0aec469b0d43e845283650362f71ab184565fe103ef7dc90106ac96",
+      "size": 7855,
       "mode": 436
     },
-    "agent_reach/skill/references/career.md": {
-      "sha256": "ade444ac499e55f02c84bd663253a28cebc1eefc7f56c7248dc6792841fbe53e",
-      "size": 9249,
+    "agent_reach/skill/references/capabilities.md": {
+      "sha256": "36105d4686493e67eb2f6d7cb47479e06bef6fbfe7159f08d3a6b64314b1cd79",
+      "size": 3431,
       "mode": 436
     },
-    "agent_reach/skill/references/dev.md": {
-      "sha256": "f6f91107557eacf1d28a023d597eb5a61353a8a6ede286c3c0a4888d274df9fe",
-      "size": 1383,
+    "agent_reach/skill/references/maintenance.md": {
+      "sha256": "f1bc13d07c631cfe00ebaf69bc0a3243f84b2ffb905d4620c62edcd5644d61f2",
+      "size": 1390,
       "mode": 436
     },
-    "agent_reach/skill/references/finance.md": {
-      "sha256": "c0cf89af1119d81890f6797ff9e8154a00ee08c17141e7d18c1b09658a916551",
-      "size": 1474,
-      "mode": 436
-    },
-    "agent_reach/skill/references/search.md": {
-      "sha256": "23bfc54a3b85847ac7c1e12d6dbb0913d6fa3bb89a706d79e2b36396a8a8ef5d",
-      "size": 1066,
-      "mode": 436
-    },
-    "agent_reach/skill/references/social.md": {
-      "sha256": "e2e6451eb931effd4f63ea407fbb109bea1e98de34bd703c52753ad0cc7025b3",
-      "size": 10521,
-      "mode": 436
-    },
-    "agent_reach/skill/references/video.md": {
-      "sha256": "167ce732382c664eea63b884685dc085caa27cd69820138f7eeb91b0162efac8",
-      "size": 5515,
-      "mode": 436
-    },
-    "agent_reach/skill/references/web.md": {
-      "sha256": "b238fc897975a693d7bb262600ca2ea69cd13a4892e870d346dbe375c880b303",
-      "size": 1087,
+    "agent_reach/skill/references/sessions.md": {
+      "sha256": "433c54d462e83ff1255d4d294c4bd6457028ccf3dbbe16c325837d46c336fa0e",
+      "size": 3754,
       "mode": 436
     },
     "agent_reach/transcribe.py": {
-      "sha256": "ffae0728d3426f67ca6748819fa49949d8eaeb96757f6687b5e4c691be98ee5e",
-      "size": 16108,
+      "sha256": "b890eabed1e6b57a39812792604f8409f59bdfb9280b4db6849f928418ae9d0b",
+      "size": 16433,
       "mode": 436
     },
     "agent_reach/utils/paths.py": {
-      "sha256": "36ce072629bef1306004d7034676cad055ee53dc5dd78710437c9f3769b108ec",
-      "size": 7197,
+      "sha256": "3409f821e2f4bbe1f2472824e1604b53c37e81942d0878335551885e48a25362",
+      "size": 6653,
       "mode": 436
     },
     "agent_reach/utils/process.py": {
-      "sha256": "211c1e25c458373f02cb4a81e9e4146490c58073a97610e8b7800567aea00645",
-      "size": 706,
+      "sha256": "16c5c4df5a9cba404f554a64ce03b0e274ac96bc3f3a4f19bb253ca08bcd9cb5",
+      "size": 468,
       "mode": 436
     },
     "agent_reach/utils/text.py": {
-      "sha256": "6faf82ba308cb300377a14de66207c88284a3f3372facd5bfc2a412fdb93f3ae",
-      "size": 1138,
+      "sha256": "e99f4c506c7ac632027cc908dd7d39cf46a61ee6e0e2c919657ece0fb2b27aa1",
+      "size": 804,
       "mode": 436
     },
     "agent_reach/utils/url.py": {
@@ -313,29 +328,14 @@
       "size": 3700,
       "mode": 436
     },
-    "config/mcporter.json": {
-      "sha256": "1f3cba30d6354cc2f3233224f6af3a3e44206f2fdaf9ecaaf2189a4a1e4a613d",
-      "size": 178,
-      "mode": 436
-    },
     "constraints.txt": {
-      "sha256": "b25155a29cd4d2c4f21c2ea9cb89676372b65fa709be27c8aa275298634d9c44",
-      "size": 329,
+      "sha256": "f22702e3823bf71877b45c3b1975647a31f36637721181ff02c25fc46b08d818",
+      "size": 275,
       "mode": 436
     },
     "docs/README_en.md": {
-      "sha256": "db2f25f4de9df3e9c6fbf71269ee88dd42ba04fd146401d0dca05d232153b852",
-      "size": 21927,
-      "mode": 436
-    },
-    "docs/README_ja.md": {
-      "sha256": "d2f4ee9e08c80c66e1a72f8de49b67caa9e42b8c0ededda3a86e4d39916db840",
-      "size": 21946,
-      "mode": 436
-    },
-    "docs/README_ko.md": {
-      "sha256": "bca6d722da85f7759a41c6a75918331a0de882569747d3256adcc9c709b446fe",
-      "size": 20790,
+      "sha256": "70b7a093307eb5325ef4638f90f8ad4697f35257b865c31ad7a7e28756a99f5c",
+      "size": 16227,
       "mode": 436
     },
     "docs/assets/logo-1.png": {
@@ -373,6 +373,11 @@
       "size": 37174,
       "mode": 436
     },
+    "docs/assets/sponsors/brightdata.png": {
+      "sha256": "c393afb03aecf2047599e9008ad63495470f5c05aabd066837ca26e7cd89c226",
+      "size": 7795,
+      "mode": 436
+    },
     "docs/assets/sponsors/browseract.png": {
       "sha256": "854a4a7b1c3671d22c207f2dab099e9360d3c7fac152c43c5c68f5a2c58c1105",
       "size": 4458,
@@ -383,34 +388,44 @@
       "size": 23725,
       "mode": 436
     },
+    "docs/assets/sponsors/rapidproxy.png": {
+      "sha256": "dbdf85d52035118ea77108d52a14b3cdd25a30dad889c0938881ee6be028f9b4",
+      "size": 14295,
+      "mode": 436
+    },
     "docs/assets/sponsors/tencent-cloud.svg": {
       "sha256": "1fe4e6326d24a1330071a7185466d66e434c8fd91738fe020b5272db57c7d143",
       "size": 3458,
       "mode": 436
     },
-    "docs/cookie-export.md": {
-      "sha256": "580f0412e31e483475b148e1499bb1bcda1cd84a14dd1a08890e24deecc4a714",
-      "size": 2249,
-      "mode": 436
-    },
-    "docs/dependency-locking.md": {
-      "sha256": "ac30022b9a0af30a871b55b5f9dfee06ef4b9c4e74fde20162d04c4cc690d25a",
-      "size": 636,
+    "docs/cloakbrowser.md": {
+      "sha256": "14cd89c218430b33c54f78e9e08a3a934ea0604d494d5e64a37042af6a62514b",
+      "size": 2717,
       "mode": 436
     },
     "docs/install.md": {
-      "sha256": "269dfa9308f0adf06d9efe22591fd60a48af785b2c4921302ff2d6726ee579f5",
-      "size": 22167,
+      "sha256": "65f15a472f6c45818c37d73c59168fd05768d706239a38a08a5aaefcd2af36ce",
+      "size": 3341,
+      "mode": 436
+    },
+    "docs/plans/2026-10-20-release-policy-guards.md": {
+      "sha256": "79915ebd6b21d1b375a42481965f37a5158ee81e5392e62bf08fcced42ec5d1e",
+      "size": 2312,
+      "mode": 436
+    },
+    "docs/plans/2026-10-20-shared-cloak-browser.md": {
+      "sha256": "467d36572e0cd0a8326c733c8e7068f210a57bce9975198860d93bd81378a47f",
+      "size": 2775,
       "mode": 436
     },
     "docs/troubleshooting.md": {
-      "sha256": "d00b66970253889749b0214269475b634907f14546f54a936254821774db4cb6",
-      "size": 4136,
+      "sha256": "b61d60e8fe6d45d255019d863ea732bb9bb4fbeb2b3fab520b4261ff132b4d6c",
+      "size": 5747,
       "mode": 436
     },
     "docs/update.md": {
-      "sha256": "fabbd30dc72d8611dc6b5a65ce869145a2bbd61ef9fdde22132086ccde6ee62b",
-      "size": 4974,
+      "sha256": "34af36700d109ffa334970a232a6b18bbe31ec3d521b17bdf5c9074e3794c0fb",
+      "size": 268,
       "mode": 436
     },
     "docs/wechat-group-qr.jpg": {
@@ -419,163 +434,138 @@
       "mode": 436
     },
     "llms.txt": {
-      "sha256": "b8a690165e834099fb3b0846076b69594c564b4b221754b4586d2c0f563bde89",
-      "size": 2333,
+      "sha256": "6b9fe9f584da75cf4a85c2d98ee827e24fe94752d68f909c43fbf60d7e736c60",
+      "size": 3079,
       "mode": 436
     },
     "pyproject.toml": {
-      "sha256": "b74f8bcb8442e5386028f1aebb091861d6b230058fbed0d7000860ccc847534d",
-      "size": 2160,
+      "sha256": "064c3f5e56945ed759d9fed46d690ac80698d2e5d1d8b0c59fe61eb4ffb6fc76",
+      "size": 1984,
       "mode": 436
     },
-    "scripts/sync-upstream.sh": {
-      "sha256": "81558d6e821edb17c493b2957d10c167852f6d0c072ab3cdbc13814685b56240",
-      "size": 2315,
-      "mode": 509
+    "scripts/accept-search.py": {
+      "sha256": "3dd718af3aa6c41f6e01945db2a6de5ef4343ce21fe548231302e945663fa609",
+      "size": 1969,
+      "mode": 436
+    },
+    "scripts/check_release_acceptance.py": {
+      "sha256": "0b7fdc7e5df19aff9a643097b42cb837bf7e7ddcbd9df89e5304195d8675f2d5",
+      "size": 3854,
+      "mode": 436
+    },
+    "scripts/record_release_acceptance.py": {
+      "sha256": "bedc5f5f182afdff51be5afbcd6409ad98dc5c73d3b4cf970fd507685b4c6ec3",
+      "size": 6971,
+      "mode": 436
     },
     "test.sh": {
-      "sha256": "c36f54c91d0843485d079136561ff6e53a658b9414e89c71c739ea221f3877cc",
-      "size": 2727,
-      "mode": 436
+      "sha256": "3056383d62bfdb3ca578f3904c898fb18a1ef91d94bf61c3487ea4183206f061",
+      "size": 2167,
+      "mode": 509
     },
     "tests/conftest.py": {
-      "sha256": "05a371f9d43cc87c5975a3526e78aaffa8046495a5647068587ce7f8a96c317e",
-      "size": 3388,
+      "sha256": "4fc14cfd351a1226f47b503111d8fb17b4cb5bf1f23ffc12fc31e9ce35ec9915",
+      "size": 5021,
       "mode": 436
     },
     "tests/test_auth_guidance_policy.py": {
-      "sha256": "729590ee49eb4e5c2199a71bb71aff34a67d6a3d858710604d3e40fa37d90c85",
-      "size": 8843,
+      "sha256": "331644272911ab36c6ad8e8402c7eb6320a13497c7b92413b2d2f69ffabcfcdb",
+      "size": 3335,
       "mode": 436
     },
     "tests/test_boss_channel.py": {
-      "sha256": "cf3f00ac1d94dc4d4614a96183060092b343e05fc3770c9aa2738ebfb02c4953",
-      "size": 10818,
+      "sha256": "69432c990848a41720cb6cc32c5307ff2ce66a801a3ef7840ba02daabae2a614",
+      "size": 3620,
+      "mode": 436
+    },
+    "tests/test_browser.py": {
+      "sha256": "c1a5a1c6ae5b46009dee6bced75b40af521a78e29596943c6d5067f025d67b22",
+      "size": 10477,
+      "mode": 436
+    },
+    "tests/test_browser_slots.py": {
+      "sha256": "dc0bd42f65210f32d614236ad3636d9595be28771b86beb8e8394ec4d9140dc5",
+      "size": 3968,
       "mode": 436
     },
     "tests/test_channel_contracts.py": {
-      "sha256": "8c4e1fbd489e445c579e164e375606067ef1e045937cf1f87a92ddb528c65328",
-      "size": 7153,
+      "sha256": "8260ad3c02876cbab2c1b17fa7aa1eceb8a94151eb8a356e93825a641aaa83c0",
+      "size": 1681,
       "mode": 436
     },
     "tests/test_channels.py": {
-      "sha256": "62c8f64ecdc7d2643d2a790b4d2de793eb3fa44d37c1679d72cf1cf44ded5bee",
-      "size": 65038,
-      "mode": 436
-    },
-    "tests/test_cli.py": {
-      "sha256": "a4af899e5a1402a263ac87854fa7f6a97ae5eb9de5a951161c25dffab7f598db",
-      "size": 17925,
+      "sha256": "cc3fb5a92fec3326be94ec1ab1a56e6d91a8e515e496230c01eb50f2f9e4dde3",
+      "size": 6109,
       "mode": 436
     },
     "tests/test_config.py": {
-      "sha256": "77aba12f2a80af2f9eac5d8bae6ede814898b2d36421c50e1fb99a3e92af892c",
-      "size": 11361,
+      "sha256": "4cef5353101ee616a5c3afbbf38debe646f77a63050b57afd98ba001205207ec",
+      "size": 8781,
       "mode": 436
     },
-    "tests/test_cookie_extract_perms.py": {
-      "sha256": "f5094aa308f92210231a23ec6b17d882049bf7be80ab2804370eee0a70a5aed7",
-      "size": 6189,
+    "tests/test_manage.py": {
+      "sha256": "546454a096c41e500a6752d6bf401ea30e2e108af0e0daef45154dd3e9da7ae5",
+      "size": 34725,
       "mode": 436
     },
-    "tests/test_cookie_security.py": {
-      "sha256": "eedde95fbcec1c27b7af9a2f2bd1edca41e7de22d7f976ef902dd15c92e5efd6",
-      "size": 6822,
-      "mode": 436
-    },
-    "tests/test_core.py": {
-      "sha256": "b2564cf2b12dea75dfdbece04292414986fc07f606c6d8930c54c026328ec352",
-      "size": 715,
-      "mode": 436
-    },
-    "tests/test_doctor.py": {
-      "sha256": "c4f2252bab4ff473b1ae145002afb9b80e73667e463e2d91e4f2a01a69a71aae",
-      "size": 10392,
-      "mode": 436
-    },
-    "tests/test_doctor_credential_boundaries.py": {
-      "sha256": "c8e75e4eaa78604da1e214780aae91d91b6dba12f6ee60f59c0698e1267845db",
-      "size": 4993,
-      "mode": 436
-    },
-    "tests/test_home_isolation.py": {
-      "sha256": "81608b0455b622914cb67d2332cecced15be66877681c2d33a71f443a368772c",
-      "size": 1192,
-      "mode": 436
-    },
-    "tests/test_integration_script.py": {
-      "sha256": "09f427a04267e595d17c03d3d553027f408afd4df89ef10a4f370d6c8732c48b",
-      "size": 1339,
-      "mode": 436
-    },
-    "tests/test_mcp_server.py": {
-      "sha256": "9d89fa10be9a96df165c156f8c2ff5f6b4e87fbd62f02df0fc08e3c0d1237465",
-      "size": 2810,
-      "mode": 436
-    },
-    "tests/test_mcporter_config.py": {
-      "sha256": "2e6de51c357f052d3cb381f6342d5d343da56f0d5320de6244d697febc2a0ece",
-      "size": 4596,
-      "mode": 436
-    },
-    "tests/test_opencli_backend.py": {
-      "sha256": "1c0771e5f092acea443127fac541bc3166cc1777334b499dfd2af569e4f2f5d7",
-      "size": 6230,
-      "mode": 436
-    },
-    "tests/test_opencode_skill.py": {
-      "sha256": "7b567829b8b6d17805fcb7849d950f11ae5ee36dfd257849af896555c037aca5",
-      "size": 3516,
-      "mode": 436
-    },
-    "tests/test_p0_cli.py": {
-      "sha256": "29fc78e1ee96ae21c294dd34708d218b361a32ae2bbdb60904f29345bdad22b7",
-      "size": 40315,
-      "mode": 436
-    },
-    "tests/test_paths.py": {
-      "sha256": "21488c38056ffb5179de386b4bf75cff75a92678cc3e98e12675e506d5b5a6c9",
-      "size": 1273,
+    "tests/test_native_access_errors.py": {
+      "sha256": "cba7806bc7278d6301932aa0da27d54f4072027b8b3f181b4913a4d2ceb485da",
+      "size": 4769,
       "mode": 436
     },
     "tests/test_private_file_writes.py": {
-      "sha256": "319a3eb2f42b1e7181bbac14f6b1cddb5859dd9eb8a590a98fcf0d26ab32442a",
-      "size": 20874,
-      "mode": 436
-    },
-    "tests/test_probe.py": {
-      "sha256": "f5ac8e2416b030c8c90122c2dcefc28373574cdd4196a684b4c071c251b4ebdb",
-      "size": 4139,
+      "sha256": "c2a9c451aeb5d9e24b0ca9585252ea1c4f886440cedc0a40e6b3428501c40059",
+      "size": 1214,
       "mode": 436
     },
     "tests/test_process.py": {
-      "sha256": "089aebe4f6f5fdcac4e8acadeb600b71b52d431519778e4311810acc1a922698",
-      "size": 498,
+      "sha256": "e545bb30fb6759975718f44e38b33ffea73dde22586312662e8a2a935dfafc08",
+      "size": 300,
+      "mode": 436
+    },
+    "tests/test_public_first.py": {
+      "sha256": "a9646f38aa033d028036c13f771130563624afe89ef331d88432c7567ac49222",
+      "size": 10011,
       "mode": 436
     },
     "tests/test_reddit_channel.py": {
-      "sha256": "1717f4eef3c7657d3f01cf541a48a0e21d2c8d1d9edab9c2fde7c2ad9b009bfc",
-      "size": 7147,
+      "sha256": "d52d54f18766adc68323a6ab3fd22778863b45a49801eef784e31838d3d40fae",
+      "size": 2895,
+      "mode": 436
+    },
+    "tests/test_release_policy.py": {
+      "sha256": "e59cfb1b248857419a839bfcf014f4fa572e9a7fcf5cd2ecbfa8e8bcdd5c2355",
+      "size": 11674,
       "mode": 436
     },
     "tests/test_scrub_credentials.py": {
-      "sha256": "11be9f7c4c20e20209c2717455160c82059ae1d3a6d9f8bd92c0d146e3e4646c",
-      "size": 3119,
+      "sha256": "b63726e72952ec69e4fae91f22b344c71888dcccf7e35ded833199e418cd894e",
+      "size": 1432,
       "mode": 436
     },
-    "tests/test_skill_command.py": {
-      "sha256": "ebaa4d6262e7bb5c398a181e0e004dc3510c3eb09362dc87f1ca68afc2821332",
-      "size": 11098,
+    "tests/test_search_harness.py": {
+      "sha256": "48204a3df814773bd91dc4ee94203f317c0c16d10f466486b826fa702387885e",
+      "size": 10109,
+      "mode": 436
+    },
+    "tests/test_session_onboarding.py": {
+      "sha256": "fb462817213dc15e5d491cc8d660ee2c3288559f3c24d1301e749961b7fe60cd",
+      "size": 13746,
+      "mode": 436
+    },
+    "tests/test_tools_install.py": {
+      "sha256": "0ab03643a723cd7bb43a382d1df5146c7c598b7c9ce4a25214a08c220d35ded8",
+      "size": 4409,
       "mode": 436
     },
     "tests/test_transcribe.py": {
-      "sha256": "80ef6f2e756713ec5aa7fdc75618fbe1c903a7b67edf443b1d53bf26bbf03834",
-      "size": 32193,
+      "sha256": "dda20f75f7a60326b6ceab3a41e57cce23741637c9b085b7298d5357a4af308e",
+      "size": 30288,
       "mode": 436
     },
-    "tests/test_twitter_channel.py": {
-      "sha256": "b5272d335f3b114395753a0349d1161ef66ba3d627c79538810e8593b36b764e",
-      "size": 5437,
+    "tests/test_unified_entry.py": {
+      "sha256": "34ab8722302e1c8404a8224cde249940e707b1a7a2a12d6306f2ca5620a032f8",
+      "size": 25269,
       "mode": 436
     },
     "tests/test_url_security.py": {
@@ -584,108 +574,137 @@
       "mode": 436
     },
     "tests/test_v2ex_channel.py": {
-      "sha256": "df9b15a4a88fdd2bd5bde11a2f49de44190b2e00bf5c00e50c8aec937bb889d3",
-      "size": 11272,
+      "sha256": "7b0eb62934bd6b3adb46105ab69bcb5f32cfb5a2a777321d3aec45b516f79e8a",
+      "size": 4163,
       "mode": 436
     },
     "tests/test_web_channel.py": {
-      "sha256": "6625f9dcfb533fd912c487ad3ed00b0d624394b13f2487ccc0cae40c1b2ad70e",
-      "size": 7524,
+      "sha256": "df2620fc94b1bb0fb0473e21b009976a0b4d9cea2d9be981a382fa432423edf4",
+      "size": 11148,
       "mode": 436
     },
-    "tests/test_xhs_format.py": {
-      "sha256": "30b97ac442534369813ccc546d508b96208d7d934f3f8e64703ee47044ec8e93",
-      "size": 4965,
-      "mode": 436
-    },
-    "tests/test_xiaoyuzhou_install.py": {
-      "sha256": "cf6493ea59d8b7b2188856c76063f33d479644459021335f5e01b9c897d4c394",
-      "size": 9699,
+    "tests/test_xiaohongshu_comments.py": {
+      "sha256": "e2bb2ec7716d12027e9702404ef8deeba15e14a7c113eef6bff4165ffb248547",
+      "size": 2210,
       "mode": 436
     },
     "tests/test_xueqiu_channel.py": {
-      "sha256": "e95b01896b165c47ae5484d60aabaf8282d234635ab3b6983c6af0b4980552f2",
-      "size": 9277,
+      "sha256": "b3a0f5e36246caf48104e0f853897ca0bbb7b74ba9092f5a88c52ce046d9e42e",
+      "size": 1564,
       "mode": 436
     },
     "tests/test_youtube_channel.py": {
-      "sha256": "56c8a44cde4f09b7b6c531a061cc45c0cc6dd06350383ffcee031ad9f98adc6c",
-      "size": 8904,
+      "sha256": "31d7be5fd341952f7154a0d8128824b066207367e710646b02b8b282ae638221",
+      "size": 2276,
       "mode": 436
     }
   },
   "adaptations": [
     {
-      "file": "agent_reach/cli.py",
-      "anchor": "    \"\"\"Install Agent Reach as an agent skill for supported agent clients.\"\"\"",
-      "insert": "\n    # Lookup owns client discovery; the original source remains in the archive.\n    return True\n",
-      "reason": "Disable registration of a competing generic Skill in the private runtime; retain all channel installers and original source."
+      "file": "agent_reach/runtime/manage.py",
+      "anchor": "def place_skill() -> dict:\n",
+      "replacement": "def place_skill() -> dict:\n    return {\"registration\": \"lookup_only\", \"links\": []}\n",
+      "reason": "Disable competing automatic Skill registration while preserving the complete source and all native action implementations."
+    },
+    {
+      "file": "agent_reach/runtime/manage.py",
+      "anchor": "def _cleanup_old_copies() -> dict:\n",
+      "replacement": "def _cleanup_old_copies() -> dict:\n    return {\"removed\": [], \"failed\": []}\n",
+      "reason": "Updating the integrated skill does not authorize deleting unrelated pipx/venv installations or launchers; preserve old recovery environments."
+    },
+    {
+      "file": "agent_reach/runtime/manage.py",
+      "anchor": "def _install_channel(ch, *, allow_upgrade: bool = False) -> List[dict]:\n",
+      "replacement": "def _install_channel(ch, *, allow_upgrade: bool = False) -> List[dict]:\n    if _uses_browser(ch):\n        raise ReachError(NEED_SETUP, \"Use lookup to prepare the existing approved browser and platform tools; dedicated-browser installation is disabled in the integration\")\n",
+      "reason": "Reject incompatible dedicated-browser setup before any prerequisite installer runs; the same channels remain available through lookup OpenCLI and explicit browser routing."
+    },
+    {
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def ensure_chrome(*, retry_cloak: bool = False) -> str:\n    \"\"\"Prepare CloakBrowser, falling back only to an installed system Chrome.\"\"\"\n",
+      "replacement": "def ensure_chrome(*, retry_cloak: bool = False) -> str:\n    \"\"\"Prepare CloakBrowser, falling back only to an installed system Chrome.\"\"\"\n    from .result import NEED_SETUP, ReachError\n    raise ReachError(NEED_SETUP, 'Browser lifecycle is owned by lookup; use the existing approved browser route')\n",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
+    },
+    {
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def start(url: str = \"about:blank\") -> None:\n    \"\"\"Explicit human login: show a window using the same saved profile.\"\"\"\n",
+      "replacement": "def start(url: str = \"about:blank\") -> None:\n    \"\"\"Explicit human login: show a window using the same saved profile.\"\"\"\n    from .result import NEED_SETUP, ReachError\n    raise ReachError(NEED_SETUP, 'Browser lifecycle is owned by lookup; use the existing approved browser route')\n",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
+    },
+    {
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def ensure_running(context: Optional[str] = None) -> None:\n    \"\"\"Prepare/reopen the shared browser; repair one lost Bridge connection.\"\"\"\n",
+      "replacement": "def ensure_running(context: Optional[str] = None) -> None:\n    \"\"\"Prepare/reopen the shared browser; repair one lost Bridge connection.\"\"\"\n    from .result import NEED_SETUP, ReachError\n    raise ReachError(NEED_SETUP, 'Browser lifecycle is owned by lookup; use the existing approved browser route')\n",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
+    },
+    {
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def setup(*, retry_cloak: bool = False, headless: bool = True) -> dict:\n    \"\"\"Make the dedicated browser ready with the OpenCLI extension loaded and bound; returns status().\n\n    macOS/Linux: fully automatic. Windows: opens the Web Store page and waits for the user's click.\n    Needs `opencli` installed (binding reads `opencli profile list`).\n    \"\"\"\n",
+      "replacement": "def setup(*, retry_cloak: bool = False, headless: bool = True) -> dict:\n    \"\"\"Make the dedicated browser ready with the OpenCLI extension loaded and bound; returns status().\n\n    macOS/Linux: fully automatic. Windows: opens the Web Store page and waits for the user's click.\n    Needs `opencli` installed (binding reads `opencli profile list`).\n    \"\"\"\n    from .result import NEED_SETUP, ReachError\n    raise ReachError(NEED_SETUP, 'Browser lifecycle is owned by lookup; use the existing approved browser route')\n",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
+    },
+    {
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def open_url(url: str) -> None:\n    \"\"\"Open a new tab in the running dedicated browser.\"\"\"\n",
+      "replacement": "def open_url(url: str) -> None:\n    \"\"\"Open a new tab in the running dedicated browser.\"\"\"\n    from .result import NEED_SETUP, ReachError\n    raise ReachError(NEED_SETUP, 'Browser lifecycle is owned by lookup; use the existing approved browser route')\n",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
+    },
+    {
+      "file": "agent_reach/runtime/session_reuse.py",
+      "anchor": "def prepare(channel: str, *, force: bool = False) -> dict:\n    \"\"\"Reuse an imported site session until explicitly refreshed; verify access separately.\"\"\"\n",
+      "replacement": "def prepare(channel: str, *, force: bool = False) -> dict:\n    \"\"\"Reuse an imported site session until explicitly refreshed; verify access separately.\"\"\"\n    from .result import NEED_SETUP, ReachError\n    raise ReachError(NEED_SETUP, 'Cookie import and browser session reuse require lookup platform/Profile authorization; no implicit copy is performed')\n",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
     },
     {
       "file": "agent_reach/channels/v2ex.py",
-      "anchor": "        # Fetch replies (first page)\n        try:",
-      "replacement": "        # Fetch replies (first page)\n        replies_error = None\n        try:",
-      "reason": "Preserve reply retrieval failures and first-page coverage explicitly; an empty reply list must not imply confirmed absence."
+      "anchor": "        replies = _get_json(_v2ex_url(\"/api/replies/show.json\", topic_id=topic_id, page=1))\n        replies = replies if isinstance(replies, list) else []",
+      "replacement": "        replies_error = None\n        try:\n            replies = _get_json(_v2ex_url(\"/api/replies/show.json\", topic_id=topic_id, page=1))\n            if not isinstance(replies, list):\n                raise ValueError(\"reply response is not a list\")\n        except Exception as exc:\n            replies_error = type(exc).__name__\n            replies = []",
+      "reason": "Keep the retrieved topic when replies fail or have an invalid shape, and expose the specific partial result instead of claiming an empty or complete thread."
     },
     {
       "file": "agent_reach/channels/v2ex.py",
-      "anchor": "        except Exception:\n            replies_raw = []\n\n        replies = [",
-      "replacement": "        except Exception as exc:\n            replies_error = type(exc).__name__\n            replies_raw = []\n\n        replies = [",
-      "reason": "Preserve reply retrieval failures and first-page coverage explicitly; an empty reply list must not imply confirmed absence."
+      "anchor": "raw={\"topic\": topic, \"replies\": replies}",
+      "replacement": "raw={\"topic\": topic, \"replies\": replies, \"replies_complete\": replies_error is None and len(replies) >= topic.get(\"replies\", 0), \"replies_error\": replies_error}",
+      "reason": "Keep explicit first-page coverage and reply failures in the normalized native item raw data; complete topic text does not prove all replies were read."
+    }
+  ],
+  "previous_commit": "94f06c1969dfc1834001269d79d3ad0972d9dee6",
+  "previous_archive_sha256": "d608cc619e460ca982dc11ab72897677837c8d73ea23851026c6374cff864f93",
+  "local_adaptation_review": [
+    {
+      "previous": "cli._install_skill registration suppression",
+      "disposition": "retained_on_new_api",
+      "current": "runtime.manage.place_skill returns lookup_only; reach.py rejects native skill registration",
+      "reason": "The new upstream still registers a competing automatic entry."
     },
     {
-      "file": "agent_reach/channels/v2ex.py",
-      "anchor": "            \"replies\": replies,\n        }",
-      "replacement": "            \"replies\": replies,\n            \"replies_complete\": replies_error is None and len(replies) >= topic.get(\"replies\", 0),\n            \"replies_error\": replies_error,\n        }",
-      "reason": "Preserve reply retrieval failures and first-page coverage explicitly; an empty reply list must not imply confirmed absence."
+      "previous": "selected _cmd_install skips global core/Exa and check_all filter",
+      "disposition": "absorbed_with_boundary_adapter",
+      "current": "native add installs only selected channel tools; native doctor is local-state-only; explicit check accepts selected channels",
+      "reason": "The native add/check split provides the original selection scope. Dedicated browser setup remains incompatible and fails before installers."
     },
     {
-      "file": "agent_reach/cli.py",
-      "anchor": "    if dry_run:\n        _install_system_deps_dryrun()",
-      "replacement": "    if raw_channels and \"all\" not in raw_channels:\n        print(\"Selected channels: skipping unrelated core tool installation\")\n    elif dry_run:\n        _install_system_deps_dryrun()",
-      "reason": "Limit an explicitly selected channel installation and its diagnostics to the requested scope; preserve default and all-channel behavior."
+      "previous": "V2EX first-page and failed-reply completeness fields",
+      "disposition": "retained_on_new_api",
+      "current": "channels.v2ex._api_read emits raw.replies_complete/raw.replies_error and preserves the topic",
+      "reason": "The rewritten native reader still fetches one page and otherwise loses the topic on a reply failure."
     },
     {
-      "file": "agent_reach/cli.py",
-      "anchor": "    if dry_run:\n        print(\"[dry-run] Would install mcporter and configure Exa search\")",
-      "replacement": "    if raw_channels and \"all\" not in raw_channels:\n        print(\"Selected channels: skipping unrelated Exa configuration\")\n    elif dry_run:\n        print(\"[dry-run] Would install mcporter and configure Exa search\")",
-      "reason": "Limit an explicitly selected channel installation and its diagnostics to the requested scope; preserve default and all-channel behavior."
+      "previous": "MCP SDK1 bounds/API detection/missing-dependency hint",
+      "disposition": "retained_in_status_adapter",
+      "current": "scripts/reach_mcp.py calls native runtime.manage.doctor; explicit mcp[cli]>=1.0,<2",
+      "reason": "Upstream deleted the MCP server, so the actual existing status-only entry needs a thin adapter. Native actions stay in their CLI, not a duplicate MCP implementation."
     },
     {
-      "file": "agent_reach/doctor.py",
-      "anchor": "def check_all(config: Config) -> Dict[str, dict]:",
-      "replacement": "def check_all(config: Config, *, channels=None) -> Dict[str, dict]:",
-      "reason": "Limit an explicitly selected channel installation and its diagnostics to the requested scope; preserve default and all-channel behavior."
+      "previous": "legacy sources, channels, references and public APIs",
+      "disposition": "native_replacement_with_explicit_migrations",
+      "current": "capabilities.json native_channels/python_api/legacy_migrations/lookup_routes",
+      "reason": "Use all current 14 channels/40 actions and 3 complete references; Exa moved to web, optional RSS and extra platform actions remain lookup direct routes. Do not reimplement deleted convenience APIs."
     },
     {
-      "file": "agent_reach/doctor.py",
-      "anchor": "    for ch in get_all_channels():\n        try:",
-      "replacement": "    for ch in get_all_channels():\n        if channels is not None and ch.name not in channels:\n            continue\n        try:",
-      "reason": "Limit an explicitly selected channel installation and its diagnostics to the requested scope; preserve default and all-channel behavior."
-    },
-    {
-      "file": "agent_reach/cli.py",
-      "anchor": "        results = check_all(config)\n        ok = sum(",
-      "replacement": "        results = (check_all(config, channels=requested_channels)\n                   if raw_channels and \"all\" not in raw_channels else check_all(config))\n        ok = sum(",
-      "reason": "Limit an explicitly selected channel installation and its diagnostics to the requested scope; preserve default and all-channel behavior."
-    },
-    {
-      "file": "pyproject.toml",
-      "anchor": "all = [\"playwright>=1.40\", \"mcp[cli]>=1.0\", \"browser-cookie3>=0.19\"]",
-      "replacement": "all = [\"playwright>=1.40\", \"mcp[cli]>=1.0,<2\", \"browser-cookie3>=0.19\"]",
-      "reason": "The original low-level MCP server uses SDK 1.x decorators removed in MCP SDK 2.x; constrain its optional dependency to the compatible major version while preserving original source."
-    },
-    {
-      "file": "agent_reach/integrations/mcp_server.py",
-      "anchor": "    HAS_MCP = True",
-      "replacement": "    HAS_MCP = hasattr(Server, \"list_tools\") and hasattr(Server, \"call_tool\")",
-      "reason": "Detect the SDK 1.x server API before starting; incompatible MCP SDK 2.x must produce a dependency error rather than crash at decorator registration."
-    },
-    {
-      "file": "agent_reach/integrations/mcp_server.py",
-      "anchor": "            \"MCP not installed. Install: python -m pip install \"\n            \"'agent-reach[mcp] @ \"\n            \"https://github.com/Panniantong/agent-reach/archive/main.zip'\",",
-      "replacement": "            \"Compatible MCP SDK missing (>=1.0,<2). Install it in the verified \"\n            \"Lookup private runtime, then retry scripts/reach.py mcp.\",",
-      "reason": "The original missing-SDK hint names an undeclared extra and switches to upstream main; point to the compatible SDK in the existing verified private environment instead."
+      "previous": "browser/profile and credential authorization",
+      "disposition": "new_required_boundary_adapter",
+      "current": "runtime browser/session_reuse guards plus lookup run browser/login/logout/update routing",
+      "reason": "New native defaults can start Cloak/Chrome, copy existing cookies and migrate/remove environments without lookup selection. Preserve the existing approved environment and explicit account boundaries."
     }
   ]
 }

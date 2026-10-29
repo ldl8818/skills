@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import sys
 import tempfile
 import types
 import unittest
@@ -35,16 +36,27 @@ class IntegratedUpdateTests(unittest.TestCase):
                 target = package / name.removeprefix('agent_reach/')
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(content)
-        with patch.object(upstream, 'read_version', return_value='1.5.0'), \
+        with patch.object(upstream, 'read_version', return_value='1.6.0'), \
              patch.object(upstream, 'command', return_value='agent-reach doctor skill'), \
              patch.object(upstream, 'agent_reach_environment', return_value={'skill_root': str(package / 'skill')}):
             result = upstream.agent_reach_probe('/synthetic/agent-reach')
-            self.assertEqual(len(result['lookup_contract']['channels']), 16)
+            self.assertEqual(len(result['lookup_contract']['channels']), 14)
+            self.assertEqual(result['lookup_contract']['native_actions'], 40)
+            self.assertIn('rss', result['lookup_contract']['lookup_routes'])
             registry = package / 'channels/__init__.py'
             registry.write_text('\n'.join(line for line in registry.read_text().splitlines()
                                           if not any(name in line for name in ('BossChannel','FacebookChannel','InstagramChannel'))))
             with self.assertRaisesRegex(upstream.MaintenanceError, 'LOOKUP_CONTRACT_CHANGED'):
                 upstream.agent_reach_probe('/synthetic/agent-reach')
+
+    def test_agent_reach_unified_version_command_is_read_without_updates(self):
+        executable = self.home / 'agent-reach'
+        executable.write_text('#!' + sys.executable + '\nimport json,sys\n'
+                              'if sys.argv[1:] == ["--version"]: raise SystemExit(1)\n'
+                              'assert sys.argv[1:] == ["version"]\n'
+                              'print(json.dumps({"ok":True,"result":{"version":"1.6.0"}}))\n')
+        executable.chmod(0o700)
+        self.assertEqual(upstream.read_version(str(executable), 'agent-reach'), '1.6.0')
 
     def test_opencli_candidate_cannot_skip_the_complete_registry_gate(self):
         response = types.SimpleNamespace(stdout=json.dumps({'ok':True,'data':{'commands':[],'total':0}}))

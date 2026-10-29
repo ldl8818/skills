@@ -146,13 +146,13 @@ class FidelityTests(Isolated):
                 crop = preview.crop((40, 80, 220, 120))
                 self.assertIsNotNone(ImageChops.difference(crop, Image.new("RGB", crop.size, "white")).getbbox())
 
-    def test_chart_refused_before_mutating_work_or_original(self):
+    def test_unsupported_chart_refused_before_mutating_work_or_original(self):
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
         data = CategoryChartData()
         data.categories = ["Alpha", "Beta"]
         data.add_series("Revenue", [123, 456])
-        slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(1), Inches(1), Inches(8), Inches(4), data)
+        slide.shapes.add_chart(XL_CHART_TYPE.AREA, Inches(1), Inches(1), Inches(8), Inches(4), data)
         src = self.root / "chart.pptx"
         prs.save(src)
         original = src.read_bytes()
@@ -286,6 +286,8 @@ class WorkflowTests(Isolated):
     def test_pipeline_failure_status(self):
         for failed in [None, "qa_check.py", "review.py", "render_lite.py"]:
             def run(args):
+                if Path(args[0]).name == "qa_check.py":
+                    put(self.root / "out/qa_report.json", {})
                 return 7 if Path(args[0]).name == failed else 0
             with self.subTest(failed=failed), mock.patch.object(pipeline, "run", side_effect=run):
                 rc, _ = call(pipeline, self.root, "--lite")

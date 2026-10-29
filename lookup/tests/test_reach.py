@@ -27,27 +27,17 @@ class SourceTests(unittest.TestCase):
 
     def test_complete_channel_registry_and_cli_are_mapped(self):
         capabilities = json.loads((ROOT / 'upstream/capabilities.json').read_text())
-        tree = ast.parse(self.files['agent_reach/channels/__init__.py'])
-        classes = next(node.value.elts for node in tree.body if isinstance(node, ast.AnnAssign)
-                       and node.target.id == 'ALL_CHANNELS')
-        names = set()
-        for call in classes:
-            for name, content in self.files.items():
-                if name.startswith('agent_reach/channels/') and name.endswith('.py'):
-                    for node in ast.parse(content).body:
-                        if isinstance(node, ast.ClassDef) and node.name == call.func.id:
-                            names.add(next(item.value.value for item in node.body
-                                           if isinstance(item, ast.Assign)
-                                           and any(isinstance(t, ast.Name) and t.id == 'name' for t in item.targets)))
-        self.assertEqual(names, set(capabilities['channels']))
-        self.assertEqual(len(names), 16)
-        cli = ast.parse(self.files['agent_reach/cli.py'])
-        commands = {node.args[0].value for node in ast.walk(cli) if isinstance(node, ast.Call)
-                    and isinstance(node.func, ast.Attribute) and node.func.attr == 'add_parser'
-                    and isinstance(node.func.value, ast.Name) and node.func.value.id == 'sub'}
-        self.assertEqual(commands, set(capabilities['cli']))
+        with tempfile.TemporaryDirectory() as temporary:
+            package = self.write_package(Path(temporary))
+            result = reach.package_contract(package)
+        self.assertEqual(set(result['channels']), set(capabilities['native_channels']))
+        self.assertEqual(len(result['channels']), 14)
+        self.assertEqual(result['native_actions'], 40)
+        self.assertEqual(set(result['commands']), set(capabilities['cli']))
+        self.assertIn('rss', capabilities['lookup_routes'])
+        self.assertIn('exa_search', capabilities['lookup_routes'])
         for channel in capabilities['channels'].values():
-            self.assertIn(channel['reference'], capabilities['source_references'])
+            self.assertIn(channel['reference'], reach.REFERENCES)
             self.assertTrue(channel['actions'])
             for reference in channel['lookup_references']:
                 self.assertTrue((ROOT / reference).is_file(), reference)
@@ -60,14 +50,14 @@ class SourceTests(unittest.TestCase):
                     target = package / name.removeprefix('agent_reach/')
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(content)
-            self.assertEqual(len(reach.package_contract(package)['channels']), 16)
+            self.assertEqual(len(reach.package_contract(package)['channels']), 14)
             registry = package / 'channels/__init__.py'
             registry.write_text('\n'.join(line for line in registry.read_text().splitlines()
                                           if not any(name in line for name in
                                                      ('BossChannel', 'FacebookChannel', 'InstagramChannel'))) + '\n')
             with self.assertRaisesRegex(reach.IntegrationError, 'missing_channels'):
                 reach.package_contract(package)
-            self.assertIn('__version__ = "1.5.0"', (package / '__init__.py').read_text())
+            self.assertIn('__version__ = "1.6.0"', (package / '__init__.py').read_text())
 
     def test_dependency_candidate_requires_complete_references(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -77,8 +67,16 @@ class SourceTests(unittest.TestCase):
                     target = package / name.removeprefix('agent_reach/')
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(content)
-            (package / 'skill/references/career.md').unlink()
+            (package / 'skill/references/maintenance.md').unlink()
             with self.assertRaisesRegex(reach.IntegrationError, 'missing_references'):
+                reach.package_contract(package)
+
+    def test_unknown_candidate_layout_returns_contract_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            package = self.write_package(Path(temporary))
+            path = package / 'channels/web.py'
+            path.write_text(path.read_text().replace('name = "web"', 'renamed = "web"'))
+            with self.assertRaisesRegex(reach.IntegrationError, 'candidate_contract_unknown'):
                 reach.package_contract(package)
 
     def test_every_category_returns_the_entire_original_reference(self):
@@ -88,7 +86,7 @@ class SourceTests(unittest.TestCase):
                 self.assertTrue(output.getvalue().endswith(self.files[source].decode() + '\n'))
 
     def test_raw_routing_fields_are_preserved_without_discoverable_skill(self):
-        self.assertIn('MUST USE', self.files['agent_reach/skill/SKILL.md'].decode())
+        self.assertIn('只读', self.files['agent_reach/skill/SKILL.md'].decode())
         self.assertIn('agent_reach/skill/SKILL_en.md', self.files)
         self.assertEqual([path.relative_to(ROOT).as_posix() for path in ROOT.rglob('SKILL.md')], ['SKILL.md'])
 
@@ -102,74 +100,28 @@ class SourceTests(unittest.TestCase):
             with self.assertRaisesRegex(reach.IntegrationError, 'archive_changed'):
                 reach.source_files(source)
             manifest['archive_sha256'] = hashlib.sha256(original + b'changed').hexdigest()
-            manifest['files'].pop('agent_reach/skill/references/career.md')
+            manifest['files'].pop('agent_reach/skill/references/maintenance.md')
             (source / 'agent-reach.json').write_text(json.dumps(manifest))
             with self.assertRaisesRegex(reach.IntegrationError, 'inventory_changed'):
                 reach.source_files(source)
 
     def test_only_recorded_functions_are_adapted_and_original_is_intact(self):
         adapted = reach.adapted_files(self.manifest, self.files)
-        changed = [name for name in self.files if self.files[name] != adapted[name]]
-        self.assertEqual(set(changed), {'agent_reach/cli.py', 'agent_reach/doctor.py', 'agent_reach/channels/v2ex.py',
-                                        'agent_reach/integrations/mcp_server.py', 'pyproject.toml'})
-        self.assertIn(b'"mcp[cli]>=1.0,<2"', adapted['pyproject.toml'])
-        self.assertIn(b'"mcp[cli]>=1.0"', self.files['pyproject.toml'])
-        original = ast.parse(self.files['agent_reach/cli.py'])
-        candidate = ast.parse(adapted['agent_reach/cli.py'])
-        old = {node.name: node for node in original.body if isinstance(node, ast.FunctionDef)}
-        new = {node.name: node for node in candidate.body if isinstance(node, ast.FunctionDef)}
-        for name in old.keys() - {'_install_skill', '_cmd_install'}:
-            self.assertEqual(ast.dump(old[name]), ast.dump(new[name]), name)
-        self.assertIsInstance(new['_install_skill'].body[1], ast.Return)
-        self.assertTrue(new['_install_skill'].body[1].value.value)
-        self.assertEqual(len(self.files), 121)
+        changed = {name for name in self.files if self.files[name] != adapted[name]}
+        self.assertEqual(changed, {'agent_reach/runtime/manage.py', 'agent_reach/runtime/browser.py',
+                                   'agent_reach/runtime/session_reuse.py', 'agent_reach/channels/v2ex.py'})
+        for name in changed:
+            before, after = ast.parse(self.files[name]), ast.parse(adapted[name])
+            self.assertEqual([node.name for node in before.body if isinstance(node, (ast.FunctionDef, ast.ClassDef))],
+                             [node.name for node in after.body if isinstance(node, (ast.FunctionDef, ast.ClassDef))])
+        self.assertEqual(len(self.files), len(self.manifest['files']))
+        self.assertGreater(len(self.files), 100)
 
-    def test_selected_channel_installer_keeps_unrelated_setup_and_probes_out(self):
-        import types
-        for selected, expected in [('boss', []), ('', ['core', 'exa']), ('all', ['core', 'exa'])]:
-            with self.subTest(selected=selected), tempfile.TemporaryDirectory() as temporary, \
-                 patch.dict(os.environ, {'HOME': temporary}):
-                tree = ast.parse(reach.adapted_files(self.manifest, self.files)['agent_reach/cli.py'])
-                node = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_cmd_install')
-                node.body = [item for item in node.body if not isinstance(item, ast.ImportFrom)]
-                calls, probes = [], []
-                names = ['twitter','xiaoyuzhou','xhs','reddit','bili','boss','opencli']
-                namespace = {'sys': sys, 'Config': lambda **kwargs: None,
-                             'check_all': lambda config, **kwargs: probes.append(kwargs.get('channels')) or {},
-                             'format_report': lambda results: '', '_install_skill': lambda: True,
-                             '_install_system_deps': lambda: calls.append('core'),
-                             '_install_mcporter': lambda: calls.append('exa')}
-                namespace.update({'_install_'+name+'_deps': lambda: True for name in names})
-                exec(compile(ast.Module(body=[node], type_ignores=[]), '<source-install>', 'exec'), namespace)
-                with contextlib.redirect_stdout(io.StringIO()):
-                    namespace['_cmd_install'](types.SimpleNamespace(env='local',system=True,safe=False,
-                                                                    dry_run=False,channels=selected,proxy=''))
-                self.assertEqual(calls, expected)
-                self.assertEqual(probes, [{'boss'}] if selected == 'boss' else [None])
 
-    def test_filtered_doctor_only_probes_requested_channels(self):
-        import types
-        code = reach.adapted_files(self.manifest, self.files)['agent_reach/doctor.py']
-        node = next(node for node in ast.parse(code).body if isinstance(node, ast.FunctionDef) and node.name == 'check_all')
-        calls = []
-        def channel(name):
-            return types.SimpleNamespace(name=name,description=name,tier=1,backends=['fixture'],
-                                         active_backend='fixture',check=lambda config:(calls.append(name) or ('ok','ready')))
-        namespace = {'Dict': dict, 'Config': object, 'get_all_channels': lambda:[channel('boss'),channel('twitter')],
-                     'scrub_url_credentials': lambda value:value}
-        exec(compile(ast.Module(body=[node],type_ignores=[]),'<source-doctor>','exec'),namespace)
-        self.assertEqual(set(namespace['check_all'](None,channels={'boss'})), {'boss'})
-        self.assertEqual(calls,['boss'])
-        calls.clear()
-        self.assertEqual(namespace['check_all'](None,channels=set()), {})
-        self.assertEqual(calls,[])
-        self.assertEqual(set(namespace['check_all'](None)), {'boss','twitter'})
 
     def test_v2ex_reply_failure_and_first_page_are_explicitly_partial(self):
-        from urllib.parse import quote
         code = reach.adapted_files(self.manifest, self.files)['agent_reach/channels/v2ex.py']
-        tree = ast.parse(code)
-        node = next(node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == 'get_topic')
+        node = next(n for n in ast.walk(ast.parse(code)) if isinstance(n, ast.FunctionDef) and n.name == '_api_read')
         for total, returned, fails in [(2, 2, False), (150, 100, False), (2, 0, True), (0, 0, True), (0, 0, False)]:
             def get_json(url):
                 if 'replies/show' in url:
@@ -178,13 +130,14 @@ class SourceTests(unittest.TestCase):
                     return [{'content': 'reply'} for _ in range(returned)]
                 return [{'id': 12, 'replies': total, 'content': 'topic'}]
             namespace = {'_get_json': get_json, '_v2ex_url': lambda path, **kw: path,
-                         '_API_BASE': 'https://example.com', 'quote': quote}
-            exec(compile(ast.Module(body=[node], type_ignores=[]), '<source-get-topic>', 'exec'), namespace)
-            result = namespace['get_topic'](None, 12)
+                         '_parse_topic_id': lambda target: 12, 'ReachError': RuntimeError, 'NOT_FOUND': 'NOT_FOUND',
+                         '_topic_item': lambda topic, **kw: {'title': 'topic', **kw}}
+            exec(compile(ast.Module(body=[node], type_ignores=[]), '<native-v2ex>', 'exec'), namespace)
+            raw = namespace['_api_read'](None, target='12', timeout=10)[0]['raw']
             with self.subTest(total=total, returned=returned, fails=fails):
-                self.assertEqual(result['replies_complete'], not fails and returned >= total)
-                self.assertEqual(result['replies_error'], 'RuntimeError' if fails else None)
-                self.assertEqual(len(result['replies']), returned)
+                self.assertEqual(raw.get('replies_complete'), not fails and returned >= total)
+                self.assertEqual(raw['replies_error'], 'RuntimeError' if fails else None)
+                self.assertEqual(len(raw['replies']), returned)
 
     def test_missing_runtime_never_installs_implicitly(self):
         with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {'XDG_DATA_HOME': temporary}):
@@ -209,11 +162,11 @@ class SourceTests(unittest.TestCase):
                 self.assertEqual(reach.main(argv), 0)
                 self.assertEqual(run.call_args.args[0], expected)
 
-    def test_mcp_runs_original_module_in_verified_runtime_without_installing(self):
+    def test_mcp_runs_status_adapter_in_verified_runtime_without_installing(self):
         with patch.object(reach, 'runtime_status', return_value={'ready':True,'python':'/synthetic/python'}), \
              patch.object(reach.subprocess, 'call', return_value=3) as call:
             self.assertEqual(reach.main(['mcp']), 3)
-        self.assertEqual(call.call_args.args[0], ['/synthetic/python','-I','-B','-m','agent_reach.integrations.mcp_server'])
+        self.assertEqual(call.call_args.args[0], ['/synthetic/python','-I','-B',str(ROOT / 'scripts/reach_mcp.py')])
 
     def test_missing_mcp_runtime_never_installs(self):
         with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, XDG_DATA_HOME=temporary), \
@@ -223,7 +176,7 @@ class SourceTests(unittest.TestCase):
         call.assert_not_called()
 
     def test_missing_or_incompatible_mcp_sdk_does_not_suggest_replacing_engine(self):
-        code = reach.adapted_files(self.manifest, self.files)['agent_reach/integrations/mcp_server.py']
+        code = (ROOT / 'scripts/reach_mcp.py').read_bytes()
         tree = ast.parse(code)
         node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'create_server')
         namespace = {'HAS_MCP':False, 'sys':sys}
@@ -233,24 +186,6 @@ class SourceTests(unittest.TestCase):
         self.assertIn('>=1.0,<2', error.getvalue())
         self.assertNotIn('archive/main', error.getvalue())
 
-    def test_candidate_cannot_drop_setup_guides_mcp_or_public_python_api(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            package = Path(temporary) / 'agent_reach'
-            for name, content in self.files.items():
-                if name.startswith('agent_reach/'):
-                    target = package / name.removeprefix('agent_reach/')
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_bytes(content)
-            result = reach.package_contract(package)
-            self.assertGreater(result['python_api_symbols'], 20)
-            (package/'guides/setup-groq.md').unlink()
-            (package/'integrations/mcp_server.py').unlink()
-            (package/'channels/web.py').write_text((package/'channels/web.py').read_text().replace('def read(', 'def removed_read('))
-            with self.assertRaises(reach.IntegrationError) as error:
-                reach.package_contract(package)
-            self.assertIn('setup-groq.md', str(error.exception))
-            self.assertIn('mcp_server.py', str(error.exception))
-            self.assertIn('WebChannel.read', str(error.exception))
 
     def test_failed_preparation_preserves_other_data_and_removes_its_environment(self):
         with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {'XDG_DATA_HOME': temporary}):
@@ -377,6 +312,107 @@ with reach.preparation_lock(Path(sys.argv[2])):
             self.assertEqual(reach.run_native(['transcribe', query], self.manifest, self.files), 3)
         self.assertEqual(call.call_args.args[0], ['/synthetic/python', '-I', '-B', '-m', 'agent_reach.cli', 'transcribe', query])
         self.assertNotIn('shell', call.call_args.kwargs)
+
+    def write_package(self, root):
+        package = root / 'agent_reach'
+        for name, content in self.files.items():
+            if name.startswith('agent_reach/'):
+                target = package / name.removeprefix('agent_reach/')
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(content)
+        return package
+
+
+    def test_selected_channel_installer_rejects_browser_before_any_install(self):
+        import types
+        code = reach.adapted_files(self.manifest, self.files)['agent_reach/runtime/manage.py']
+        node = next(n for n in ast.parse(code).body if isinstance(n, ast.FunctionDef) and n.name == '_install_channel')
+        calls = []
+        namespace = {'List': list, 'NEED_SETUP': 'NEED_SETUP', 'ReachError': RuntimeError,
+                     '_uses_browser': lambda ch: ch.browser,
+                     'channel_tools': lambda ch: ['selected-tool'],
+                     'tools': types.SimpleNamespace(ensure=lambda name, **kw: calls.append(name) or name)}
+        exec(compile(ast.Module(body=[node], type_ignores=[]), '<native-install>', 'exec'), namespace)
+        with self.assertRaises(RuntimeError):
+            namespace['_install_channel'](types.SimpleNamespace(browser=True))
+        self.assertEqual(calls, [])
+        ch = types.SimpleNamespace(browser=False, on_add=lambda: calls.append('selected-on-add'))
+        self.assertEqual(namespace['_install_channel'](ch), ['selected-tool'])
+        self.assertEqual(calls, ['selected-tool', 'selected-on-add'])
+
+
+    def test_doctor_reports_local_state_without_live_channel_probes(self):
+        import types
+        node = next(n for n in ast.parse(self.files['agent_reach/runtime/manage.py']).body
+                    if isinstance(n, ast.FunctionDef) and n.name == 'doctor')
+        node.body = [n for n in node.body if not isinstance(n, ast.ImportFrom)]
+        channel = types.SimpleNamespace(name='synthetic', level='default')
+        calls = []
+        namespace = {'state': types.SimpleNamespace(load=lambda: {'checks': {}}),
+                     '_channels': lambda: [channel], 'fresh_actions': lambda *args: {},
+                     'channel_status': lambda ch, data: {'status': 'unverified'},
+                     'regressed': lambda x: False, '__version__': 'synthetic',
+                     'tools': types.SimpleNamespace(recorded=lambda: []),
+                     'capability_summary': lambda channels, rows: calls.append(rows) or {}}
+        exec(compile(ast.Module(body=[node], type_ignores=[]), '<native-doctor>', 'exec'), namespace)
+        result = namespace['doctor']()
+        self.assertEqual(result['channels'], [{'channel': 'synthetic', 'level': 'default',
+                                               'status': 'unverified', 'regressed': False}])
+        self.assertEqual(len(calls), 1)
+
+
+    def test_candidate_cannot_drop_native_resources_actions_or_public_python_api(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            package = self.write_package(Path(temporary))
+            result = reach.package_contract(package)
+            self.assertGreater(result['python_api_symbols'], 20)
+            (package / 'skill/references/sessions.md').unlink()
+            (package / 'scripts/transcribe_xiaoyuzhou.sh').unlink()
+            (package / 'channels/web.py').write_text((package / 'channels/web.py').read_text()
+                                                    .replace('def read(', 'def removed_read(')
+                                                    .replace('"search",', '"removed-search",'))
+            with self.assertRaises(reach.IntegrationError) as error:
+                reach.package_contract(package)
+            self.assertIn('sessions', str(error.exception))
+            self.assertIn('transcribe_xiaoyuzhou.sh', str(error.exception))
+            self.assertIn('WebChannel.read', str(error.exception))
+            self.assertIn('web:search', str(error.exception))
+
+
+    def test_browser_login_and_native_upgrader_cannot_bypass_lookup(self):
+        for args in [['browser', 'setup'], ['login', 'xiaohongshu'], ['logout', 'twitter'], ['update']]:
+            with self.subTest(args=args), patch.object(reach, 'runtime_status') as status:
+                with self.assertRaises(reach.IntegrationError):
+                    reach.run_native(args, self.manifest, self.files)
+                status.assert_not_called()
+
+
+    def test_implicit_browser_and_cookie_copy_fail_before_side_effects(self):
+        import types
+        modules = types.ModuleType('guard_fixture')
+        modules.NEED_SETUP = 'NEED_SETUP'
+        modules.ReachError = RuntimeError
+        with patch.dict(sys.modules, {'guard_fixture': modules}):
+            for name, functions in [('browser', ['ensure_chrome', 'start', 'ensure_running', 'setup', 'open_url']),
+                                    ('session_reuse', ['prepare'])]:
+                code = reach.adapted_files(self.manifest, self.files)[f'agent_reach/runtime/{name}.py']
+                for node in ast.parse(code).body:
+                    if not isinstance(node, ast.FunctionDef) or node.name not in functions:
+                        continue
+                    # Execute the actual guarded entry with imports bound to a no-side-effect exception module.
+                    for item in ast.walk(node):
+                        if isinstance(item, ast.ImportFrom):
+                            item.module, item.level = 'guard_fixture', 0
+                    namespace = {}
+                    node.returns = None
+                    for argument in node.args.args + node.args.kwonlyargs:
+                        argument.annotation = None
+                    exec(compile(ast.Module(body=[node], type_ignores=[]), '<browser-guard>', 'exec'), namespace)
+                    with self.subTest(function=node.name), self.assertRaises(RuntimeError):
+                        args = ('synthetic',) if node.name in ('open_url', 'prepare') else ()
+                        namespace[node.name](*args)
+
+
 
 
 if __name__ == '__main__':

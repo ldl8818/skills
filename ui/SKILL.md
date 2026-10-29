@@ -6,10 +6,10 @@ dispatch_intent: "UI, component, page, visual interface, frontend, artifact-grou
 license: MIT
 metadata:
   zh_description: "创建或精修产品页面、组件与视觉细节；不用于运行故障或文档排版。"
-  github_hash: "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929"
-  github_date: "10-15"
+  github_hash: "b55809013be84b1f59418b557c1e8bad66380705"
+  github_date: "10-29"
   github_ref: "main"
-  version: "4.1.0"
+  version: "4.2.0"
   github_path: "skills/ui"
   github_url: "https://github.com/tw93/waza"
   update_policy: "frozen"
@@ -111,7 +111,7 @@ Offer without being asked when the decision is taste, not correctness: icon, wei
 
 Always-on bans for every mode, each with its rewrite in the Absolute Bans table of `references/design-reference.md`: no thick side-border accents, gradient text, default glass cards, reflex purple-to-blue/cyan-on-dark palettes, generic rounded shadow-card grids, modal escapes for ordinary overflow, `transition: all`, or layout-property animation.
 
-Two motion rules apply in every mode, including the ones that skip the full reference. Frequency decides whether something animates at all: nothing keyboard-initiated animates, and anything the user triggers hundreds of times a day reads motion as lag, so it gets none. And every pressable thing moves on press, not only on hover, because hover is pointer-only and an unmoved control leaves the click unacknowledged.
+Two motion rules apply in every mode, including the ones that skip the full reference. Frequency decides whether something animates at all: nothing keyboard-initiated animates, and anything the user triggers hundreds of times a day reads motion as lag, so it gets none. Every action needs visible acknowledgment: an immediate selected, open, or loading state already counts; add press feedback only when the result leaves a gap. Hover alone cannot acknowledge activation, and feedback need not move the control.
 
 Direction lock loads `references/design-reference.md` for the full rewrites, typography, OKLCH color, motion timings, layout defaults, accessibility baseline, and complexity matching. Screenshot and quick-fix paths use the compact bans above instead of paying for that full reference. These rules keep output off the generic default, not to run as a lint pass: when the committed direction genuinely calls for breaking one, break it deliberately and name the tradeoff in the handoff. The accessibility baseline and CSS-pattern bans stay non-negotiable.
 

@@ -6,10 +6,10 @@ dispatch_intent: "Codex/Claude/Pi ignoring instructions, agent config audit, hoo
 license: MIT
 metadata:
   zh_description: "审计或诊断 Agent 指令、配置、Skills、Hooks、MCP、权限及 AI 协作可维护性问题。"
-  github_hash: "2585ee0f46bcefd9adb1b8f5d4ce19184a4d2929"
-  github_date: "10-15"
+  github_hash: "b55809013be84b1f59418b557c1e8bad66380705"
+  github_date: "10-29"
   github_ref: "main"
-  version: "4.1.1"
+  version: "4.2.0"
   github_path: "skills/health"
   github_url: "https://github.com/tw93/waza"
   update_policy: "frozen"

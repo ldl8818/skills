@@ -33,12 +33,24 @@ LIMITS = {  # on-screen characters (notes excluded) and list length per slide
 }
 TOPIC_WORDS = ["介绍", "概述", "简介", "总结", "背景", "目录", "注意事项", "优势", "方法", "原理", "概况",
                "现状", "分析", "说明", "要点", "内容", "问题", "结论", "谢谢", "感谢", "Q&A", "结束"]
-NON_SCREEN = {"n", "type", "layout", "notes", "page", "emphasis", "icon", "purpose", "show_footer", "source",
-              "chart", "kind", "highlight_col", "image", "at", "frame", "flow", "tone", "boxed", "stamps"}
+NON_SCREEN = {"n", "uid", "type", "layout", "notes", "page", "emphasis", "icon", "purpose", "show_footer", "source",
+              "chart", "charts", "art", "logo", "section", "kind", "highlight_col", "image", "at", "frame", "flow", "tone", "boxed", "stamps"}
 NO_TITLE_TYPES = {"cover", "closing", "section", "toc", "question", "big_quote"}
 
 
-def screen_text(obj, key=None):
+def effective_layout(slide, layout=None):
+    return layout or slide.get("layout") or LY.TYPE_TO_LAYOUTS.get(slide.get("type"), [""])[0]
+
+
+def slide_title(slide, layout=None):
+    layout = effective_layout(slide, layout)
+    field = {"closing": "headline", "question": "question", "big_quote": "quote"}.get(layout)
+    if field and slide.get(field):
+        return slide[field]
+    return slide.get("title") or slide.get("headline") or slide.get("question") or slide.get("quote") or ""
+
+
+def screen_text(obj, key=None, layout=None):
     """All on-screen strings of a slide (notes and metadata excluded)."""
     if key in NON_SCREEN:
         return []
@@ -47,7 +59,21 @@ def screen_text(obj, key=None):
     if isinstance(obj, list):
         return [t for x in obj for t in screen_text(x)]
     if isinstance(obj, dict):
-        return [t for k, v in obj.items() for t in screen_text(v, k)]
+        omitted = set()
+        if "type" in obj or layout:
+            layout = effective_layout(obj, layout)
+            field = {"closing": "headline", "question": "question", "big_quote": "quote"}.get(layout)
+            if field and obj.get(field):
+                omitted.add("title")
+            if layout == "hub" and (obj.get("center") or {}).get("title"):
+                omitted.add("center_title")
+            if layout == "stats_row" and obj.get("body"):
+                omitted.add("detail")
+            if layout == "explain" and obj.get("columns"):
+                omitted.add("blocks")
+        # Omit only inactive alternatives. Real repeated text in separate fields or
+        # list entries remains separate for occurrence-based fidelity checks.
+        return [t for k, v in obj.items() if k not in omitted for t in screen_text(v, k)]
     return []
 
 
@@ -89,7 +115,7 @@ def main():
     ghost = []
     for s in slides:
         n, typ = s.get("n"), s.get("type", "")
-        title = s.get("title") or s.get("headline") or s.get("question") or s.get("quote") or ""
+        title = slide_title(s)
         ghost.append((n, typ, strip_marks(title)))
         if typ in NO_TITLE_TYPES:
             continue
@@ -155,7 +181,7 @@ def main():
     out += ["", "## 只读标题（幽灵稿）", ""] + [f"{n}. {t}" for n, _, t in ghost]
     out += ["", "## 逐页", ""]
     for s in slides:
-        title = s.get("title") or s.get("headline") or s.get("question") or s.get("quote") or ""
+        title = slide_title(s)
         out.append(f"### {s.get('n')} · {s.get('type', '')} · {strip_marks(title)}")
         if s.get("purpose"):
             out.append(f"- 作用：{s['purpose']}")
