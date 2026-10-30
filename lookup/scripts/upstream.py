@@ -1413,11 +1413,16 @@ def rollback(store):
         return {'status': 'rolled_back', 'current': current['current']}
 
 
-def use(store, expected, args):
+def use(store, expected, args, native=False):
     with store.lock('usage', shared=True):
         binary = resolve_opencli(store)
         if not binary or Path(binary).resolve() != Path(expected).resolve():
             raise MaintenanceError('EXECUTABLE_CHANGED_BEFORE_DISPATCH')
+        if native:
+            node = shutil.which('node')
+            if not node:
+                raise MaintenanceError('NODE_UNAVAILABLE')
+            return owned_process.call([node, str(ROOT / 'scripts/opencli-dispatch.mjs'), binary, *args])
         return owned_process.call([binary, *args])
 
 
@@ -1525,9 +1530,10 @@ def main(argv=None, human=False):
     item.add_argument('--scope')
     item.add_argument('--source', help='Verified original upstream URL for a recovered baseline')
     sub.add_parser('resolve')
-    item = sub.add_parser('use')
-    item.add_argument('--expected', required=True)
-    item.add_argument('args', nargs=argparse.REMAINDER)
+    for name in ('use', 'native-use'):
+        item = sub.add_parser(name)
+        item.add_argument('--expected', required=True)
+        item.add_argument('args', nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     if args.action == 'update' and args.self_only and (args.dependency or args.auto or args.retry):
         parser.error('--self-only cannot be combined with a dependency, --auto or --retry')
@@ -1553,8 +1559,9 @@ def main(argv=None, human=False):
             print('正在更新' + (' ' if scope[0].isascii() else '') + scope + '。', file=sys.stderr)
             if not getattr(args, 'self_only', False) and args.dependency in (None, 'ego-browser') and not args.auto:
                 print('Ego 原生升级可能重启浏览器或等待界面确认。', file=sys.stderr)
-        if args.action == 'use':
-            return use(store, args.expected, args.args[1:] if args.args[:1] == ['--'] else args.args)
+        if args.action in ('use', 'native-use'):
+            return use(store, args.expected, args.args[1:] if args.args[:1] == ['--'] else args.args,
+                       native=args.action == 'native-use')
         if args.action == 'resolve':
             result = {'binary': resolve_opencli(store), 'supervised': fcntl is not None}
         elif args.action == 'check':

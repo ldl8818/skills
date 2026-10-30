@@ -13,13 +13,34 @@ node scripts/opencli-run.mjs <site> <command> ...
 ```
 
 - `list` 的 JSON 为 `{ok,data:{commands,total,nextOffset?}}`，只返回当前页；需要更多候选时沿 `nextOffset` 分页，不把首屏当完整注册表。选择 `access: read`，从单个命令帮助核对 `browser`、`positionals`、`command_options`、`browser_common_options` 和 `columns`。
-- `opencli-run.mjs` 调用公开 CLI，不导入包内模块、不修改 Commander。它按下节绑定固定实际 `contextId`，拒绝冲突 Profile／隐式 CDP transport、限定认证检查站点，并设置 `OPENCLI_CLOSE_OWNED_TAB=1`。显式获准且已确认属于 ego-lite 的 CDP 路线用 [专用入口](OpenCLI融合.md#显式-cdp-路线)，默认不切换。
+- `opencli-run.mjs` 常规执行调用公开 CLI，不导入内部 runtime、不修改 Commander。通过下述资格核验的原生执行可加载实际安装的只读适配器及其公开注册接口。它按下节绑定固定实际 `contextId`，拒绝冲突 Profile／隐式 CDP transport、限定认证检查站点，并设置 `OPENCLI_CLOSE_OWNED_TAB=1`。显式获准且已确认属于 ego-lite 的 CDP 路线用 [专用入口](OpenCLI融合.md#显式-cdp-路线)，默认不切换。
 - 该入口优先使用 [托管维护](上游更新.md) 已验收的 lookup 专用版本，否则使用原系统安装。能力发现、帮助与业务执行都通过同一入口；上游指南中的裸 `opencli` 命令也经此入口调用，不混用系统旧版帮助与托管新版执行。没有 Python 或更新提醒不可用时保留原执行能力；有效版本指针异常则先核实，不静默改用其他版本。
 - `OPENCLI_CONFIG_DIR` 可指定已有 OpenCLI 配置目录；health 与 runner 必须使用同一环境。切目录或 Profile 不能作为绕过失败依赖的证明。
 - Ego Lite 是基于 Chromium 的浏览器，可安装 OpenCLI 的 Chrome 扩展；OpenCLI 通过该扩展执行，`ego-browser` Skill 通过浏览器自身接口执行。两者可使用同一个 Ego Lite 浏览器，无需另开原版 Chrome。换执行接口仍须核对共同的进程、Profile 与站点登录态。
 - OpenCLI Profile 选择值可以是实际连接 `contextId` 或本机配置的别名，不是浏览器产品或 Skill 名称。别名与默认连接均不能证明实际浏览器和账号身份。
 - `LOOKUP_OPENCLI_TIMEOUT_MS` 默认90秒，包含版本检查与执行等待；超时或收到中止信号时取消本次 CLI。启用 Python 监督层时，runner 等待它回收本次创建的 CLI 进程组后释放使用锁；监督层先给进程组最多2秒退出时间，再终止仍未退出的自有进程。runner 不抢先强杀监督层，不处理其他任务的进程。浏览器动作可能继续，仍返回结果未知，不自动重派。旧 `OPENCLI_RUN_IMPORT_TIMEOUT_MS`／`OPENCLI_RUN_HARD_TIMEOUT_MS` 已退役；旧 `OPENCLI_DAEMON_PORT` 必须移除，不再自行管理端口。
 - 普通结果默认为 `{ok:true,data:...}`，失败为 `{ok:false,error:...}` 并使用非零退出码；日志在 stderr。帮助、版本和流式输出有各自格式，不统一当业务信封。保留实际 exit code、stdout 和 stderr；归一化按 [failure-domains.md](failure-domains.md)。
+
+## 已验证动作的原生执行
+
+同一 OpenCLI 入口可为已登记并通过等价验收的只读动作选择 ego 原生执行。执行完整适配器，保留参数、字段、等待、登录与风控错误；平台动作的原生执行不属于通用浏览器抓取兜底。未验动作、版本或源文件变化、非 JSON 输出及不支持的参数继续使用现有 CLI 路径。
+
+启用前必须核对实际安装与有效覆盖的来源指纹，并用本任务随机标记页证明原生任务页面处于已绑定的 OpenCLI 连接中。不得按浏览器产品名、默认 Profile 或登录结果相近推断同一环境。当前入口只在启动原生工作前对未取得资格的动作使用原 CLI；原生工作启动后发生失败，不自动重派到另一通道。账号／权限拒绝、用户接管及未知结果保持停止。
+
+只返回任务所需字段时，可用入口的字段裁剪选项；未指定时保留完整输出。裁剪不得补造未知值或将缺字段、错误和 partial 改为成功。只有正常内容、失败边界、资源收尾及实测收益均通过，才登记自动执行资格；完整性和资格不以工具声明或单次更快代替。
+
+当前薄适配覆盖 `xiaohongshu note` 和 `bilibili subtitle` 的普通一次性 JSON 读取。默认 `--lookup-engine auto`：本机资格记录要求至少3组结果一致、空间已关闭的样本，原生耗时中位数至少降低10%；资格同时绑定完整源、用户覆盖、执行代码、ego 版本和实际连接。资格不随 Skill 分发到其他机器。`--lookup-engine bridge` 固定原 CLI；`--lookup-engine ego` 用于受控复验，不满足参数或环境条件时明确拒绝。
+
+显式窗口模式、持久会话、CDP、插件、自定义 OpenCLI 环境、追踪及未覆盖参数沿用原 CLI；Windows 也保留原 CLI 和字段裁剪，原生资格依赖 POSIX 状态权限。原生读取使用一个自有 TaskSpace；适配器保留原等待和页面导航重试，不重建 OpenCLI 的全套浏览器框架。完整执行仍依赖同环境的 Browser Bridge 作标记校验，不能当作 Bridge 断连时的独立备份。
+
+从 Skill 目录运行，例如：
+
+```bash
+node scripts/opencli-run.mjs xiaohongshu note "$NOTE_URL" -f json --lookup-fields title,author,content
+node scripts/opencli-run.mjs bilibili subtitle "$VIDEO_ID" -f json --lookup-fields from,to,content
+```
+
+字段裁剪只改变返回给调用者的字段，不减少平台请求或省略适配器检查。字段不存在时返回失败并保留完整原结果，显式 `null` 和真实空数组保持原样；字节减少量不能直接当作精确模型 token。超时、丢失回执或未确认关闭时，私有状态目录 `${XDG_STATE_HOME:-$HOME/.local/state}/lookup/ego-opencli/job-*` 保留精确 lease；先核对原动作与 lease，不发起新一轮或按名字批量清理。恢复仅使用 [本任务生命周期入口](ego-space-hooks.md#本任务生命周期入口)。
 
 ## Profile 绑定
 

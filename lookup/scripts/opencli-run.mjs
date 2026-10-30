@@ -3,12 +3,16 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { opencliExecutable, supervisedCommand, checkUpdates, reportUpdates } from './upstream-client.mjs'
 import { resolveBinding } from './opencli-profile.mjs'
+import { lookupOptions } from './opencli-native.mjs'
 
 function fail(code, message) {
   console.error(JSON.stringify({error: {code, message}, phase: 'entry', outcome_unknown: false, retryable: false}))
   process.exit(78)
 }
-const args = process.argv.slice(2)
+const input = process.argv.slice(2)
+let parsed
+try { parsed = lookupOptions(input) } catch (error) { fail(error.code, error.message) }
+const args = parsed.args
 const options = args.slice(0, args.includes('--') ? args.indexOf('--') : args.length)
 function values(name) {
   return options.flatMap((arg, index) => arg === name ? [options[index + 1] ?? '']
@@ -57,7 +61,10 @@ if (remaining <= 0) fail('OPENCLI_ENTRY_TIMEOUT', 'Budget exhausted before dispa
 const pinnedArgs = args.map((arg, index) => index >= options.length ? arg
   : arg.startsWith('--profile=') ? '--profile=' + profile
   : options[index - 1] === '--profile' ? profile : arg)
-const [executable, dispatchArgs] = supervisedCommand(selected, pinnedArgs)
+const supported = ['xiaohongshu/note', 'bilibili/subtitle'].includes(command.slice(0,2).join('/'))
+const nativeWorker = !options.some(arg => ['--version', '--help', '-h'].includes(arg)) && (supported || parsed.fields || parsed.engine === 'ego')
+const forwarded = [...(nativeWorker ? ['--lookup-engine', parsed.engine, ...(parsed.fields ? ['--lookup-fields', parsed.fields.join(',')] : [])] : []), ...pinnedArgs]
+const [executable, dispatchArgs] = supervisedCommand(selected, forwarded, nativeWorker)
 const child = spawn(executable, dispatchArgs, {env, stdio: 'inherit', shell: false})
 let stoppedCode
 let killTimer

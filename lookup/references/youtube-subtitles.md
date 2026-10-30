@@ -43,12 +43,12 @@ stdout 是带时间位置的文本，stderr 是单个 JSON 状态对象：
 ## 同一视频的备用能力
 
 - yt-dlp 失败或所需轨道不可用时，检查当前 OpenCLI 的 YouTube transcript 动作与参数；它可能输出分组文本，columns 为空不代表该动作无用。
-- 仍无可用字幕且任务需要口述内容时，使用已经配置并处于任务授权范围内的音频转写能力。Agent Reach 已融合为 `python3 scripts/reach.py run transcribe <source>`，运行时、服务商与费用前提见 [融合入口](Agent-Reach融合.md#配置诊断与维护)；不在普通查询中自动安装、升级或新开通付费服务。
+- 仍无可用字幕且任务需要口述内容时，使用已经配置并处于任务授权范围内的音频转写能力。YouTube 链接使用已融合的 `python3 scripts/reach.py run youtube transcribe <url>`；通用本地文件／URL 转写按融合入口调用私有环境的 `agent_reach.transcribe.transcribe`。运行时、服务商与费用前提见 [融合入口](Agent-Reach融合.md#配置诊断与维护)；不在普通查询中自动安装、升级或新开通付费服务。
 - 区分字幕与 ASR 的来源；转写可能有漏词和专名错误，依赖精确措辞时回到音频或其他原始材料核对。
 - 需要核对视频画面时，先使用合适且已可用的视觉／视频能力；确需浏览器时按 [浏览器选路.md](浏览器选路.md) 选择，外部网页只用 ego-lite。采样时间、等待新帧与覆盖边界见 [媒体读取.md](媒体读取.md#视频时间点与采帧)；打开播放页本身不能证明已读取音轨或画面。
 - 所有候选都缺少所需内容时，说明具体缺口。用户指定的视频不能用另一个视频替代；不存在字幕不是整个 OpenCLI 或网络通道故障。
 
-版本相关命令以当前已安装帮助和注册表为准。方案参考 [Agent Reach 视频能力](https://github.com/Panniantong/Agent-Reach/blob/94f06c1969dfc1834001269d79d3ad0972d9dee6/agent_reach/skill/references/video.md)，不把其经验当作长期固定的平台保证。
+版本相关命令以当前已安装帮助和注册表为准。方案参考 [Agent Reach 视频能力](https://github.com/Panniantong/Agent-Reach/blob/14c213405669414492bda0f8d52cc6531d062c45/agent_reach/skill/references/capabilities.md)，不把其经验当作长期固定的平台保证。
 
 ## 完整音频转写
 

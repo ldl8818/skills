@@ -23,10 +23,10 @@ export function opencliExecutable() {
   if (result?.error) throw new Error(result.error);
   return result?.binary ? { binary: result.binary, supervised: result.supervised !== false } : { binary: 'opencli', supervised: false };
 }
-export function supervisedCommand(selected, args) {
+export function supervisedCommand(selected, args, native = false) {
   return selected.supervised
-    ? [python, [helper, 'use', '--expected', selected.binary, '--', ...args]]
-    : [selected.binary, args];
+    ? [python, [helper, native ? 'native-use' : 'use', '--expected', selected.binary, '--', ...args]]
+    : native ? [process.execPath, [fileURLToPath(new URL('./opencli-dispatch.mjs', import.meta.url)), selected.binary, ...args]] : [selected.binary, args];
 }
 export function checkUpdates(dependency, current) {
   if (process.env.CI) return;

@@ -332,6 +332,25 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertEqual(json.loads(process.stdout)['args'], args)
 
+    def test_native_use_holds_usage_lock_and_checks_executable_before_fixed_worker(self):
+        args = ['read', 'literal $(touch forbidden); spaces']
+        def worker(argv):
+            with self.assertRaisesRegex(upstream.MaintenanceError, 'DEPENDENCY_BUSY'):
+                with self.store.lock('usage', blocking=False):
+                    pass
+            self.assertEqual(argv, ['synthetic-node', str(self.skill/'scripts/opencli-dispatch.mjs'),
+                                    str(self.baseline), *args])
+            return 73
+        with patch.object(upstream, 'resolve_opencli', return_value=str(self.baseline)), \
+             patch.object(upstream.shutil, 'which', return_value='synthetic-node'), \
+             patch.object(upstream.owned_process, 'call', side_effect=worker) as call:
+            self.assertEqual(upstream.use(self.store, str(self.baseline), args, native=True), 73)
+            with self.assertRaisesRegex(upstream.MaintenanceError, 'EXECUTABLE_CHANGED_BEFORE_DISPATCH'):
+                upstream.use(self.store, str(self.baseline)+'-changed', args, native=True)
+            self.assertEqual(call.call_count, 1)
+        with self.store.lock('usage', blocking=False):
+            pass
+
     def test_lookup_upgrade_defaults_to_all_supported_dependencies(self):
         output = io.StringIO()
         with patch.object(upstream, 'update', return_value={'status': 'up_to_date', 'current': '1.0.0'}) as update, redirect_stdout(output):

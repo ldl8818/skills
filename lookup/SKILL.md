@@ -4,7 +4,7 @@ description: "联网搜索、平台内容、网页操作与本地 UI 验收的�
 when_to_use: "联网搜索、查官方资料、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、lookup upgrade、更新 lookup、升级 lookup、更新 lookup 上游"
 dispatch_intent: "统一承接联网与浏览器任务，按需加载 Agent Reach、OpenCLI 和浏览器执行资料，选择路线并核验证据；指定视频链接落盘交给 download-video；lookup 本体与上游更新由 skill-manager 发起并委派自身维护器，独立分发保留终端入口。"
 metadata:
-  version: "2.5.0"
+  version: "2.6.0"
   source: local
 ---
 
@@ -19,6 +19,8 @@ lookup 融合 Agent Reach 的完整渠道与环境能力、OpenCLI 的全部站�
 Agent Reach 的14个原生渠道与40个动作、3份完整参考，以及 lookup 保留的 RSS／Exa 等直接路线、配置、诊断、转写、安装与维护流程统一见 [Agent Reach 融合与能力映射](references/Agent-Reach融合.md)。平台任务、环境配置或诊断先读该入口的对应项；普通网页与已有搜索接入仍使用下文的直接路径，不强制体检或安装。原始上游触发说明只作来源记录，不作为第二套当前选路规则。
 
 OpenCLI 的全部站点／内置命令、浏览器与原生 Chrome 接口、CDP、认证／Profile、插件、适配器开发与修复统一见 [OpenCLI 完整能力](references/OpenCLI融合.md)。现有 providers.json 只登记常用动作合约，不限制可发现能力的范围；其他动作从当前原生注册表与帮助选取，按任务核对读写授权。
+
+平台动作仍从 `scripts/opencli-run.mjs` 执行；入口按本机已验证资格选择原 CLI 或 ego 原生通道，复用完整 OpenCLI 适配器。需要减少输出时按任务选择 `--lookup-fields`；未指定则完整输出。范围、参数及失效条件见 [原生执行](references/opencli-windows.md#已验证动作的原生执行)，不因通道不同跳过平台验收或改变失败停止条件。
 
 ## lookup 更新
 

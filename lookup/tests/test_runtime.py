@@ -130,6 +130,51 @@ class RunnerTests(Fixture):
         self.bind_profile()
         self.command=[REAL_NODE,str(ROOT/'scripts/opencli-run.mjs')]
 
+    def test_qualified_action_terminator_and_profile_keep_original_argv(self):
+        args=['bilibili','subtitle','--','BVsynthetic']
+        code,out,err=self.run_cmd(self.command+args,EGO_BROWSER_BIN='/nonexistent/ego')
+        self.assertEqual(code,0,err)
+        self.assertEqual(json.loads((self.base/'dispatch').read_text()),args)
+
+    def test_projection_and_unknown_fields_preserve_actual_result(self):
+        args=['example','read','-f','json','--lookup-fields','text']
+        code,out,err=self.run_cmd(self.command+args)
+        self.assertEqual(code,0,err)
+        self.assertEqual(json.loads(out)['data'],[{'text':'late result'}])
+        code,out,err=self.run_cmd(self.command+args[:-1]+['missing'])
+        self.assertEqual(code,1,err)
+        value=json.loads(out)
+        self.assertFalse(value['ok'])
+        self.assertEqual(value['error']['code'],'LOOKUP_FIELDS')
+        self.assertEqual(value['data'],[{'text':'late result'}])
+
+    def test_force_native_unsupported_never_falls_back(self):
+        code,out,err=self.run_cmd(self.command+['example','read','--lookup-engine','ego'])
+        self.assertNotEqual(code,0)
+        self.assertIn('LOOKUP_NATIVE_UNSUPPORTED',err)
+        self.assertFalse((self.base/'dispatch').exists())
+
+    def test_without_posix_identity_original_cli_and_projection_still_work(self):
+        preload=self.base/'without-posix.mjs'
+        write(preload, 'process.getuid = undefined;')
+        code,out,err=self.run_cmd(self.command+['bilibili','subtitle','BVsynthetic',
+            '--lookup-fields','text'],NODE_OPTIONS='--import='+str(preload))
+        self.assertEqual(code,0,err)
+        self.assertEqual(json.loads(out)['data'],[{'text':'late result'}])
+
+    def test_projection_rejects_last_non_json_format_before_dispatch(self):
+        code,out,err=self.run_cmd(self.command+['example','read','-f','json','-f','plain','--lookup-fields','text'])
+        self.assertNotEqual(code,0)
+        self.assertIn('LOOKUP_FIELDS',err)
+        self.assertFalse((self.base/'dispatch').exists())
+
+    def test_supported_worker_deadline_never_redispatches(self):
+        code,out,err=self.run_cmd(self.command+['bilibili','subtitle','BVsynthetic'],
+            EGO_BROWSER_BIN='/nonexistent/ego',LOOKUP_OPENCLI_TIMEOUT_MS='600',FAKE_NEVER='1')
+        self.assertEqual(code,75)
+        self.assertIn('OUTCOME_UNKNOWN',err)
+        self.assertEqual(len((self.base/'dispatch').read_text().splitlines()),1)
+
     def test_native_delayed_result_and_exit_are_preserved(self):
         code,out,err=self.run_cmd(self.command+['example','read'],FAKE_DELAY='0.2',FAKE_EXIT='7')
         self.assertEqual(code,7)
