@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "c07c412447abdda865bf94a31f414c20532b09e99604d339ffbc6eded4b148b4",
-      "local_sha256": "5083b86f22088b355d56ee4dd7ad0e8271a5be28d89a31dda41388a0123032e2",
+      "local_sha256": "ce5f496eb01ce289be79d35440c7f2e1aedc813f4f2a075a7ad69ab67e98714a",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Produces distinctive production UI and screenshot-grounded visual polish. Use when building or restyling pages, components, or typography. Not for backend logic or data pipelines.\"\n",
@@ -19,7 +19,8 @@
         "Silence cannot grant material decisions or approval.",
         "Avoid a redundant design approval gate on an explicit implementation request.",
         "Preserve routing to image/document/Hunt tools, existing product style and browser selection without losing upstream design methods.",
-        "Use lowercase lookup in the local browser-routing adaptation; preserve upstream text and routing fields."
+        "Use lowercase lookup in the local browser-routing adaptation; preserve upstream text and routing fields.",
+        "Require lookup resource closeout as part of UI verification; temporary verification closes by default and user-feedback previews reuse one space. Keep retention exceptions and closure evidence in lookup as the single lifecycle source."
       ],
       "changes": [
         {
@@ -44,7 +45,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "d0078e8b27200242505395f60c0b8d21f359c6242a77c3ab0cad75efd71243aa"
+          "added_sha256": "e3f7b79e5be6d7bb99c625dcf4c34724410658e844f9019c969f585e99c47afc"
         },
         {
           "upstream_lines": [
@@ -92,7 +93,7 @@
             145
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "d7e185fef8fb611b1bac9a97e0f3c28b4f8b63ea37063b43298a30ee5e8f8be0"
+          "added_sha256": "ebfdfa020373f1bca7e0825902921d3cbf1b259c42fb02b2dc866d2857c916a2"
         }
       ],
       "sections": {

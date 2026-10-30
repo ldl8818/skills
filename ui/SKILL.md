@@ -9,7 +9,7 @@ metadata:
   github_hash: "b55809013be84b1f59418b557c1e8bad66380705"
   github_date: "10-29"
   github_ref: "main"
-  version: "4.2.0"
+  version: "4.2.1"
   github_path: "skills/ui"
   github_url: "https://github.com/tw93/waza"
   update_policy: "frozen"
@@ -142,4 +142,4 @@ After handoff, stop.
 
 Use project-native components, established tokens and mature sibling interactions first. Treat the reference's style and motion suggestions as defaults that yield to the product and accessibility requirements, not a second compulsory design system. Preserve content and behavior while making visual edits.
 
-For standalone images, use the installed image-generation capability. When an interface task includes an image asset, retain the upstream generated-asset specification and review method, and delegate the actual generation through that capability. Document typesetting stays with the document or presentation workflow. A screenshot of a crash, missing interaction or state regression stays in Hunt. Use the shared lookup entrypoint to select the actual browser for rendered verification.
+For standalone images, use the installed image-generation capability. When an interface task includes an image asset, retain the upstream generated-asset specification and review method, and delegate the actual generation through that capability. Document typesetting stays with the document or presentation workflow. A screenshot of a crash, missing interaction or state regression stays in Hunt. Use the shared lookup entrypoint to select the actual browser for rendered verification and complete its resource closeout. Temporary verification closes by default; previews awaiting user feedback reuse one space across revisions. Follow lookup's UI preview lifecycle for retention exceptions and confirmed closure before reporting completion.

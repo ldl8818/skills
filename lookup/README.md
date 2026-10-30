@@ -190,7 +190,7 @@ test ! -e ~/.codex/skills/lookup && test ! -L ~/.codex/skills/lookup && \
 
 runner、health 与 selftest 共用该绑定；缺失、空值、别名丢失或改指、Profile 冲突时返回78。`LOOKUP_OPENCLI_PROFILE` 可指定已绑定实际 ID 或已核实指向它的本机别名，最终传入实际 ID。绑定只供 OpenCLI 使用，不复制为 ego-browser 的 `profileId`；helper 不替用户登录，不导出 Cookie。
 
-ego 不是必装前提；需要它时用 `ego-browser skill` 按需读取当前正式执行指南。任务脚本使用 `scripts/ego-run.mjs` 的本任务 lease 与 finally 收尾，多轮交互通过 `scripts/ego-task.mjs` 复用该 lease；只关闭有本任务创建证据的空间。旧空间辅助脚本仍只做保守检查，普通安装不自动写 hook、不按全局闲置时间回收未知空间，见 [ego-space-hooks.md](references/ego-space-hooks.md)。
+ego 不是必装前提；需要它时用 `ego-browser skill` 按需读取当前正式执行指南。任务脚本使用 `scripts/ego-run.mjs` 的本任务 lease 与 finally 收尾，多轮交互通过 `scripts/ego-task.mjs` 复用该 lease；只关闭有本任务创建证据的空间。临时 UI 验收结束默认关闭；等待用户看预览时交接原空间，后续继续复用，不逐轮留下“已完成”空间。保留条件与关闭回执见 [UI 验收与人工预览](references/ego-space-hooks.md#ui-验收与人工预览)。旧空间辅助脚本仍只做保守检查，普通安装不自动写 hook、不按全局闲置时间回收未知空间。
 
 ## 验证
 
