@@ -378,6 +378,80 @@ class HealthTests(Fixture):
         self.assertEqual(json.loads(out)['profile'],'fixture-context')
         self.assertFalse((self.base/'dispatch').exists())
 
+    def test_probe_never_claims_a_target_action_was_tested(self):
+        for report in [
+            {'ok': True, 'data': {'daemonRunning': True, 'extensionConnected': True,
+                                  'connectivity': {'ok': True}}},
+            {'ok': True, 'data': {}},
+        ]:
+            _, out, _ = self.health(report)
+            result = json.loads(out)
+            self.assertTrue(result['diagnostic_only'])
+            self.assertFalse(result['action_tested'])
+            self.assertEqual(result['scope'], 'bridge_profile')
+            self.assertEqual(result['next_step'], 'run_target_action')
+
+    def test_incomplete_probe_is_not_a_disconnected_profile(self):
+        for report in [{'ok': True, 'data': {}},
+                       {'ok': True, 'data': {'daemonRunning': 'false'}},
+                       {'ok': True, 'data': {'daemonRunning': True, 'extensionConnected': True,
+                                             'connectivity': {'ok': True}, 'daemonStale': 'false'}}]:
+            code, out, _ = self.health(report)
+            self.assertEqual(code, 78)
+            self.assertEqual(json.loads(out)['state'], 'diagnostic_inconclusive')
+
+    def test_distinguishes_confirmed_connection_failures(self):
+        baseline = {'daemonRunning': True, 'extensionConnected': True,
+                    'connectivity': {'ok': True}}
+        cases = [
+            ({'daemonRunning': False}, 'daemon_stopped'),
+            ({'extensionConnected': False}, 'profile_disconnected'),
+            ({'connectivity': {'ok': False}}, 'connectivity_failed'),
+            ({'daemonStale': True}, 'daemon_stale'),
+            ({'daemonFlaky': True}, 'connection_unstable'),
+            ({'extensionFlaky': True}, 'connection_unstable'),
+        ]
+        for changes, state in cases:
+            with self.subTest(state=state, changes=changes):
+                code, out, _ = self.health({'ok': True, 'data': dict(baseline, **changes)})
+                result = json.loads(out)
+                self.assertEqual(code, 78)
+                self.assertEqual(result['state'], state)
+                self.assertEqual(result['next_step'], 'inspect_connection_evidence')
+                self.assertFalse(result['action_tested'])
+
+    def test_known_failure_is_not_erased_by_other_missing_fields(self):
+        for data, state in [
+            ({'extensionConnected': False}, 'profile_disconnected'),
+            ({'daemonRunning': False, 'connectivity': 'malformed'}, 'daemon_stopped'),
+            ({'connectivity': {'ok': False}}, 'connectivity_failed'),
+            ({'daemonStale': True}, 'daemon_stale'),
+        ]:
+            with self.subTest(data=data):
+                code, out, _ = self.health({'ok': True, 'data': data})
+                result = json.loads(out)
+                self.assertEqual(code, 78)
+                self.assertEqual(result['state'], state)
+                self.assertEqual(result['next_step'], 'inspect_connection_evidence')
+
+    def test_doctor_error_is_not_an_extension_verdict(self):
+        code, out, _ = self.health({'ok': False, 'error': {'code': 'CONFIG'}})
+        result = json.loads(out)
+        self.assertEqual(code, 78)
+        self.assertEqual(result['state'], 'doctor_failed')
+        self.assertEqual(result['error']['code'], 'CONFIG')
+        self.assertEqual(result['exit_code'], 0)
+
+    def test_cdp_does_not_run_a_bridge_probe(self):
+        self.bind_profile(cdp_endpoint='http://127.0.0.1:9222')
+        code, out, _ = self.run_cmd(['bash', str(ROOT / 'scripts/opencli-health.sh')],
+                                   LOOKUP_OPENCLI_TRANSPORT='cdp',
+                                   OPENCLI_CDP_ENDPOINT='http://127.0.0.1:9222')
+        result = json.loads(out)
+        self.assertEqual(code, 78)
+        self.assertEqual(result['state'], 'not_applicable')
+        self.assertEqual(result['scope'], 'bridge_profile')
+        self.assertFalse((self.base / 'dispatch').exists())
 
 class EgoTests(Fixture):
     def setUp(self):
@@ -444,7 +518,6 @@ print('@@LOOKUP_SPACES@@'+json.dumps([
         self.assertLess(time.monotonic() - started, 3)
         self.assertFalse((self.base / 'ego-script').exists())
 
-
 class EgoRunnerTests(Fixture):
     def setUp(self):
         super().setUp()
@@ -486,7 +559,6 @@ print('@@LOOKUP_TASK@@'+json.dumps(result),file=sys.stderr)
         code, out, err = self.run_cmd(self.command + ['finish', str(self.base / 'lease.json')], FAKE_NO_RECEIPT='1')
         self.assertEqual((code, out), (1, ''))
         self.assertIn('EGO_TASK_RECEIPT_MISSING', err)
-
 
 class SelftestTests(Fixture):
     def setUp(self):
@@ -622,7 +694,6 @@ else if(args.includes('--help')) {
             code, out, _ = self.run_cmd(self.command, timeout=4)
         self.assertEqual(code, 2)
         self.assertIn('已有 selftest 在跑', out)
-
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

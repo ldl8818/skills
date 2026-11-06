@@ -315,5 +315,68 @@ class ResultTests(unittest.TestCase):
         self.assertEqual(run.returncode, 2)
         self.assertEqual(json.loads(run.stdout)["error"]["code"], "NORMALIZER_INPUT")
 
+    def test_platform_engagement_fields_survive_without_relabeling_or_zero_fill(self):
+        for provider, row in [
+            ("opencli/twitter/search", {"likes": 11, "replies": 22, "bookmarks": 33,
+                                       "retweets": 44, "quotes": 55, "views": "66", "shares": None}),
+            ("opencli/xiaohongshu/search", {"likes": None, "collects": "22",
+                                            "comments": None, "shares": None}),
+            ("opencli/twitter/thread", {"likes": 0, "replies": 0, "bookmarks": None}),
+        ]:
+            with self.subTest(provider=provider):
+                result = RESULTS.normalize(self.capture({"ok": True, "data": [row]}, provider=provider))
+                self.assertEqual(result["items"], [row])
+                self.assertEqual(result["status"], "ok")
+
+    def test_provider_retention_includes_primary_engagement_fields(self):
+        providers = json.loads((SCRIPTS.parent / "references/providers.json").read_text())
+        for action, fields in [
+            ("x/search", {"likes", "replies", "bookmarks"}),
+            ("xhs/search", {"likes", "comments", "collects"}),
+        ]:
+            for provider in providers["actions"][action]["providers"]:
+                self.assertTrue(fields.issubset(provider["keep_fields"]), action)
+
+    def test_download_failure_rows_are_not_success_even_at_exit_zero(self):
+        for provider, row in [
+            ("opencli/weixin/download", {"title": "Error", "status": "failed — no title", "saved": "-"}),
+            ("opencli/weixin/download", {"title": "Error", "status": "invalid URL", "saved": "-"}),
+            ("opencli/twitter/download", {"index": 1, "status": "failed"}),
+            ("opencli/xiaohongshu/download", {"index": 1, "status": "failed"}),
+        ]:
+            with self.subTest(provider=provider, row=row):
+                result = RESULTS.normalize(self.capture({"ok": True, "data": [row]}, provider=provider))
+                self.assertEqual(result["status"], "error")
+                self.assertEqual(result["error"]["code"], "DOWNLOAD_FAILED")
+                self.assertEqual(result["items"], [row])
+
+    def test_mixed_or_unknown_download_status_is_partial(self):
+        for rows in [
+            [{"status": "success"}, {"status": "failed"}],
+            [{"status": "pending"}],
+            [{"index": 1}],
+        ]:
+            with self.subTest(rows=rows):
+                result = RESULTS.normalize(self.capture({"ok": True, "data": rows},
+                                                       provider="opencli/twitter/download"))
+                self.assertEqual(result["status"], "partial")
+                self.assertIn("download_status", result["missing_fields"])
+
+    def test_successful_download_rows_keep_shape_without_claiming_files_verified(self):
+        rows = [{"status": "success", "saved": "synthetic.md"}]
+        result = RESULTS.normalize(self.capture({"ok": True, "data": rows},
+                                               provider="opencli/weixin/download"))
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["verification_scope"], "capture_and_shape")
+        self.assertEqual(RESULTS.normalize(self.capture([{"status": "failed"}]))["status"], "ok")
+
+    def test_weixin_verification_row_keeps_the_account_stop_boundary(self):
+        row = {"status": "failed — verification required in WeChat browser page"}
+        result = RESULTS.normalize(self.capture({"ok": True, "data": [row]},
+                                               provider="opencli/weixin/download"))
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["error"]["code"], "SECURITY_BLOCK")
+        self.assertEqual(result["error"]["scope"], "site_profile")
+
 if __name__ == "__main__":
     unittest.main()

@@ -173,3 +173,37 @@ test('mid-pagination API errors retain ordinary partial-thread behavior and neve
   assert.equal(browser.calls.length, 2);
   assert.equal(mocks.downloads.length, 0);
 });
+
+test('video downloads preserve the original format and query', async () => {
+  mocks.downloads.length = 0;
+  const target = tweet('200');
+  const url = 'https://video.twimg.com/synthetic/video.mp4?tag=1';
+  target.legacy.extended_entities.media = [{ media_url_https: url }];
+  const rows = await download(page([detail([target])]), {
+    'tweet-url': 'https://x.com/fixture/status/200', output: 'synthetic-output',
+  });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].tweet_id, '200');
+  assert.deepEqual(mocks.downloads[0].items, [{ type: 'video', url, tweet_id: '200' }]);
+});
+
+test('duplicate media URLs are downloaded once for the requested tweet', async () => {
+  mocks.downloads.length = 0;
+  const target = tweet('200');
+  target.legacy.extended_entities.media.push(target.legacy.extended_entities.media[0]);
+  const rows = await download(page([detail([target])]), {
+    'tweet-url': 'https://x.com/fixture/status/200', output: 'synthetic-output',
+  });
+  assert.equal(rows.length, 1);
+  assert.equal(mocks.downloads[0].items.length, 1);
+});
+
+test('a target without media reports an empty result and writes no files', async () => {
+  mocks.downloads.length = 0;
+  const target = tweet('200');
+  target.legacy.extended_entities.media = [];
+  await assert.rejects(download(page([detail([target])]), {
+    'tweet-url': 'https://x.com/fixture/status/200',
+  }), mocks.EmptyResultError);
+  assert.equal(mocks.downloads.length, 0);
+});
