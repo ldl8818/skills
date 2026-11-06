@@ -1,6 +1,14 @@
 # Reviewed knowledge on demand
 
-Knowledge routing is optional. Without `knowledge-catalog.json` in the configured private `memory_root`, the existing correction-only behavior remains unchanged. Never place private sources or a real catalog in this public repository.
+Knowledge routing is optional. Store its catalog at `.self-improving/knowledge-catalog.json` inside the configured private `memory_root`. The legacy root-level `knowledge-catalog.json` is read only when the hidden catalog is absent; an invalid hidden catalog never falls back to the old file. Without either catalog, correction-only behavior remains unchanged. Never place private sources or a real catalog in this public repository.
+
+For an authorized layout migration, move the existing catalog into `.self-improving/` and update moved source paths. Relative paths still resolve from `memory_root`, not the catalog directory. Review and accept the checked revision, then run `sync`; keep one catalog, not two copies. Existing root-level installations remain readable without an automatic file move.
+
+`memory.md` is optional. Initialization and upgrades preserve an existing file but do not create or recreate it. With core injection disabled, its absence passes health checks; explicitly enabling core injection requires a valid file. Put navigation and usage in the generated README/index and keep stable rules in their original sources.
+
+The generated navigation defaults to `index.md`. To use one README entry, rename that generated file to `README.md`; `sync` recognizes its generated header and keeps updating it without recreating `index.md`. A handwritten README is preserved and does not change the default output path. Keep the generated header intact and maintain routes in the catalog.
+
+With a catalog, `archive/` and `归档/` appear under historical navigation, separately from current sources. Full discovery still includes them; old dates, commands and decisions do not establish current behavior or authorize new work.
 
 ## Register and review sources
 

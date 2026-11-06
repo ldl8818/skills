@@ -200,6 +200,28 @@ def uninstall_hooks(config: dict[str, Any], platform: str) -> Path:
     return path
 
 
+def managed_hooks_present(config: dict[str, Any], platform: str) -> bool:
+    """Find even partial managed wiring on an adapter marked disabled."""
+    agent = config["agents"][platform]
+    key = "settings_file" if platform == "claude" else "hooks_file"
+    payload = _load_json(expand_path(agent[key]))
+    hooks = payload.get("hooks", {})
+    if not isinstance(hooks, dict):
+        raise ValueError("hooks must be an object")
+    for groups in hooks.values():
+        if not isinstance(groups, list):
+            continue
+        for group in groups:
+            if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
+                continue
+            for hook in group["hooks"]:
+                if isinstance(hook, dict):
+                    command = str(hook.get("command", ""))
+                    if MARKER in command or _legacy_hook(command):
+                        return True
+    return False
+
+
 def hook_is_installed(config: dict[str, Any], platform: str) -> bool:
     agent = config["agents"][platform]
     key = "settings_file" if platform == "claude" else "hooks_file"

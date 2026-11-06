@@ -1,6 +1,6 @@
 # Doraemon 跨 Agent 自我进化记忆系统
 
-A configurable, review-gated correction system for Claude Code and Codex. It captures explicit corrections, waits for human approval, and supplies only current, scoped approvals to later new sessions. Program code can be public; user memory remains in a separate private directory.
+A cross-agent knowledge tool with a task-first correction workflow. Confirmed mistakes are repaired in the original Skill or implementation and verified there. Optional keyword capture and reviewed temporary memory remain available; they do not automatically repair Skills. Program code can be public; user memory remains in a separate private directory.
 
 中文用户请从 [五分钟从零开始](docs/quickstart-zh.md) 阅读。遇到问题看 [中文排错手册](docs/troubleshooting-zh.md)。想了解系统怎么设计、为什么这样设计，看 [Doraemon 跨 Agent 自我进化记忆系统架构与设计](docs/architecture-zh.md)。
 
@@ -8,17 +8,18 @@ A configurable, review-gated correction system for Claude Code and Codex. It cap
 
 [Codex 指令审计与改进方案](docs/Codex指令审计与改进方案.md) 保存历史讨论、原文依据及当时的实施验收记录；仅供追溯，当前规则与状态以各自真身和 ROADMAP 为准。
 
-## 它怎样变聪明
+## 纠错后怎样减少复发
 
 ```text
-你明确纠正 Agent
-  → Hook 自动放入“不可信候选箱”
-  → 你批准一次正确答案
-  → 带复核期与失效期的临时纠错
-  → 归位正式规则后停止重复注入
+确认当前任务的错误与原因
+  → 修原 Skill、执行入口或程序
+  → 验证原失败与相邻正常路径
+  → 保留正式来源和必要检查，结束本次纠错
 ```
 
 正常工作流中，未经批准的候选不会成为 Agent 指令。系统不会自己判断真理，也不会把网页、邮件或命令错误自动晋升为权威记忆。Claude Code 命中权威写入时会弹出权限确认框；Codex 的 `PreToolUse` 不支持请求单次批准，因此命中后直接拒绝，Agent 只给出含指纹的交互审核命令，由你复制到普通终端执行。需要注意：Hook 是防误操作和流程守门，不是把同一 macOS/Linux 用户下的任意 Shell 变成低权限沙箱。
+
+建议保持普通聊天捕获关闭，使用按需知识与当前任务修复。修复由执行任务的 Agent 完成，Python 程序不自动修改任意 Skill。旧候选不等于未修问题；已经进入正式来源的结果无需重新批准为临时注入。只有明确需要跨会话临时纠错时，才使用下方可选审核流程。
 
 ## Requirements
 - Python 3.11+
@@ -40,7 +41,7 @@ Non-interactive example:
 python3 -m self_improving init \
   --agents claude,codex \
   --memory-root "$HOME/Documents/self-improving-memory" \
-  --capture-corrections \
+  --no-capture-corrections \
   --no-capture-errors
 ```
 
@@ -59,8 +60,10 @@ python3 -m self_improving doctor
 ```
 
 `sync` refreshes the stable knowledge index. By default, Hook injection reads
-only current v2 approvals; free-form `memory.md` stays available for on-demand
-lookup but is not placed into every session. Private memory is never copied into
+only current v2 approvals; optional free-form `memory.md` is not created or
+placed into every session. Existing opt-in content is preserved. Knowledge routes
+belong in `.self-improving/knowledge-catalog.json`, with root-level legacy compatibility;
+see [knowledge maintenance](docs/knowledge.md). Private memory is never copied into
 Claude or Codex instruction files.
 
 The health report validates each managed Hook's command path, type, matcher and

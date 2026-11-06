@@ -17,7 +17,8 @@ from self_improving.paths import atomic_write_json
 from self_improving.security import contains_secret
 from self_improving.storage import estimate_tokens, normalize_scope, _scope_applies as scope_matches, _repo_identity
 
-CATALOG = "knowledge-catalog.json"
+CATALOG = ".self-improving/knowledge-catalog.json"
+LEGACY_CATALOG = "knowledge-catalog.json"
 MAX_BYTES = 1024 * 1024
 ID = re.compile(r"[a-z][a-z0-9-]{0,63}\Z")
 FORBIDDEN = {".learnings", ".self-improving", "corrections.md", "memory.md", "verified-corrections.jsonl"}
@@ -69,8 +70,13 @@ def resolve(value: str, base: Path) -> Path:
     return (path if path.is_absolute() else base / path).resolve()
 
 
+def catalog_path(root: Path) -> Path:
+    private = root / CATALOG
+    return private if private.exists() or private.is_symlink() else root / LEGACY_CATALOG
+
+
 def load_catalog(root: Path) -> dict:
-    catalog = json_file(root / CATALOG)
+    catalog = json_file(catalog_path(root))
     if not isinstance(catalog, dict) or catalog.get("version") != 1:
         raise ValueError("unsupported knowledge catalog")
     roots = catalog.get("roots")
@@ -370,7 +376,7 @@ def context(config: dict, event: dict, budget: int) -> str:
     session = event.get("session_id", "")
     key = fingerprint([event.get("platform"), session])
     state = Path(config["state_root"])
-    has_catalog = (Path(config["memory_root"]) / CATALOG).is_file()
+    has_catalog = catalog_path(Path(config["memory_root"])).exists()
     if budget < 40 or (not has_catalog and not (state / "knowledge/sessions" / f"{key}.json").exists()):
         return ""
     failure_path = state / "knowledge/failures" / f"{key}.json"

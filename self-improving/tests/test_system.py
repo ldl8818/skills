@@ -805,7 +805,7 @@ class SystemTests(unittest.TestCase):
         self.config["injection"]["max_verified_chars"] = 1
         with self.env():
             write_config(self.config)
-            learning = next(check for check in run_checks() if check.name == "学习闭环")
+            learning = next(check for check in run_checks() if check.name == "纠错注入条件")
         self.assertFalse(learning.passed)
         self.assertIn("全部超过字符预算", learning.detail)
 
@@ -817,7 +817,7 @@ class SystemTests(unittest.TestCase):
         self.config["injection"]["max_total_tokens"] = RECEIPT_RESERVE_TOKENS + VERIFIED_WRAPPER_TOKENS
         with self.env():
             write_config(self.config)
-            learning = next(check for check in run_checks() if check.name == "学习闭环")
+            learning = next(check for check in run_checks() if check.name == "纠错注入条件")
             output = io.StringIO()
             with redirect_stdout(output):
                 dispatch("codex", "SessionStart", {"source": "startup", "session_id": "budget"})
@@ -825,6 +825,7 @@ class SystemTests(unittest.TestCase):
         self.assertNotIn("预算边界规则", output.getvalue())
 
     def test_doctor_rejects_core_memory_that_runtime_omits_for_total_budget(self) -> None:
+        (self.memory / "memory.md").write_text("# Memory · Example\n\n## Rules\n- Keep the original.\n- Verify results.\n")
         from self_improving.doctor import run_checks
         from self_improving.storage import RECEIPT_RESERVE_TOKENS, SESSION_UPDATE_RESERVE_TOKENS
 
@@ -1036,6 +1037,7 @@ class SystemTests(unittest.TestCase):
         self.assertIn('"cwd": "str"', schema.read_text())
 
     def test_resume_skips_unchanged_dynamic_context(self) -> None:
+        (self.memory / "memory.md").write_text("# Memory · Example\n\n## Rules\n- Keep the original.\n- Verify results.\n")
         self.config["injection"]["include_core_memory"] = True
         with self.env():
             write_config(self.config)
@@ -1126,6 +1128,35 @@ class SystemTests(unittest.TestCase):
         inbox.write_text(inbox.read_text() + "| now | test | changed | fp | candidate |\n")
         sync_index(self.memory)
         self.assertEqual(path.read_text(), first)
+
+    def test_renamed_generated_index_stays_in_readme(self) -> None:
+        _, index = sync_index(self.memory)
+        readme = self.memory / "README.md"
+        index.rename(readme)
+        guide = self.memory / "domains/README.md"
+        guide.parent.mkdir(exist_ok=True)
+        guide.write_text("# Domain guide\n")
+        ok, path = sync_index(self.memory)
+        self.assertTrue(ok)
+        self.assertEqual(path, readme)
+        self.assertFalse(index.exists())
+        self.assertIn("domains/README.md", readme.read_text())
+        self.assertNotIn("| [`README.md`]", readme.read_text())
+        first = readme.read_bytes()
+        self.assertEqual(sync_index(self.memory, check=True), (True, readme))
+        sync_index(self.memory)
+        self.assertEqual(readme.read_bytes(), first)
+        self.assertFalse(index.exists())
+
+    def test_manual_readme_does_not_become_generated_index(self) -> None:
+        readme = self.memory / "README.md"
+        text = "# My notes\nKeep this manual navigation.\n"
+        readme.write_text(text)
+        ok, path = sync_index(self.memory)
+        self.assertTrue(ok)
+        self.assertEqual(path, self.memory / "index.md")
+        self.assertEqual(readme.read_text(), text)
+        self.assertIn("README.md", path.read_text())
 
     def test_candidate_entries_json_and_session_start_review_reminder(self) -> None:
         from self_improving.review import candidate_entries
@@ -1233,7 +1264,7 @@ class SystemTests(unittest.TestCase):
         self.assertEqual(broken_local_references(self.memory), [])
 
         core = self.memory / "memory.md"
-        core.write_text(core.read_text() + "\n裸文件名示例：`README.md`。\n")
+        core.write_text("# Memory · Example\n\n裸文件名示例：`README.md`。\n")
         self.assertEqual(broken_local_references(self.memory), [])
 
     def test_doctor_reports_unstructured_error_capture_contract(self) -> None:
@@ -1321,6 +1352,8 @@ class SystemTests(unittest.TestCase):
                 "claude,codex",
                 "--memory-root",
                 str(fresh / "memory"),
+                "--no-capture-corrections",
+                "--no-capture-errors",
             ],
             text=True,
             capture_output=True,
@@ -1328,7 +1361,7 @@ class SystemTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(installed.returncode, 0, installed.stdout + installed.stderr)
-        self.assertTrue((fresh / "memory/memory.md").exists())
+        self.assertFalse((fresh / "memory/memory.md").exists())
         self.assertTrue((fresh / "memory/index.md").exists())
         installed_config = json.loads((fresh / ".config/self-improving/config.json").read_text())
         self.assertFalse(installed_config["persistence"]["capture_corrections"])
@@ -1372,7 +1405,8 @@ class SystemTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(removed.returncode, 0, removed.stdout + removed.stderr)
-        self.assertTrue((fresh / "memory/memory.md").exists())
+        self.assertFalse((fresh / "memory/memory.md").exists())
+        self.assertTrue((fresh / "memory/.self-improving-root").exists())
         self.assertNotIn(MARKER, (fresh / ".claude/settings.json").read_text())
         self.assertNotIn(MARKER, (fresh / ".codex/hooks.json").read_text())
 
@@ -1429,6 +1463,7 @@ class SystemTests(unittest.TestCase):
         fresh = self.home / "legacy-home"
         memory = fresh / "Documents/obsidian/self-improving-memory"
         initialize_memory(memory)
+        (memory / "memory.md").write_text("# Memory · Legacy\nPreserve existing content.\n")
         (fresh / ".claude").mkdir(parents=True)
         (fresh / ".claude/settings.json").write_text("{}")
         env = {

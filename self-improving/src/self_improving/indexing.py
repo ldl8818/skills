@@ -17,6 +17,14 @@ ARCHIVE_PARTS = {"archive", "归档"}
 LINK = re.compile(r"(?<!!)\[[^]]*]\(([^)]+)\)")
 BACKTICK_PATH = re.compile(r"`([^`]+\.md(?:#[^`]*)?)`")
 EXPIRY = re.compile(r"至\s*(20\d{2}-\d{2}-\d{2})")
+GENERATED_PREFIX = "# Memory Index\n\n> 本文件由 `python3 -m self_improving sync` 生成；"
+
+
+def _has_generated_readme(root: Path) -> bool:
+    try:
+        return (root / "README.md").read_text(encoding="utf-8").startswith(GENERATED_PREFIX)
+    except (OSError, UnicodeError):
+        return False
 
 
 def _title(path: Path) -> str:
@@ -48,26 +56,44 @@ def _category(relative: Path) -> str:
 
 def render_index(root: Path) -> str:
     active = ""
-    from self_improving.knowledge import CATALOG, snapshot
-    if (root / CATALOG).exists():
+    generated_readme = _has_generated_readme(root)
+    from self_improving.knowledge import catalog_path, snapshot
+    catalog = catalog_path(root)
+    if catalog.exists():
         try:
             current = snapshot(root)
-            active = "\n## 登记知识\n\n路由只维护 knowledge-catalog.json；复核状态用 `knowledge check` 查询。\n\n| ID | 来源 | 标题 | 行数 |\n|---|---|---|---:|\n"
+            active = (
+                "\n## 使用方式\n\n长期规则在全局及项目 AGENTS.md，项目进度在 ROADMAP.md，"
+                "具体操作在原 Skill／代码；当前纠错直接修正式来源并验证。\n\n"
+                "按任务用 `knowledge list` 查找、`knowledge read <id>` 读取原文；"
+                "标为全文必读的来源须完整读取，自动提示不代表已读。"
+                "未匹配不等于没有相关知识。候选、错误记录和归档不自动成为现行规则或执行授权。\n"
+                "\n## 登记知识\n\n"
+                f"程序登记表位于 `{catalog.relative_to(root).as_posix()}`；复核状态用 `knowledge check` 查询。\n\n"
+                "| ID | 来源 | 标题 | 行数 |\n|---|---|---|---:|\n"
+            )
             for ident, item in current["items"].items():
                 title = item.get("title", "读取失败").replace("|", "¦")
                 source = item['entry']['path'].replace(' ', '%20')
                 active += f"| {ident} | [原文](<{source}>) | {title} | {item.get('lines', '待检查')} |\n"
-            active += "\n## 分类入口\n\n未登记不等于弃用。完整文件清单用 `python3 -m self_improving knowledge list --all` 查询，不常驻上下文。\n\n"
+            active += "\n## 按需资料\n\n未登记不等于弃用。完整文件清单用 `python3 -m self_improving knowledge list --all` 查询，不常驻上下文。\n\n"
+            archives = []
             for directory in sorted(root.iterdir()):
                 if directory.is_dir() and not directory.name.startswith('.'):
-                    active += f"- [{directory.name}](<{directory.name}/>)\n"
-            return "# Memory Index\n\n> 本文件由 `python3 -m self_improving sync` 生成；路由只维护 knowledge-catalog.json。\n" + active
+                    link = f"- [{directory.name}](<{directory.name}/>)\n"
+                    if directory.name in ARCHIVE_PARTS:
+                        archives.append(link)
+                    else:
+                        active += link
+            if archives:
+                active += "\n## 历史追溯\n\n归档保留旧决定与证据，不代表当前规则、部署状态或执行授权。\n\n" + "".join(archives)
+            return GENERATED_PREFIX + "登记表维护知识路径，本页提供阅读导航。\n" + active
         except (OSError, ValueError):
             active = "\n知识目录不可用，请运行 `knowledge check`。全量资料入口仍保留。\n\n"
     rows: list[str] = []
     for path in sorted(root.rglob("*.md"), key=lambda item: item.relative_to(root).as_posix().casefold()):
         relative = path.relative_to(root)
-        if relative.name == "index.md":
+        if any(part.startswith('.') for part in relative.parts) or relative.name == "index.md" or (relative == Path("README.md") and generated_readme):
             continue
         href = relative.as_posix().replace(" ", "%20")
         if any(part in VOLATILE_PARTS for part in relative.parts):
@@ -90,7 +116,7 @@ def render_index(root: Path) -> str:
 
 
 def sync_index(root: Path, check: bool = False) -> tuple[bool, Path]:
-    path = root / "index.md"
+    path = root / ("README.md" if _has_generated_readme(root) else "index.md")
     expected = render_index(root)
     current = path.read_text(encoding="utf-8") if path.exists() else ""
     if check:

@@ -388,12 +388,16 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
             }
         }, ensure_ascii=False))
         return 0
+    # A stale client hook must not reactivate a disabled adapter. Keep the
+    # authority guard above this gate while an old PreToolUse hook still exists.
+    if not config["agents"].get(platform, {}).get("enabled", False):
+        return 0
     try:
         _record_schema(state_root, platform, event.event, payload)
     except (OSError, ValueError, TypeError, RecursionError):
         pass  # Observability must not prevent protection or normal Hook handling.
     if event.event == "SessionStart":
-        from self_improving.knowledge import CATALOG, context as knowledge_context
+        from self_improving.knowledge import catalog_path, context as knowledge_context
         injection = config.get("injection", {})
         total_budget = int(injection.get("max_total_tokens", 1200))
         if total_budget <= 0:
@@ -437,7 +441,7 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
             attrs = " ".join(f'{key}="{value}"' for key, value in receipt.items())
             sections.append(f"<self-improving-receipt {attrs}/>")
         rendered = "\n".join(sections)
-        has_knowledge = (root / CATALOG).is_file()
+        has_knowledge = catalog_path(root).exists()
         extra = knowledge_context(config, {**event.__dict__, "platform": platform}, max(0, total_budget - estimate_tokens(rendered) - SESSION_UPDATE_RESERVE_TOKENS))
         if extra:
             rendered = "\n".join(filter(None, (rendered, extra)))
@@ -473,7 +477,7 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
             print(rendered)
         return 0
     if event.event == "Stop":
-        if not persistence_enabled(config):
+        if not persistence_enabled(config) or not config["persistence"].get("capture_corrections"):
             return 0
         pending = pending_correction_count(root)
         interval = int(config.get("injection", {}).get("review_reminder_interval_hours", 24))

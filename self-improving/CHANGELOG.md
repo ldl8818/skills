@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.2.0
+
+- Keep knowledge catalogs in the hidden control directory with legacy root-level compatibility and unchanged source-path resolution. Health checks also validate legacy catalogs and detect source-version drift. Generated navigation carries usage guidance.
+- Make core memory optional: preserve existing opt-in files, stop recreating removed files during initialization or upgrades, and require them in health checks only when injection is enabled.
+- Separate archive navigation from current on-demand sources without hiding history from explicit discovery.
+- Prefer repairing confirmed mistakes in the original Skill or implementation with failure and normal-path evidence; keyword capture remains optional.
+- Honor disabled adapters before observation, capture, injection and reminders while retaining invoked authority protection. Detect partial managed Hook residue on disabled clients.
+- Disabling correction capture also silences backlog reminders while preserving knowledge routing and retained records.
+- Report correction injection conditions separately from actual repair verification; do not label an empty eligible set as a proven learning loop.
+
 ## 3.1.4
 
 - Redact quoted credential fields and values, including JSON and dictionary text. Bound URL scheme matching so long non-URL examples do not exhaust the knowledge worker deadline.

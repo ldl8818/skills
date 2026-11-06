@@ -15,6 +15,8 @@ All paths accept `~` and environment-variable expansion. Unknown future schema v
 a private Git working tree. The software does not infer or publish a remote.
 
 ## Safe defaults
+- Recommended daily mode: keep `capture_corrections=false`; knowledge lookup stays available. This also silences Stop reminders for retained candidates without changing their review status.
+- Disabled adapters do not capture, inject, remind or write observation state even if a stale Hook calls them. An invoked authority guard still protects the ledger. Remove only managed stale Hook entries, preserving unrelated configuration.
 - Correction capture: enabled only after an interactive yes or explicit `--capture-corrections`.
 - Command-error capture: disabled.
 - Free-form `memory.md` injection: disabled.
@@ -40,7 +42,7 @@ a private Git working tree. The software does not infer or publish a remote.
 }
 ```
 
-- `include_core_memory`: inject `memory.md`; disabled by default because stable policy belongs in Agent/project rules and detailed knowledge is read on demand.
+- `include_core_memory`: inject an existing valid `memory.md`; disabled by default because stable policy belongs in Agent/project rules and detailed knowledge is read on demand. Initialization and upgrades do not create this optional file; health checks require it only when injection is enabled.
 - `include_verified_corrections`: inject eligible approvals at a new-session `SessionStart`.
 - `resume_mode` (without a knowledge catalog): `skip` records a per-session digest and avoids reinjecting unchanged context on resume; a changed set is supplied once as a full replacement, and an empty set emits a one-time clear signal. `always` emits eligible context on every resume.
 - `max_total_tokens`: shared estimated-token ceiling for all dynamic sections; range 0–20,000.

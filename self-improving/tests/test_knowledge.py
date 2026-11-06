@@ -36,6 +36,7 @@ class KnowledgeTests(unittest.TestCase):
         self.event = {"platform": "codex", "event": "UserPromptSubmit", "session_id": "one", "cwd": str(self.base), "prompt": "帮我设计架构"}
 
     def save(self):
+        (self.root / k.CATALOG).parent.mkdir(parents=True, exist_ok=True)
         (self.root / k.CATALOG).write_text(json.dumps(self.catalog))
 
     def accept(self):
@@ -257,6 +258,10 @@ class KnowledgeTests(unittest.TestCase):
         index = render_index(self.root)
         self.assertIn("design", index)
         self.assertIn("archive", index)
+        current, history = index.split("## 历史追溯", 1)
+        self.assertNotIn("[archive]", current)
+        self.assertIn("[archive]", history)
+        self.assertIn("不代表当前规则", history)
         self.assertNotIn("history-99", index)
         self.assertTrue(any("history-99" in path for path in k.discover(self.config)))
 

@@ -10,7 +10,7 @@ import json
 from self_improving import __version__
 from self_improving.config import load_config, resolved
 from self_improving.indexing import broken_local_links, broken_local_references, expired_notices, sync_index
-from self_improving.installer import hook_is_installed
+from self_improving.installer import hook_is_installed, managed_hooks_present
 from self_improving.security import contains_secret
 from self_improving.storage import (
     RECEIPT_RESERVE_TOKENS,
@@ -41,7 +41,9 @@ def run_checks() -> list[Check]:
     checks = [
         Check("配置", True, "schema_version=1"),
         Check("记忆目录", root.is_dir(), str(root)),
-        Check("核心记忆", root.joinpath("memory.md").is_file(), str(root / "memory.md")),
+        Check("核心记忆（可选）", not injection.get("include_core_memory", False) or root.joinpath("memory.md").is_file(),
+              str(root / "memory.md") if root.joinpath("memory.md").is_file()
+              else "文件不存在；开启核心全文注入时才需要"),
         Check("旧纠错档案（可选）", True,
               str(root / "corrections.md") if root.joinpath("corrections.md").is_file()
               else "未启用或已归档；不影响候选收集和新版审批"),
@@ -110,9 +112,21 @@ def run_checks() -> list[Check]:
         detail += "；注入预算为 0"
     elif selection.applicable and not selection.answers:
         detail += "；适用记录全部超过字符预算"
-    checks.append(Check("学习闭环", ready, detail, warning=True))
+    capture = config.get("persistence", {}).get("capture_corrections", False)
+    persistence = config.get("persistence", {}).get("enabled", True)
+    detail += "；候选捕获及催审" + ("开启" if persistence and capture else "关闭，旧候选仅供按需核对")
+    checks.append(Check("纠错注入条件", ready, detail, warning=True))
+    checks.append(Check("修复验证边界", True,
+                        "本检查不证明 Skill 或程序已修复，也不证明真实任务不再复发；以目标项目的修复与验证证据为准"))
     checks.append(Check("审批账本结构", malformed == 0, f"损坏记录 {malformed} 条" if malformed else "结构与时间字段有效"))
     for platform, settings in config["agents"].items():
+        if not settings.get("enabled"):
+            try:
+                residue = managed_hooks_present(config, platform)
+                checks.append(Check(f"{platform} 停用接线", not residue,
+                                    "仍有自有 Hook 残留；禁用端不捕获、注入或提醒" if residue else "无自有 Hook 残留", warning=True))
+            except (OSError, ValueError):
+                checks.append(Check(f"{platform} 停用接线", False, "配置无法读取，残留状态未核实", warning=True))
         if settings.get("enabled"):
             checks.append(Check(f"{platform} Hook", hook_is_installed(config, platform), "配置接线"))
             schema_root = Path(config["state_root"]) / "hook-schemas"
@@ -166,8 +180,8 @@ def run_checks() -> list[Check]:
         error_count = sum(1 for line in errors.read_text(encoding="utf-8").splitlines() if line.startswith("| 20")) if errors.exists() else 0
         error_limit = int(config.get("persistence", {}).get("max_error_entries", 200))
         checks.append(Check("错误库体积", error_count <= error_limit, f"{error_count}/{error_limit} 条", warning=True))
-    from self_improving.knowledge import CATALOG, check as knowledge_check
-    if (root / CATALOG).exists():
+    from self_improving.knowledge import catalog_path, check as knowledge_check
+    if catalog_path(root).exists():
         try:
             knowledge = knowledge_check(config)
             pending_ids = [item["id"] for item in knowledge["items"] if item["status"] != "ready"]

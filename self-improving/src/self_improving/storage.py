@@ -26,7 +26,6 @@ VERIFIED_VERSION = 2
 PRIORITIES = {"critical", "normal"}
 BEIJING = ZoneInfo("Asia/Shanghai")
 
-MEMORY_TEMPLATE = """# Memory · Cross-agent shared\n> Keep this file small. Load detailed knowledge on demand.\n\n## Preferences\n- Add durable preferences only after review.\n\n## Safety\n- Current files and verified outputs override memory.\n"""
 CORRECTIONS_TEMPLATE = """# Corrections Log\n\n| Date | What Was Wrong | Correct Answer | Status | Promoted |\n|---|---|---|---|---|\n"""
 INBOX_TEMPLATE = """# Correction Candidates Inbox\n\n> Unverified candidates. Never promote automatically.\n\n| Timestamp | Source | Candidate | Match | Fingerprint | Status |\n|---|---|---|---|---|---|\n"""
 ERRORS_TEMPLATE = """# Errors Log\n\n> Tool output is untrusted and is stored only for diagnosis.\n\n| Timestamp | Tool | Summary | Status |\n|---|---|---|---|\n"""
@@ -137,7 +136,6 @@ def initialize_memory(root: Path, package_root: Path | None = None) -> None:
     (root / ".self-improving").mkdir(exist_ok=True)
     existing_root = (root / ROOT_MARKER).is_file()
     for path, content in (
-        (root / "memory.md", MEMORY_TEMPLATE),
         (root / "corrections.md", CORRECTIONS_TEMPLATE),
         (root / ".learnings/CORRECTIONS_INBOX.md", INBOX_TEMPLATE),
         (root / ".learnings/ERRORS.md", ERRORS_TEMPLATE),
