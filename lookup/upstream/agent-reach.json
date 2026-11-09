@@ -2,15 +2,15 @@
   "schema_version": 1,
   "repository": "https://github.com/Panniantong/Agent-Reach",
   "channel": "main",
-  "commit": "14c213405669414492bda0f8d52cc6531d062c45",
-  "version": "1.6.0",
+  "commit": "422478ae0264d2236bf7ebd1c3b11a69aaafa4a3",
+  "version": "1.6.1",
   "archive": "agent-reach.tar.gz",
-  "archive_url": "https://codeload.github.com/Panniantong/Agent-Reach/tar.gz/14c213405669414492bda0f8d52cc6531d062c45",
-  "archive_sha256": "fcd21410d817ce4829bb028824d54e5288dc036d21ad2076a3f9ef72f58ba539",
+  "archive_url": "https://codeload.github.com/Panniantong/Agent-Reach/tar.gz/422478ae0264d2236bf7ebd1c3b11a69aaafa4a3",
+  "archive_sha256": "aad934e39d01f2f6ae6eb71da062f55a430889336849b7fdba858ab3d63f88ce",
   "files": {
     ".github/release-acceptance.json": {
-      "sha256": "71bb8e3d8bc47087d969a8066df9d877efe0584dd6ea37dd2719e2333f2f7def",
-      "size": 13626,
+      "sha256": "9f6ee7335aa81689e33bc3906ef02d38fbc10569fae07b2a8df8e879b4714c1d",
+      "size": 13460,
       "mode": 436
     },
     ".github/workflows/pytest.yml": {
@@ -29,8 +29,8 @@
       "mode": 436
     },
     "CHANGELOG.md": {
-      "sha256": "b43a11741998e3f009e3142ab81f97897c36c288920c8e967d09b22ffe62c37a",
-      "size": 20396,
+      "sha256": "08eb089c3b903407452ce6cad99757f94c1d65de24f6cd53144c6f66fcc261f6",
+      "size": 23308,
       "mode": 436
     },
     "CONTRIBUTING.md": {
@@ -44,8 +44,8 @@
       "mode": 436
     },
     "README.md": {
-      "sha256": "679ed9b797891acf06d4605addaef032993b63af67c97ac2bd8be76ea854ce34",
-      "size": 16010,
+      "sha256": "a110755fc0e8279fcd299ebdc85973df215d9da1bfb34e9c6afea881225ba2cb",
+      "size": 14606,
       "mode": 436
     },
     "SECURITY.md": {
@@ -54,7 +54,7 @@
       "mode": 436
     },
     "agent_reach/__init__.py": {
-      "sha256": "68ba93d5f100691d20a82102a55dfafae44b6695463618e98f4dea82f17cb003",
+      "sha256": "b69ecdf55ae117277ae48818471f4bb22d60f5af516f508e1e85274cccfd5c1f",
       "size": 127,
       "mode": 436
     },
@@ -74,8 +74,8 @@
       "mode": 436
     },
     "agent_reach/backends/opencli.py": {
-      "sha256": "5897705237f7aa1fc086581f52c2fe3c8e6a3c20b07bf82aa4c7a72f5d97c745",
-      "size": 5978,
+      "sha256": "41c811d8fa5b14675243425ee0e2eb60ec6ff785b7a8b4cddfa84d2201e892f5",
+      "size": 6181,
       "mode": 436
     },
     "agent_reach/channels/__init__.py": {
@@ -94,13 +94,13 @@
       "mode": 436
     },
     "agent_reach/channels/bilibili.py": {
-      "sha256": "d07cecb98609f571ccbeb83da1a88b98f7f964c999290c5c785466eac7cd2779",
-      "size": 10008,
+      "sha256": "5f17b3521b2e869e53f5bcee775428881641e48e9b9a6581f8b741ebfe1536ec",
+      "size": 9976,
       "mode": 436
     },
     "agent_reach/channels/boss.py": {
-      "sha256": "2596919aff1d1b3c4b9be837a7c59583e6f158c9a42778daaa6e93e57558319b",
-      "size": 7379,
+      "sha256": "25710bf51958da91b0c9d8957dd3e439f53cca977940c770413b4877a3bcc386",
+      "size": 7367,
       "mode": 436
     },
     "agent_reach/channels/facebook.py": {
@@ -144,8 +144,8 @@
       "mode": 436
     },
     "agent_reach/channels/xiaohongshu.py": {
-      "sha256": "e8de999ffb23118e0248e859acdd4375e054435ecbb80570378429ac58c52647",
-      "size": 5334,
+      "sha256": "07618298ea2ce9268235d5e88e15ca880c6adf73ff5a030c0adf40fd8b5971f3",
+      "size": 5541,
       "mode": 436
     },
     "agent_reach/channels/xiaoyuzhou.py": {
@@ -179,13 +179,13 @@
       "mode": 436
     },
     "agent_reach/runtime/bridge.py": {
-      "sha256": "3a429c3efd21fec9f820dcbaf56f5489439dd8f0024e0b09ffc5d4b94bb2ad46",
-      "size": 3446,
+      "sha256": "7bde0f6a8a7be52d3ef41e3cd14c5631d10a68da65f8450ecf940f81384b2c60",
+      "size": 3841,
       "mode": 436
     },
     "agent_reach/runtime/browser.py": {
-      "sha256": "20811a73980b44a076c22223af4e7f8cb9f5976940827e03778b39eced13b879",
-      "size": 37047,
+      "sha256": "196299d75a4f6487318f560f3b1aadea498b4606800de7f5cc2fc72e2b66564d",
+      "size": 37880,
       "mode": 436
     },
     "agent_reach/runtime/browser_binding.py": {
@@ -204,8 +204,8 @@
       "mode": 436
     },
     "agent_reach/runtime/cli.py": {
-      "sha256": "2e86cad74b0dd4a605d78f2620e19ddfecce28d7762eabe25ece4414780d51ac",
-      "size": 23869,
+      "sha256": "9901e58543365fcc48ba950620bd094bfcf6a2f1a45b2d7c411f1bcf5a8cbe80",
+      "size": 23959,
       "mode": 436
     },
     "agent_reach/runtime/clock.py": {
@@ -214,8 +214,8 @@
       "mode": 436
     },
     "agent_reach/runtime/dispatch.py": {
-      "sha256": "a0678e7806dc0ada2384a2d0e9c4e6236063ea13aaf6af386cc157ed0c752548",
-      "size": 12865,
+      "sha256": "634eae9a89766a0b7dbf912ed2e7266bd13ae347a3a2521753c6cf5ac4b664ec",
+      "size": 14250,
       "mode": 436
     },
     "agent_reach/runtime/legacy.py": {
@@ -224,13 +224,13 @@
       "mode": 436
     },
     "agent_reach/runtime/manage.py": {
-      "sha256": "2dee4dc761d46eca5ff687b763dc4801871bf827effcfa26f1620c244bafd54f",
-      "size": 42731,
+      "sha256": "288c52a166ed65f57ea84854ffbdc6eda863081e2da30560a154173976827661",
+      "size": 43199,
       "mode": 436
     },
     "agent_reach/runtime/onboarding.py": {
-      "sha256": "a3439286482c7cfb5aac453a8ac3bcb0825809f79bfe19939aad050d5e2998a2",
-      "size": 13070,
+      "sha256": "16d3d771664ee3bd5e3709efee043e2615a6ffab5f26947f09b5fc8961459769",
+      "size": 13069,
       "mode": 436
     },
     "agent_reach/runtime/public_web.py": {
@@ -244,18 +244,18 @@
       "mode": 436
     },
     "agent_reach/runtime/run.py": {
-      "sha256": "dd3b8c07e21fe9a7cddcbfead36fe35241359519ece80f5d47faf69bedc50f02",
-      "size": 5077,
+      "sha256": "e5a911e6d570778ae79185442472bc0bff1aa07298169a2d8883171f4a163b62",
+      "size": 6785,
       "mode": 436
     },
     "agent_reach/runtime/session_reuse.py": {
-      "sha256": "cc150cacdc6e85d29c66158a5aeb67e2ecad4164041a954898bd719acbf98eba",
-      "size": 6436,
+      "sha256": "3b4bd283f22f00d9d7759d718880ee61ef00e11685d4271c0aa121a1decaf3ae",
+      "size": 7059,
       "mode": 436
     },
     "agent_reach/runtime/sessions.py": {
-      "sha256": "e60b61f2d36f266b320814686676938f43802bba7d8d41db720d6af81b761e47",
-      "size": 2310,
+      "sha256": "59b251271f80b5cc6f904541eeac10925c4258c477488f814657f50bff176c6a",
+      "size": 2837,
       "mode": 436
     },
     "agent_reach/runtime/state.py": {
@@ -294,13 +294,13 @@
       "mode": 436
     },
     "agent_reach/skill/references/maintenance.md": {
-      "sha256": "f1bc13d07c631cfe00ebaf69bc0a3243f84b2ffb905d4620c62edcd5644d61f2",
-      "size": 1390,
+      "sha256": "316585c8837f3e12fd88cb1769cf9b00eed9c83c2fc70f46a6dcb791012121e1",
+      "size": 1621,
       "mode": 436
     },
     "agent_reach/skill/references/sessions.md": {
-      "sha256": "433c54d462e83ff1255d4d294c4bd6457028ccf3dbbe16c325837d46c336fa0e",
-      "size": 3754,
+      "sha256": "2b15b340db21838680659b4694a419f6799036e49ddb4b8042e7b893a4dbadd3",
+      "size": 3870,
       "mode": 436
     },
     "agent_reach/transcribe.py": {
@@ -334,8 +334,8 @@
       "mode": 436
     },
     "docs/README_en.md": {
-      "sha256": "70b7a093307eb5325ef4638f90f8ad4697f35257b865c31ad7a7e28756a99f5c",
-      "size": 16227,
+      "sha256": "918a11d61fb232eaca854bc4cf3c331cd24f95af507214ce98133411b2a0ecf2",
+      "size": 14819,
       "mode": 436
     },
     "docs/assets/logo-1.png": {
@@ -368,11 +368,6 @@
       "size": 1558,
       "mode": 436
     },
-    "docs/assets/sponsors/astraflow.png": {
-      "sha256": "0e57f7d641ebf391c36af3e54e2fa9dc8f04c4afcd28fd2da641a4dc8c45712b",
-      "size": 37174,
-      "mode": 436
-    },
     "docs/assets/sponsors/brightdata.png": {
       "sha256": "c393afb03aecf2047599e9008ad63495470f5c05aabd066837ca26e7cd89c226",
       "size": 7795,
@@ -381,11 +376,6 @@
     "docs/assets/sponsors/browseract.png": {
       "sha256": "854a4a7b1c3671d22c207f2dab099e9360d3c7fac152c43c5c68f5a2c58c1105",
       "size": 4458,
-      "mode": 436
-    },
-    "docs/assets/sponsors/coreclaw.png": {
-      "sha256": "a238b46070b05aeeacfde5080eb5853ba5a5e356292e2934b9f3121f95ead058",
-      "size": 23725,
       "mode": 436
     },
     "docs/assets/sponsors/rapidproxy.png": {
@@ -419,8 +409,8 @@
       "mode": 436
     },
     "docs/troubleshooting.md": {
-      "sha256": "b61d60e8fe6d45d255019d863ea732bb9bb4fbeb2b3fab520b4261ff132b4d6c",
-      "size": 5747,
+      "sha256": "803b772e2c2ca79216581bda6af49d93e76ff792a5b78feea71ec19b018c5f1f",
+      "size": 6234,
       "mode": 436
     },
     "docs/update.md": {
@@ -439,7 +429,7 @@
       "mode": 436
     },
     "pyproject.toml": {
-      "sha256": "064c3f5e56945ed759d9fed46d690ac80698d2e5d1d8b0c59fe61eb4ffb6fc76",
+      "sha256": "d9cb92ece02661bc24e87a1405924fbb9166abe5516ac1f78f06cef9598fe6b0",
       "size": 1984,
       "mode": 436
     },
@@ -473,6 +463,11 @@
       "size": 3335,
       "mode": 436
     },
+    "tests/test_bilibili_login.py": {
+      "sha256": "5a5ba79584635b0258160cc2a360c0b37a6a827f0f59c280e67d5b4cb9c22b8f",
+      "size": 3479,
+      "mode": 436
+    },
     "tests/test_boss_channel.py": {
       "sha256": "69432c990848a41720cb6cc32c5307ff2ce66a801a3ef7840ba02daabae2a614",
       "size": 3620,
@@ -503,14 +498,19 @@
       "size": 8781,
       "mode": 436
     },
+    "tests/test_dispatch_public_fallback.py": {
+      "sha256": "9ed645414f46ee8c17be65c0f8774ada656412f56739716eb5fb79e68d6e63fc",
+      "size": 8237,
+      "mode": 436
+    },
     "tests/test_manage.py": {
-      "sha256": "546454a096c41e500a6752d6bf401ea30e2e108af0e0daef45154dd3e9da7ae5",
-      "size": 34725,
+      "sha256": "9cd988d80b29dc34f76b3f2fdb1da9bb42c8cb8323f7066a7d337590b44f23db",
+      "size": 35394,
       "mode": 436
     },
     "tests/test_native_access_errors.py": {
-      "sha256": "cba7806bc7278d6301932aa0da27d54f4072027b8b3f181b4913a4d2ceb485da",
-      "size": 4769,
+      "sha256": "5cc34edcaf2f76a6a647b8c17e8d399d897db891fb0e16be5c49e704694dabbb",
+      "size": 4846,
       "mode": 436
     },
     "tests/test_private_file_writes.py": {
@@ -538,6 +538,11 @@
       "size": 11674,
       "mode": 436
     },
+    "tests/test_run_windows.py": {
+      "sha256": "b0ce9b5910d501bfe04dd4116f7a7d154af86372c1d1b93d99773a8173b3711e",
+      "size": 5044,
+      "mode": 436
+    },
     "tests/test_scrub_credentials.py": {
       "sha256": "b63726e72952ec69e4fae91f22b344c71888dcccf7e35ded833199e418cd894e",
       "size": 1432,
@@ -549,8 +554,8 @@
       "mode": 436
     },
     "tests/test_session_onboarding.py": {
-      "sha256": "fb462817213dc15e5d491cc8d660ee2c3288559f3c24d1301e749961b7fe60cd",
-      "size": 13746,
+      "sha256": "63232a0a35ab64bd27306484565ec2f5dc2bfaf5a731877ea04f2f7a01af57ce",
+      "size": 17135,
       "mode": 436
     },
     "tests/test_tools_install.py": {
@@ -579,13 +584,18 @@
       "mode": 436
     },
     "tests/test_web_channel.py": {
-      "sha256": "df2620fc94b1bb0fb0473e21b009976a0b4d9cea2d9be981a382fa432423edf4",
-      "size": 11148,
+      "sha256": "6013b8ffb9aa15c6709a320ff1ae311e6d591a86f634234de46a37078ee3ef49",
+      "size": 11804,
       "mode": 436
     },
     "tests/test_xiaohongshu_comments.py": {
-      "sha256": "e2bb2ec7716d12027e9702404ef8deeba15e14a7c113eef6bff4165ffb248547",
-      "size": 2210,
+      "sha256": "bff9d4cf32693fa55098e3120995e45f9b90db8c2f2ea42fe84294bca2aa06e3",
+      "size": 2929,
+      "mode": 436
+    },
+    "tests/test_xiaohongshu_read.py": {
+      "sha256": "2b438310f374c1b4e84987f7004cf8750a1498534eb335d9e2ca1ab0dcba517e",
+      "size": 1591,
       "mode": 436
     },
     "tests/test_xueqiu_channel.py": {
@@ -665,46 +675,88 @@
       "anchor": "raw={\"topic\": topic, \"replies\": replies}",
       "replacement": "raw={\"topic\": topic, \"replies\": replies, \"replies_complete\": replies_error is None and len(replies) >= topic.get(\"replies\", 0), \"replies_error\": replies_error}",
       "reason": "Keep explicit first-page coverage and reply failures in the normalized native item raw data; complete topic text does not prove all replies were read."
+    },
+    {
+      "file": "agent_reach/runtime/manage.py",
+      "anchor": "def configure(key: str, value: str) -> dict:\n",
+      "replacement": "def configure(key: str, value: str) -> dict:\n    if key == \"browser-port\":\n        raise ReachError(NEED_SETUP, \"Browser configuration is owned by lookup; use the existing approved browser route\")\n",
+      "reason": "The new browser-port configuration can stop a running dedicated browser; keep browser lifecycle and configuration under lookup routing."
     }
   ],
-  "previous_commit": "94f06c1969dfc1834001269d79d3ad0972d9dee6",
-  "previous_archive_sha256": "d608cc619e460ca982dc11ab72897677837c8d73ea23851026c6374cff864f93",
+  "previous_commit": "14c213405669414492bda0f8d52cc6531d062c45",
+  "previous_archive_sha256": "fcd21410d817ce4829bb028824d54e5288dc036d21ad2076a3f9ef72f58ba539",
   "local_adaptation_review": [
     {
-      "previous": "cli._install_skill registration suppression",
-      "disposition": "retained_on_new_api",
-      "current": "runtime.manage.place_skill returns lookup_only; reach.py rejects native skill registration",
-      "reason": "The new upstream still registers a competing automatic entry."
+      "file": "agent_reach/runtime/manage.py",
+      "anchor": "def place_skill() -> dict:",
+      "disposition": "retained",
+      "reason": "Disable competing automatic Skill registration while preserving the complete source and all native action implementations."
     },
     {
-      "previous": "selected _cmd_install skips global core/Exa and check_all filter",
-      "disposition": "absorbed_with_boundary_adapter",
-      "current": "native add installs only selected channel tools; native doctor is local-state-only; explicit check accepts selected channels",
-      "reason": "The native add/check split provides the original selection scope. Dedicated browser setup remains incompatible and fails before installers."
+      "file": "agent_reach/runtime/manage.py",
+      "anchor": "def _cleanup_old_copies() -> dict:",
+      "disposition": "retained",
+      "reason": "Updating the integrated skill does not authorize deleting unrelated pipx/venv installations or launchers; preserve old recovery environments."
     },
     {
-      "previous": "V2EX first-page and failed-reply completeness fields",
-      "disposition": "retained_on_new_api",
-      "current": "channels.v2ex._api_read emits raw.replies_complete/raw.replies_error and preserves the topic",
-      "reason": "The rewritten native reader still fetches one page and otherwise loses the topic on a reply failure."
+      "file": "agent_reach/runtime/manage.py",
+      "anchor": "def _install_channel(ch, *, allow_upgrade: bool = False) -> List[dict]:",
+      "disposition": "retained",
+      "reason": "Reject incompatible dedicated-browser setup before any prerequisite installer runs; the same channels remain available through lookup OpenCLI and explicit browser routing."
     },
     {
-      "previous": "MCP SDK1 bounds/API detection/missing-dependency hint",
-      "disposition": "retained_in_status_adapter",
-      "current": "scripts/reach_mcp.py calls native runtime.manage.doctor; explicit mcp[cli]>=1.0,<2",
-      "reason": "Upstream deleted the MCP server, so the actual existing status-only entry needs a thin adapter. Native actions stay in their CLI, not a duplicate MCP implementation."
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def ensure_chrome(*, retry_cloak: bool = False) -> str:",
+      "disposition": "retained",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
     },
     {
-      "previous": "legacy sources, channels, references and public APIs",
-      "disposition": "native_replacement_with_explicit_migrations",
-      "current": "capabilities.json native_channels/python_api/legacy_migrations/lookup_routes",
-      "reason": "Use all current 14 channels/40 actions and 3 complete references; Exa moved to web, optional RSS and extra platform actions remain lookup direct routes. Do not reimplement deleted convenience APIs."
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def start(url: str = \"about:blank\") -> None:",
+      "disposition": "retained",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
     },
     {
-      "previous": "browser/profile and credential authorization",
-      "disposition": "new_required_boundary_adapter",
-      "current": "runtime browser/session_reuse guards plus lookup run browser/login/logout/update routing",
-      "reason": "New native defaults can start Cloak/Chrome, copy existing cookies and migrate/remove environments without lookup selection. Preserve the existing approved environment and explicit account boundaries."
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def ensure_running(context: Optional[str] = None) -> None:",
+      "disposition": "retained",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
+    },
+    {
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def setup(*, retry_cloak: bool = False, headless: bool = True) -> dict:",
+      "disposition": "retained",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
+    },
+    {
+      "file": "agent_reach/runtime/browser.py",
+      "anchor": "def open_url(url: str) -> None:",
+      "disposition": "retained",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
+    },
+    {
+      "file": "agent_reach/runtime/session_reuse.py",
+      "anchor": "def prepare(channel: str, *, force: bool = False) -> dict:",
+      "disposition": "retained",
+      "reason": "Lookup owns browser selection and human login handoff; do not start or install a new browser, import cookies, or change profiles implicitly. Use the existing approved lookup OpenCLI/browser route for this capability."
+    },
+    {
+      "file": "agent_reach/channels/v2ex.py",
+      "anchor": "        replies = _get_json(_v2ex_url(\"/api/replies/show.json\", topic_id=topic_id, page=1))",
+      "disposition": "retained",
+      "reason": "Keep the retrieved topic when replies fail or have an invalid shape, and expose the specific partial result instead of claiming an empty or complete thread."
+    },
+    {
+      "file": "agent_reach/channels/v2ex.py",
+      "anchor": "raw={\"topic\": topic, \"replies\": replies}",
+      "disposition": "retained",
+      "reason": "Keep explicit first-page coverage and reply failures in the normalized native item raw data; complete topic text does not prove all replies were read."
+    },
+    {
+      "file": "agent_reach/runtime/manage.py",
+      "anchor": "def configure(key: str, value: str) -> dict:",
+      "disposition": "retained",
+      "reason": "The new browser-port configuration can stop a running dedicated browser; keep browser lifecycle and configuration under lookup routing."
     }
   ]
 }

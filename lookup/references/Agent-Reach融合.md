@@ -4,9 +4,9 @@
 
 ## 来源与加载
 
-完整来源为 [Agent Reach 1.6.0 main 固定快照](https://github.com/Panniantong/Agent-Reach/tree/14c213405669414492bda0f8d52cc6531d062c45)，commit 为 `14c213405669414492bda0f8d52cc6531d062c45`。1.6重写了命令、状态与渠道接口；版本标签不能代替文件与能力核对。
+完整来源为 [Agent Reach 1.6.1 main 固定快照](https://github.com/Panniantong/Agent-Reach/tree/422478ae0264d2236bf7ebd1c3b11a69aaafa4a3)，commit 为 `422478ae0264d2236bf7ebd1c3b11a69aaafa4a3`。1.6重写了命令、状态与渠道接口；版本标签不能代替文件与能力核对。
 
-- 完整仓库118个文件保存在 [源快照](../upstream/agent-reach.tar.gz)，逐文件清单、大小、哈希及运行适配归 [来源回执](../upstream/agent-reach.json)，[MIT 许可](../upstream/LICENSE-agent-reach) 保留。原始中英文 Skill 及所有参考保持原文，处于自动发现目录之外。
+- 完整仓库120个文件保存在 [源快照](../upstream/agent-reach.tar.gz)，逐文件清单、大小、哈希及运行适配归 [来源回执](../upstream/agent-reach.json)，[MIT 许可](../upstream/LICENSE-agent-reach) 保留。原始中英文 Skill 及所有参考保持原文，处于自动发现目录之外。
 - 当前上游参考为 `capabilities / sessions / maintenance` 三份。按任务读取一份完整原文：`python3 scripts/reach.py reference capabilities`。安装和更新分别使用 `reference install / update`。旧的7类分类名和5个 `setup-*` 读取名保留为新版完整指南的别名，不声称旧文件仍存在。
 - 上游命令在本组合中通过 `python3 scripts/reach.py run ...` 调用；先用 `run channels` 查看当前动作、参数和后端。用户输入作为独立 argv 传入。上游的浏览器、登录复用、安装和更新建议不能覆盖 lookup 的当前选路与授权。
 
@@ -37,7 +37,7 @@ lookup 保留原16类任务路线。1.6原生引擎注册14个渠道、40个动�
 
 lookup 已有的公众号、Douyin、其他搜索服务、浏览器操作、本地 UI 验收、历史检索与媒体证据继续使用各自现行参考；不因上游未登记这些渠道而移除。
 
-V2EX 1.6的 `read` 只取回复第一页，回复请求失败还会丢弃已取正文。融合运行时保留正文，并在 `items[].raw` 补充 `replies_complete / replies_error`；失败和未取全均不能认定为无回复。需要完整回复时沿公开 replies API 分页，核对总数与范围。原始快照不改写，修正归运行适配。
+V2EX 1.6.1的 `read` 只取回复第一页，回复请求失败还会丢弃已取正文。融合运行时保留正文，并在 `items[].raw` 补充 `replies_complete / replies_error`；失败和未取全均不能认定为无回复。需要完整回复时沿公开 replies API 分页，核对总数与范围。原始快照不改写，修正归运行适配。
 
 ## 配置、诊断与维护
 
@@ -52,7 +52,7 @@ python3 scripts/reach.py run --version
 python3 scripts/reach.py run doctor
 ```
 
-运行时位于 `XDG_DATA_HOME/lookup/agent-reach/<commit>-<integration-id>`，未设置时使用 `~/.local/share/lookup/agent-reach/<commit>-<integration-id>`。integration-id 绑定本地适配，适配变化时准备新环境并保留旧环境。准备需要 Python ≥3.10、已有 uv 和下载 Python 依赖的网络；不安装全局 CLI，不调用模型、读取浏览器账号或查询业务站点。准备失败只清理本次创建的环境，已有未知残留保持原状；同一来源重复准备不重装。配置仍沿用上游的 `~/.agent-reach/`，不会在来源快照中保存凭据。
+运行时位于 `XDG_DATA_HOME/lookup/agent-reach/<commit>-<integration-id>`，未设置时使用 `~/.local/share/lookup/agent-reach/<commit>-<integration-id>`。integration-id 绑定本地适配，适配变化时准备新环境并保留旧环境。准备需要 Python ≥3.10、已有 uv 和下载 Python 依赖的网络；不安装全局 CLI，不调用模型、读取浏览器账号或查询业务站点。准备失败只清理本次创建的环境，已有未知残留保持原状；同一来源重复准备不重装。新版 `browser-port` 会影响专用浏览器生命周期，融合入口在写入前拒绝该配置，继续沿用 lookup 的已绑定浏览器。配置仍沿用上游的 `~/.agent-reach/`，不会在来源快照中保存凭据。
 
 CLI 与 MCP 使用已核验环境的隔离 Python 导入模式，忽略工作目录、`PYTHONPATH` 和用户级 Python 包，避免同名包替换实际执行来源；不生成字节码缓存。
 
@@ -121,7 +121,7 @@ apply 只处理已有客户端目录中的已识别竞争入口，保留其原�
 
 ## 更新与完整性
 
-原生独立包和平台工具的更新继续由既有 `lookup update` 维护流程承担。融合快照随 lookup 源码维护，不能用“原生包版本相同／已升级”替代融合验收，也不让原生包更新覆盖本地入口。
+原生独立包和平台工具的更新继续由既有 `lookup update` 维护流程承担。维护器同时检查独立安装与融合快照；独立 CLI 未安装时仍按 main commit 检查随包源，有新提交返回待完整合并。融合快照随 lookup 源码维护，不能用“原生包版本相同／已升级”替代融合验收，也不让原生包更新覆盖本地入口。
 
 候选包的离线能力门禁为 `python3 scripts/reach.py contract --package-root /absolute/candidate/agent_reach`。原生包维护复用同一门禁，分别核对14个原生渠道、全部40个动作、15类 CLI、3份当前参考、播客与运行模块、34个公开 Python 符号及现行 lookup 直接路线。缺项、未知注册、删除动作或解析失败时拒绝切换；升级前后的版本读取同时支持旧 `--version` 与1.6的 JSON `version`。门禁通过不证明业务站点、账号或新增能力已验收。
 

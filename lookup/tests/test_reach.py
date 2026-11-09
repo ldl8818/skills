@@ -57,7 +57,7 @@ class SourceTests(unittest.TestCase):
                                                      ('BossChannel', 'FacebookChannel', 'InstagramChannel'))) + '\n')
             with self.assertRaisesRegex(reach.IntegrationError, 'missing_channels'):
                 reach.package_contract(package)
-            self.assertIn('__version__ = "1.6.0"', (package / '__init__.py').read_text())
+            self.assertIn(f'__version__ = "{self.manifest["version"]}"', (package / '__init__.py').read_text())
 
     def test_dependency_candidate_requires_complete_references(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -322,6 +322,22 @@ with reach.preparation_lock(Path(sys.argv[2])):
                 target.write_bytes(content)
         return package
 
+
+    def test_browser_port_configuration_cannot_stop_the_owned_browser(self):
+        import types
+        code = reach.adapted_files(self.manifest, self.files)['agent_reach/runtime/manage.py']
+        node = next(n for n in ast.parse(code).body if isinstance(n, ast.FunctionDef) and n.name == 'configure')
+        node.body = [n for n in node.body if not isinstance(n, ast.ImportFrom)]
+        calls = []
+        namespace = {'NEED_SETUP': 'NEED_SETUP', 'BAD_INPUT': 'BAD_INPUT', 'ReachError': RuntimeError,
+                     'CONFIG_KEYS': {'browser-port': 'browser_port', 'proxy': 'proxy'},
+                     'Config': lambda: types.SimpleNamespace(set=lambda *args: calls.append(args))}
+        exec(compile(ast.Module(body=[node], type_ignores=[]), '<configure-guard>', 'exec'), namespace)
+        with self.assertRaises(RuntimeError):
+            namespace['configure']('browser-port', '12345')
+        self.assertEqual(calls, [])
+        self.assertEqual(namespace['configure']('proxy', 'http://example.test'), {'key': 'proxy', 'saved': True})
+        self.assertEqual(calls, [('proxy', 'http://example.test')])
 
     def test_selected_channel_installer_rejects_browser_before_any_install(self):
         import types

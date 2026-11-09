@@ -58,6 +58,10 @@ class NativeTests(unittest.TestCase):
                               PATH=str(self.bin)+os.pathsep+os.environ['PATH'])
         self.env.start()
         self.store = upstream.Store()
+        # Standalone installer tests do not consult the independently pinned bundle.
+        bundle = patch.object(upstream, 'bundled_reach_check', return_value=None)
+        bundle.start()
+        self.addCleanup(bundle.stop)
         self.release = {'latest': '1.5.0', 'published_at': '2026-01-01T00:00:00Z',
                         'url': 'https://github.com/Panniantong/Agent-Reach/releases/tag/v1.5.0'}
 

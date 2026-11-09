@@ -287,6 +287,76 @@ def refresh(store, dependency, current, force=False):
 
 
 def check(store, dependency, background=False, force=False, current=None):
+    standalone = check_standalone(store, dependency, background, force, current)
+    if dependency != 'agent-reach':
+        return standalone
+    bundle = bundled_reach_check(store, force=force, background=background)
+    return reach_result(standalone, bundle)
+
+
+def bundled_reach_check(store, force=False, background=False):
+    """Check the pinned main snapshot even when no standalone CLI is installed."""
+    source = ROOT / 'upstream'
+    if not any((source / name).exists() for name in ('agent-reach.json', 'agent-reach.tar.gz')):
+        return None  # Older standalone lookup distributions have no fused source.
+    try:
+        spec = importlib.util.spec_from_file_location('lookup_reach_source', Path(__file__).with_name('reach.py'))
+        reach = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(reach)
+        manifest, _ = reach.source_files(source)
+        repository = 'https://github.com/Panniantong/Agent-Reach'
+        if manifest['repository'] != repository or manifest['channel'] != 'main':
+            raise MaintenanceError('BUNDLED_SOURCE_CHANNEL_UNSUPPORTED')
+        identity = {key: manifest[key] for key in ('commit', 'archive_sha256', 'version', 'channel')}
+        with store.lock('check-agent-reach-bundle', blocking=False):
+            previous = store.read('agent-reach-bundle.json')
+            age = time.time() - previous.get('checked_at', 0)
+            interval = RETRY if previous.get('status') == 'check_failed' else TTL
+            if (not force and previous.get('identity') == identity and 0 <= age < interval):
+                return {**previous, 'cached': True}
+            if background:
+                scheduled = store.read('agent-reach-bundle-scheduled.json')
+                if time.time() - scheduled.get('at', 0) >= 60:
+                    subprocess.Popen([sys.executable, str(Path(__file__).resolve()), 'check',
+                                      'agent-reach', *(['--force'] if force else [])],
+                                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL, start_new_session=True)
+                    store.write('agent-reach-bundle-scheduled.json', {'at': time.time()})
+                return {'status': 'scheduled', **identity, 'current': manifest['version']}
+            result = {'identity': identity, **identity, 'current': manifest['version'],
+                      'checked_at': time.time(), 'scope': 'bundled_source'}
+            try:
+                remote = command(['git', 'ls-remote', repository + '.git', 'refs/heads/main'], timeout=15).split()
+                if len(remote) != 2 or not re.fullmatch(r'[0-9a-f]{40}', remote[0]) or remote[1] != 'refs/heads/main':
+                    raise MaintenanceError('BUNDLED_SOURCE_REF_UNAVAILABLE')
+                result.update(latest_commit=remote[0], url=repository + '/tree/' + remote[0],
+                              status='up_to_date' if remote[0] == manifest['commit'] else 'update_available')
+            except (OSError, ValueError, MaintenanceError):
+                result.update(status='check_failed', error='BUNDLED_SOURCE_REF_UNAVAILABLE')
+            store.write('agent-reach-bundle.json', result)
+            return result
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError, tarfile.TarError, MaintenanceError) as error:
+        return {'status': 'check_failed', 'scope': 'bundled_source', 'error': type(error).__name__}
+
+
+def reach_result(standalone, bundle, updating=False):
+    if bundle is None:
+        return standalone
+    result = {**standalone, 'standalone': standalone, 'bundle': bundle}
+    # Preserve uncertain native operations so callers cannot treat them as retryable.
+    if result_failed(standalone):
+        return result
+    if bundle['status'] == 'update_available' and updating:
+        result.update(status='manual_review', reason='BUNDLED_SOURCE_MERGE_REQUIRED',
+                      guide='references/Agent-Reach融合.md#更新与完整性')
+    elif bundle['status'] != 'up_to_date':
+        result['status'] = bundle['status']
+    elif standalone['status'] == 'not_installed':
+        result.update(status='up_to_date', current=bundle['current'])
+    return result
+
+
+def check_standalone(store, dependency, background=False, force=False, current=None):
     observation = ({'status': 'installed', 'current': current} if current
                    else installed(store, dependency))
     if observation.get('current'):
@@ -619,7 +689,9 @@ def update(store, dependency, automatic=False, retry=False):
     if dependency in ('agent-reach', 'ego-browser'):
         if automatic:
             raise MaintenanceError('AUTOMATION_NOT_SUPPORTED')
-        return native_update(store, dependency, retry=retry)
+        native = native_update(store, dependency, retry=retry)
+        return (reach_result(native, bundled_reach_check(store, force=True), updating=True)
+                if dependency == 'agent-reach' else native)
     if dependency != 'opencli':
         return {'status': 'reference_only', 'dependency': dependency, 'updated': False}
     with store.lock('maintenance', blocking=False):
@@ -1142,7 +1214,7 @@ def native_update(store, dependency, retry=False):
             store.write(record_name, result)
             return result
         if dependency == 'agent-reach':
-            release = check(store, dependency, force=True)
+            release = check_standalone(store, dependency, force=True)
             if release['status'] != 'update_available':
                 result = finish_native_discovery(dependency, {**release, 'dependency': dependency})
                 if result.get('discovery_pending'):
@@ -1429,6 +1501,12 @@ def use(store, expected, args, native=False):
 def human_result(result):
     status = result.get('status')
     dependency = result.get('dependency', 'opencli')
+    if dependency == 'agent-reach' and result.get('bundle'):
+        bundle = result['bundle']
+        source = f"Agent Reach 随包源 {bundle.get('current', '未知')}／{bundle.get('commit', '未知')[:7]}：{bundle['status']}。"
+        if result.get('reason') == 'BUNDLED_SOURCE_MERGE_REQUIRED':
+            source += '需按 Agent-Reach融合.md 完整合并新源并验证；不能以独立 CLI 缺失跳过。'
+        return source + '\n' + human_result({'dependency': dependency, **result['standalone']})
     if status == 'batch':
         return '\n'.join(human_result(item) for item in result['results'])
     if status == 'up_to_date':
