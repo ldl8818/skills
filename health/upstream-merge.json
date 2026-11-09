@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/waza",
-  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
+  "commit": "58217546cd94fcf5ddcde4265c00a9377ed3192c",
   "source_path": "skills/health",
   "files": {
     "SKILL.md": {
       "upstream_sha256": "690e3b44f71deaa9b45baf67adaac40efc3e4e2278b89ed6bf2db4624d5bec4e",
-      "local_sha256": "09fadc8b18893702ed9a8178f9b1ec75b85ced94e0097e0dea389c671ffabaf1",
+      "local_sha256": "bb9eb5e57135d022475a0b2177a5e1b80126ef5ea4e88fad9d18d641267fdf15",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Audits agent config, instruction drift, hooks or MCP, and AI maintainability. Use when Claude, Codex, or Pi setup looks wrong. Not for application bugs or PR review.\"\n",
@@ -22,7 +22,8 @@
         "Preserve authorized necessary repairs without letting the collector execute project code.",
         "Avoid overriding the user's standing necessary-repair policy.",
         "Keep the completion rule consistent with the local authorization boundary.",
-        "Preserve the bounded default collector and document explicit full static, maintainability and historical analysis interfaces."
+        "Preserve the bounded default collector and document explicit full static, maintainability and historical analysis interfaces.",
+        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required."
       ],
       "changes": [
         {
@@ -47,7 +48,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "157cb797f303a6d7a3d4c712964d56d453ed8f2caed9525ccb881cc0e2e0c2ca"
+          "added_sha256": "761fed5a7750a5a438d46b4722d870cf4e3b7674d76daec7ea11f13dd878c3d3"
         },
         {
           "upstream_lines": [

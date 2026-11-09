@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/waza",
-  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
+  "commit": "58217546cd94fcf5ddcde4265c00a9377ed3192c",
   "source_path": "skills/ui",
   "files": {
     "SKILL.md": {
-      "upstream_sha256": "c07c412447abdda865bf94a31f414c20532b09e99604d339ffbc6eded4b148b4",
-      "local_sha256": "ce5f496eb01ce289be79d35440c7f2e1aedc813f4f2a075a7ad69ab67e98714a",
+      "upstream_sha256": "bdf18fec850a1b754ed5d04fa128359344b9e43f2d9c9bcd08936a0163573c48",
+      "local_sha256": "3e8af92c89be0384ac73ad2486a8df294646da01a6985f8dfa785e4205acfd49",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Produces distinctive production UI and screenshot-grounded visual polish. Use when building or restyling pages, components, or typography. Not for backend logic or data pipelines.\"\n",
@@ -20,7 +20,8 @@
         "Avoid a redundant design approval gate on an explicit implementation request.",
         "Preserve routing to image/document/Hunt tools, existing product style and browser selection without losing upstream design methods.",
         "Use lowercase lookup in the local browser-routing adaptation; preserve upstream text and routing fields.",
-        "Require lookup resource closeout as part of UI verification; temporary verification closes by default and user-feedback previews reuse one space. Keep retention exceptions and closure evidence in lookup as the single lifecycle source."
+        "Require lookup resource closeout as part of UI verification; temporary verification closes by default and user-feedback previews reuse one space. Keep retention exceptions and closure evidence in lookup as the single lifecycle source.",
+        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required."
       ],
       "changes": [
         {
@@ -45,7 +46,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "e3f7b79e5be6d7bb99c625dcf4c34724410658e844f9019c969f585e99c47afc"
+          "added_sha256": "d78962422da81e77af504c0c6dcb2e675bb2d134f558058772a93af42a60b32f"
         },
         {
           "upstream_lines": [
@@ -61,36 +62,36 @@
         },
         {
           "upstream_lines": [
-            47,
-            48
+            49,
+            50
           ],
           "local_lines": [
-            57,
-            58
+            59,
+            60
           ],
           "removed_sha256": "71e05e518df5995713432643130b7f0004a53c6a15bc09b66faae6a21e4c0f1f",
           "added_sha256": "4bc8ddfd402b83f77f3826de7d8173a52904ccfeb93283f434841747b4bc7cc4"
         },
         {
           "upstream_lines": [
-            97,
-            98
+            99,
+            100
           ],
           "local_lines": [
-            107,
-            108
+            109,
+            110
           ],
           "removed_sha256": "fcd2473b76a8014de5406410c9e0f19555df3990611794414516cc3ae9e19b0a",
           "added_sha256": "c03ef556ae21f3e9dafd7d85ef1288420ac71c30599e660eff90cd2d0932c467"
         },
         {
           "upstream_lines": [
-            129,
-            129
+            131,
+            131
           ],
           "local_lines": [
-            139,
-            145
+            141,
+            147
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "added_sha256": "ebfdfa020373f1bca7e0825902921d3cbf1b259c42fb02b2dc866d2857c916a2"
@@ -135,8 +136,8 @@
       }
     },
     "references/design-reference.md": {
-      "upstream_sha256": "c62bde17af65bf8d0f4cefca8a93337da298d1a2649c069547ef6589e0b582f8",
-      "local_sha256": "c62bde17af65bf8d0f4cefca8a93337da298d1a2649c069547ef6589e0b582f8",
+      "upstream_sha256": "8c504d52491221727170b06fad8e9c79b49f4a5fc6c665041d123692c2b7efa0",
+      "local_sha256": "8c504d52491221727170b06fad8e9c79b49f4a5fc6c665041d123692c2b7efa0",
       "status": "identical",
       "sections": {
         "# Design Reference": "# Design Reference",

@@ -10,8 +10,8 @@
 | “PR 已完成” | PR state=merged + merge commit；不能推导已部署 |
 | “已部署” | deploy marker/release 指向目标 commit + 服务 active |
 | “用户已看到新版本” | canonical 用户 URL/API 的真实响应，必要时同时比 origin/cache |
-| “可安全清场” | 对象归属明确、无唯一未保存改动，且本任务适用的集成、交付和知识同步要求已满足 |
-| “已获准清场” | 当前任务有效授权覆盖具体对象，或符合现场规则允许清理的本任务临时产物条件 |
+| “可安全清场” | merged + production contains change + knowledge receipt + lane clean + 无唯一未集成文件 |
+| “已获准清场” | 当前任务已有明确清理授权 + 对象仍在授权范围内 |
 | “整个项目干净” | 项目内所有适用事实面 verified；warning、pending 和 out-of-scope 单列 |
 
 代码直觉、旧 memory、commit message 和 cache-buster URL 都只能当线索，不能单独证明生产终态。
@@ -45,14 +45,13 @@ implemented
   -> deployed
   -> live verified
   -> knowledge closed + receipt recorded
-  -> required evidence preserved
-  -> cleanup scope and valid task authorization checked
+  -> existing cleanup authorization checked (ask only if missing)
   -> workspace cleaned
   -> post-cleanup audit passed
   -> cleanup result appended
 ```
 
-这是发布任务的参考链路，仅采用本次任务适用的状态；本地文档维护不要求 PR、CI 或部署。适用门禁失败时如实报告所在阶段，不能用“基本完成”覆盖。
+跳过的状态必须有项目规则允许的原因。失败停在哪一格，就按那一格汇报，不能用“基本完成”覆盖。
 
 ## 缓存和多表面产品
 
@@ -68,19 +67,17 @@ implemented
 
 ## 清场前 gate
 
-按对象的风险和项目要求核对清场条件；没有发布的任务不要求上线证据：
+清场前核实以下事实：
 
-1. 验证目标工作满足本次交付要求；发布任务另核对适用的合并与上线证据；
+1. 验证目标工作已集成并上线；
 2. 同步 docs/rules/获准记忆；
 3. 记录项目要求的 knowledge closeout receipt；
 4. 预览待删除 worktree/branch/db/artifact；
 5. 检查 dirty 文件和 patch equivalence；
-6. 核对现有任务授权是否覆盖具体清理对象；
-7. 只有归属不明、含唯一改动、出现新风险或超出授权的对象才保留并请求决定；
-8. 记录项目要求的用户确认凭证并执行授权的清理；
-9. 重新运行 workspace audit，补充汇报清场结果。
+6. 核对当前任务的清理授权，已明确批准的不重复询问；
+7. 执行范围内的清理，保留尚有唯一内容或尚未授权的对象；
+8. 重新运行 workspace audit，汇报实际清理结果和待决项。
 
-用户最初任务中的清理授权在对象和范围明确时继续有效；不要求汇报后二次确认。本任务生成且可重建的临时产物按现场规则清理，不能因此清空整个临时目录或删除其他任务证据。
 
 目录名、分支年龄和 agent 会话是否关闭都不能证明可删除。
 

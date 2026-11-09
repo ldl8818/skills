@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/Waza",
-  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
+  "commit": "58217546cd94fcf5ddcde4265c00a9377ed3192c",
   "source_path": "skills/check",
   "files": {
     "SKILL.md": {
-      "upstream_sha256": "bb5a25a40a842d3e0df267c661f67b628f9fe9fc8e9ab77794e5031690892cbe",
-      "local_sha256": "30e1caad06b8f2d5962fe2ecd7994d233cd3c3a88abb5db4852d14fc1184ae61",
+      "upstream_sha256": "03c263a99179ae839d7c51730a67d85bad1fd831cac03e66c5326db25e256113",
+      "local_sha256": "53e8ef23f80bf3edf431281e1820ca7f83f9f295cdb5d2f0580b14aecbb2d2de",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Reviews diffs, PRs, release readiness, and publishing follow-through. Use when asked to review, triage issues or PRs, or ship. Not for debugging root causes or prose.\"\n",
@@ -25,7 +25,8 @@
         "Document the discovery default and explicit execution path.",
         "Retain all new main-channel review coverage, release-channel baseline, incident replay, cache verification and reporting guidance. Risk depth continues to follow behavior rather than file count. Apply only project-required human gates; path matching does not create redundant approval under existing authorization.",
         "Pre-existing in-scope material defects continue to affect readiness and authorized repair; label their origin without excluding them from the task verdict.",
-        "Repeated review rounds trigger reassessment of the shared approach, not an arbitrary three-round termination while authorized progress remains possible."
+        "Repeated review rounds trigger reassessment of the shared approach, not an arbitrary three-round termination while authorized progress remains possible.",
+        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required."
       ],
       "changes": [
         {
@@ -50,7 +51,7 @@
             17
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "9bbe2ef655904dcf7a5804efaa0e8430b9dd43a0ae12a4475f9d28032c17a8f0"
+          "added_sha256": "9693edf8d5c00c24eea6c069be3e32fd9c84ea1f157a37bf0535d43c2748b9d1"
         },
         {
           "upstream_lines": [
@@ -247,8 +248,8 @@
       }
     },
     "references/incident-ledger.md": {
-      "upstream_sha256": "aa381be281c337f7bd61965256d5c8b46ed0e7a85d31de47a1acae4e24292531",
-      "local_sha256": "cc0cc69e105f0d8675535a0e87a38ba1a49eee8fb35b237725cc2a8007515124",
+      "upstream_sha256": "3c246274cb1bbccbeb927e9a46b9991fc67c89c8356e38e4632692f9fa179e7f",
+      "local_sha256": "3ba1da38ed9b8bb87e3c2391fcb088fcc47891f26453578aac49f0061c6c35a7",
       "status": "adapted",
       "reason": [
         "Use incident ledgers only under the project documentation/privacy policy or existing authorization; the new replay reference does not by itself require creating a public project archive. Preserve all source sections, row fields, checker invocation and replay procedure."
@@ -295,8 +296,8 @@
       }
     },
     "references/mode-triage.md": {
-      "upstream_sha256": "7a7b68abea50a3c6af0b8f3c797e9d668f3120847241af89caa07011ffdbc8e6",
-      "local_sha256": "c521200ce47d9760789211429f141eebdf807eff4e5b2c1208790b99a6a23f51",
+      "upstream_sha256": "22d023e224f1cb0d98a927aea315492cb5d6f021e7b7936ed48702562fcbb301",
+      "local_sha256": "a353c98777ad088da6cc8019a12b3905bf013289972305def3d0ed87306e3279",
       "status": "adapted",
       "reason": [
         "Queue classification cannot authorize public writes."
@@ -304,12 +305,12 @@
       "changes": [
         {
           "upstream_lines": [
-            26,
-            26
+            29,
+            29
           ],
           "local_lines": [
-            26,
-            28
+            29,
+            31
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "added_sha256": "142dcf04b227c4b75215db67e70969425644edd5e0167965521c2105ee222fde"
@@ -462,84 +463,36 @@
       ]
     },
     "scripts/incident_ledger.py": {
-      "upstream_sha256": "6c2461878b7cde2b90ecce019a8b77610fa14dea9920c4c1a5de9d55f7df6a9f",
-      "local_sha256": "12cfeada92d69db6a980f7316e3a9c98421c27d72c8ac59d2c5f5309fd1ec822",
+      "upstream_sha256": "833b1693251a1cd83f0ee6376992f487165c772d1884d6f50543b79fd860ad29",
+      "local_sha256": "54d2fd8d91d0ed58ab22bd505dc4c89ae6560a531ebcdf7d18ed165790bbacff",
       "status": "adapted",
       "reason": [
-        "Reject impossible calendar dates, deleted tracked catcher files, calls to missing tests and arbitrary quoted mentions that the upstream checker accepted as live catchers. Resolve named function and JS/Bats test declarations while retaining read-only CLI, replay planning and explicit shallow-clone limitations. CLI regressions first reproduced three false-green cases before this repair."
+        "Adopt the upstream contained workspace inventory and AST/token-aware declaration recognition, which supersede the local missing-test, quoted-mention and deleted-file fixes. Retain calendar validation with date.fromisoformat because upstream still accepts impossible reported dates."
       ],
       "changes": [
         {
           "upstream_lines": [
-            12,
-            14
-          ],
-          "local_lines": [
-            12,
-            14
-          ],
-          "removed_sha256": "2d998a2cfeca4745ad46d7960a027760e6c011c7b542de4a37e905c136951c02",
-          "added_sha256": "b02d9a5e7dba74f2ffeb292457357cf0f330df94ff19d6d03dc6e9388c39891f"
-        },
-        {
-          "upstream_lines": [
-            32,
-            32
-          ],
-          "local_lines": [
-            32,
+            33,
             33
+          ],
+          "local_lines": [
+            33,
+            34
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "added_sha256": "13c2f172bd52847446aadb022d225d1d8c6da43cad86894e5fc45d9bdeffbfbd"
         },
         {
           "upstream_lines": [
-            133,
-            134
+            224,
+            226
           ],
           "local_lines": [
-            134,
-            139
-          ],
-          "removed_sha256": "dacbedfbe6c9090143f57c1ba1926ffd45b245bfa0395735619e2dcc4dad9718",
-          "added_sha256": "c3b1f22bd127b262471726637e2c50a43d42d2740ac86a0923370dfcffd6fbb0"
-        },
-        {
-          "upstream_lines": [
-            135,
-            136
-          ],
-          "local_lines": [
-            140,
-            144
-          ],
-          "removed_sha256": "8c54ad30bcbb5aa849b735f3d3a17d7cb74e6e47acff178030672104f18c00de",
-          "added_sha256": "bf89e7d2fba5c6608adc68354c1f2423ef32aca1781e8c079d14ce8a74c7f788"
-        },
-        {
-          "upstream_lines": [
-            157,
-            159
-          ],
-          "local_lines": [
-            165,
-            172
+            225,
+            232
           ],
           "removed_sha256": "052ab3ce9ec260c15b1b94c71f5ff5fcf315f1cf9908b865650d902d8ce34642",
           "added_sha256": "b4bc83dec9c8c0bb2cdd5d60c3efb389b276d2b609d305eab95d3c7ee8d36d92"
-        },
-        {
-          "upstream_lines": [
-            218,
-            219
-          ],
-          "local_lines": [
-            231,
-            233
-          ],
-          "removed_sha256": "930b13572bd245a5a4d1cd29d90abf0fda12f54397d7d0d6d49c319302bed2a7",
-          "added_sha256": "f0531eb09a1a85c7e23d90981347ca7cb38dd6acac92171141b103a95d1763f2"
         }
       ]
     },

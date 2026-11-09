@@ -6,8 +6,8 @@ dispatch_intent: "Error, crash, regression, screenshot-reported defect, test fai
 license: MIT
 metadata:
   zh_description: "诊断并修复报错、崩溃、测试失败、回归或性能异常；不用于一般代码审查。"
-  github_hash: "b55809013be84b1f59418b557c1e8bad66380705"
-  github_date: "10-29"
+  github_hash: "58217546cd94fcf5ddcde4265c00a9377ed3192c"
+  github_date: "11-02"
   github_ref: "main"
   version: "4.3.2"
   github_path: "skills/hunt"

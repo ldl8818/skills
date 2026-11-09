@@ -6,10 +6,10 @@ dispatch_intent: "Writing, editing prose, clarify technical instructions, polish
 license: MIT
 metadata:
   zh_description: "起草、改写、校对和本地化文案；不用于实现任务中的附带文字修改。"
-  github_hash: "b55809013be84b1f59418b557c1e8bad66380705"
-  github_date: "10-29"
+  github_hash: "58217546cd94fcf5ddcde4265c00a9377ed3192c"
+  github_date: "11-02"
   github_ref: "main"
-  version: "4.3.0"
+  version: "4.3.1"
   github_path: "skills/write"
   github_url: "https://github.com/tw93/waza"
   update_policy: "frozen"

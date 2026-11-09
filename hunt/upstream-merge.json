@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/waza",
-  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
+  "commit": "58217546cd94fcf5ddcde4265c00a9377ed3192c",
   "source_path": "skills/hunt",
   "files": {
     "SKILL.md": {
       "upstream_sha256": "8ae2315c6242a7f59a938650e398d977569831ade1346e0fceee5a12cf69d1a1",
-      "local_sha256": "853667073ab93e7ba86ed2d7267b5548a12599c84544f8f1a565ec84654fa93c",
+      "local_sha256": "112cd5e7830949ac724f2ce10b42f6290977819d7ac6b7a67731da513cf02c99",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Finds root cause before any fix. Use when something errors, crashes, regresses, or used to work. Not for code review or new features.\"\n",
@@ -21,7 +21,8 @@
         "Retain preservation of concurrent WIP without inventing a cleanup gate.",
         "Avoid arbitrary failure counts terminating authorized troubleshooting.",
         "Preserve the local diagnosis-to-Check handoff and ownership of final verification.",
-        "Honor user-authorized necessary, reversible corrections to existing external objects while retaining separate authorization for new publications, new messages and destructive actions."
+        "Honor user-authorized necessary, reversible corrections to existing external objects while retaining separate authorization for new publications, new messages and destructive actions.",
+        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required."
       ],
       "changes": [
         {
@@ -46,7 +47,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "bae757e7d322ddae34d44fd68d8ce187dbba2c3957fdf528384627ede0c147b2"
+          "added_sha256": "bce534af358d25589e759f9f6e2d817a57026e6b6255091e60a9f6a6d5320a07"
         },
         {
           "upstream_lines": [

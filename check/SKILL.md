@@ -6,10 +6,10 @@ dispatch_intent: "Code review, before merge, release gates, generated artifacts,
 license: MIT AND Apache-2.0
 metadata:
   zh_description: "审查代码、PR、文档、测试及项目质量，按风险检查并验证修复；复杂审查按需使用 Alibaba OCR。具体故障排查用 hunt。"
-  github_hash: "b55809013be84b1f59418b557c1e8bad66380705"
-  github_date: "10-29"
+  github_hash: "58217546cd94fcf5ddcde4265c00a9377ed3192c"
+  github_date: "11-02"
   github_ref: "main"
-  version: "6.2.0"
+  version: "6.2.1"
   author: Tw93
   homepage: https://github.com/tw93/Waza
   github_path: "skills/check"
@@ -64,7 +64,7 @@ Pick the mode that matches the user's intent, then read it in full before acting
 |---|---|
 | "implement this plan", `/think` output handed off | [Plan Execution](#plan-execution-mode) |
 | Diff or PR ready, "review", "看看代码", "合并前" | Default review (start at [Get the Diff](#get-the-diff)) |
-| "look at issues", "review PRs", "triage", "批量处理" | load `references/mode-triage.md` |
+| "look at issues", "review PRs", "triage", "批量处理", "all repos' issues", "其他仓库也扫一遍" | load `references/mode-triage.md` |
 | "is this worth a release", "值不值得发版" | load `references/mode-ship.md` (Release Worthiness Analysis) |
 | "commit", "push", "publish", "release", "close issue", "发布表情" | load `references/mode-ship.md` (Ship / Release Follow-through) |
 | "audit", "项目体检", "项目评分", "给项目打分", "深入分析项目代码", "scorecard", "linus review" | load `references/mode-audit.md` |

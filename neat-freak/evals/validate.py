@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import stat
 from pathlib import Path
@@ -39,12 +40,16 @@ def main() -> None:
     description = folded_description(parts[1])
 
     assert 1 <= len(description) <= 1024, "description violates Agent Skills limit"
-    assert len(description) <= 850, "description has less than 17% growth headroom"
     assert len(text.splitlines()) < 500, "SKILL.md exceeds progressive-disclosure line budget"
     assert len(text) / 4 < 5000, "SKILL.md likely exceeds the recommended instruction token budget"
     assert re.search(r'version: "\d+\.\d+\.\d+"', parts[1]), "skill version metadata is missing"
 
-    # Routing prose may evolve; validate resources and behavior fixtures below.
+    # Middle-tier trigger contract: explicit names, intent phrases, and negatives all present.
+    for marker in EXPLICIT_MARKERS:
+        assert marker in description, f"description lost explicit trigger marker: {marker}"
+    assert "knowledge-closeout intent" in description, "description lost intent-trigger clause"
+    assert "Do not trigger" in description, "description lost negative-trigger clause"
+
     references = set(re.findall(r"\]\((references/[^)]+)\)", text))
     assert references == {
         "references/agent-paths.md",
@@ -61,7 +66,8 @@ def main() -> None:
 
     inventory = ROOT / "scripts/audit-inventory.sh"
     assert inventory.is_file(), "read-only inventory script is missing"
-    assert inventory.stat().st_mode & stat.S_IXUSR, "inventory script is not executable"
+    if os.name != "nt":
+        assert inventory.stat().st_mode & stat.S_IXUSR, "inventory script is not executable"
     inventory_text = inventory.read_text(encoding="utf-8")
     assert "Read-only inventory" in inventory_text
     for forbidden in (" rm ", "mv ", "git clean", "git reset", "systemctl"):

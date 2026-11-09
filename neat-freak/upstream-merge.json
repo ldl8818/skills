@@ -1,18 +1,21 @@
 {
   "schema": 2,
   "repository": "https://github.com/KKKKhazix/Khazix-Skills",
-  "commit": "322346ded8129436b3f64707789a73e732ae24d9",
+  "commit": "35bd05b466ceb83a727b28afb54b45b69a6c3b0a",
   "source_path": "neat-freak",
   "files": {
     "SKILL.md": {
-      "upstream_sha256": "6c0ca2236d3518ccaad710f6db8e9c4aa7af67b685dc699ad347ae42186951e1",
-      "local_sha256": "2887d1123c6c994df270f29569f7aeee594ad86680d0113ba703d7596ee5ed2f",
+      "upstream_sha256": "f530580116b92c75c11a22eb1bbe005819033dd51a711266cd8cb65d63e5b204",
+      "local_sha256": "8b5a168963d1da718191d0b63056fa92dde6f033015a800090b77e4bee44a67f",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: >-\n  Knowledge and governance closeout: reconcile project docs, rule files\n  (CLAUDE.md/AGENTS.md), authorized agent memory, and workspace residue with\n  what the code and runtime actually do, so the next session or the next\n  person starts from one current answer. Trigger when the user names\n  \"neat-freak\", \"洁癖\", or \"/neat\" — and also on clear knowledge-closeout\n  intent without the name: syncing or tidying project docs/rules/memory after\n  development (\"把文档和记忆整理一下\", \"收尾时把文档同步掉\", \"docs 和代码对不上了\"),\n  stale or conflicting CLAUDE.md/memory, a clean handoff to a teammate or a\n  fresh session, or auditing whether workspace rules are actually followed.\n  Do not trigger for pure coding/refactoring/debugging tasks, tidying data or\n  prose (JSON, 周报, changelog announcements), or a bare \"整理\" with no\n  project-knowledge context.\n"
       },
       "reason": [
-        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy."
+        "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy.",
+        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required.",
+        "Adopt upstream cleanup authorization, portable handoff and incremental audit behavior. Retain the AGENTS.md source/CLAUDE.md single-link convention, stable rules versus ROADMAP progress, and cleanup gates appropriate to the actual delivery scope rather than requiring deployment for every temporary file.",
+        "Preserve the local double-hyphen title while retaining every source section."
       ],
       "changes": [
         {
@@ -36,8 +39,8 @@
             19,
             27
           ],
-          "removed_sha256": "1e4fe26a49db3fffa61420a366971ac7d8752b1833876e75d231fa87c4772faa",
-          "added_sha256": "5aab8106cb889d75c2a49744b02b6fb779ba95cd1621a0af25a750635065c7f1"
+          "removed_sha256": "3142a0ed3f2ec8199a9786f4bcb8e2bff4d12f4a863bd1b3fdb758ea0fcb6e5d",
+          "added_sha256": "4816f2c51b6f002e09c945463d68582fca4fd303503fe030784476a98f74336a"
         },
         {
           "upstream_lines": [
@@ -60,68 +63,32 @@
             60,
             61
           ],
-          "removed_sha256": "07bca7ce9f48a8cd97001cc8fb31623cfd3f57b7f82e7ccf753ae4e8a0661b9c",
+          "removed_sha256": "37041f07896431cc70710eca709244fd5ac2442192e2e3f11dca69099ce1d08f",
           "added_sha256": "b1831651f4d66d0745ac8b8bd3143085e148cd1af3e2a9ad5f4b10f6465b0e57"
         },
         {
           "upstream_lines": [
             73,
-            75
+            74
           ],
           "local_lines": [
             82,
-            84
+            83
           ],
-          "removed_sha256": "17168de3b1453bd4356bf49ed5bd66e9ebf18ebd646abe464f2a190ac0a62ab0",
-          "added_sha256": "810143e183848062d911376afc7faf492ec1d5356f3dd9e0e3659cd730edce50"
+          "removed_sha256": "91be5696225e699eab1f8ec92b99b794b0792a27d76e1e486ac2c674c37da14f",
+          "added_sha256": "cc60e7c1dca355fa4648c0c2ce2abd3aae2d1748c130c046f65e5ab3bfadb2c7"
         },
         {
           "upstream_lines": [
-            159,
-            161
+            96,
+            97
           ],
           "local_lines": [
-            168,
-            170
+            105,
+            106
           ],
-          "removed_sha256": "071f93b27a6b729174f768922a93f0ea436385df8b4caea19d6b0e43440ffa08",
-          "added_sha256": "41a310c286c828f7b068af1c92a4ffee84e1579d19b5d8a5efdd52fa4da268fa"
-        },
-        {
-          "upstream_lines": [
-            183,
-            184
-          ],
-          "local_lines": [
-            192,
-            193
-          ],
-          "removed_sha256": "24acb78339bea0cf3cd7ef586c8d135832be3c4f0dda626d812855490900cea9",
-          "added_sha256": "4a05f35bb47535f062b43aeda7df52c3e3319cf197d026d9d1b333d316486d0c"
-        },
-        {
-          "upstream_lines": [
-            189,
-            190
-          ],
-          "local_lines": [
-            198,
-            199
-          ],
-          "removed_sha256": "260deab25e5263c5fc7bda0c7f59753f0518659a7f3f81f21e04ce6cc1d31091",
-          "added_sha256": "78218319f220bde3999f8021c85996d13cff2647486727e3ff64053457ff43de"
-        },
-        {
-          "upstream_lines": [
-            200,
-            203
-          ],
-          "local_lines": [
-            209,
-            212
-          ],
-          "removed_sha256": "ea3cf44bca283dff072e963f7955712916e1597047a0f4c5378eee69c9f0a06c",
-          "added_sha256": "c0ae840a4d059be6f57970ae5ea4d214e60fd0f29187e6add64f9041f3168f78"
+          "removed_sha256": "a6137069735f8e34d73f9d80bb6122579924609d5e9362827dde3b0c265b8686",
+          "added_sha256": "85f05332dd4638fb008a0e5ea0d4a58fc5c0427b414a73c7fbb14b59f38c25bc"
         }
       ],
       "sections": {
@@ -141,17 +108,17 @@
         "### 4. 先减后加地修改": "### 4. 先减后加地修改",
         "### 5. 谨慎处理记忆": "### 5. 谨慎处理记忆",
         "### 6. 验证并完成发布闭环": "### 6. 验证并完成发布闭环",
-        "### 7. 分两阶段用结果汇报": "### 7. 分两阶段用结果汇报",
+        "### 7. 用结果汇报": "### 7. 用结果汇报",
         "### 完整路径": "### 完整路径",
         "### 轻量路径（五步）": "### 轻量路径（五步）"
       }
     },
     "evals/evals.json": {
-      "upstream_sha256": "05b3dee60f03ddac7c26e925700aa85f9a28872ecd8857e2c4b97ad48f5f3499",
-      "local_sha256": "1344872334267122edced0a57357e6f8dcc50b50f56effb8e891d43887f74724",
+      "upstream_sha256": "dda5328f2322e65fa76d22d4b714ba8377df313121df8f30db400d4ab18680a1",
+      "local_sha256": "19de3458f0a224ba54d92b498904aad6ee3d7f7ed7553c17e2f46437347c4b05",
       "status": "adapted",
       "reason": [
-        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
+        "Adopt the new existing-authorization release scenario while retaining portable fixture paths and previously established local scope expectations."
       ],
       "changes": [
         {
@@ -228,27 +195,15 @@
         },
         {
           "upstream_lines": [
-            96,
+            97,
             98
           ],
           "local_lines": [
-            108,
+            109,
             112
           ],
-          "removed_sha256": "ad804ef72860569fb0183b258a934e4454a781eb176e915b6b41c62dd7db97f6",
-          "added_sha256": "1d901b233a15facf036f96fea5e67e9d6357563f7c623b4b39224c02594f82d7"
-        },
-        {
-          "upstream_lines": [
-            101,
-            103
-          ],
-          "local_lines": [
-            115,
-            117
-          ],
-          "removed_sha256": "fcf74e6a0cb4eec5423e216ad937728cc33e64d680bc1c378eea8c3efd3e7e29",
-          "added_sha256": "ff7680562249ed57b776e1ede300b5b123d5aebb83f38db6ec5eae3b1bcff581"
+          "removed_sha256": "f831fbcedcc2fa4e03074afbb53b1937fe71e460d5e57c21bad85b3e9cbf1ddb",
+          "added_sha256": "b4f6aaffa9f06fa3945d87d5f18c88e33406c63952da850758788cd2f3abdd69"
         },
         {
           "upstream_lines": [
@@ -948,58 +903,45 @@
       "status": "identical"
     },
     "evals/validate.py": {
-      "upstream_sha256": "6ddd014bd7e30ecf11007174029a4a3de4d49eae192701791c55c1b9a152598b",
-      "local_sha256": "67c2e780dd00fd467137b7e12ef07e9cebdec250e38b89f102b20f79b8f8999b",
+      "upstream_sha256": "10fa3da71c931512bbf3fccf43c413a495c893f874240d086b7035121eda7825",
+      "local_sha256": "3d9bb897eed8bd546edc8ed2609d500189d91b5e458393672283c14759a795c1",
       "status": "adapted",
       "reason": [
-        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths.",
-        "Measure the full folded or literal YAML description instead of validating the scalar marker; preserve inline descriptions and validate oversize content."
+        "Retain complete folded, literal and inline YAML scalar parsing and its regression coverage; upstream does not yet handle all three. Adopt upstream removal of arbitrary growth headroom and Windows-specific executable-bit handling. Keep private external paths split into synthetic tokens."
       ],
       "changes": [
         {
           "upstream_lines": [
-            19,
-            22
+            20,
+            23
           ],
           "local_lines": [
-            19,
-            20
+            20,
+            21
           ],
           "removed_sha256": "bd027e29e9718592b353a422ab6ff48dd4596ae5ae5450d57698ce363ec751dc",
           "added_sha256": "2ea6c0179a164e68757df5619856bcc983b818b198b2b63580045e89e30bdcea"
         },
         {
           "upstream_lines": [
-            23,
-            30
+            24,
+            31
           ],
           "local_lines": [
-            21,
-            32
+            22,
+            33
           ],
           "removed_sha256": "22602fe10c5b5b5d4279deb4f574966ab48d9cc46ee4699b8c67541569df3b72",
           "added_sha256": "bff2dbafc9825107342f38309860b889b9611c2fd5cbcf7619716c14ffc2b13a"
         },
         {
           "upstream_lines": [
-            44,
-            67
+            122,
+            123
           ],
           "local_lines": [
-            46,
-            47
-          ],
-          "removed_sha256": "855dddb6c29e9fb455b85aa6b403478807e9f1ef95ff50b9fc100384d99fbf7a",
-          "added_sha256": "821f5cbaca3d7feeb19d3fe3c8b9f6d1b0a81210fa70711df87b6b31cd306695"
-        },
-        {
-          "upstream_lines": [
-            138,
-            139
-          ],
-          "local_lines": [
-            118,
-            119
+            124,
+            125
           ],
           "removed_sha256": "d8da87542313c95da26fc52d32c968a27d3ea029393b1103b7ca9fd0b0b60fcd",
           "added_sha256": "0d9ef8fcb5914d74c58bbde3821429f0e73015c61d4dde44a99c531bd0407b48"
@@ -1007,40 +949,23 @@
       ]
     },
     "references/agent-paths.md": {
-      "upstream_sha256": "8210a3cc1211283f71f068de99fd17e62fb9ce269ca6e693879ce6c30e31aff6",
-      "local_sha256": "8210a3cc1211283f71f068de99fd17e62fb9ce269ca6e693879ce6c30e31aff6",
+      "upstream_sha256": "ef271d2e33bf00b548478a5abc336d364d9998d50c562854d972c41f351c0210",
+      "local_sha256": "ef271d2e33bf00b548478a5abc336d364d9998d50c562854d972c41f351c0210",
       "status": "identical",
       "sections": {
         "# Claude / Codex 路径、加载和体量速查": "# Claude / Codex 路径、加载和体量速查",
         "## Claude Code": "## Claude Code",
         "## OpenAI Codex": "## OpenAI Codex",
         "## 共存检查": "## 共存检查",
-        "## 其他 Agent Skills 平台（Qoder、Kimi Code、iFlow、CodeBuddy、Cursor、Gemini CLI 等）": "## 其他 Agent Skills 平台（Qoder、Kimi Code、iFlow、CodeBuddy、Cursor、Gemini CLI 等）",
+        "## 其他 Agent Skills 平台（GitHub Copilot、Qoder、Kimi Code、iFlow、CodeBuddy、Cursor、Gemini CLI 等）": "## 其他 Agent Skills 平台（GitHub Copilot、Qoder、Kimi Code、iFlow、CodeBuddy、Cursor、Gemini CLI 等）",
         "## 官方复核入口": "## 官方复核入口",
         "## 通用原则": "## 通用原则"
       }
     },
     "references/governance.md": {
-      "upstream_sha256": "6bf4bbf171864f2c82a5f8b8cf441df043362e8790c69ddca38f207c38bb5f72",
-      "local_sha256": "0866be52b4ed95244ff54f0b87695f455f8d071c5de96908f4c1bcf443e2d23e",
-      "status": "adapted",
-      "reason": [
-        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
-      ],
-      "changes": [
-        {
-          "upstream_lines": [
-            16,
-            17
-          ],
-          "local_lines": [
-            16,
-            17
-          ],
-          "removed_sha256": "4874b34ae7f9c3c1133e8926ef7466836bd9665e883406996cd39f5a1fea6051",
-          "added_sha256": "c23f2fdf4c07cbf406b88db7ff5428187e5cebdf37678b8529974b2a4b54e758"
-        }
-      ],
+      "upstream_sha256": "b77224988faceadd5d0e67f97202565964fa8bdebd45f56fb2d7500974c3f03a",
+      "local_sha256": "b77224988faceadd5d0e67f97202565964fa8bdebd45f56fb2d7500974c3f03a",
+      "status": "identical",
       "sections": {
         "# 规范执行审计细则": "# 规范执行审计细则",
         "## 处置等级": "## 处置等级",
@@ -1055,38 +980,9 @@
       }
     },
     "references/sync-matrix.md": {
-      "upstream_sha256": "5c771ba2695a0d0dc54ef636531d61c916ed7f0f39db39827bbb330268f7648d",
-      "local_sha256": "2e5ca8c8313f10e2cec8bdc2deb4f29bb0a53817ac23fba7571b292e18a53b0c",
-      "status": "adapted",
-      "reason": [
-        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
-      ],
-      "changes": [
-        {
-          "upstream_lines": [
-            15,
-            16
-          ],
-          "local_lines": [
-            15,
-            16
-          ],
-          "removed_sha256": "7c62b2a789498a20c6f6db16333c19b31a9aa67e8aaf9086e94fb18eb3cd6b06",
-          "added_sha256": "c8a3fe1d2d29ce0cf2ba4aadcaf315547ea7f4fcb60ee710b08917a7c7d5ca5b"
-        },
-        {
-          "upstream_lines": [
-            61,
-            62
-          ],
-          "local_lines": [
-            61,
-            62
-          ],
-          "removed_sha256": "b3532ac3dcf753f37c7194bf4073e23e7b858d79cd2c3ffdb981bf2bb8e3c2ce",
-          "added_sha256": "bb45776a615d4cf9a7200777d79abb5b3816c6f4228e474b7e9a74d3f9c605fd"
-        }
-      ],
+      "upstream_sha256": "696233e82288514b944f888e7ee09f922b00dd1af9f9797fc0b95099639dd383",
+      "local_sha256": "696233e82288514b944f888e7ee09f922b00dd1af9f9797fc0b95099639dd383",
+      "status": "identical",
       "sections": {
         "# 变更影响矩阵": "# 变更影响矩阵",
         "## 代码或运行态变化 → 知识面": "## 代码或运行态变化 → 知识面",
@@ -1098,98 +994,9 @@
       }
     },
     "references/verification.md": {
-      "upstream_sha256": "cd3f4bf5cdc59c3aa51db868801f7461563a4b4a58b72799a6753c1f863c4126",
-      "local_sha256": "bff54d43ea1013346419fdbc105b07e12a364540fd456ca06724f952c5085e75",
-      "status": "adapted",
-      "reason": [
-        "Preserve existing local authorization and public-fixture adaptations; do not restore redundant cleanup approval or private absolute paths."
-      ],
-      "changes": [
-        {
-          "upstream_lines": [
-            12,
-            14
-          ],
-          "local_lines": [
-            12,
-            14
-          ],
-          "removed_sha256": "d739b95a042daba9227003dc49643a6b40afb4d50e289fe0c2c73559556e0011",
-          "added_sha256": "f320877474ebf197d0f9cdf342db44b95397737ad2d5e92c430d8094c21cf656"
-        },
-        {
-          "upstream_lines": [
-            47,
-            49
-          ],
-          "local_lines": [
-            47,
-            49
-          ],
-          "removed_sha256": "246b027ca5b424002e9bc303ef34d4854307a9d3162e3cf19f127dffd440b493",
-          "added_sha256": "2b7593104b080c3476715f5e68c9e37be8de91fcc98f86470a36969223634c26"
-        },
-        {
-          "upstream_lines": [
-            54,
-            55
-          ],
-          "local_lines": [
-            54,
-            55
-          ],
-          "removed_sha256": "fb31dcfefa6086578a245f4b180435f294c386454c0d3257c92c2c342e26a324",
-          "added_sha256": "ae1a3f8d91d6d5bf5cdc2939206503ef1ca63fa2f297c2ef210a249abbb6cddd"
-        },
-        {
-          "upstream_lines": [
-            70,
-            71
-          ],
-          "local_lines": [
-            70,
-            71
-          ],
-          "removed_sha256": "a33cd15e1bb4d3e15bb73b7dc1465879fb296dd2a863cd5400a71e0f66229eb4",
-          "added_sha256": "35c43f6de2e5fd31887883beb654015086d2da2f91d1417f6f47b89ed5e143d6"
-        },
-        {
-          "upstream_lines": [
-            72,
-            73
-          ],
-          "local_lines": [
-            72,
-            73
-          ],
-          "removed_sha256": "822c34109bfc763494779dfccbb1bb318668fa52ee88f245465105db54d091b1",
-          "added_sha256": "8aafa225285d793bc5711c06acbe858b668d93870dfc53e45c8f55d751a49e74"
-        },
-        {
-          "upstream_lines": [
-            77,
-            79
-          ],
-          "local_lines": [
-            77,
-            79
-          ],
-          "removed_sha256": "66fd0f1ed391417e5a26f4f68d7d9e9e84c13d86847a416a220bc2538c58c84d",
-          "added_sha256": "a11cf011205ef4fe5139aa6ea59a6dce9fa6ca202e2a76517951e72bb1b32195"
-        },
-        {
-          "upstream_lines": [
-            82,
-            83
-          ],
-          "local_lines": [
-            82,
-            83
-          ],
-          "removed_sha256": "ce49cb18929d2a0643eba423341ba7d19d079c8ef0fc9e7273efe4d036f1b5bc",
-          "added_sha256": "a0e38925dada4ae2f3607cf8b521798d5ab5a905ec04b3f5992d7eb5e124525b"
-        }
-      ],
+      "upstream_sha256": "62881879bc01ec24d92534f67f80e34d7734c8405c7178b10eff7bc018681652",
+      "local_sha256": "62881879bc01ec24d92534f67f80e34d7734c8405c7178b10eff7bc018681652",
+      "status": "identical",
       "sections": {
         "# 证据层级与发布终态": "# 证据层级与发布终态",
         "## 发布状态机": "## 发布状态机",
@@ -1201,8 +1008,8 @@
       }
     },
     "scripts/audit-inventory.sh": {
-      "upstream_sha256": "260315d659f19e63a12065f9cadd9b57f9c1ddc867457f6c0f6fd87c003a7325",
-      "local_sha256": "260315d659f19e63a12065f9cadd9b57f9c1ddc867457f6c0f6fd87c003a7325",
+      "upstream_sha256": "de03b5f89d27392a0c3c90acb8e49c36f8608ae823f4c95ddd8eca4e98f00b04",
+      "local_sha256": "de03b5f89d27392a0c3c90acb8e49c36f8608ae823f4c95ddd8eca4e98f00b04",
       "status": "identical"
     }
   },

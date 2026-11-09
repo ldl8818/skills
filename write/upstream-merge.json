@@ -1,12 +1,12 @@
 {
   "schema": 2,
   "repository": "https://github.com/tw93/waza",
-  "commit": "b55809013be84b1f59418b557c1e8bad66380705",
+  "commit": "58217546cd94fcf5ddcde4265c00a9377ed3192c",
   "source_path": "skills/write",
   "files": {
     "SKILL.md": {
       "upstream_sha256": "c341449a298b348f50860a50ed96ae80de122d232e3a979292e8dcc4b19146b0",
-      "local_sha256": "7e8c1edc67397fe1ff6f58a5455b17c7e8880533dd936a53a49d5b54cc20e163",
+      "local_sha256": "9e7784627f08af156de16da0129fd64daf6a54a305dce753f23b37abe51e902e",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Rewrites and polishes Chinese or English prose, technical instructions, and product copy. Use when drafting, editing, localizing, or cutting AI tone. Not for code comments or commit messages.\"\n",
@@ -18,7 +18,8 @@
         "Keep the required host salutation and output format instead of the upstream marker.",
         "Keep author voice protection without mandatory unsolicited change lists.",
         "Respect the local final-text output convention.",
-        "Keep local punctuation precedence, literal preservation and technical ambiguity guidance."
+        "Keep local punctuation precedence, literal preservation and technical ambiguity guidance.",
+        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required."
       ],
       "changes": [
         {
@@ -43,7 +44,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "aac821add7fd6523b7d4a09898c8633732da11b3db1470f9a798aff88e37cac6"
+          "added_sha256": "00dcafa5e22755a22cafd36324d5c44c8e81b99f74872e5314d56e0b4fc66253"
         },
         {
           "upstream_lines": [
@@ -161,8 +162,8 @@
       }
     },
     "references/mode-revision-review.md": {
-      "upstream_sha256": "266c6008a015043d0c06af069a9cc2d55485d8198de234d77e1ad9cc46460ca4",
-      "local_sha256": "266c6008a015043d0c06af069a9cc2d55485d8198de234d77e1ad9cc46460ca4",
+      "upstream_sha256": "e16248979fe43cc51d107b2ed69affe176a1d4109df6324a4056afe483e083e3",
+      "local_sha256": "e16248979fe43cc51d107b2ed69affe176a1d4109df6324a4056afe483e083e3",
       "status": "identical",
       "sections": {
         "# Revision Review Mode": "# Revision Review Mode"
