@@ -33,17 +33,23 @@ jobs:
       - name: Build and smoke-test installed CLI
         working-directory: self-improving
         run: |
+          memory_root="$RUNNER_TEMP/self-improving-memory"
           python -m venv "$RUNNER_TEMP/self-improving-venv"
           "$RUNNER_TEMP/self-improving-venv/bin/pip" install .
           HOME="$RUNNER_TEMP/self-improving-home" \
             "$RUNNER_TEMP/self-improving-venv/bin/self-improving" init \
               --agents claude \
-              --memory-root "$RUNNER_TEMP/self-improving-memory"
+              --memory-root "$memory_root"
           HOME="$RUNNER_TEMP/self-improving-home" \
             "$RUNNER_TEMP/self-improving-venv/bin/self-improving" sync --check
           test -f "$RUNNER_TEMP/self-improving-home/.claude/skills/self-improving/SKILL.md"
           test -f "$RUNNER_TEMP/self-improving-home/.claude/skills/self-improving/templates/config.json"
           test -f "$RUNNER_TEMP/self-improving-home/.claude/skills/self-improving/examples/hook-payloads/codex-stop.json"
+          # A fresh init leaves core memory absent. Seed an opt-in file to test retention.
+          test ! -e "$memory_root/memory.md"
+          printf '%s\n' '# Private memory smoke-test fixture' > "$memory_root/memory.md"
           HOME="$RUNNER_TEMP/self-improving-home" \
             "$RUNNER_TEMP/self-improving-venv/bin/self-improving" uninstall --keep-data
-          test -f "$RUNNER_TEMP/self-improving-memory/memory.md"
+          test ! -e "$RUNNER_TEMP/self-improving-home/.claude/skills/self-improving"
+          test ! -L "$RUNNER_TEMP/self-improving-home/.claude/skills/self-improving"
+          printf '%s\n' '# Private memory smoke-test fixture' | cmp - "$memory_root/memory.md"
