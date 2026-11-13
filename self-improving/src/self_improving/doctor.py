@@ -130,7 +130,8 @@ def run_checks() -> list[Check]:
         if settings.get("enabled"):
             checks.append(Check(f"{platform} Hook", hook_is_installed(config, platform), "配置接线"))
             schema_root = Path(config["state_root"]) / "hook-schemas"
-            seen = [schema_root / f"{platform}-{event}.json" for event in ("SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop")]
+            from self_improving.installer import _groups
+            seen = [schema_root / f"{platform}-{event}.json" for event in _groups(platform, config)]
             count = 0
             cutoff = datetime.now(timezone.utc) - timedelta(days=30)
             for path in seen:
@@ -142,7 +143,8 @@ def run_checks() -> list[Check]:
                 except (OSError, ValueError, KeyError, json.JSONDecodeError):
                     continue
             checks.append(Check(f"{platform} 事件契约", count == len(seen), f"当前版本已验证 {count}/{len(seen)} 类", warning=True))
-            if config.get("persistence", {}).get("capture_command_errors"):
+            if (config.get("persistence", {}).get("enabled", True)
+                    and config.get("persistence", {}).get("capture_command_errors")):
                 post_path = schema_root / f"{platform}-PostToolUse.json"
                 try:
                     post_schema = json.loads(post_path.read_text(encoding="utf-8"))

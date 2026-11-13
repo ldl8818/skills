@@ -79,6 +79,16 @@ class KnowledgeTests(unittest.TestCase):
         self.assertEqual(self.context(prompt="```\n架构\n```"), "")
         self.assertEqual(self.context(prompt="今天吃什么"), "")
 
+    def test_bootstrap_respects_optional_lookup_for_small_tasks(self):
+        self.accept()
+        for source in ("startup", "resume"):
+            with self.subTest(source=source):
+                text = self.context(event="SessionStart", source=source, prompt="")
+                self.assertIn("涉及登记知识、既有决策或跨会话约定时", text)
+                self.assertIn("自包含小任务不强制查询", text)
+        self.assertEqual(self.context(prompt="把按钮改成蓝色"), "")
+        self.assertIn("Keep the human approval boundary.", self.context())
+
     def test_budget_does_not_truncate_required_full_document(self):
         self.entry.update(required=True, sections=[])
         self.save()

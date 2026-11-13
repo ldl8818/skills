@@ -54,7 +54,7 @@ Run `sync` when source text, titles, paths or catalog inputs change. Run `python
 
 ## Runtime contract
 
-With a catalog, SessionStart supplies a short lookup entry and eligible corrections. Startup, clear, compact and resume reset knowledge deduplication; resume conservatively supplies the base once. Compact recovers the most recently requested IDs only if still active in the current scope. This is a generated-output receipt, not proof that a model read or followed the document.
+With a catalog, SessionStart supplies a short lookup entry and eligible corrections. The lookup reminder follows the existing global rules: knowledge registration, prior decisions and cross-session agreements require discovery; self-contained small tasks do not. Startup, clear, compact and resume reset knowledge deduplication; resume conservatively supplies the base once. Compact recovers the most recently requested IDs only if still active in the current scope. This is a generated-output receipt, not proof that a model read or followed the document.
 
 UserPromptSubmit routes original reviewed sections, at most2 bodies per event. Correction capture can be disabled independently. Fenced code, explicit catalog exclusions and unrelated prompts do not load domain bodies. Keyword matching is imperfect: use list/read when intent is ambiguous or not matched.
 

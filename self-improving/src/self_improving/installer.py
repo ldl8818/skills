@@ -89,6 +89,10 @@ def _groups(platform: str, config: dict[str, Any]) -> dict[str, list[dict[str, A
     }
     result: dict[str, list[dict[str, Any]]] = {}
     for event, matcher in matchers.items():
+        if platform == "codex" and event in {"PostToolUse", "Stop"}:
+            capture = "capture_command_errors" if event == "PostToolUse" else "capture_corrections"
+            if not config["persistence"].get("enabled", True) or not config["persistence"].get(capture, False):
+                continue
         group: dict[str, Any] = {
             "hooks": [
                 {
@@ -98,6 +102,14 @@ def _groups(platform: str, config: dict[str, Any]) -> dict[str, list[dict[str, A
                 }
             ]
         }
+        if platform == "codex":
+            group["hooks"][0]["statusMessage"] = {
+                "PreToolUse": "self-improving｜工具调用前检查",
+                "PostToolUse": "self-improving｜工具结果与错误检查",
+                "SessionStart": "self-improving｜加载知识与会话上下文",
+                "UserPromptSubmit": "self-improving｜按需检索领域知识",
+                "Stop": "self-improving｜会话结束维护",
+            }[event]
         if matcher:
             group["matcher"] = matcher
         result[event] = [group]
@@ -167,6 +179,27 @@ def _without_managed(groups: object) -> list[dict[str, Any]]:
     return cleaned
 
 
+def _merge_codex_groups(groups, desired, event):
+    """Keep group positions, including empty slots, so other hooks retain their keys."""
+    result, installed = [], False
+    for group in groups:
+        remaining = []
+        for hook in group.get("hooks", []):
+            command = str(hook.get("command", ""))
+            if MARKER not in command and not _legacy_hook(command):
+                remaining.append(hook)
+            elif desired and not installed and group.get("matcher") == desired.get("matcher"):
+                replacement = {**hook, **desired["hooks"][0]}
+                if hook_command_matches(command, "codex", event):
+                    replacement["command"] = command
+                remaining.append(replacement)
+                installed = True
+        result.append({**group, "hooks": remaining})
+    if desired and not installed:
+        result.append(desired)
+    return result
+
+
 def install_hooks(config: dict[str, Any], platform: str) -> tuple[Path, Path | None]:
     agent = config["agents"][platform]
     key = "settings_file" if platform == "claude" else "hooks_file"
@@ -179,8 +212,13 @@ def install_hooks(config: dict[str, Any], platform: str) -> tuple[Path, Path | N
     hooks = payload.setdefault("hooks", {})
     if not isinstance(hooks, dict):
         raise ValueError(f"hooks must be an object: {path}")
-    for event, groups in _groups(platform, config).items():
-        hooks[event] = _without_managed(hooks.get(event)) + groups
+    expected = _groups(platform, config)
+    if platform == "codex":
+        for event in dict.fromkeys([*hooks, *expected]):
+            hooks[event] = _merge_codex_groups(hooks.get(event, []), expected[event][0] if event in expected else None, event)
+    else:
+        for event, groups in expected.items():
+            hooks[event] = _without_managed(hooks.get(event)) + groups
     atomic_write_json(path, payload)
     return path, backup
 
@@ -234,6 +272,11 @@ def hook_is_installed(config: dict[str, Any], platform: str) -> bool:
     if not isinstance(hooks, dict):
         return False
     expected = _groups(platform, config)
+    if platform == "codex" and any(
+        MARKER in str(hook.get("command", "")) and event not in expected
+        for event, groups in hooks.items() for group in groups for hook in group.get("hooks", [])
+    ):
+        return False
     return all(
         any(
             isinstance(group, dict)

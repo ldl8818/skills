@@ -348,7 +348,7 @@ def context_worker(config: dict, event: dict, budget: int) -> str:
             emitted[ident] = item["revision"]
             count += 1
         if boundary and not wanted:
-            notices.append("领域任务先查询 knowledge list，再用 knowledge read ID 读取；未匹配不代表没有相关知识。")
+            notices.append("知识读取按当前全局规则执行；涉及登记知识、既有决策或跨会话约定时，先 knowledge list，再按需 knowledge read ID；自包含小任务不强制查询，未匹配不代表没有相关知识。")
         prior_notices = previous.get("notices", [])
         sent = set(prior_notices) if isinstance(prior_notices, list) and all(isinstance(v, str) for v in prior_notices) and not boundary else set()
         current_notices = set()

@@ -33,6 +33,44 @@ from self_improving.storage import (
 
 
 class SystemTests(unittest.TestCase):
+    def test_codex_optional_hooks_removed_without_shifting_other_hook_keys(self):
+        self.config["persistence"].update(capture_corrections=True, capture_command_errors=True)
+        install_hooks(self.config, "codex")
+        data = json.loads(self.codex.read_text())
+        for event in ("PostToolUse", "Stop"):
+            data["hooks"][event].append({"hooks": [{"type": "command", "command": "keep-" + event}]})
+        self.codex.write_text(json.dumps(data))
+        positions = {(e, i, j): h for e, gs in data["hooks"].items()
+                     for i, g in enumerate(gs) for j, h in enumerate(g["hooks"])
+                     if MARKER not in h["command"]}
+        self.config["persistence"].update(capture_corrections=False, capture_command_errors=False)
+        self.assertFalse(hook_is_installed(self.config, "codex"))
+        for _ in range(2):
+            install_hooks(self.config, "codex")
+            current = json.loads(self.codex.read_text())
+            managed = [e for e, gs in current["hooks"].items() for g in gs for h in g["hooks"]
+                       if MARKER in h["command"]]
+            self.assertEqual(set(managed), {"SessionStart", "UserPromptSubmit", "PreToolUse"})
+            self.assertEqual(len(managed), 3)
+            for (event, i, j), hook in positions.items():
+                self.assertEqual(current["hooks"][event][i]["hooks"][j], hook)
+            self.assertTrue(hook_is_installed(self.config, "codex"))
+
+    def test_codex_fresh_install_and_capture_opt_in_have_expected_hooks(self):
+        self.config["persistence"].update(capture_corrections=False, capture_command_errors=False)
+        install_hooks(self.config, "codex")
+        def events():
+            return {e for e, gs in json.loads(self.codex.read_text())["hooks"].items()
+                    for g in gs for h in g["hooks"] if MARKER in h["command"]}
+        self.assertEqual(len(events()), 3)
+        self.config["persistence"]["capture_command_errors"] = True
+        install_hooks(self.config, "codex")
+        self.assertIn("PostToolUse", events())
+        self.assertNotIn("Stop", events())
+        self.config["persistence"]["capture_corrections"] = True
+        install_hooks(self.config, "codex")
+        self.assertEqual(len(events()), 5)
+
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.home = Path(self.temp.name)
@@ -221,7 +259,7 @@ class SystemTests(unittest.TestCase):
                 for hook in group.get("hooks", [])
                 if MARKER in str(hook.get("command", ""))
             ]
-            self.assertEqual(len(managed), 5)
+            self.assertEqual(len(managed), 5 if path == self.claude else 4)
             self.assertTrue(all(hook.get("timeout") == 10 for _, _, hook in managed))
         codex_payload = json.loads(self.codex.read_text())
         codex_pre_tool_group = next(

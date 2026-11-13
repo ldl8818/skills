@@ -1,6 +1,6 @@
 # Doraemon 跨 Agent 自我进化记忆系统架构与设计
 
-> V2.4.1 · 2026-11-04 · 隐藏知识登记表，核心入口可退役；版本历史见 [CHANGELOG](../CHANGELOG.md)。
+> V2.4.2 · 2026-11-13 · Codex 按捕获开关登记可选 Hook，默认精简为3条；版本历史见 [CHANGELOG](../CHANGELOG.md)。
 
 本文解释 self-improving 的整体设计：系统分成哪几层、Hook 怎样接入 Claude Code 与 Codex、一条纠错从捕获到生效要过哪些关卡，以及关键方案为什么这样取舍。安装与日常操作请读 [五分钟从零开始](quickstart-zh.md)，本文不重复命令细节。
 
@@ -93,7 +93,7 @@ platform / event / session_id / source / cwd / prompt / tool_name /
 tool_input / tool_output / exit_status / failed / trust_level
 ```
 
-两平台都接入五类事件：
+事件处理支持下列五类事件。Claude Code 保留五类接线；Codex 默认只登记 `SessionStart`、`UserPromptSubmit` 和 `PreToolUse`，仅在对应捕获及持久化开启时登记 `PostToolUse`／`Stop`。安装、升级和体检按实际开关核对，停用的自有条目被移除，其他钩子的分组位置保留。
 
 | 事件 | 行为 |
 |---|---|

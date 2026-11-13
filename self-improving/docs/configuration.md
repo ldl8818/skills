@@ -15,7 +15,7 @@ All paths accept `~` and environment-variable expansion. Unknown future schema v
 a private Git working tree. The software does not infer or publish a remote.
 
 ## Safe defaults
-- Recommended daily mode: keep `capture_corrections=false`; knowledge lookup stays available. This also silences Stop reminders for retained candidates without changing their review status.
+- Recommended daily mode: keep `capture_corrections=false`; knowledge lookup stays available. This also silences Stop reminders for retained candidates without changing their review status. Codex uses three hooks when both capture switches are off; run `upgrade` after changing capture or persistence switches to update registration.
 - Disabled adapters do not capture, inject, remind or write observation state even if a stale Hook calls them. An invoked authority guard still protects the ledger. Remove only managed stale Hook entries, preserving unrelated configuration.
 - Correction capture: enabled only after an interactive yes or explicit `--capture-corrections`.
 - Command-error capture: disabled.
