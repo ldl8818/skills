@@ -10,7 +10,7 @@
 | “PR 已完成” | PR state=merged + merge commit；不能推导已部署 |
 | “已部署” | deploy marker/release 指向目标 commit + 服务 active |
 | “用户已看到新版本” | canonical 用户 URL/API 的真实响应，必要时同时比 origin/cache |
-| “可安全清场” | merged + production contains change + knowledge receipt + lane clean + 无唯一未集成文件 |
+| “可安全清场” | 对象归属、独有内容及有效引用已核对，本次适用的保留／交付条件已满足；发布相关对象另核对上线条件 |
 | “已获准清场” | 当前任务已有明确清理授权 + 对象仍在授权范围内 |
 | “整个项目干净” | 项目内所有适用事实面 verified；warning、pending 和 out-of-scope 单列 |
 
@@ -18,7 +18,7 @@
 
 ## 真相矩阵
 
-对每个发现至少记录：
+对每个发现记录相关证据和状态；以下字段按本次适用事实面使用：
 
 ```text
 topic: <事实主题>
@@ -67,16 +67,16 @@ implemented
 
 ## 清场前 gate
 
-清场前核实以下事实：
+只核对本次清理对象适用的事实；本任务临时验证产物不因清理本身新增上线或 workspace 审计门禁。
 
-1. 验证目标工作已集成并上线；
-2. 同步 docs/rules/获准记忆；
+1. 发布相关对象按现场要求核对集成与上线；普通临时产物核对归属、可重建性、独有内容与有效引用；
+2. 清理影响 docs/rules/获准记忆时同步相关内容；
 3. 记录项目要求的 knowledge closeout receipt；
 4. 预览待删除 worktree/branch/db/artifact；
 5. 检查 dirty 文件和 patch equivalence；
 6. 核对当前任务的清理授权，已明确批准的不重复询问；
 7. 执行范围内的清理，保留尚有唯一内容或尚未授权的对象；
-8. 重新运行 workspace audit，汇报实际清理结果和待决项。
+8. 核对清理结果及受影响引用，汇报残留和待决项；仅在本次范围包含 workspace 审计时运行该审计。
 
 
 目录名、分支年龄和 agent 会话是否关闭都不能证明可删除。

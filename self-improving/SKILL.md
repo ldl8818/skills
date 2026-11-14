@@ -19,6 +19,11 @@ Use this skill to operate a private memory repository shared by Claude Code and 
 4. 已直接修好并归位的纠错无需先变成临时注入。旧候选不自动批准、删除或恢复施工；只有用户要求处理旧候选时才走下节审核流程。普通聊天捕获建议保持关闭，按需知识读取独立工作。
 5. 后台自愈只使用原项目已授权的范围、失败样例与检查；不得自行扩大代码修改范围、修改验收答案、创建服务或发布。规则和检查共享不等于所有客户端已自然遵守，真实使用另验。
 
+## 从讨论与复盘提炼经验
+- 先对照当前正式来源，区分稳定机制、已修好的实现缺陷与本次项目事实。只把会改变后续决策的共性归入控制该行为的原 Skill；项目名称、编号、路径、单次统计与已取消待办留在原项目或历史中。
+- 已有要求覆盖时，修执行或引用，不再追加同义规则。新增检查、复核字段或流程必须对应已证实的缺口或明确需求；实施前说明预期收益与成本，实施后再验证效果，不要求事先证明收益。不得为了沉淀经验另建常驻守门、周期复核或用户待办。
+- 用原失败及相邻正常场景核对行为，复用仍等价的证据。分别报告规则修改、入口可加载与真实使用；工具交付、检查秒数或结构校验不能单独证明完整任务提速。
+
 ## Core rules
 - Standalone, statically recognized read-only Python inspection is permitted, including string prefix checks and negative indexing. Unknown code or complex shell composition may still be guarded. A denial alone does not prove a write or candidate approval was attempted. See `docs/hooks.md`.
 - Read configuration from `SELF_IMPROVING_CONFIG` or `~/.config/self-improving/config.json`.

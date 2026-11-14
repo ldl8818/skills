@@ -183,6 +183,77 @@
         "不把 Claude 或 Codex 的尺寸阈值和写入规则套到未知平台",
         "报告区分已同步的文档面和只读的记忆面"
       ]
+    },
+    {
+      "id": 12,
+      "name": "explicit-followup-cancellation",
+      "prompt": "Use neat-freak to clear the active follow-ups in this project. Keep only annual boundary acceptance. Cancel the other observations even though they have not been verified; do not rerun any business work.",
+      "expected_output": "One retained unverified follow-up and an explicit cancellation decision, with no fabricated acceptance or new review schedule.",
+      "files": [
+        "evals/fixtures/eval-12-stop-followups"
+      ],
+      "expectations": [
+        "Only annual boundary acceptance remains active and unverified",
+        "The other two observations are canceled or stopped, never marked verified",
+        "No new deadline, periodic task, archive copy or unrelated document is created",
+        "No business execution, message, deployment or external write occurs"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "bounded-followup-review",
+      "prompt": "Use neat-freak only to check and correct the current-app README and the directly affected implementation references. Do not turn this into a workspace audit or reopen previous work.",
+      "expected_output": "A bounded correction of the requested documentation, with other projects and runtime state preserved.",
+      "files": [
+        "evals/fixtures/eval-6-scope-boundary"
+      ],
+      "expectations": [
+        "Inspection and edits stay within current-app and its direct references",
+        "The presence of another project or a deployment workflow does not trigger a complete workspace inventory",
+        "No unrelated backlog, memory, calendar review or mandatory process is added"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "feature-documents-across-directories",
+      "prompt": "The profile route changed from /api/v1/profile to /api/v2/profile. Use neat-freak to find and update all related current documentation across this project. Preserve historical release notes and do not deploy or run the business.",
+      "expected_output": "Current API and client documentation are aligned wherever they live; history and unrelated files remain unchanged.",
+      "files": [
+        "evals/fixtures/eval-14-feature-doc-sync"
+      ],
+      "expectations": [
+        "Project-wide searches find related current documents in docs and clients without relying on Markdown links",
+        "Both current route references are updated; the historical release note remains unchanged",
+        "No new rule file, handoff, recurring review or unrelated change is created"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "scoped-release-still-checks-release-state",
+      "prompt": "Use neat-freak to review only this release receipt against the included release rules, read-only. State whether the merged release is deployed and safe for release cleanup. Do not deploy, clean files or inspect other projects.",
+      "expected_output": "The old production and live markers are reported accurately despite the narrow request.",
+      "files": [
+        "evals/fixtures/eval-7-release-terminal"
+      ],
+      "expectations": [
+        "Merged and deployed are not conflated; old production markers keep deployment unverified or pending",
+        "Narrow scope does not bypass release-specific checks or expand into a workspace audit",
+        "No files, runtime or external systems are changed"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "owned-preview-cleanup-before-deployment",
+      "prompt": "This project has not been deployed. Use neat-freak to delete only preview/preview.txt, which I created for this verification and which has no unique content. Preserve all other files and do not deploy or perform a workspace audit.",
+      "expected_output": "Only the explicitly authorized disposable preview is removed; release gates are not imposed on this unrelated temporary object.",
+      "files": [
+        "evals/fixtures/eval-14-feature-doc-sync"
+      ],
+      "expectations": [
+        "Only preview/preview.txt is removed; all other file contents remain unchanged",
+        "No production deployment, merge, knowledge receipt or workspace audit is demanded merely to remove this preview",
+        "No rule file, handoff or unrelated task is created"
+      ]
     }
   ]
 }

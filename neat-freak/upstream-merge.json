@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "f530580116b92c75c11a22eb1bbe005819033dd51a711266cd8cb65d63e5b204",
-      "local_sha256": "8b5a168963d1da718191d0b63056fa92dde6f033015a800090b77e4bee44a67f",
+      "local_sha256": "45a213ac701d7792fa19dfc62b2f0ab9a53f86fab9f64ea7d616a268f2368140",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: >-\n  Knowledge and governance closeout: reconcile project docs, rule files\n  (CLAUDE.md/AGENTS.md), authorized agent memory, and workspace residue with\n  what the code and runtime actually do, so the next session or the next\n  person starts from one current answer. Trigger when the user names\n  \"neat-freak\", \"洁癖\", or \"/neat\" — and also on clear knowledge-closeout\n  intent without the name: syncing or tidying project docs/rules/memory after\n  development (\"把文档和记忆整理一下\", \"收尾时把文档同步掉\", \"docs 和代码对不上了\"),\n  stale or conflicting CLAUDE.md/memory, a clean handoff to a teammate or a\n  fresh session, or auditing whether workspace rules are actually followed.\n  Do not trigger for pure coding/refactoring/debugging tasks, tidying data or\n  prose (JSON, 周报, changelog announcements), or a bare \"整理\" with no\n  project-knowledge context.\n"
@@ -15,7 +15,9 @@
         "Preserve the full upstream description and dispatch_intent verbatim, and retain every original when_to_use phrase, order and separator. Insert separately identified local trigger items at existing list boundaries only; keep Chinese display text in metadata.zh_description. For fields absent upstream, retain the explicitly local values. Preserve local license/version and frozen policy.",
         "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required.",
         "Adopt upstream cleanup authorization, portable handoff and incremental audit behavior. Retain the AGENTS.md source/CLAUDE.md single-link convention, stable rules versus ROADMAP progress, and cleanup gates appropriate to the actual delivery scope rather than requiring deployment for every temporary file.",
-        "Preserve the local double-hyphen title while retaining every source section."
+        "Preserve the local double-hyphen title while retaining every source section.",
+        "Choose bounded governance from the requested changed surface rather than the mere presence of release infrastructure; preserve applicable gates. Distinguish canceled follow-up from verified acceptance, and avoid calendar obligations without an actual date-bound event.",
+        "Keep project-wide discovery of all feature-related current documentation, including unlinked consumers, while bounding unrelated governance and honoring explicit user scope. Align lightweight versus release routing, applicable fact surfaces and final checks without adding mechanisms."
       ],
       "changes": [
         {
@@ -56,6 +58,18 @@
         },
         {
           "upstream_lines": [
+            38,
+            39
+          ],
+          "local_lines": [
+            47,
+            48
+          ],
+          "removed_sha256": "6b6a98cde0586a494184e305160d05e6dce25ad309127bb57317ca4e4008aceb",
+          "added_sha256": "b88360fe0fe042a28e2d938b8e9c7c03988ff697e127c504efb4b7ef2edc22e0"
+        },
+        {
+          "upstream_lines": [
             51,
             52
           ],
@@ -68,15 +82,63 @@
         },
         {
           "upstream_lines": [
-            73,
-            74
+            61,
+            62
           ],
           "local_lines": [
-            82,
-            83
+            70,
+            71
           ],
-          "removed_sha256": "91be5696225e699eab1f8ec92b99b794b0792a27d76e1e486ac2c674c37da14f",
-          "added_sha256": "cc60e7c1dca355fa4648c0c2ce2abd3aae2d1748c130c046f65e5ab3bfadb2c7"
+          "removed_sha256": "ce01bb40af2113e934d683ae7ca640bbf2e1bc7572d25be8e8f05a75010a3caf",
+          "added_sha256": "a45f890f89f65adb4bd9112d9063a2bfcf61e047eca44fbf241577052f5e536a"
+        },
+        {
+          "upstream_lines": [
+            63,
+            66
+          ],
+          "local_lines": [
+            72,
+            74
+          ],
+          "removed_sha256": "2200582041a568a2c8601ee5c1d6bdb2c6da3e25fa66a1b949cdde9e0cf4481b",
+          "added_sha256": "683ba5ae3ef8b7794704c51424e567d0555dab54784e4a2e1a59715da9ce9a13"
+        },
+        {
+          "upstream_lines": [
+            67,
+            68
+          ],
+          "local_lines": [
+            75,
+            76
+          ],
+          "removed_sha256": "4cf644c100855a2051768377af0675483250a1b05ecd7c99b94514a9033920ed",
+          "added_sha256": "cf9ac1447265fd33cf6da5e350c8e5c4f867aa793f50cf59d852a2e3f5186650"
+        },
+        {
+          "upstream_lines": [
+            71,
+            72
+          ],
+          "local_lines": [
+            79,
+            82
+          ],
+          "removed_sha256": "9ca0c4f55dca24016717ae292de59c285eed2e84c165b991eb993cc5317c6ad5",
+          "added_sha256": "db267a4a9693b8b51001c1e0de2f345240e878367cabd2047f5868ea007d0332"
+        },
+        {
+          "upstream_lines": [
+            73,
+            75
+          ],
+          "local_lines": [
+            83,
+            85
+          ],
+          "removed_sha256": "53c1a42210aa07cf4f11781b25b46fe848204a4ab48a3104ee76e3a84031633f",
+          "added_sha256": "c7098f14f0bdc47e9870b1e8a094c7cec7ac25937146ca40324e3212e9343d5b"
         },
         {
           "upstream_lines": [
@@ -84,11 +146,95 @@
             97
           ],
           "local_lines": [
-            105,
-            106
+            106,
+            109
           ],
           "removed_sha256": "a6137069735f8e34d73f9d80bb6122579924609d5e9362827dde3b0c265b8686",
-          "added_sha256": "85f05332dd4638fb008a0e5ea0d4a58fc5c0427b414a73c7fbb14b59f38c25bc"
+          "added_sha256": "9d9734ee5514bb711bcd793c76b85224c1703cf6b43667e37ef78960494a9296"
+        },
+        {
+          "upstream_lines": [
+            131,
+            132
+          ],
+          "local_lines": [
+            143,
+            144
+          ],
+          "removed_sha256": "435c46ff0b3447be5bc26689b805c6ba465f3cdd083768173ab1c6a6ec11e16c",
+          "added_sha256": "d3df8bbda2ec727cc827658ab4731d0f79fa33623e6f49950a5dd15d68321fe3"
+        },
+        {
+          "upstream_lines": [
+            138,
+            138
+          ],
+          "local_lines": [
+            150,
+            151
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "f15292accf99bc9d1a5a0b38ebdb0e9cc3fee3b36f51b87c928bc638ec0698d7"
+        },
+        {
+          "upstream_lines": [
+            192,
+            193
+          ],
+          "local_lines": [
+            205,
+            206
+          ],
+          "removed_sha256": "ffabb282941144e905f3926432a53a525abb49feb552ad63de30c4edd3269699",
+          "added_sha256": "d173315ea98b779bcdcb9ae0642b350acad7279c3c544d47d2186aa9042fbcf5"
+        },
+        {
+          "upstream_lines": [
+            196,
+            198
+          ],
+          "local_lines": [
+            209,
+            211
+          ],
+          "removed_sha256": "a976e35799390d59da0fe58b304f74def98fcfbebcb8ee048ff1c25785368eb7",
+          "added_sha256": "f5e37959185aa97714bf8746375bbc9b802d5d1b1776d8cce62173ec112ee393"
+        },
+        {
+          "upstream_lines": [
+            200,
+            201
+          ],
+          "local_lines": [
+            213,
+            214
+          ],
+          "removed_sha256": "9ac485989a8ba989676ed414b323c618d622720a6814df51c19a46bed2c1aaa0",
+          "added_sha256": "2b2295d9fb8150413fe12461be8e8954c9470e6f198c75751a07e4ca7b622620"
+        },
+        {
+          "upstream_lines": [
+            202,
+            203
+          ],
+          "local_lines": [
+            215,
+            216
+          ],
+          "removed_sha256": "fc6a0f6950843eb9321e73b8d135d38f323a491ec1740bc31a48b89503ef69a9",
+          "added_sha256": "9873d2707d0de18e413849b91655ab0bc16a1e190646b7f77adb63cebfc9513a"
+        },
+        {
+          "upstream_lines": [
+            205,
+            206
+          ],
+          "local_lines": [
+            218,
+            219
+          ],
+          "removed_sha256": "a51837dacb2857668ebce45738f67fae17fdf427c608aff8e0a896e65065593c",
+          "added_sha256": "11c9bdb3dac45cc50cf16c54a3f8287ce15a8bc077d0360697752ae8d7b46c8b"
         }
       ],
       "sections": {
@@ -115,10 +261,12 @@
     },
     "evals/evals.json": {
       "upstream_sha256": "dda5328f2322e65fa76d22d4b714ba8377df313121df8f30db400d4ab18680a1",
-      "local_sha256": "19de3458f0a224ba54d92b498904aad6ee3d7f7ed7553c17e2f46437347c4b05",
+      "local_sha256": "58fb5230a2e0996b354d03fa7e6950b63d35222b793a8a2dbd14c34ed9568ddc",
       "status": "adapted",
       "reason": [
-        "Adopt the new existing-authorization release scenario while retaining portable fixture paths and previously established local scope expectations."
+        "Adopt the new existing-authorization release scenario while retaining portable fixture paths and previously established local scope expectations.",
+        "Add synthetic behavior scenarios for explicit follow-up cancellation and bounded governance without publishing user-specific task data.",
+        "Add synthetic feature-document discovery, scoped release verification and owned temporary artifact cleanup scenarios alongside bounded follow-up cancellation and review coverage."
       ],
       "changes": [
         {
@@ -252,6 +400,18 @@
           ],
           "removed_sha256": "613fb2988965c1214b8c1afb0a7fed84408fc2d01588b94a5d77188f6c234837",
           "added_sha256": "6f05ab8518bc1b0965169f7e73c233df19dc1bf1d0638dd5aaaa14e24b8656bc"
+        },
+        {
+          "upstream_lines": [
+            163,
+            163
+          ],
+          "local_lines": [
+            185,
+            256
+          ],
+          "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "added_sha256": "c0bebf9a771940dd787561432853200851ef8de5fb0313701bb65124e5270b10"
         }
       ]
     },
@@ -981,8 +1141,25 @@
     },
     "references/sync-matrix.md": {
       "upstream_sha256": "696233e82288514b944f888e7ee09f922b00dd1af9f9797fc0b95099639dd383",
-      "local_sha256": "696233e82288514b944f888e7ee09f922b00dd1af9f9797fc0b95099639dd383",
-      "status": "identical",
+      "local_sha256": "8b52555451c4f9fde04bc1533693482b0a4f85025474fac2613fa8ae3b916d7d",
+      "status": "adapted",
+      "reason": [
+        "Create a missing project rule file only when project rule construction is part of the requested task; do not attach rule creation to a local document correction."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            61,
+            62
+          ],
+          "local_lines": [
+            61,
+            62
+          ],
+          "removed_sha256": "b3532ac3dcf753f37c7194bf4073e23e7b858d79cd2c3ffdb981bf2bb8e3c2ce",
+          "added_sha256": "a24c3d5e273b5ff7fb884f204a7002e8b4db1ce81108663080750c99bfb25ee1"
+        }
+      ],
       "sections": {
         "# 变更影响矩阵": "# 变更影响矩阵",
         "## 代码或运行态变化 → 知识面": "## 代码或运行态变化 → 知识面",
@@ -995,8 +1172,73 @@
     },
     "references/verification.md": {
       "upstream_sha256": "62881879bc01ec24d92534f67f80e34d7734c8405c7178b10eff7bc018681652",
-      "local_sha256": "62881879bc01ec24d92534f67f80e34d7734c8405c7178b10eff7bc018681652",
-      "status": "identical",
+      "local_sha256": "b92a9004387a8a6b03643c4002d1bf5f8c810a4358ac6d79a4483f13b5b184cd",
+      "status": "adapted",
+      "reason": [
+        "Apply evidence and cleanup conditions only to the relevant fact surfaces and objects; preserve release-specific gates while avoiding deployment, merge or workspace-audit requirements for ordinary owned temporary artifacts."
+      ],
+      "changes": [
+        {
+          "upstream_lines": [
+            12,
+            13
+          ],
+          "local_lines": [
+            12,
+            13
+          ],
+          "removed_sha256": "06c5735aabcdb0312f1e460bafef0bf074f21725ce000dcf02dd5b2a511db19f",
+          "added_sha256": "569f3810b41e76f049a26e38f26d545e523ddfc82289dd3b6c6cd9285ce03302"
+        },
+        {
+          "upstream_lines": [
+            20,
+            21
+          ],
+          "local_lines": [
+            20,
+            21
+          ],
+          "removed_sha256": "2b9cc0be139ef3cc88602ad886224701a8c15b667e3d14f1a71b608da37b5b6d",
+          "added_sha256": "fbe21bc3977ecb6147277e20dc19a4dbadf622f37f7c90505d44727cfa1ea04a"
+        },
+        {
+          "upstream_lines": [
+            69,
+            70
+          ],
+          "local_lines": [
+            69,
+            70
+          ],
+          "removed_sha256": "143e14c4cad9c8a041ed51a3b451076f02284b535ef140562c2f7f5845467ff6",
+          "added_sha256": "1110ed5415e5a7b04b7d5edd0edfc07da3cde574aa35527bec886e939913888b"
+        },
+        {
+          "upstream_lines": [
+            71,
+            73
+          ],
+          "local_lines": [
+            71,
+            73
+          ],
+          "removed_sha256": "e037828ef59fa62b9659ccb83903aabd15052a93a7e9cb9c24d4cd4a03e53794",
+          "added_sha256": "9417a00a974b9d2c51c1de599939fd3e1ea8b6921056111bd61113a5150073f0"
+        },
+        {
+          "upstream_lines": [
+            78,
+            79
+          ],
+          "local_lines": [
+            78,
+            79
+          ],
+          "removed_sha256": "967cdb35f3c4e7231a2bcf9f45d5901617e129f80be92f3dba2395d6c92f48aa",
+          "added_sha256": "cd44ef678961fbf9a7543fba962c1e980a27dbc42d621ae43c5472e351c0c966"
+        }
+      ],
       "sections": {
         "# 证据层级与发布终态": "# 证据层级与发布终态",
         "## 发布状态机": "## 发布状态机",
@@ -1015,6 +1257,12 @@
   },
   "local_only": {
     "LICENSE": "b7f53d07ea4ae2eef26a4f8b28cb7d4df95586e2aa713df408f1ffde9f5a0fea",
+    "evals/fixtures/eval-12-stop-followups/ROADMAP.md": "20275b880101fed76364f65fac94173afc95d03e630e2d6763ef497ab35166eb",
+    "evals/fixtures/eval-14-feature-doc-sync/clients/mobile/README.md": "229c6a915b4081a02415571fd6eeecb6e83ac3998135213d4c61aef8b0b80aa7",
+    "evals/fixtures/eval-14-feature-doc-sync/docs/api.md": "d5e37fa153f5a3ca61eab1d6481dc22c489db75d91d18795a597a7ce90dc1db3",
+    "evals/fixtures/eval-14-feature-doc-sync/docs/history.md": "b3cc58d46c8b15b21342f6ca49f8df155117ba53e796e2d0c3e42e715a101b66",
+    "evals/fixtures/eval-14-feature-doc-sync/preview/preview.txt": "a2720b13f6ff30869b4f5996af5611de82c6f044adc1c02c94a72053b243f9f1",
+    "evals/fixtures/eval-14-feature-doc-sync/src/routes.py": "6501055fb28f2e8ba5e13105e99ba49a65e440f755f7a1b79fa1482278cd7628",
     "evals/test_validate.py": "7137844de0703c75ac1e9c60a613708a84c03ae3b87f32e5ec1d3edad9bd7c2c"
   }
 }
