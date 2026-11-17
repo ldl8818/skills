@@ -9,7 +9,7 @@ metadata:
   github_hash: "58217546cd94fcf5ddcde4265c00a9377ed3192c"
   github_date: "11-02"
   github_ref: "main"
-  version: "6.2.1"
+  version: "6.2.2"
   author: Tw93
   homepage: https://github.com/tw93/Waza
   github_path: "skills/check"
@@ -202,7 +202,7 @@ Run the four attack angles in `references/persona-catalog.md`. Convergence from 
 
 ## Platform Operations
 
-Derive the host CLI/API from public project docs; do not force GitHub commands onto other hosts, and confirm CI passes before merging. Poll CI as structured state, not streamed text: `gh run view <id> --json status,conclusion` (or the host's equivalent). Piping `gh run watch`, test output, or build output through `tail`/`head` swallows the real exit code and can report a failed or still-running run as green.
+Derive the host CLI/API from public project docs; do not force GitHub commands onto other hosts. Follow the user and project CI policy: ordinary push or direct branch merge does not itself require querying or waiting for CI; hosted PR merges must satisfy their required checks. When a CI wait is required, poll structured state rather than streamed text: `gh run view <id> --json status,conclusion` (or the host's equivalent). Piping `gh run watch`, test output, or build output through `tail`/`head` swallows the real exit code and can report a failed or still-running run as green.
 
 ## Verification
 

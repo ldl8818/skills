@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "bdf18fec850a1b754ed5d04fa128359344b9e43f2d9c9bcd08936a0163573c48",
-      "local_sha256": "3e8af92c89be0384ac73ad2486a8df294646da01a6985f8dfa785e4205acfd49",
+      "local_sha256": "d477e1dcb5aacf730a83141f5adc6525f0104d4ef0ee10faaeef132a5ec3ff5b",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Produces distinctive production UI and screenshot-grounded visual polish. Use when building or restyling pages, components, or typography. Not for backend logic or data pipelines.\"\n",
@@ -21,7 +21,9 @@
         "Preserve routing to image/document/Hunt tools, existing product style and browser selection without losing upstream design methods.",
         "Use lowercase lookup in the local browser-routing adaptation; preserve upstream text and routing fields.",
         "Require lookup resource closeout as part of UI verification; temporary verification closes by default and user-feedback previews reuse one space. Keep retention exceptions and closure evidence in lookup as the single lifecycle source.",
-        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required."
+        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required.",
+        "Scope verification to the changed component and directly affected consumers; expand viewport coverage only for shared layout changes or observed breakage, reusing unchanged evidence under the user verification policy.",
+        "Keep local-fix handoffs concise; do not require generic design narration or placeholder instructions when those do not apply."
       ],
       "changes": [
         {
@@ -46,7 +48,7 @@
             15
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "d78962422da81e77af504c0c6dcb2e675bb2d134f558058772a93af42a60b32f"
+          "added_sha256": "b371621ebf5244bfce92e26bff3c98e06505c7a4b30d8157ecb7223702d01926"
         },
         {
           "upstream_lines": [
@@ -86,12 +88,36 @@
         },
         {
           "upstream_lines": [
+            123,
+            124
+          ],
+          "local_lines": [
+            133,
+            134
+          ],
+          "removed_sha256": "2607946946fc044ea33089502b0c5eab8a645ff6dab183b642d2c97873026efd",
+          "added_sha256": "2afecf49fc59bfdc12947ff120ba8a9757e022dbb629dccb8c59cf76f9c834cd"
+        },
+        {
+          "upstream_lines": [
+            125,
+            129
+          ],
+          "local_lines": [
+            135,
+            136
+          ],
+          "removed_sha256": "4297d73fd48e8479abbe325695f6850107d242990226521421821345c1cf9816",
+          "added_sha256": "e6307bb73ae40735d0d4103ca9cb4b8d82ebb00ecba98c4d103e5e99e292313e"
+        },
+        {
+          "upstream_lines": [
             131,
             131
           ],
           "local_lines": [
-            141,
-            147
+            138,
+            144
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "added_sha256": "ebfdfa020373f1bca7e0825902921d3cbf1b259c42fb02b2dc866d2857c916a2"

@@ -6,7 +6,7 @@
   "files": {
     "SKILL.md": {
       "upstream_sha256": "03c263a99179ae839d7c51730a67d85bad1fd831cac03e66c5326db25e256113",
-      "local_sha256": "53e8ef23f80bf3edf431281e1820ca7f83f9f295cdb5d2f0580b14aecbb2d2de",
+      "local_sha256": "835107348e40b43125cde55a1f963c27db511d9808f5a22a60b0b933b31f93f1",
       "status": "adapted",
       "upstream_fields": {
         "description": "description: \"Reviews diffs, PRs, release readiness, and publishing follow-through. Use when asked to review, triage issues or PRs, or ship. Not for debugging root causes or prose.\"\n",
@@ -26,7 +26,8 @@
         "Retain all new main-channel review coverage, release-channel baseline, incident replay, cache verification and reporting guidance. Risk depth continues to follow behavior rather than file count. Apply only project-required human gates; path matching does not create redundant approval under existing authorization.",
         "Pre-existing in-scope material defects continue to affect readiness and authorized repair; label their origin without excluding them from the task verdict.",
         "Repeated review rounds trigger reassessment of the shared approach, not an arbitrary three-round termination while authorized progress remains possible.",
-        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required."
+        "Reconcile the complete current main snapshot, preserving the frozen local version and all unchanged local behavior; the upstream route fields remain verbatim or insertion-only as required.",
+        "Honor user and project CI policy: ordinary pushes and direct branch merges do not automatically query or wait for CI; required hosted PR checks remain enforced."
       ],
       "changes": [
         {
@@ -51,7 +52,7 @@
             17
           ],
           "removed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "added_sha256": "9693edf8d5c00c24eea6c069be3e32fd9c84ea1f157a37bf0535d43c2748b9d1"
+          "added_sha256": "251ea2c80629b604d237cdd76a54fd2d33d44401c7aa4d2e2f5953980d35dd2d"
         },
         {
           "upstream_lines": [
@@ -160,6 +161,18 @@
           ],
           "removed_sha256": "354366270ea08022e007302c9a2b58a8e1e74958aab913c6fdab44f51d6f8c03",
           "added_sha256": "c3591ea0f20f39690db4286dc186f6540a18f893fc8bfb6a7a4a996115d7410c"
+        },
+        {
+          "upstream_lines": [
+            192,
+            193
+          ],
+          "local_lines": [
+            204,
+            205
+          ],
+          "removed_sha256": "8216351d51d5e90e320f9b42186580fc4234a28ec2b48c508cddfd192168c247",
+          "added_sha256": "72eaedbbe5e6b8490668613f346808bdf589b431535f89a5c5fc90d393d40fa4"
         },
         {
           "upstream_lines": [

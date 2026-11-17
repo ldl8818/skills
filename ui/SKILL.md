@@ -9,7 +9,7 @@ metadata:
   github_hash: "58217546cd94fcf5ddcde4265c00a9377ed3192c"
   github_date: "11-02"
   github_ref: "main"
-  version: "4.2.2"
+  version: "4.2.3"
   github_path: "skills/ui"
   github_url: "https://github.com/tw93/waza"
   update_policy: "frozen"
@@ -131,12 +131,9 @@ After significant build phases and at handoff, re-read the visual thesis from di
 
 Before the handoff summary, a new page or visual system also runs the Aesthetic Review Checks in `references/design-reference.md`. Every surface runs the AI Slop Test: would a stranger glancing at the first viewport say "an AI made this"? Scan it for the Absolute Bans and Common Traps in `references/design-reference.md` (reflex font, default gradient, centered hero with two CTAs side by side, three identical cards, generic top nav) and fix typography, color, or layout until any that were not an explicit part of the direction are gone.
 
-If any check fails, fix first. Render the product's supported viewport or window range yourself: web breakpoints on both sides, and native minimum width, minimum height, their combination, and normal size. Test samples do not require new layout branches. Only when the host cannot render, say so and hand the user the exact view to check.
+If any check fails, fix first. Verify the changed component and directly affected consumers in the smallest relevant viewport and interaction cases. Expand to the supported size range only for shared layout changes or concrete breakage; reuse unchanged screenshots and checks, and state any unavailable visual evidence.
 
-End with:
-- Aesthetic direction, named and justified in 2-3 sentences
-- Non-obvious choices explained: typeface, color decisions, layout logic
-- Instructions for replacing placeholder content with real content
+For new surfaces, explain consequential design choices and any remaining placeholder content. For local fixes, briefly report the changed result and relevant verification; omit inapplicable design or placeholder boilerplate.
 
 After handoff, stop.
 
