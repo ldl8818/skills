@@ -11,7 +11,7 @@
 | [`lookup`](lookup/) | 融合 Agent Reach 和 OpenCLI 全部能力的联网与浏览器统一入口；按需执行、配置、开发维护及更新 lookup 本体与上游 |
 | [`self-improving`](self-improving/) | Claude Code 与 Codex 共用的可配置、自我进化记忆系统；公开程序与私人记忆分离 |
 | [`skill-manager`](skill-manager/) | Skill 的列出、溯源、查更新、更新、启停、定版本、自检和归档删除 |
-| [`download-video`](download-video/) | 按中文内容标题和发布日期下载视频，并用 `ffprobe` 验证本地文件 |
+| [`video-downloader`](video-downloader/) | 下载或打开视频并按需提取字幕、语音转写与视觉关键帧，生成带时间戳的 `multimodal_transcript.md`（来源 `kangarooking/kangarooking-skills`） |
 | [`luobo-ppt`](luobo-ppt/) | 生成与美化可编辑的原生 PPT，支持公司模板、品牌规范及普通原生图表；本地定制冻结版 |
 
 每个 Skill 的依赖、安装和验证命令以其目录内的 `README.md` 与 `SKILL.md` 为准。
@@ -34,7 +34,7 @@
 | ui | [ui-v4.1.0](https://github.com/ldl8818/skills/archive/refs/tags/ui-v4.1.0.zip) |
 | write | [write-v4.2.0](https://github.com/ldl8818/skills/archive/refs/tags/write-v4.2.0.zip) |
 
-`think` 使用已登记的 Waza 原版基线版本，不另编自身版本；`download-video` 尚无已登记版本，暂不建立数字版本标签。
+`think` 使用已登记的 Waza 原版基线版本，不另编自身版本；`video-downloader` 跟随上游 `kangarooking/kangarooking-skills` 主分支，暂不建立独立数字版本标签。
 
 独立快照中的 Skill 文件与标签说明记录的来源目录逐字一致，快照提交不带整仓父提交。跨目录文档的固定来源链接、外部工具与跨 Skill 协作前提见下载包根目录的 `README.md`；单包不包含批量冻结安装器需要的其他 Skill。解压后使用包内对应目录，保护已有安装。源码分发、隔离入口检查与真实业务／客户端验收分别判断。
 
