@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Link repository-owned frozen Skills without downloading or overwriting."""
+"""Link repository-owned Skills without downloading or overwriting."""
 import argparse
 import json
 import os
@@ -10,14 +10,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import core
 import audit_upstream
 
-NAMES = ('check', 'health', 'hunt', 'ui', 'write')
-ENTRY_ROOTS = ('.agents/skills', '.claude/skills', '.codex/skills')
+NAMES = ('check', 'ui', 'write', 'neat-freak')
+CLIENT_ROOTS = {
+    'codex': None,  # Codex uses the shared ~/.agents/skills root directly.
+    'claude': '.claude/skills',
+    'antigravity': '.gemini/config/skills',
+    'workbuddy': '.workbuddy-ai/skills',
+}
+ENTRY_ROOTS = ('.agents/skills', '.claude/skills', '.gemini/config/skills', '.workbuddy-ai/skills')
 
 
-def install(repo, home, clients=('claude', 'codex')):
-    if not clients or not set(clients) <= {'claude', 'codex'}:
+def _target_roots(clients):
+    if not clients or not set(clients) <= set(CLIENT_ROOTS):
         raise ValueError('invalid clients')
-    roots = ('.agents/skills',) + tuple(f'.{client}/skills' for client in dict.fromkeys(clients))
+    roots = ['.agents/skills']
+    for client in dict.fromkeys(clients):
+        root = CLIENT_ROOTS[client]
+        if root and root not in roots:
+            roots.append(root)
+    return tuple(roots)
+
+
+def install(repo, home, clients=('claude', 'codex', 'antigravity', 'workbuddy')):
+    roots = _target_roots(clients)
     repo, home = repo.resolve(), home.resolve()
     pending = []
     # Preflight the complete set before mutating any entry.
@@ -26,12 +41,17 @@ def install(repo, home, clients=('claude', 'codex')):
         if source.is_symlink() or not (source / 'SKILL.md').is_file():
             raise ValueError(f'{name}: repository source missing or indirect')
         meta = core.parse_skill_md(str(source / 'SKILL.md'))
-        if meta.get('name') != name or meta.get('update_policy') != 'frozen':
-            raise ValueError(f'{name}: expected a frozen named Skill')
-        receipt = json.loads((source / audit_upstream.RECEIPT).read_text())
-        errors = audit_upstream.verify(source, receipt)
-        if errors:
-            raise ValueError(f'{name}: incomplete upstream merge: ' + '; '.join(errors))
+        if meta.get('name') != name:
+            raise ValueError(f'{name}: unexpected Skill identity')
+        policy = meta.get('update_policy')
+        is_local = meta.get('source') == 'local'
+        if policy == 'frozen':
+            receipt = json.loads((source / audit_upstream.RECEIPT).read_text())
+            errors = audit_upstream.verify(source, receipt)
+            if errors:
+                raise ValueError(f'{name}: incomplete upstream merge: ' + '; '.join(errors))
+        elif not is_local:
+            raise ValueError(f'{name}: expected a local or frozen repository Skill')
         for relative in roots:
             entry = home / relative / name
             # A client root may be a symlink, but must remain inside the supplied HOME.
@@ -65,14 +85,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repo', required=True, type=Path)
     parser.add_argument('--home', type=Path, default=Path.home(), help='Target home; default current user')
-    parser.add_argument('--clients', default='claude,codex', help='Comma-separated claude,codex; shared Agent links are always installed')
+    parser.add_argument(
+        '--clients',
+        default='claude,codex,antigravity,workbuddy',
+        help='Comma-separated claude,codex,antigravity,workbuddy; shared .agents/skills links are always installed',
+    )
     args = parser.parse_args()
     try:
-        count = install(args.repo, args.home, tuple(args.clients.split(',')))
+        count = install(args.repo, args.home, tuple(c for c in args.clients.split(',') if c))
     except (OSError, ValueError) as error:
-        print(f'Frozen Skill install blocked: {error}', file=sys.stderr)
+        print(f'Repository Skill install blocked: {error}', file=sys.stderr)
         return 1
-    print(f'Frozen Skills ready: {len(NAMES)} sources; {count} links created; no downloads')
+    print(f'Repository Skills ready: {len(NAMES)} sources; {count} links created; no downloads')
     return 0
 
 

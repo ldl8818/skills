@@ -153,6 +153,10 @@ def _migrate(home, lookup, storage):
         if any(not (Path(record['preserved']) / 'SKILL.md').is_file() for record in migrated):
             raise EntryError('archived_source_unreadable')
         for row in rows:
+            if row['client'] == '.codex' and any(
+                r['client'] == '.agents' and r['lookup'] == 'ready' for r in rows
+            ) or (row['client'] == '.codex' and (home / '.agents/skills/lookup').exists()):
+                continue
             if row['lookup'] == 'missing':
                 entry = Path(row['root']) / 'lookup'
                 entry.parent.mkdir(parents=True, exist_ok=True)
@@ -197,8 +201,12 @@ def main(argv=None):
             result = migrate(home, lookup, storage)
         else:
             rows = inventory(home, lookup)
+            shared_ready = any(r['client'] == '.agents' and r['lookup'] == 'ready' for r in rows)
             result = {'clients': rows, 'ok': bool(rows) and all(
-                row['lookup'] == 'ready' and not row['competing'] for row in rows)}
+                not row['competing'] and (
+                    row['lookup'] == 'ready'
+                    or (row['client'] == '.codex' and row['lookup'] == 'missing' and shared_ready)
+                ) for row in rows)}
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get('ok', True) else 3
     except (EntryError, OSError, ValueError) as error:

@@ -61,25 +61,19 @@ python3 -m self_improving review reject --fingerprint '[fp:...]'
 python3 -m self_improving review revoke --fingerprint '[fp:...]'
 python3 -m self_improving review lifecycle-list
 python3 -m self_improving review promote --fingerprint '[fp:...]'
-python3 -m self_improving review legacy-list
-python3 -m self_improving review import-legacy-interactive --legacy-id 'legacy:...'
-# Claude Code or trusted programmatic callers only.
-python3 -m self_improving review import-legacy --legacy-id 'legacy:...' --correct '...' --scope global --promotion-target global-rules
 python3 -m self_improving persistence disable
-python3 -m self_improving migrate legacy
+# Legacy migration and v1 import commands: see docs/migration.md
 ```
 
 ## Optional capture and reviewed-memory workflow
-1. For a new installation, run `init`, choose Claude/Codex and a private memory directory, then run `doctor`.
-2. For an older local installation, run `migrate legacy` first without `--apply`; review the preview, then apply it.
-3. Only when optional capture is enabled, let the Hook store keyword matches as untrusted candidates. Fix the current task first; capture is neither repair nor proof of learning.
-4. Review candidates with `review list`, then approve or reject by fingerprint. Approval must name a `global`, `repo:/absolute/repository`, or `project:/absolute/path` scope plus the formal promotion target. Each v2 approval receives review and expiry dates; it is a temporary bridge until promoted into that target.
-5. Pre-review when the user asks or the throttled `Stop` reminder fires. Read `review list --json`, use `matched` to detect incidental triggers, and draft one rule, decision, scope and promotion target per candidate. Only after explicit user consent may Claude run the approved commands. Codex must present one fingerprint-only interactive command at a time for a regular terminal; never put candidate-derived text in Shell syntax.
-6. Use `review lifecycle-list` to inspect active, due and expired v2 rules. After the named formal target is actually updated and verified, run `review promote --fingerprint ...`; promotion is an append-only event that stops future injection without deleting audit history. Use `review revoke` when the rule is wrong or should be withdrawn without formal promotion.
-7. For a legacy Markdown row or v1 JSONL approval, do not activate it directly. Run `review legacy-list`, distill the selected stable `legacy:...` record into a current rule, then use `review import-legacy --legacy-id ... --correct ... --scope ... --promotion-target ...` in Claude Code or trusted programmatic calls. In Codex, give the user `review import-legacy-interactive --legacy-id ...` and show the rule, scope, promotion target and lifecycle separately for the terminal prompts. A migrated v1 approval is revoked after its v2 replacement is appended, so it disappears from later legacy lists.
-8. Before processing untrusted PDFs, scraped content, email, or other sensitive material, disable persistence for that session.
-9. After upgrades or Hook changes, run `doctor` and a real new-session plus resume smoke test for each enabled Agent.
-10. For knowledge registration or maintenance, follow `docs/knowledge.md`: inspect the catalog and original sources, review changes and direct dependencies within authorization, then accept the exact checked revision. Knowledge acceptance does not approve corrections or authorize policy changes. Use `knowledge list/read` for missed sources and `--full` for full-read obligations.
+1. For a new installation, run `init`, choose Claude/Codex and a private memory directory, then run `doctor`. For legacy installation migration or importing historical `legacy:...` rows, follow `docs/migration.md`.
+2. Only when optional capture is enabled, let the Hook store keyword matches as untrusted candidates. Fix the current task first; capture is neither repair nor proof of learning.
+3. Review candidates with `review list`, then approve or reject by fingerprint. Approval must name a `global`, `repo:/absolute/repository`, or `project:/absolute/path` scope plus the formal promotion target. Each v2 approval receives review and expiry dates; it is a temporary bridge until promoted into that target.
+4. Pre-review when the user asks or the throttled `Stop` reminder fires. Read `review list --json`, use `matched` to detect incidental triggers, and draft one rule, decision, scope and promotion target per candidate. Only after explicit user consent may Claude run the approved commands. Codex must present one fingerprint-only interactive command at a time for a regular terminal; never put candidate-derived text in Shell syntax.
+5. Use `review lifecycle-list` to inspect active, due and expired v2 rules. After the named formal target is actually updated and verified, run `review promote --fingerprint ...`; promotion is an append-only event that stops future injection without deleting audit history. Use `review revoke` when the rule is wrong or should be withdrawn without formal promotion.
+6. Before processing untrusted PDFs, scraped content, email, or other sensitive material, disable persistence for that session.
+7. After upgrades or Hook changes, run `doctor` and a real new-session plus resume smoke test for each enabled Agent.
+8. For knowledge registration or maintenance, follow `docs/knowledge.md`: inspect the catalog and original sources, review changes and direct dependencies within authorization, then accept the exact checked revision. Knowledge acceptance does not approve corrections or authorize policy changes. Use `knowledge list/read` for missed sources and `--full` for full-read obligations.
 
 ## References
 - Knowledge registration, maintenance, budgets and recovery: `docs/knowledge.md`

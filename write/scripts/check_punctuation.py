@@ -43,7 +43,7 @@ WIKILINK_RE = re.compile(r"\[\[([^\[\]|]*)(?:\|([^\[\]]*))?\]\]")
 _HANGUL_RE = re.compile(f"[{HANGUL}]")
 _KANA_RE = re.compile(f"[{KANA}]")
 _CJK_RE = re.compile(f"[{CJK}]")
-_LATIN_RE = re.compile(r"[A-Za-z0-9]")
+_LATIN_RE = re.compile(r"[A-Za-z]")
 _LINE_END_RE = re.compile(r"(\r\n|\r|\n)\Z")
 _CJK_KANA_HANGUL_RE = re.compile(f"[{CJK}{KANA}{HANGUL}]")
 _LINE_SPLIT_RE = re.compile(r"\r\n|\r|\n")
@@ -227,7 +227,7 @@ def check_zh(line: str, mask: list[bool], lineno: int, findings: list[Finding]) 
             continue
         p = m.group()[0]
         findings.append(Finding(lineno, m.start() + 1, "zh-halfwidth-punct", m.group(), f"{p} -> {FULLWIDTH[p]}"))  # 1-based column of the offending punctuation
-    for m in re.finditer(f"[{CJK}][A-Za-z0-9]|[A-Za-z0-9][{CJK}]", line):
+    for m in re.finditer(f"[{CJK}][A-Za-z]|[A-Za-z][{CJK}]", line):
         if overlaps_exempt(mask, m.start(), m.end()):
             continue
         findings.append(Finding(lineno, m.start() + 1, "zh-missing-space", m.group(), "add a space between CJK and Latin"))

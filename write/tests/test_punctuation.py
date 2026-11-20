@@ -59,6 +59,13 @@ class WikilinkPreservationTests(unittest.TestCase):
         result = self.run_checker('见 [[docs/Python教程]] 与 `中文,标点`。\n')
         self.assertEqual(result.returncode, 0, result.stdout)
 
+    def test_ascii_double_hyphen_and_cjk_digits_without_space_are_allowed(self):
+        result = self.run_checker('共7个全局 Skill -- 约48KB，兼容 Python 3。\n')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        bad_dash = self.run_checker('这是一句测试——带全角破折号。\n')
+        self.assertEqual(bad_dash.returncode, 1, bad_dash.stdout)
+        self.assertIn('[dash]', bad_dash.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()
