@@ -369,6 +369,15 @@ else
 fi
 
 # ---------- 汇总 ----------
+GUARD_LOG="${XDG_STATE_HOME:-$HOME/.local/state}/lookup/entry-guard.log"
+if [[ -f "$GUARD_LOG" ]]; then
+  last_guard_line=$(tail -n 1 "$GUARD_LOG" 2>/dev/null || true)
+  if [[ "$last_guard_line" == *"ERROR"* ]]; then
+    bad "入口守卫最近一次记录含 ERROR：${last_guard_line:0:140}"
+  else
+    ok "入口守卫日志无最新报错"
+  fi
+fi
 skip "Exa／豆包搜索未在本模式验证；--search 单独验证 Exa 免 Key 搜索"
 printf '\n\033[1m结果\033[0m  通过 %d  失败 %d  跳过 %d\n' "$PASS" "$FAIL" "$SKIP"
 if [[ "$FAIL" -gt 0 ]]; then

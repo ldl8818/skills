@@ -1,8 +1,8 @@
 ---
 name: video-downloader
 description: Download or open videos and recover platform captions, audio transcripts, keyframes, screen text, visual facts, and editing observations with Doubao or LongCat-2.5 as a plain multimodal_transcript.md. Use for Douyin, Bilibili, YouTube, Xiaohongshu, experimental WeChat Channels links, or local video files when preparing complete source material for analysis or downstream Skill distillation.
-when_to_use: "下载这个视频、保存视频到本地、提取视频字幕、视频转文字、分析视频画面、生成多模态逐字稿、download video、video downloader、multimodal transcript"
-dispatch_intent: "下载或打开 Douyin、Bilibili、YouTube、Xiaohongshu、微信视频号链接或本地视频，按需提取平台字幕、语音转写与视觉关键帧，生成带时间戳的 multimodal_transcript.md。"
+when_to_use: "下载这个视频、保存视频到本地、下载视频并提取字幕、视频转文字、分析视频画面、生成多模态逐字稿、download video、video downloader、multimodal transcript"
+dispatch_intent: "下载或打开 Douyin、Bilibili、YouTube、Xiaohongshu、微信视频号链接或本地视频，按需提取平台字幕、语音转写与视觉关键帧，生成带时间戳的 multimodal_transcript.md；仅搜索视频或快速读取在线字幕总结交给 lookup。"
 metadata:
   zh_description: "下载视频并提取字幕、语音转写与视觉关键帧，生成 multimodal_transcript.md"
   github_url: https://github.com/kangarooking/kangarooking-skills

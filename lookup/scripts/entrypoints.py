@@ -51,7 +51,7 @@ def inventory(home, lookup):
     return result
 
 
-def migrate(home, lookup, storage):
+def migrate(home, lookup, storage, *, create_lookup=True):
     # All callers for this HOME share an inode lock, including maintenance and
     # direct CLI invocations. A crash releases it without a stale lock file.
     fd = os.open(home, os.O_RDONLY)
@@ -60,12 +60,26 @@ def migrate(home, lookup, storage):
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as error:
             raise EntryError('migration_in_progress_no_changes') from error
-        return _migrate(home, lookup, storage)
+        return _migrate(home, lookup, storage, create_lookup=create_lookup)
     finally:
         os.close(fd)
 
 
-def _migrate(home, lookup, storage):
+def _prune_dangling(receipt):
+    kept = []
+    pruned = 0
+    for record in receipt['entries']:
+        preserved = Path(record['preserved'])
+        if record.get('original_link') is not None and preserved.is_symlink() and not preserved.exists():
+            preserved.unlink(missing_ok=True)
+            pruned += 1
+        else:
+            kept.append(record)
+    receipt['entries'] = kept
+    return pruned
+
+
+def _migrate(home, lookup, storage, *, create_lookup=True):
     relative_storage = storage.relative_to(home)
     home, lookup = home.resolve(), lookup.resolve()
     storage = home / relative_storage
@@ -75,7 +89,7 @@ def _migrate(home, lookup, storage):
     if not rows:
         rows = [{'client': '.agents', 'root': str(home / '.agents/skills'),
                  'competing': [], 'lookup': 'missing'}]
-    if any(row['lookup'] == 'conflict' for row in rows):
+    if create_lookup and any(row['lookup'] == 'conflict' for row in rows):
         raise EntryError('lookup_entry_conflict_no_changes')
     for row in rows:
         current = home
@@ -98,17 +112,23 @@ def _migrate(home, lookup, storage):
                    or not record['preserved'] for record in receipt['entries'])):
         raise EntryError('execution_receipt_invalid')
     managed = {record['preserved'] for record in receipt['entries']}
-    moves = []
+    archived_live_links = set()
+    for record in receipt['entries']:
+        preserved = Path(record['preserved'])
+        if (record.get('original_link') is not None and preserved.is_symlink()
+                and (preserved / 'SKILL.md').is_file()):
+            archived_live_links.add((record.get('original'), str(preserved.resolve())))
+    relocating_dirs = []
     for row in rows:
         for name in row['competing']:
             entry = Path(row['root']) / name
-            destination = storage / row['client'].replace('/', '-') / name
-            if existing(destination):
-                if str(destination) not in managed:
-                    raise EntryError('execution_destination_conflict_no_changes')
-                destination = destination.with_name(name + '-' + uuid.uuid4().hex[:12])
-                if existing(destination):
-                    raise EntryError('execution_destination_conflict_no_changes')
+            if not entry.is_symlink() and entry.is_dir():
+                relocating_dirs.append(entry.resolve())
+    moves = []
+    dedups = []
+    for row in rows:
+        for name in row['competing']:
+            entry = Path(row['root']) / name
             if not entry.is_symlink() and not entry.is_dir():
                 raise EntryError('unsupported_skill_entry_no_changes')
             guide = entry / 'SKILL.md'
@@ -118,6 +138,22 @@ def _migrate(home, lookup, storage):
             declared = re.search(r'^name:\s*[\"\']?([a-z0-9-]+)[\"\']?\s*$', header[1], re.M) if len(header) == 3 else None
             if not declared or declared.group(1) != name:
                 raise EntryError('skill_identity_mismatch_no_changes')
+            if entry.is_symlink():
+                resolved_path = entry.resolve()
+                points_into_relocating = any(
+                    resolved_path == rel_dir or resolved_path.is_relative_to(rel_dir)
+                    for rel_dir in relocating_dirs
+                )
+                if not points_into_relocating and (str(entry), str(resolved_path)) in archived_live_links:
+                    dedups.append({'original': str(entry), 'original_link': os.readlink(entry), 'target': str(resolved_path)})
+                    continue
+            destination = storage / row['client'].replace('/', '-') / name
+            if existing(destination):
+                if str(destination) not in managed:
+                    raise EntryError('execution_destination_conflict_no_changes')
+                destination = destination.with_name(name + '-' + uuid.uuid4().hex[:12])
+                if existing(destination):
+                    raise EntryError('execution_destination_conflict_no_changes')
             moves.append({'original': str(entry), 'preserved': str(destination),
                           'original_link': os.readlink(entry) if entry.is_symlink() else None,
                           'target': str(entry.resolve()) if entry.is_symlink() else None})
@@ -134,8 +170,13 @@ def _migrate(home, lookup, storage):
     storage.mkdir(parents=True, exist_ok=True, mode=0o700)
     storage.chmod(0o700)
     migrated = []
+    deduplicated = []
     created = []
+    pruned = 0
     try:
+        for record in dedups:
+            Path(record['original']).unlink()
+            deduplicated.append(record)
         for record in moves:
             entry, destination = Path(record['original']), Path(record['preserved'])
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -152,16 +193,25 @@ def _migrate(home, lookup, storage):
                     temporary.unlink(missing_ok=True)
         if any(not (Path(record['preserved']) / 'SKILL.md').is_file() for record in migrated):
             raise EntryError('archived_source_unreadable')
-        for row in rows:
-            if row['client'] == '.codex' and any(
-                r['client'] == '.agents' and r['lookup'] == 'ready' for r in rows
-            ) or (row['client'] == '.codex' and (home / '.agents/skills/lookup').exists()):
-                continue
-            if row['lookup'] == 'missing':
-                entry = Path(row['root']) / 'lookup'
-                entry.parent.mkdir(parents=True, exist_ok=True)
-                entry.symlink_to(lookup, target_is_directory=True)
-                created.append(entry)
+        if create_lookup:
+            antigravity_shared = (
+                any(r['client'] == '.gemini/config' and r['lookup'] == 'ready' for r in rows)
+                or (home / '.gemini/config/skills/lookup').exists()
+            )
+            for row in rows:
+                if row['client'] == '.codex' and (
+                    any(r['client'] == '.agents' and r['lookup'] == 'ready' for r in rows)
+                    or (home / '.agents/skills/lookup').exists()
+                ):
+                    continue
+                if row['client'] in ('.gemini/antigravity', '.gemini/antigravity-cli') and antigravity_shared:
+                    continue
+                if row['lookup'] == 'missing':
+                    entry = Path(row['root']) / 'lookup'
+                    entry.parent.mkdir(parents=True, exist_ok=True)
+                    entry.symlink_to(lookup, target_is_directory=True)
+                    created.append(entry)
+        pruned = _prune_dangling(receipt)
         receipt['entries'].extend(migrated)
         with tempfile.NamedTemporaryFile(mode='w', dir=storage, prefix='entries-', delete=False) as stream:
             temporary = Path(stream.name)
@@ -181,16 +231,116 @@ def _migrate(home, lookup, storage):
                 destination.unlink(missing_ok=True)
             else:
                 shutil.move(str(destination), str(entry))
+        for record in reversed(deduplicated):
+            entry = Path(record['original'])
+            if not existing(entry):
+                entry.symlink_to(record['original_link'], target_is_directory=True)
         raise
-    return {'migrated': len(migrated), 'lookup_created': len(created),
-            'receipt': str(receipt_path), 'clients': inventory(home, lookup)}
+    return {'migrated': len(migrated), 'deduplicated': len(deduplicated), 'pruned': pruned,
+            'lookup_created': len(created), 'receipt': str(receipt_path), 'clients': inventory(home, lookup)}
+
+
+def is_clean(rows):
+    shared_ready = any(r['client'] == '.agents' and r['lookup'] == 'ready' for r in rows)
+    antigravity_shared = any(r['client'] == '.gemini/config' and r['lookup'] == 'ready' for r in rows)
+    return bool(rows) and all(
+        not row['competing'] and (
+            row['lookup'] == 'ready'
+            or (row['client'] == '.codex' and row['lookup'] == 'missing' and shared_ready)
+            or (row['client'] in ('.gemini/antigravity', '.gemini/antigravity-cli')
+                and row['lookup'] == 'missing' and antigravity_shared)
+        ) for row in rows
+    )
+
+
+def watch_paths_for(home):
+    home = home.resolve()
+    paths = []
+    for client in CLIENTS:
+        skills_dir = home / client / 'skills'
+        client_dir = home / client
+        if skills_dir.is_dir():
+            paths.append(str(skills_dir))
+        elif client_dir.is_dir():
+            paths.append(str(client_dir))
+    ego_dir = home / '.local/share/ego'
+    if ego_dir.exists() or (home / '.local/share').is_dir():
+        paths.append(str(ego_dir))
+    return list(dict.fromkeys(paths))
+
+
+def install_guard(home, lookup, *, load=True):
+    import plistlib
+    import subprocess
+    home, lookup = home.resolve(), lookup.resolve()
+    if not (lookup / 'SKILL.md').is_file():
+        raise EntryError('lookup_source_missing')
+    guard_dir = home / '.local/share/lookup/entry-guard'
+    state_dir = home / '.local/state/lookup'
+    guard_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    label = 'com.lookup.技能入口守卫'
+    script_path = guard_dir / 'lookup-技能入口守卫'
+    plist_src = guard_dir / f'{label}.plist'
+    log_path = state_dir / 'entry-guard.log'
+    err_path = state_dir / 'entry-guard.err.log'
+    python_bin = Path(sys.executable).resolve()
+    script_body = (
+        '#!/bin/zsh\n'
+        'set -euo pipefail\n'
+        f'LOOKUP_ROOT={json.dumps(str(lookup))}\n'
+        f'LOG_FILE={json.dumps(str(log_path))}\n'
+        'mkdir -p "$(dirname "$LOG_FILE")"\n'
+        f'out=$({json.dumps(str(python_bin))} -B "$LOOKUP_ROOT/scripts/entrypoints.py" guard --lookup-root "$LOOKUP_ROOT" --quiet 2>&1) || {{\n'
+        '  rc=$?\n'
+        '  printf \'[%s] ERROR rc=%s %s\\n\' "$(TZ=Asia/Shanghai date \'+%Y-%m-%d %H:%M:%S\')" "$rc" "$out" >> "$LOG_FILE"\n'
+        '  exit "$rc"\n'
+        '}\n'
+        'if [[ -n "$out" ]]; then\n'
+        '  printf \'[%s] CLEANED %s\\n\' "$(TZ=Asia/Shanghai date \'+%Y-%m-%d %H:%M:%S\')" "$(printf \'%s\' "$out" | tr \'\\n\' \' \')" >> "$LOG_FILE"\n'
+        'fi\n'
+    )
+    script_path.write_text(script_body, encoding='utf-8')
+    script_path.chmod(0o755)
+    watch = watch_paths_for(home)
+    plist_data = {
+        'Label': label,
+        'ProgramArguments': [str(script_path)],
+        'RunAtLoad': True,
+        'ThrottleInterval': 5,
+        'WatchPaths': watch,
+        'StandardErrorPath': str(err_path),
+    }
+    plist_src.write_bytes(plistlib.dumps(plist_data))
+    plist_src.chmod(0o644)
+    launch_link = home / 'Library/LaunchAgents' / f'{label}.plist'
+    loaded = False
+    if sys.platform == 'darwin':
+        launch_link.parent.mkdir(parents=True, exist_ok=True)
+        if launch_link.is_symlink() or launch_link.exists():
+            launch_link.unlink()
+        launch_link.symlink_to(plist_src)
+        if load:
+            uid = str(os.getuid())
+            subprocess.run(['launchctl', 'bootout', f'gui/{uid}/{label}'],
+                           capture_output=True, check=False)
+            res = subprocess.run(['launchctl', 'bootstrap', f'gui/{uid}', str(launch_link)],
+                                 capture_output=True, text=True, check=False)
+            if res.returncode != 0:
+                raise EntryError(f'launchctl_bootstrap_failed: {res.stderr.strip()}')
+            loaded = True
+    return {'ok': True, 'label': label, 'script': str(script_path),
+            'plist': str(plist_src), 'launch_agent': str(launch_link),
+            'watch_paths': watch, 'loaded': loaded}
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('audit', 'apply'))
+    parser.add_argument('action', choices=('audit', 'apply', 'guard', 'install-guard'))
     parser.add_argument('--home', type=Path, default=Path.home())
     parser.add_argument('--lookup-root', type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument('--quiet', action='store_true', help='Suppress output when guard makes no changes')
+    parser.add_argument('--no-load', action='store_true', help='Generate guard files without launchctl bootstrap')
     args = parser.parse_args(argv)
     home, lookup = args.home.resolve(), args.lookup_root.resolve()
     if not home.is_dir() or not (lookup / 'SKILL.md').is_file():
@@ -198,15 +348,30 @@ def main(argv=None):
     storage = home / '.local/share/lookup/execution-skills'
     try:
         if args.action == 'apply':
-            result = migrate(home, lookup, storage)
+            result = migrate(home, lookup, storage, create_lookup=True)
+        elif args.action == 'guard':
+            rows = inventory(home, lookup)
+            if not any(row['competing'] for row in rows):
+                result = {'ok': True, 'changed': False, 'migrated': 0, 'deduplicated': 0, 'pruned': 0, 'lookup_created': 0}
+                if not args.quiet:
+                    print(json.dumps(result, ensure_ascii=False, indent=2))
+                return 0
+            try:
+                migrated = migrate(home, lookup, storage, create_lookup=False)
+            except EntryError as error:
+                if str(error) == 'migration_in_progress_no_changes':
+                    return 0
+                raise
+            changed = bool(migrated['migrated'] or migrated['deduplicated'] or migrated['pruned'])
+            result = {'ok': True, 'changed': changed, **migrated}
+            if changed or not args.quiet:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        elif args.action == 'install-guard':
+            result = install_guard(home, lookup, load=not args.no_load)
         else:
             rows = inventory(home, lookup)
-            shared_ready = any(r['client'] == '.agents' and r['lookup'] == 'ready' for r in rows)
-            result = {'clients': rows, 'ok': bool(rows) and all(
-                not row['competing'] and (
-                    row['lookup'] == 'ready'
-                    or (row['client'] == '.codex' and row['lookup'] == 'missing' and shared_ready)
-                ) for row in rows)}
+            result = {'clients': rows, 'ok': is_clean(rows)}
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get('ok', True) else 3
     except (EntryError, OSError, ValueError) as error:

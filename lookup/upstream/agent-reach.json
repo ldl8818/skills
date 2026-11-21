@@ -2,11 +2,11 @@
   "schema_version": 1,
   "repository": "https://github.com/Panniantong/Agent-Reach",
   "channel": "main",
-  "commit": "422478ae0264d2236bf7ebd1c3b11a69aaafa4a3",
+  "commit": "c70ae6da5d39bc90e09ad2ae0575ccc89f31e284",
   "version": "1.6.1",
   "archive": "agent-reach.tar.gz",
-  "archive_url": "https://codeload.github.com/Panniantong/Agent-Reach/tar.gz/422478ae0264d2236bf7ebd1c3b11a69aaafa4a3",
-  "archive_sha256": "aad934e39d01f2f6ae6eb71da062f55a430889336849b7fdba858ab3d63f88ce",
+  "archive_url": "https://codeload.github.com/Panniantong/Agent-Reach/tar.gz/c70ae6da5d39bc90e09ad2ae0575ccc89f31e284",
+  "archive_sha256": "d7516b2c08465f1d63e4244eeeab4dd1cdebb080c70e30db91ec35eda5ca8c79",
   "files": {
     ".github/release-acceptance.json": {
       "sha256": "9f6ee7335aa81689e33bc3906ef02d38fbc10569fae07b2a8df8e879b4714c1d",
@@ -69,8 +69,8 @@
       "mode": 436
     },
     "agent_reach/backends/cloak.py": {
-      "sha256": "552e2a0ba40d4bbd9577f24dde4883369a053f1f3210432f5a57beefb7024107",
-      "size": 1822,
+      "sha256": "a1f7e79152a8af3278b0ca2cb2e385c50c7d5fca37777cb4a17063f995d1408d",
+      "size": 2099,
       "mode": 436
     },
     "agent_reach/backends/opencli.py": {
@@ -84,18 +84,18 @@
       "mode": 436
     },
     "agent_reach/channels/_opencli_site.py": {
-      "sha256": "10466fa1df27b4e1e7153a19e3c7023f3e27929e8acd9e2ac0ca4574ccf56cf9",
-      "size": 2382,
+      "sha256": "4a6bc045a5cf7ee0a8243c4107a2b0df41c8c2015f9ca12757b62e4b83f4287f",
+      "size": 2649,
       "mode": 436
     },
     "agent_reach/channels/base.py": {
-      "sha256": "0c98d7f0eea3b00e5594fc5ae0ec7cd95f883b2859b27d5b841a35baeb18f99e",
-      "size": 4416,
+      "sha256": "4cb31517d004e8953fc7fcb7e428c3187f0cd5ff1e8d28498a0b1c9dadbd1013",
+      "size": 4932,
       "mode": 436
     },
     "agent_reach/channels/bilibili.py": {
-      "sha256": "5f17b3521b2e869e53f5bcee775428881641e48e9b9a6581f8b741ebfe1536ec",
-      "size": 9976,
+      "sha256": "e2bcd52db7798cc9904ba571fb88ebb4eecad4c1f92cbca498e955ea72d8e32f",
+      "size": 10949,
       "mode": 436
     },
     "agent_reach/channels/boss.py": {
@@ -109,13 +109,13 @@
       "mode": 436
     },
     "agent_reach/channels/github.py": {
-      "sha256": "10125630c66efe8bf86058a4d000af5cb4a2ca065c3ab3bb2be22c311faa1c29",
-      "size": 7167,
+      "sha256": "3c59923f052a5b0f925019b635fb6bad7e213c603900726502668f537deeadd8",
+      "size": 7277,
       "mode": 436
     },
     "agent_reach/channels/instagram.py": {
-      "sha256": "261068afe26b2b823de1e2ce8f31d9c1bf966b3c0ecfa149d62949b1cd323644",
-      "size": 2060,
+      "sha256": "5d2d2aa28ffd7574e64baac098d4ea1787f86b1bc1e0f36dc5a293a7b68470c9",
+      "size": 2091,
       "mode": 436
     },
     "agent_reach/channels/linkedin.py": {
@@ -134,8 +134,8 @@
       "mode": 436
     },
     "agent_reach/channels/v2ex.py": {
-      "sha256": "6be0ea9a126addeb9fb8984bd1527c3a4d76e142b2459ad6f81689397e03c67f",
-      "size": 8876,
+      "sha256": "290786a0c9a43e3e05bbcf7f726d72995aa8d66359554e69c3c24780ab148645",
+      "size": 8968,
       "mode": 436
     },
     "agent_reach/channels/web.py": {
@@ -154,23 +154,23 @@
       "mode": 436
     },
     "agent_reach/channels/xueqiu.py": {
-      "sha256": "febd5504b8edae7fd1c672bbcfbd72d274162fdfad066dae28c5f6e05f02616f",
-      "size": 13789,
+      "sha256": "8f96318e567c2fdf5a7a105450e8f493f474bc20336482efc9368d5af40e386b",
+      "size": 13776,
       "mode": 436
     },
     "agent_reach/channels/youtube.py": {
-      "sha256": "173681f5df7bac08519ab23a2eeaaaca1b28f4212c4b08d07f725f6674805b56",
-      "size": 8467,
+      "sha256": "bfabca15528839e2bb875d5f7d36c9a502a65cdf1968880a903904bb5eb3b79c",
+      "size": 9233,
       "mode": 436
     },
     "agent_reach/cli.py": {
-      "sha256": "78a609e0d451b6948e8b02bdee49ee70d7a1f8212466fc1949a39a69d872131a",
-      "size": 1397,
+      "sha256": "822293cf0a5b73fde7ddf36f65d78f4f555ace386a29b1ee1eb9b0f468051612",
+      "size": 1605,
       "mode": 436
     },
     "agent_reach/config.py": {
-      "sha256": "ad416d1f701512c93212ebb22ffe1fbdd07a55ce56ec3b77f885bdff2ec553c2",
-      "size": 6181,
+      "sha256": "d747e9fe41aababbf3a3a7a45b0d41c82364b2ac9cbfe98b583fa4db7c128d8b",
+      "size": 6356,
       "mode": 436
     },
     "agent_reach/runtime/__init__.py": {
@@ -179,13 +179,13 @@
       "mode": 436
     },
     "agent_reach/runtime/bridge.py": {
-      "sha256": "7bde0f6a8a7be52d3ef41e3cd14c5631d10a68da65f8450ecf940f81384b2c60",
-      "size": 3841,
+      "sha256": "03c48c1d0f08f76572be7cfccf78f5ca5a087f2d59f5ec09d8e94e5112023520",
+      "size": 3929,
       "mode": 436
     },
     "agent_reach/runtime/browser.py": {
-      "sha256": "196299d75a4f6487318f560f3b1aadea498b4606800de7f5cc2fc72e2b66564d",
-      "size": 37880,
+      "sha256": "e7a888478fc2573681b814f7cd3ab70c2d53104913464095479861f0ffb52dd0",
+      "size": 38322,
       "mode": 436
     },
     "agent_reach/runtime/browser_binding.py": {
@@ -204,8 +204,8 @@
       "mode": 436
     },
     "agent_reach/runtime/cli.py": {
-      "sha256": "9901e58543365fcc48ba950620bd094bfcf6a2f1a45b2d7c411f1bcf5a8cbe80",
-      "size": 23959,
+      "sha256": "03f5b74a44e563cd12b42c9bac28263d75e6d4170e4ab10a8cb38c12f60ff631",
+      "size": 25030,
       "mode": 436
     },
     "agent_reach/runtime/clock.py": {
@@ -214,8 +214,8 @@
       "mode": 436
     },
     "agent_reach/runtime/dispatch.py": {
-      "sha256": "634eae9a89766a0b7dbf912ed2e7266bd13ae347a3a2521753c6cf5ac4b664ec",
-      "size": 14250,
+      "sha256": "b635035f8a82d796f9ed8d95787b0509e27c3faf34ee1e8026727ab863c26159",
+      "size": 14309,
       "mode": 436
     },
     "agent_reach/runtime/legacy.py": {
@@ -224,8 +224,8 @@
       "mode": 436
     },
     "agent_reach/runtime/manage.py": {
-      "sha256": "288c52a166ed65f57ea84854ffbdc6eda863081e2da30560a154173976827661",
-      "size": 43199,
+      "sha256": "43ec2885f0a287d0d78abf675c31d7cf8647ede2c434294bd5bef7bb8abd9849",
+      "size": 45811,
       "mode": 436
     },
     "agent_reach/runtime/onboarding.py": {
@@ -244,8 +244,8 @@
       "mode": 436
     },
     "agent_reach/runtime/run.py": {
-      "sha256": "e5a911e6d570778ae79185442472bc0bff1aa07298169a2d8883171f4a163b62",
-      "size": 6785,
+      "sha256": "d6a52e6280af149e4813a2971acc0b757e6b65b34b4f356344222747fbdb870e",
+      "size": 6843,
       "mode": 436
     },
     "agent_reach/runtime/session_reuse.py": {
@@ -259,13 +259,13 @@
       "mode": 436
     },
     "agent_reach/runtime/state.py": {
-      "sha256": "781604c019f5c88261ecf8b99020ae9a01fc8ad990a2c301784a0c2d41d99d55",
-      "size": 4162,
+      "sha256": "95cdbd77be092df5dfb5529b1701901661b6fe298a7c60e22a19d341262b8b52",
+      "size": 4400,
       "mode": 436
     },
     "agent_reach/runtime/tools.py": {
-      "sha256": "ca1f51445d43b0ba0ca092befafcb58af68c5ef931d86f0a087d0f0c65383ff9",
-      "size": 26624,
+      "sha256": "172cfa8ab39d4617134a26e5a125f4e60666ef94a4698a04b41c0609b94e3575",
+      "size": 26742,
       "mode": 436
     },
     "agent_reach/runtime/update_notice.py": {
@@ -279,13 +279,13 @@
       "mode": 509
     },
     "agent_reach/skill/SKILL.md": {
-      "sha256": "86f6bd3d377f30ec553e8fdac801fc41fe3eda3e0a9a2aa7690d5adb30e8ad7e",
-      "size": 7119,
+      "sha256": "24f81769fbd0c2ffcddee574c8255022346fc39adc1f78e75c0e30d9ec3769c1",
+      "size": 7288,
       "mode": 436
     },
     "agent_reach/skill/SKILL_en.md": {
-      "sha256": "b6f00572f0aec469b0d43e845283650362f71ab184565fe103ef7dc90106ac96",
-      "size": 7855,
+      "sha256": "f22bae507f150547f5ddef367ff65d503842c6315033309a1b1cc57c820216c2",
+      "size": 8018,
       "mode": 436
     },
     "agent_reach/skill/references/capabilities.md": {
@@ -304,8 +304,8 @@
       "mode": 436
     },
     "agent_reach/transcribe.py": {
-      "sha256": "b890eabed1e6b57a39812792604f8409f59bdfb9280b4db6849f928418ae9d0b",
-      "size": 16433,
+      "sha256": "707ca35daba07fd12ea719b460fec2ea0a438dcab167b0b491646a8542b729f2",
+      "size": 16525,
       "mode": 436
     },
     "agent_reach/utils/paths.py": {
@@ -314,8 +314,8 @@
       "mode": 436
     },
     "agent_reach/utils/process.py": {
-      "sha256": "16c5c4df5a9cba404f554a64ce03b0e274ac96bc3f3a4f19bb253ca08bcd9cb5",
-      "size": 468,
+      "sha256": "7a849edde1ee741ecb16af12fd1ab881c30036e7df75ac84f20ab914befe83f3",
+      "size": 1185,
       "mode": 436
     },
     "agent_reach/utils/text.py": {
@@ -334,8 +334,8 @@
       "mode": 436
     },
     "docs/README_en.md": {
-      "sha256": "918a11d61fb232eaca854bc4cf3c331cd24f95af507214ce98133411b2a0ecf2",
-      "size": 14819,
+      "sha256": "48a6802a297a051e40bc1310aff114be8e5c0e0214e1151c839577e8eedb9af5",
+      "size": 15120,
       "mode": 436
     },
     "docs/assets/logo-1.png": {
@@ -389,8 +389,8 @@
       "mode": 436
     },
     "docs/cloakbrowser.md": {
-      "sha256": "14cd89c218430b33c54f78e9e08a3a934ea0604d494d5e64a37042af6a62514b",
-      "size": 2717,
+      "sha256": "e12fefeb2b9bd55c992d9c27c3d77183edeef4cf3df1bd4696139604d975e700",
+      "size": 2859,
       "mode": 436
     },
     "docs/install.md": {
@@ -409,8 +409,8 @@
       "mode": 436
     },
     "docs/troubleshooting.md": {
-      "sha256": "803b772e2c2ca79216581bda6af49d93e76ff792a5b78feea71ec19b018c5f1f",
-      "size": 6234,
+      "sha256": "88184195bd3974d18bffcf0983c14383fcf022d6d64fc75a7654810799e22143",
+      "size": 6453,
       "mode": 436
     },
     "docs/update.md": {
@@ -449,13 +449,13 @@
       "mode": 436
     },
     "test.sh": {
-      "sha256": "3056383d62bfdb3ca578f3904c898fb18a1ef91d94bf61c3487ea4183206f061",
-      "size": 2167,
+      "sha256": "f3522dd7b44b60b0ddeb616dd51b36ac2737f2f44a2cdb64bfeee3801311d399",
+      "size": 2173,
       "mode": 509
     },
     "tests/conftest.py": {
-      "sha256": "4fc14cfd351a1226f47b503111d8fb17b4cb5bf1f23ffc12fc31e9ce35ec9915",
-      "size": 5021,
+      "sha256": "a0ad5057f371be1c51246f428e02861f6998871cb4c0261ef5b10c53ed75f72d",
+      "size": 5074,
       "mode": 436
     },
     "tests/test_auth_guidance_policy.py": {
@@ -464,8 +464,8 @@
       "mode": 436
     },
     "tests/test_bilibili_login.py": {
-      "sha256": "5a5ba79584635b0258160cc2a360c0b37a6a827f0f59c280e67d5b4cb9c22b8f",
-      "size": 3479,
+      "sha256": "386073a6794a9b95bee593e4405f06a3a59b538d02ee735b52c6871753e17f7b",
+      "size": 6992,
       "mode": 436
     },
     "tests/test_boss_channel.py": {
@@ -474,8 +474,8 @@
       "mode": 436
     },
     "tests/test_browser.py": {
-      "sha256": "c1a5a1c6ae5b46009dee6bced75b40af521a78e29596943c6d5067f025d67b22",
-      "size": 10477,
+      "sha256": "09a44dae1fadfa0bffeafa2911c59aa573d4cf740a178cbd499f92b8a6da3659",
+      "size": 11884,
       "mode": 436
     },
     "tests/test_browser_slots.py": {
@@ -493,9 +493,19 @@
       "size": 6109,
       "mode": 436
     },
+    "tests/test_cli_encoding.py": {
+      "sha256": "6d8b742c1088c04eb1cae31263de42c0037502a2d635056b3f4d7914cb16536c",
+      "size": 1288,
+      "mode": 436
+    },
     "tests/test_config.py": {
       "sha256": "4cef5353101ee616a5c3afbbf38debe646f77a63050b57afd98ba001205207ec",
       "size": 8781,
+      "mode": 436
+    },
+    "tests/test_config_shape.py": {
+      "sha256": "1a8377e01083e424252312fe11e28b1e0d1fea869ec614fe090c2d371f6cdfca",
+      "size": 1123,
       "mode": 436
     },
     "tests/test_dispatch_public_fallback.py": {
@@ -503,14 +513,19 @@
       "size": 8237,
       "mode": 436
     },
+    "tests/test_integration_script.py": {
+      "sha256": "a41fdb2d8bd4608ff25216ad13f8f4ccedc0b8e31f192c715b575882fe512435",
+      "size": 1281,
+      "mode": 436
+    },
     "tests/test_manage.py": {
-      "sha256": "9cd988d80b29dc34f76b3f2fdb1da9bb42c8cb8323f7066a7d337590b44f23db",
-      "size": 35394,
+      "sha256": "a007773b25394eea091dc6f2fad52a8ae923df68a98644f322588853881a0045",
+      "size": 39662,
       "mode": 436
     },
     "tests/test_native_access_errors.py": {
-      "sha256": "5cc34edcaf2f76a6a647b8c17e8d399d897db891fb0e16be5c49e704694dabbb",
-      "size": 4846,
+      "sha256": "94996951f9021caaab216a70e729440dec46b05081858d89e605130157e0ad31",
+      "size": 8060,
       "mode": 436
     },
     "tests/test_private_file_writes.py": {
@@ -519,13 +534,13 @@
       "mode": 436
     },
     "tests/test_process.py": {
-      "sha256": "e545bb30fb6759975718f44e38b33ffea73dde22586312662e8a2a935dfafc08",
-      "size": 300,
+      "sha256": "3926544be7e378cf402aa97ebbb4affe9657914e99e28d75436818ea47bc2276",
+      "size": 1189,
       "mode": 436
     },
     "tests/test_public_first.py": {
-      "sha256": "a9646f38aa033d028036c13f771130563624afe89ef331d88432c7567ac49222",
-      "size": 10011,
+      "sha256": "fe9b26c9f1f673b22f4703a7fafa0375a154004c9a95aa9e924fd52dffdfa119",
+      "size": 10050,
       "mode": 436
     },
     "tests/test_reddit_channel.py": {
@@ -558,8 +573,13 @@
       "size": 17135,
       "mode": 436
     },
+    "tests/test_state_loading.py": {
+      "sha256": "aa7c8f7c4bdc73730d332d539b4cd44f8e921f752213ffd999cd6b4874f0fc57",
+      "size": 1294,
+      "mode": 436
+    },
     "tests/test_tools_install.py": {
-      "sha256": "0ab03643a723cd7bb43a382d1df5146c7c598b7c9ce4a25214a08c220d35ded8",
+      "sha256": "8c2714e1bd39f315fbab4a6af697b1e30d313ba2efc53095653658a63a2d1fc2",
       "size": 4409,
       "mode": 436
     },
@@ -569,8 +589,8 @@
       "mode": 436
     },
     "tests/test_unified_entry.py": {
-      "sha256": "34ab8722302e1c8404a8224cde249940e707b1a7a2a12d6306f2ca5620a032f8",
-      "size": 25269,
+      "sha256": "fc4524de57d8d2fc5d0d50c9f7adf07b8a87c54cfa406d77c41ea3139ddd734c",
+      "size": 27264,
       "mode": 436
     },
     "tests/test_url_security.py": {
@@ -579,8 +599,8 @@
       "mode": 436
     },
     "tests/test_v2ex_channel.py": {
-      "sha256": "7b0eb62934bd6b3adb46105ab69bcb5f32cfb5a2a777321d3aec45b516f79e8a",
-      "size": 4163,
+      "sha256": "24390539b4e3fcfee90d1f0c7633d50a9f9a00c4273815abd1403a32311fec72",
+      "size": 6216,
       "mode": 436
     },
     "tests/test_web_channel.py": {
@@ -599,13 +619,13 @@
       "mode": 436
     },
     "tests/test_xueqiu_channel.py": {
-      "sha256": "b3a0f5e36246caf48104e0f853897ca0bbb7b74ba9092f5a88c52ce046d9e42e",
-      "size": 1564,
+      "sha256": "a261038e92b87b6f919c0818ed0b37476b04f32891373fc36416796917a4f24a",
+      "size": 2931,
       "mode": 436
     },
     "tests/test_youtube_channel.py": {
-      "sha256": "31d7be5fd341952f7154a0d8128824b066207367e710646b02b8b282ae638221",
-      "size": 2276,
+      "sha256": "dfb2f5de7646f1c2d9b7b8855a2a8b1f2e8b2f0a16a32379f64443bc47f8c165",
+      "size": 2783,
       "mode": 436
     }
   },

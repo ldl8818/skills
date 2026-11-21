@@ -4,9 +4,9 @@
 
 ## 来源与加载
 
-完整来源为 [Agent Reach 1.6.1 main 固定快照](https://github.com/Panniantong/Agent-Reach/tree/422478ae0264d2236bf7ebd1c3b11a69aaafa4a3)，commit 为 `422478ae0264d2236bf7ebd1c3b11a69aaafa4a3`。1.6重写了命令、状态与渠道接口；版本标签不能代替文件与能力核对。
+完整来源为 [Agent Reach 1.6.1 main 固定快照](https://github.com/Panniantong/Agent-Reach/tree/c70ae6da5d39bc90e09ad2ae0575ccc89f31e284)，commit 为 `c70ae6da5d39bc90e09ad2ae0575ccc89f31e284`。1.6重写了命令、状态与渠道接口；版本标签不能代替文件与能力核对。
 
-- 完整仓库120个文件保存在 [源快照](../upstream/agent-reach.tar.gz)，逐文件清单、大小、哈希及运行适配归 [来源回执](../upstream/agent-reach.json)，[MIT 许可](../upstream/LICENSE-agent-reach) 保留。原始中英文 Skill 及所有参考保持原文，处于自动发现目录之外。
+- 完整仓库124个文件保存在 [源快照](../upstream/agent-reach.tar.gz)，逐文件清单、大小、哈希及运行适配归 [来源回执](../upstream/agent-reach.json)，[MIT 许可](../upstream/LICENSE-agent-reach) 保留。原始中英文 Skill 及所有参考保持原文，处于自动发现目录之外。
 - 当前上游参考为 `capabilities / sessions / maintenance` 三份。按任务读取一份完整原文：`python3 scripts/reach.py reference capabilities`。安装和更新分别使用 `reference install / update`。旧的7类分类名和5个 `setup-*` 读取名保留为新版完整指南的别名，不声称旧文件仍存在。
 - 上游命令在本组合中通过 `python3 scripts/reach.py run ...` 调用；先用 `run channels` 查看当前动作、参数和后端。用户输入作为独立 argv 传入。上游的浏览器、登录复用、安装和更新建议不能覆盖 lookup 的当前选路与授权。
 
@@ -111,7 +111,11 @@ python3 scripts/reach.py mcp
 ```bash
 python3 scripts/entrypoints.py audit --lookup-root /absolute/lookup
 python3 scripts/entrypoints.py apply --lookup-root /absolute/lookup
+python3 scripts/entrypoints.py guard --lookup-root /absolute/lookup --quiet
+python3 scripts/entrypoints.py install-guard --lookup-root /absolute/lookup
 ```
+
+`guard` 仅迁移或去重竞争入口，绝不向第三方应用新建的客户端目录写入新的 `lookup` 软链；对同一外部不可变目标版本（且归档软链仍指向该目标）的重复软链直接去重移除，同时自动清理指向已删除旧版应用包的悬空归档软链。若已有维护进程持有锁，则静默退出不抢锁。`install-guard` 从 `CLIENTS` 自动派生 `WatchPaths` 与本机解释器路径，生成可移植的 macOS `launchd` 守卫（`com.lookup.技能入口守卫`）。
 
 apply 只处理已有客户端目录中的已识别竞争入口，保留其原始来源与恢复记录到 `~/.local/share/lookup/execution-skills/`，并给这些客户端建立直达同一 lookup 源码的单跳链接。首次安装尚无客户端目录时只创建共享入口。同名 lookup 真目录与选定源码不同、链接指向其他源码或保留目标冲突时保持原状，不覆盖；选定目录本身作为唯一源码时可直接使用。它不安装尚不存在的客户端，不修改应用自带 Skill 或插件缓存。
 

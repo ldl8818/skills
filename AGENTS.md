@@ -20,6 +20,7 @@
 ## Skill 修改与验证
 
 - `description` 是实际路由上下文；有 GitHub 上游的 Skill 完整同步选定通道的上游原文，不用本地摘要替换。中文说明放在 `metadata.zh_description`，仅用于本地展示；无上游的 Skill 自行维护描述。
+- 本仓库中技能名称 `lookup` 在标题、说明及中文文案里统一使用小写；代码标识符与引用原文保持原格式。
 - 独立 Skill 的 frontmatter 同时维护 `when_to_use` 与 `dispatch_intent`；上游已有字段必须完整保留原文，不翻译、删减、重排、改写或添加限定。本地触发词可在合适的条目间增补，不限于末尾；来源原文与本地增补分别核对。字段用途与验收见 skill-manager 的[路由字段](skill-manager/SKILL.md#路由字段)。
 - 修改授权、路由、执行或验收行为时，核对直接引用并做定向场景验证；Markdown 文件同样适用。
 - 更新第三方或仍保持 `update_policy: frozen` 的 Skill 时，必须按完整上游快照与本地差异合并，不得以摘录条款、升版、相同 commit 或测试通过代替完整性验收；校验规则见 [冻结版本维护](skill-manager/references/冻结版本维护.md)。已转为 `source: local` 的自管 Skill（`check`、`ui`、`write`、`neat-freak`）按仓库自检脚本 `skill-manager/scripts/verify_frozen.py` 核对结构与相对链接。

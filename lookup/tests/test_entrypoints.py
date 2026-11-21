@@ -216,6 +216,96 @@ print(json.dumps(entries.migrate(*map(Path, sys.argv[2:]))), flush=True)
         self.assertEqual(receipt.read_text(), original)
         self.assertTrue(internal.is_dir())
 
+    def test_duplicate_symlink_same_target_is_deduplicated_while_new_version_is_archived(self):
+        v1 = self.home / 'app/0.6.3/ego-browser'
+        v2 = self.home / 'app/0.6.4/ego-browser'
+        for path, body in ((v1, 'v1'), (v2, 'v2')):
+            path.mkdir(parents=True)
+            (path / 'SKILL.md').write_text(f'---\nname: ego-browser\n---\n{body}\n')
+        link = self.shared / 'ego-browser'
+        link.symlink_to(v1)
+        first = entries.migrate(self.home, self.lookup, self.storage)
+        self.assertEqual(first['migrated'], 1)
+        self.assertEqual(first['deduplicated'], 0)
+        # Re-creating the exact same symlink target (e.g. app restart) should deduplicate cleanly.
+        link.symlink_to(v1)
+        second = entries.migrate(self.home, self.lookup, self.storage)
+        self.assertEqual(second['migrated'], 0)
+        self.assertEqual(second['deduplicated'], 1)
+        self.assertFalse(entries.existing(link))
+        receipt = json.loads((self.storage / 'entries.json').read_text())
+        self.assertEqual(len(receipt['entries']), 1)
+        # Upgrading to a new version target should still archive a new entry.
+        link.symlink_to(v2)
+        third = entries.migrate(self.home, self.lookup, self.storage)
+        self.assertEqual(third['migrated'], 1)
+        self.assertEqual(third['deduplicated'], 0)
+        receipt = json.loads((self.storage / 'entries.json').read_text())
+        self.assertEqual(len(receipt['entries']), 2)
+
+    def test_guard_is_silent_when_clean_and_cleans_competing_entries(self):
+        entries.migrate(self.home, self.lookup, self.storage)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = entries.main(['guard', '--home', str(self.home), '--lookup-root', str(self.lookup), '--quiet'])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.getvalue(), '')
+        v1 = self.home / 'app/ego-browser'
+        v1.mkdir(parents=True)
+        (v1 / 'SKILL.md').write_text('---\nname: ego-browser\n---\n')
+        (self.shared / 'ego-browser').symlink_to(v1)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = entries.main(['guard', '--home', str(self.home), '--lookup-root', str(self.lookup), '--quiet'])
+        self.assertEqual(code, 0)
+        payload = json.loads(out.getvalue())
+        self.assertTrue(payload['changed'])
+        self.assertEqual(payload['migrated'], 1)
+        self.assertEqual(payload['lookup_created'], 0)
+        self.assertFalse(entries.existing(self.shared / 'ego-browser'))
+
+    def test_guard_never_creates_lookup_in_new_third_party_client_dir_and_prunes_dangling(self):
+        entries.migrate(self.home, self.lookup, self.storage)
+        v1 = self.home / 'app/0.6.1/ego-browser'
+        v2 = self.home / 'app/0.6.2/ego-browser'
+        for path in (v1, v2):
+            path.mkdir(parents=True)
+            (path / 'SKILL.md').write_text('---\nname: ego-browser\n---\n')
+        new_client = self.home / '.gemini/antigravity-cli/skills'
+        new_client.mkdir(parents=True)
+        (new_client / 'ego-browser').symlink_to(v1)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = entries.main(['guard', '--home', str(self.home), '--lookup-root', str(self.lookup), '--quiet'])
+        self.assertEqual(code, 0)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload['migrated'], 1)
+        self.assertEqual(payload['lookup_created'], 0)
+        self.assertFalse(entries.existing(new_client / 'lookup'))
+        # Remove v1 to simulate deleted old app version, then upgrade to v2: v1 archive should prune cleanly.
+        import shutil
+        shutil.rmtree(v1)
+        (new_client / 'ego-browser').symlink_to(v2)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = entries.main(['guard', '--home', str(self.home), '--lookup-root', str(self.lookup), '--quiet'])
+        self.assertEqual(code, 0)
+        payload = json.loads(out.getvalue())
+        self.assertEqual(payload['pruned'], 1)
+        receipt = json.loads((self.storage / 'entries.json').read_text())
+        self.assertEqual(len(receipt['entries']), 1)
+
+    def test_install_guard_generates_portable_script_and_watch_paths_from_clients(self):
+        (self.home / '.gemini/config/skills').mkdir(parents=True)
+        (self.home / '.gemini/antigravity-cli').mkdir(parents=True)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = entries.main(['install-guard', '--home', str(self.home), '--lookup-root', str(self.lookup), '--no-load'])
+        self.assertEqual(code, 0)
+        payload = json.loads(out.getvalue())
+        self.assertTrue(payload['ok'])
+        self.assertTrue(Path(payload['script']).is_file())
+        self.assertTrue(Path(payload['plist']).is_file())
+        self.assertIn(str(self.home / '.agents/skills'), payload['watch_paths'])
+        self.assertIn(str(self.home / '.gemini/config/skills'), payload['watch_paths'])
+        self.assertIn(str(self.home / '.gemini/antigravity-cli'), payload['watch_paths'])
+        self.assertIn(str(self.home / '.local/share/ego'), payload['watch_paths'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -5,18 +5,18 @@
 ## 当前接力点
 
 - 状态：待验证
-- 任务：Skills 更新的 Ego 原生运行版本验收。
-- 范围：本轮源码与依赖更新已完成必要验证；仅接续 Ego 已完成安装后的运行态确认。
+- 任务：lookup 2.7.0、OpenCLI 2.0.3 与 Agent Reach c70ae6d 的多端自然触发及 MacBook Air 同步验收。
+- 范围：Mac Mini 已完成 lookup 2.7.0 路由重构、可移植入口守卫（`com.lookup.技能入口守卫`）、OpenCLI 2.0.3 三方合并升级、Agent Reach 1.6.1／c70ae6d 随包源升级与私有运行时激活，以及全局规则瘦身；待推进 MacBook Air 同步、多客户端新会话自然触发与真实平台账号验收。
 - 分支／worktree：main／当前主工作区。
-- 已做到：Mac Mini 更新 check 6.2.2、ui 4.2.3、write 4.3.1、neat-freak 3.1.2；health／hunt／think完整来源已核对。lookup 2.6.2纳入 Agent Reach 1.6.1／422478a的120份完整源，补齐随包检查；OpenCLI 2.0.2为当前最新稳定版。
-- 已修改但未验证：无未验证源码；Ego 已安装0.6.2.9，当前 CLI 仍为0.6.2.8，新运行版本及指南待验。
-- 正在执行：无安装器正在重发；保留原维护事务与恢复材料。
-- 下一步：用户自然重启 ego-lite 后，先读回 CLI／实际运行版本与完整指南，再按原 pending 事务核验销项；未取得新证据前不重复安装或强关窗口。
-- 验证：本轮原有251项相关测试；Agent Reach及维护链125项、上游行为103项、管理器委派15项通过。干净 HOME 实装、幂等、version／channels／doctor与完整能力门禁通过；真实平台账号、新会话与 MacBook Air 未新增验收。
-- 证据位置：本机 ~/.local/state/task-cleanup/20261117-three-day-closeout/evidence/projects__skills__.tmp__skills-update-20261106.tar.gz；持久恢复副本归 skill-manager 的 update-backups/skills-20261106-2152，原生回执归 lookup 的 upstream 状态目录。
-- 阻塞：仅 Ego 待重启后的运行态验收；源码更新不受影响。
-- 未提交范围：本轮源码与文档按2026年11月9日授权分批交付；Ego 运行态待验不影响源码交付。
-- 北京时间：2026-11-09 19:58。
+- 已做到：Mac Mini 完成 lookup 2.7.0（一屏免费优先路由、日常兜底与维护3轮修复双模式、`search-accounts.json` 一次性硬限额核验约定、`entrypoints.py` 跨代安全去重／悬空归档清理／`guard` 与可移植 `install-guard`），同步 video-downloader 与项目 AGENTS 边界；OpenCLI 托管版升级至 2.0.3 并重启 daemon，完成25份本地定制三方合并；Agent Reach 随包源升级至 1.6.1／c70ae6d（124文件）并准备本机私有 venv；ego lite 已自然运行至 0.6.3.17，历史 0.6.2.8 待重启挂起已失效并由入口守卫接管防重注册；全局规则经 chezmoi 精简并推送。
+- 已修改但未验证：MacBook Air 未同步最新源码、dotfiles 与入口守卫；Codex／Claude Code／Antigravity／WorkBuddy 新会话自然触发与 Tavily 账号重新登录（当前 401 自动回退免 Key）待验。
+- 正在执行：无后台施工；`com.lookup.技能入口守卫` 常驻监听客户端 skills 与 `~/.local/share/ego`。
+- 下一步：确认本批 skills 改动并推送后，在 MacBook Air 拉取 dotfiles／skills 并执行 `entrypoints.py install-guard`，按需补登 `mcporter auth tavily-account` 并登记 `search-accounts.json`。
+- 验证：Mac Mini 完成 lookup 全量 Python／Node 回归、OpenCLI 2.0.3 `selftest.sh --live`、Agent Reach 隔离与本机 `prepare/status/doctor/contract`、`verify_frozen.py`、链接与公私红线扫描及入口守卫实测；真实多端自然触发与 MacBook Air 未验。
+- 证据位置：本机 `~/.local/state/lookup/upstream/opencli-review-j18tm9ep/decisions.json` 与 `~/.local/state/lookup/entry-guard.log`。
+- 阻塞：无阻塞。
+- 未提交范围：skills 仓库本轮改动（lookup 2.7.0、video-downloader、AGENTS.md、ROADMAP.md）待确认后推送。
+- 北京时间：2026-11-21 11:45。
 
 ## 本次全部改动交付
 
@@ -26,7 +26,7 @@
 
 ## 当前阶段
 
-现行可分发源码为 `check` 6.2.2、`health` 4.2.0、`hunt` 4.3.2、`ui` 4.2.3、`write` 4.3.1、`neat-freak` 3.1.2、`luobo-ppt` 1.1.0及 `lookup` 2.6.2；`self-improving` 3.2.0、`skill-manager` 2.11.1和 `download-video` 保持现状。Waza 六项以 main@5821754完整对账，think 的4份原版文件不变，发布 tag 为 v3.41.0；萝卜完整合并上游2.9.0／5bc279e。固定来源、逐文件差异及适配归各自合并回执。lookup 随包 Agent Reach 1.6.1完整源为 main@422478a，120文件与原生14渠道／40动作已登记，原16类任务的直接路线与旧接口迁移单独维护；OpenCLI 2.0.2保持原通道。源码、隔离 CLI、真实账号、客户端自然触发与其他设备分别验收。
+现行可分发源码为 `check` 6.2.2、`ui` 4.2.3、`write` 4.3.1、`neat-freak` 3.1.2、`luobo-ppt` 1.1.0、`lookup` 2.7.0、`self-improving` 3.2.0、`skill-manager` 2.11.1 及 `video-downloader`（跟随 `kangarooking/kangarooking-skills@34a403e`）。lookup 随包 Agent Reach 1.6.1完整源已更新至 `main@c70ae6d`（124文件、原生14渠道／40动作）；OpenCLI 源码基线为2.0.2，托管运行版已验证升级至2.0.3。源码、隔离 CLI、真实账号、客户端自然触发与其他设备分别验收。
 
 ### 更新与审查边界
 

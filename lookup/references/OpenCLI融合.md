@@ -39,7 +39,7 @@ node scripts/opencli-run.mjs <site> <command> --help -f json
 | 认证与 Profile | `auth status/refresh --site <site>`、`profile list/use/rename` | status 与刷新分别判断；需人工登录时按 [登录准备与恢复](opencli-windows.md#登录准备与恢复) 打开原绑定环境并交接，恢复后回原 CLI。不自动登录、采 Cookie、切换账号或修改其他任务默认环境。runner 固定 [已确认的 ego-lite contextId](opencli-windows.md#profile-绑定)，不使用产品名或原生默认连接兜底 |
 | 插件管理 | `plugin list/create/install/update/uninstall` | 原生包、扩展能力和本地定制均保留；安装／卸载、全局依赖及用户配置变更按明确任务授权执行，不由查询或自动修复隐式触发 |
 | Adapter 开发 | `adapter init/check/test/status/eject/reset`、`convention-audit` | 原生开发、检查、测试、导出覆盖和重置能力可用；test 会执行真实动作，reset 会移除本地覆盖，先核对对象、写入和恢复条件 |
-| Adapter 故障修复 | opencli-autofix 及 trace／测试工具 | 选中 OpenCLI 后，影响目标的已确认适配器缺陷优先修复；按 [修复轮次与兜底门槛](failure-domains.md#适配器修复与浏览器兜底) 保留本地差异、验证原目标与相邻正常路径。原指南的发 Issue 建议不构成对外发送授权 |
+| Adapter 故障修复 | opencli-autofix 及 trace／测试工具 | 按 [日常兜底与维护修复](failure-domains.md#适配器修复与浏览器兜底) 区分模式：日常查询确认改版失效可直接兜底并记录缺口；维护修复模式按最多3轮修复、保留本地差异并验证原目标与相邻正常路径。原指南的发 Issue 建议不构成对外发送授权 |
 | Bridge 诊断与生命周期 | `doctor`、`daemon status/restart/stop` | 状态读取与停止／重启共享进程分别处理；先核对其他任务占用及授权，不以杀共享进程恢复单个动作 |
 | Bridge、远端／无头、Android CDP | 原生 Bridge 与 CDP 接口及对应完整指南 | 默认保持 Bridge；显式选择的 CDP 环境使用下一节入口。不因技术失败自行换浏览器、账号或开放调试端口 |
 | Skill 与 Shell 补全 | `skills list/read`、`completion <shell>` | 指南读取和输出补全脚本文本不等于安装；不把内置指南重新注册为竞争的自动入口 |
