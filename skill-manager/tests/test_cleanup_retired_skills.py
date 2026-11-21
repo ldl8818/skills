@@ -18,7 +18,10 @@ class RetiredSkillCleanupTests(unittest.TestCase):
         self.root = Path(temp.name)
         self.remote = self.root / 'source'
         self.local = self.root / 'local'
-        self.env = dict(os.environ, GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
+        self.home = self.root / 'home'
+        self.home.mkdir()
+        self.env = dict(os.environ, HOME=str(self.home),
+                        GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
                         GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='test@example.com',
                         GIT_COMMITTER_NAME='Fixture', GIT_COMMITTER_EMAIL='test@example.com')
         self.remote.mkdir()
@@ -108,6 +111,88 @@ class RetiredSkillCleanupTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(existing.read_text(), 'existing hook')
         self.assertFalse((hooks / 'post-merge').is_symlink())
+
+    def test_pull_removes_direct_relative_and_multihop_retired_symlinks(self):
+        self.cleanup('--install')
+        agents = self.home / '.agents/skills'
+        claude = self.home / '.claude/skills'
+        antigravity = self.home / '.gemini/config/skills'
+        for directory in (agents, claude, antigravity):
+            directory.mkdir(parents=True)
+        # Absolute link, relative link, and two-hop link via shared .agents/skills.
+        direct = agents / 'download-video'
+        direct.symlink_to(self.retired)
+        relative = claude / 'download-video'
+        relative.symlink_to(os.path.relpath(self.retired, claude))
+        chained = antigravity / 'download-video'
+        chained.symlink_to(direct)
+        # Already-dangling retired links (e.g. think, health removed in earlier commits).
+        dangling_think = agents / 'think'
+        dangling_think.symlink_to(self.local / 'think')
+        dangling_health = claude / 'health'
+        dangling_health.symlink_to(os.path.relpath(self.local / 'health', claude))
+        # Active Skill symlink must remain intact.
+        active = agents / 'video-downloader'
+        active.symlink_to(self.local / 'video-downloader')
+
+        result = self.git(self.local, 'pull', '--ff-only')
+        combined = result.stdout + result.stderr
+        self.assertIn('removed retired Skill symlink ~/.agents/skills/download-video', combined)
+        self.assertIn('removed retired Skill symlink ~/.claude/skills/download-video', combined)
+        self.assertIn('removed retired Skill symlink ~/.gemini/config/skills/download-video', combined)
+        self.assertIn('removed retired Skill symlink ~/.agents/skills/think', combined)
+        self.assertIn('removed retired Skill symlink ~/.claude/skills/health', combined)
+        for link in (direct, relative, chained, dangling_think, dangling_health):
+            self.assertFalse(link.is_symlink())
+            self.assertFalse(link.exists())
+        self.assertTrue(active.is_symlink())
+        self.assertEqual(active.resolve(), (self.local / 'video-downloader').resolve())
+
+    def test_symlink_cleanup_preserves_real_dirs_foreign_links_and_protected_skills(self):
+        agents = self.home / '.agents/skills'
+        claude = self.home / '.claude/skills'
+        codex = self.home / '.codex/skills'
+        agents.mkdir(parents=True)
+        claude.mkdir(parents=True)
+        # 1. Real directory with a retired name must never be removed.
+        real_think = agents / 'think'
+        real_think.mkdir()
+        (real_think / 'SKILL.md').write_text('local custom think')
+        # 2. Symlink pointing to an unrelated repo must never be removed.
+        other_repo = self.root / 'other-skills/health'
+        other_repo.mkdir(parents=True)
+        foreign_health = claude / 'health'
+        foreign_health.symlink_to(other_repo)
+        # 3. Symlink to a still-committed retired Skill must remain until retired in HEAD.
+        still_active = agents / 'download-video'
+        still_active.symlink_to(self.retired)
+        # 4. Client skills root escaping HOME via symlink must be skipped.
+        escaped_root = self.root / 'escaped-skills'
+        escaped_root.mkdir()
+        escaped_link = escaped_root / 'hunt'
+        escaped_link.symlink_to(self.local / 'hunt')
+        codex.parent.mkdir(parents=True)
+        codex.symlink_to(escaped_root)
+        # 5. Symlink loop inside client skills dir must not break cleanup.
+        loop_a = agents / 'loop-a'
+        loop_b = agents / 'loop-b'
+        loop_a.symlink_to(loop_b)
+        loop_b.symlink_to(loop_a)
+
+        self.cleanup('--home', str(self.home))
+        self.assertTrue((real_think / 'SKILL.md').is_file())
+        self.assertTrue(foreign_health.is_symlink())
+        self.assertTrue(still_active.is_symlink())
+        self.assertTrue(escaped_link.is_symlink())
+        self.assertTrue(loop_a.is_symlink())
+
+        # After pull retires download-video, its symlink is cleaned while others stay preserved.
+        self.git(self.local, 'pull', '--ff-only')
+        self.cleanup('--home', str(self.home))
+        self.assertFalse(still_active.is_symlink())
+        self.assertTrue((real_think / 'SKILL.md').is_file())
+        self.assertTrue(foreign_health.is_symlink())
+        self.assertTrue(escaped_link.is_symlink())
 
 
 if __name__ == '__main__':

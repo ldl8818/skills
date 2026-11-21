@@ -24,7 +24,7 @@
 python3 skill-manager/scripts/cleanup_retired_skills.py --install
 ```
 
-合并或变基完成后，Git 会清理只剩 Finder 或 Python 缓存的退役 Skill 目录。发现受 Git 跟踪的文件、软链接或其他内容时，整个目录会保留。安装会保留该克隆上已有的同名 Git Hook。此时可以去掉 `--install` 执行一次手动清理。
+合并或变基完成后，Git 会清理只剩 Finder 或 Python 缓存的退役 Skill 目录，并同步移除 `~/.agents/skills/` 及各客户端 `skills/` 下指向本克隆退役目录的软链接。仓库内发现受 Git 跟踪的文件、软链接或其他内容时会保留该目录；客户端目录下的实体目录或指向其他仓库的软链接也会保留。安装会保留该克隆上已有的同名 Git Hook，此时可以去掉 `--install` 执行一次手动清理。
 
 ## 独立版本下载
 
