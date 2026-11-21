@@ -9,9 +9,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import core
 import audit_upstream
+from cleanup_retired_skills import RETIRED
 from install_frozen import NAMES
-
-RETIRED = ('learn', 'read', 'health', 'hunt', 'think')
 
 
 def verify(repo):

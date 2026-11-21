@@ -16,6 +16,16 @@
 
 每个 Skill 的依赖、安装和验证命令以其目录内的 `README.md` 与 `SKILL.md` 为准。
 
+## 更新后的退役目录清理
+
+每个已有克隆在仓库根目录执行一次，补清旧缓存并启用后续 Git 更新的自动清理。
+
+```sh
+python3 skill-manager/scripts/cleanup_retired_skills.py --install
+```
+
+合并或变基完成后，Git 会清理只剩 Finder 或 Python 缓存的退役 Skill 目录。发现受 Git 跟踪的文件、软链接或其他内容时，整个目录会保留。安装会保留该克隆上已有的同名 Git Hook。此时可以去掉 `--install` 执行一次手动清理。
+
 ## 独立版本下载
 
 以下标签指向各自的独立源码快照。下载包只包含对应的 `<Skill名>/` 目录、仓库许可和分发说明，不包含其他 Skill；`main` 继续保存完整仓库。
