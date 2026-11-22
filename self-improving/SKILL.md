@@ -6,7 +6,7 @@ dispatch_intent: "已确认的重复纠错归入原 Skill 或实现并验证；�
 metadata:
   version: "3.2.0"
   zh_description: "将重复纠错落实到原 Skill 与验证，维护跨 Agent 按需知识"
-  compatibility: "Python 3.11+; macOS, Linux, or Windows WSL; Claude Code and/or Codex"
+  compatibility: "Python 3.11+; macOS, Linux, or Windows WSL; Claude Code, Codex, or Antigravity"
   source: local
 ---
 # Doraemon 跨 Agent 自我进化记忆系统

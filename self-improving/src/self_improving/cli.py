@@ -8,7 +8,8 @@ from pathlib import Path
 import shutil
 import sys
 
-from self_improving.config import default_config, load_config, resolved, with_defaults, write_config
+from copy import deepcopy
+from self_improving.config import OPTIONAL_AGENT_DEFAULTS, default_config, load_config, resolved, with_defaults, write_config
 from self_improving import __version__
 from self_improving.doctor import print_report
 from self_improving.hooks.common import run as run_hook
@@ -31,9 +32,12 @@ from self_improving.review import (
 from self_improving.storage import initialize_memory, validate_delete_target
 
 
+SUPPORTED_PLATFORMS = ("claude", "codex", "antigravity", "kimi", "workbuddy")
+
+
 def _agents(value: str) -> tuple[str, ...]:
     result = tuple(item.strip() for item in value.split(",") if item.strip())
-    invalid = set(result) - {"claude", "codex"}
+    invalid = set(result) - set(SUPPORTED_PLATFORMS)
     if invalid:
         raise argparse.ArgumentTypeError(f"unsupported agents: {', '.join(sorted(invalid))}")
     return result
@@ -44,6 +48,9 @@ def command_init(args: argparse.Namespace) -> int:
         raise ValueError("self-improving is already configured; use upgrade instead of init")
     config = default_config(args.memory_root)
     enabled = set(args.agents)
+    for platform in enabled:
+        if platform not in config["agents"] and platform in OPTIONAL_AGENT_DEFAULTS:
+            config["agents"][platform] = deepcopy(OPTIONAL_AGENT_DEFAULTS[platform])
     for platform in config["agents"]:
         config["agents"][platform]["enabled"] = platform in enabled
     capture_corrections = args.capture_corrections
@@ -369,7 +376,7 @@ def build_parser() -> argparse.ArgumentParser:
     uninstall.set_defaults(func=command_uninstall)
 
     hook = sub.add_parser("hook")
-    hook.add_argument("--platform", choices=("claude", "codex"), required=True)
+    hook.add_argument("--platform", choices=SUPPORTED_PLATFORMS, required=True)
     hook.add_argument("--event", required=True)
     hook.set_defaults(func=lambda args: run_hook(args.platform, args.event))
     return parser

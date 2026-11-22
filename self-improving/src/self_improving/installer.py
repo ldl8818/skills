@@ -79,17 +79,55 @@ def _backup(path: Path, state_root: Path) -> Path | None:
     return backup
 
 
+ANTIGRAVITY_GROUP_KEY = "self-improving"
+ANTIGRAVITY_PRETOOL_MATCHER = "run_command|write_file|edit_file"
+KIMI_PRETOOL_MATCHER = "^(Bash|Write|Edit)$"
+WORKBUDDY_PRETOOL_MATCHER = "Write|Edit|MultiEdit|Bash|write_to_file|replace_in_file|execute_command"
+
+
+def _config_file_key(platform: str) -> str:
+    if platform in {"claude", "workbuddy"}:
+        return "settings_file"
+    if platform == "kimi":
+        return "config_file"
+    return "hooks_file"
+
+
+def expected_events(platform: str, config: dict[str, Any]) -> tuple[str, ...]:
+    if platform == "antigravity":
+        events = ["SessionStart", "PreInvocation", "PreToolUse"]
+        if config["persistence"].get("enabled", True) and config["persistence"].get("capture_command_errors", False):
+            events.append("PostToolUse")
+        if config["persistence"].get("enabled", True) and config["persistence"].get("capture_corrections", False):
+            events.append("Stop")
+        return tuple(events)
+    if platform == "claude":
+        return ("PreToolUse", "PostToolUse", "SessionStart", "UserPromptSubmit", "Stop")
+    events = ["PreToolUse", "SessionStart", "UserPromptSubmit"]
+    if config["persistence"].get("enabled", True) and config["persistence"].get("capture_command_errors", False):
+        events.append("PostToolUse")
+    if config["persistence"].get("enabled", True) and config["persistence"].get("capture_corrections", False):
+        events.append("Stop")
+    return tuple(events)
+
+
 def _groups(platform: str, config: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     matchers = {
-        "PreToolUse": "Write|Edit|Bash" if platform == "claude" else "Bash|apply_patch",
+        "PreToolUse": (
+            "Write|Edit|Bash"
+            if platform == "claude"
+            else WORKBUDDY_PRETOOL_MATCHER
+            if platform == "workbuddy"
+            else "Bash|apply_patch"
+        ),
         "PostToolUse": "Bash",
-        "SessionStart": None if platform == "claude" else "startup|resume|clear|compact",
+        "SessionStart": None if platform in {"claude", "workbuddy"} else "startup|resume|clear|compact",
         "UserPromptSubmit": None,
         "Stop": None,
     }
     result: dict[str, list[dict[str, Any]]] = {}
     for event, matcher in matchers.items():
-        if platform == "codex" and event in {"PostToolUse", "Stop"}:
+        if platform in {"codex", "workbuddy"} and event in {"PostToolUse", "Stop"}:
             capture = "capture_command_errors" if event == "PostToolUse" else "capture_corrections"
             if not config["persistence"].get("enabled", True) or not config["persistence"].get(capture, False):
                 continue
@@ -114,6 +152,76 @@ def _groups(platform: str, config: dict[str, Any]) -> dict[str, list[dict[str, A
             group["matcher"] = matcher
         result[event] = [group]
     return result
+
+
+def _antigravity_group(config: dict[str, Any], existing: object = None) -> dict[str, Any]:
+    existing_commands: dict[str, str] = {}
+    if isinstance(existing, dict):
+        for event, entries in existing.items():
+            if not isinstance(entries, list):
+                continue
+            for item in entries:
+                if not isinstance(item, dict):
+                    continue
+                if isinstance(item.get("hooks"), list):
+                    for hook in item["hooks"]:
+                        if isinstance(hook, dict) and hook_command_matches(str(hook.get("command", "")), "antigravity", event):
+                            existing_commands[event] = str(hook["command"])
+                elif hook_command_matches(str(item.get("command", "")), "antigravity", event):
+                    existing_commands[event] = str(item["command"])
+    group: dict[str, Any] = {}
+    for event in expected_events("antigravity", config):
+        cmd = existing_commands.get(event) or hook_command("antigravity", event)
+        handler = {"type": "command", "command": cmd, "timeout": HOOK_TIMEOUT_SECONDS}
+        if event in {"PreToolUse", "PostToolUse"}:
+            matcher = ANTIGRAVITY_PRETOOL_MATCHER if event == "PreToolUse" else "run_command"
+            group[event] = [{"matcher": matcher, "hooks": [handler]}]
+        else:
+            group[event] = [handler]
+    return group
+
+
+def _kimi_expected_entries(config: dict[str, Any]) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for event in expected_events("kimi", config):
+        item: dict[str, Any] = {
+            "event": event,
+            "command": hook_command("kimi", event),
+            "timeout": HOOK_TIMEOUT_SECONDS,
+        }
+        if event == "PreToolUse":
+            item["matcher"] = KIMI_PRETOOL_MATCHER
+        elif event == "PostToolUse":
+            item["matcher"] = "^Bash$"
+        entries.append(item)
+    return entries
+
+
+def _strip_kimi_managed_blocks(text: str) -> str:
+    """Remove only [[hooks]] TOML table blocks owned by self-improving, preserving everything else."""
+    header_re = re.compile(r"^[ \t]*\[\[?[^\]\n]+\]\]?[ \t]*(?:#[^\n]*)?$", re.MULTILINE)
+    matches = list(header_re.finditer(text))
+    if not matches:
+        return text
+    parts: list[str] = [text[: matches[0].start()]]
+    for index, match in enumerate(matches):
+        start = match.start()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        block = text[start:end]
+        header = match.group(0).split("#", 1)[0].strip()
+        if header == "[[hooks]]" and MARKER in block:
+            continue
+        parts.append(block)
+    return "".join(parts)
+
+
+def _render_kimi_hook_block(entry: dict[str, Any]) -> str:
+    lines = ["[[hooks]]", f"event = {json.dumps(entry['event'])}"]
+    if "matcher" in entry:
+        lines.append(f"matcher = {json.dumps(entry['matcher'])}")
+    lines.append(f"command = {json.dumps(entry['command'])}")
+    lines.append(f"timeout = {int(entry['timeout'])}")
+    return "\n".join(lines) + "\n"
 
 
 def _legacy_hook(command: str) -> bool:
@@ -202,9 +310,34 @@ def _merge_codex_groups(groups, desired, event):
 
 def install_hooks(config: dict[str, Any], platform: str) -> tuple[Path, Path | None]:
     agent = config["agents"][platform]
-    key = "settings_file" if platform == "claude" else "hooks_file"
-    path = expand_path(agent[key])
+    path = expand_path(agent[_config_file_key(platform)])
     state_root = expand_path(config["state_root"])
+    if platform == "antigravity":
+        payload = _load_json(path)
+        backup = _backup(path, state_root)
+        payload[ANTIGRAVITY_GROUP_KEY] = _antigravity_group(config, payload.get(ANTIGRAVITY_GROUP_KEY))
+        atomic_write_json(path, payload)
+        return path, backup
+    if platform == "kimi":
+        path.parent.mkdir(parents=True, exist_ok=True)
+        text = path.read_text(encoding="utf-8") if path.exists() else ""
+        try:
+            if text.strip():
+                tomllib.loads(text)
+        except tomllib.TOMLDecodeError as exc:
+            raise ValueError(f"invalid Kimi TOML, not modified: {path}: {exc}") from exc
+        cleaned = _strip_kimi_managed_blocks(text).rstrip()
+        blocks = "\n".join(_render_kimi_hook_block(entry) for entry in _kimi_expected_entries(config))
+        updated = (cleaned + "\n\n" + blocks) if cleaned else blocks
+        try:
+            tomllib.loads(updated)
+        except tomllib.TOMLDecodeError as exc:
+            raise ValueError(f"generated invalid Kimi TOML, not modified: {path}: {exc}") from exc
+        from self_improving.paths import atomic_write
+
+        backup = _backup(path, state_root)
+        atomic_write(path, updated)
+        return path, backup
     if platform == "codex":
         ensure_codex_hooks_feature(config)
     payload = _load_json(path)
@@ -217,6 +350,13 @@ def install_hooks(config: dict[str, Any], platform: str) -> tuple[Path, Path | N
         for event in dict.fromkeys([*hooks, *expected]):
             hooks[event] = _merge_codex_groups(hooks.get(event, []), expected[event][0] if event in expected else None, event)
     else:
+        for event in tuple(hooks):
+            if event not in expected:
+                cleaned = _without_managed(hooks.get(event))
+                if cleaned:
+                    hooks[event] = cleaned
+                else:
+                    del hooks[event]
         for event, groups in expected.items():
             hooks[event] = _without_managed(hooks.get(event)) + groups
     atomic_write_json(path, payload)
@@ -225,8 +365,29 @@ def install_hooks(config: dict[str, Any], platform: str) -> tuple[Path, Path | N
 
 def uninstall_hooks(config: dict[str, Any], platform: str) -> Path:
     agent = config["agents"][platform]
-    key = "settings_file" if platform == "claude" else "hooks_file"
-    path = expand_path(agent[key])
+    path = expand_path(agent[_config_file_key(platform)])
+    if platform == "antigravity":
+        payload = _load_json(path)
+        payload.pop(ANTIGRAVITY_GROUP_KEY, None)
+        atomic_write_json(path, payload)
+        return path
+    if platform == "kimi":
+        if not path.exists():
+            return path
+        text = path.read_text(encoding="utf-8")
+        try:
+            if text.strip():
+                tomllib.loads(text)
+        except tomllib.TOMLDecodeError as exc:
+            raise ValueError(f"invalid Kimi TOML, not modified: {path}: {exc}") from exc
+        cleaned = _strip_kimi_managed_blocks(text).rstrip()
+        updated = (cleaned + "\n") if cleaned else ""
+        if updated.strip():
+            tomllib.loads(updated)
+        from self_improving.paths import atomic_write
+
+        atomic_write(path, updated)
+        return path
     payload = _load_json(path)
     hooks = payload.get("hooks", {})
     if isinstance(hooks, dict):
@@ -241,8 +402,21 @@ def uninstall_hooks(config: dict[str, Any], platform: str) -> Path:
 def managed_hooks_present(config: dict[str, Any], platform: str) -> bool:
     """Find even partial managed wiring on an adapter marked disabled."""
     agent = config["agents"][platform]
-    key = "settings_file" if platform == "claude" else "hooks_file"
-    payload = _load_json(expand_path(agent[key]))
+    path = expand_path(agent[_config_file_key(platform)])
+    if platform == "antigravity":
+        payload = _load_json(path)
+        if ANTIGRAVITY_GROUP_KEY in payload:
+            return True
+        return MARKER in json.dumps(payload, ensure_ascii=False)
+    if platform == "kimi":
+        if not path.exists():
+            return False
+        parsed = tomllib.loads(path.read_text(encoding="utf-8"))
+        hooks = parsed.get("hooks", [])
+        if not isinstance(hooks, list):
+            raise ValueError("Kimi hooks must be an array")
+        return any(isinstance(item, dict) and MARKER in str(item.get("command", "")) for item in hooks)
+    payload = _load_json(path)
     hooks = payload.get("hooks", {})
     if not isinstance(hooks, dict):
         raise ValueError("hooks must be an object")
@@ -262,8 +436,73 @@ def managed_hooks_present(config: dict[str, Any], platform: str) -> bool:
 
 def hook_is_installed(config: dict[str, Any], platform: str) -> bool:
     agent = config["agents"][platform]
-    key = "settings_file" if platform == "claude" else "hooks_file"
-    path = expand_path(agent[key])
+    path = expand_path(agent[_config_file_key(platform)])
+    if platform == "antigravity":
+        try:
+            payload = _load_json(path)
+        except (OSError, ValueError, json.JSONDecodeError):
+            return False
+        group = payload.get(ANTIGRAVITY_GROUP_KEY)
+        if not isinstance(group, dict) or group.get("enabled") is False:
+            return False
+        expected = set(expected_events("antigravity", config))
+        present_events = {key for key in group if key != "enabled"}
+        if present_events != expected:
+            return False
+        for event in expected:
+            entries = group.get(event)
+            if not isinstance(entries, list):
+                return False
+            if event in {"PreToolUse", "PostToolUse"}:
+                want_matcher = ANTIGRAVITY_PRETOOL_MATCHER if event == "PreToolUse" else "run_command"
+                ok = any(
+                    isinstance(item, dict)
+                    and item.get("matcher") == want_matcher
+                    and isinstance(item.get("hooks"), list)
+                    and any(
+                        isinstance(h, dict)
+                        and h.get("type", "command") == "command"
+                        and h.get("timeout") == HOOK_TIMEOUT_SECONDS
+                        and hook_command_matches(str(h.get("command", "")), "antigravity", event)
+                        for h in item["hooks"]
+                    )
+                    for item in entries
+                )
+            else:
+                ok = any(
+                    isinstance(h, dict)
+                    and h.get("type", "command") == "command"
+                    and h.get("timeout") == HOOK_TIMEOUT_SECONDS
+                    and hook_command_matches(str(h.get("command", "")), "antigravity", event)
+                    for h in entries
+                )
+            if not ok:
+                return False
+        return True
+    if platform == "kimi":
+        try:
+            parsed = tomllib.loads(path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError):
+            return False
+        hooks = parsed.get("hooks", [])
+        if not isinstance(hooks, list):
+            return False
+        expected_entries = _kimi_expected_entries(config)
+        expected_event_set = {entry["event"] for entry in expected_entries}
+        managed = [item for item in hooks if isinstance(item, dict) and MARKER in str(item.get("command", ""))]
+        if any(item.get("event") not in expected_event_set for item in managed):
+            return False
+        for entry in expected_entries:
+            ok = any(
+                item.get("event") == entry["event"]
+                and item.get("matcher") == entry.get("matcher")
+                and item.get("timeout") == HOOK_TIMEOUT_SECONDS
+                and hook_command_matches(str(item.get("command", "")), "kimi", entry["event"])
+                for item in managed
+            )
+            if not ok:
+                return False
+        return True
     try:
         payload = _load_json(path)
     except (OSError, ValueError, json.JSONDecodeError):
@@ -272,7 +511,7 @@ def hook_is_installed(config: dict[str, Any], platform: str) -> bool:
     if not isinstance(hooks, dict):
         return False
     expected = _groups(platform, config)
-    if platform == "codex" and any(
+    if platform in {"codex", "workbuddy"} and any(
         MARKER in str(hook.get("command", "")) and event not in expected
         for event, groups in hooks.items() for group in groups for hook in group.get("hooks", [])
     ):

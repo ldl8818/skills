@@ -33,6 +33,21 @@ PERSISTENCE_DEFAULTS = {
     "max_error_entries": 200,
 }
 
+OPTIONAL_AGENT_DEFAULTS = {
+    "antigravity": {
+        "enabled": False,
+        "hooks_file": "~/.gemini/config/hooks.json",
+    },
+    "kimi": {
+        "enabled": False,
+        "config_file": "~/.kimi-code/config.toml",
+    },
+    "workbuddy": {
+        "enabled": False,
+        "settings_file": "~/.workbuddy-ai/settings.json",
+    },
+}
+
 
 def default_config(memory_root: str | None = None) -> dict[str, Any]:
     return {

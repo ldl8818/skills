@@ -1,4 +1,4 @@
-"""Normalize Claude Code and Codex Hook payloads into one event shape."""
+"""Normalize multi-agent Hook payloads into one event shape."""
 
 from __future__ import annotations
 
@@ -6,7 +6,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-SUPPORTED_EVENTS = frozenset({"SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"})
+SUPPORTED_EVENTS = frozenset(
+    {"SessionStart", "UserPromptSubmit", "PreInvocation", "PreToolUse", "PostToolUse", "Stop"}
+)
 
 
 @dataclass(frozen=True)
@@ -40,18 +42,64 @@ def _output_text(response: object) -> str:
     return "\n".join(parts)
 
 
+def _prompt_text(platform: str, payload: dict[str, Any]) -> str:
+    prompt = payload.get("prompt")
+    if isinstance(prompt, list):
+        parts = [
+            str(part.get("text") or "")
+            for part in prompt
+            if isinstance(part, dict) and part.get("type") == "text" and part.get("text")
+        ]
+        return "\n".join(parts)
+    if isinstance(prompt, str):
+        return prompt
+    if platform == "claude" and isinstance(payload.get("user_prompt"), str):
+        return payload["user_prompt"]
+    if platform == "antigravity" and isinstance(payload.get("lastUserInput"), str):
+        return payload["lastUserInput"]
+    return ""
+
+
+def _tool_fields(platform: str, payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    if platform == "antigravity" and isinstance(payload.get("toolCall"), dict):
+        call = payload["toolCall"]
+        raw_args = call.get("args")
+        tool_input = dict(raw_args) if isinstance(raw_args, dict) else {}
+        if "command" not in tool_input and isinstance(tool_input.get("CommandLine"), str):
+            tool_input["command"] = tool_input["CommandLine"]
+        if "file_path" not in tool_input:
+            for key in ("Path", "TargetFile", "path", "target_file"):
+                if isinstance(tool_input.get(key), str) and tool_input[key]:
+                    tool_input["file_path"] = tool_input[key]
+                    break
+        return str(call.get("name") or ""), tool_input
+    raw_input = payload.get("tool_input")
+    if raw_input is None:
+        raw_input = payload.get("toolInput")
+    if raw_input is None:
+        raw_input = payload.get("tool")
+    tool_input = dict(raw_input) if isinstance(raw_input, dict) else {}
+    tool_name = str(payload.get("tool_name") or payload.get("toolName") or payload.get("tool") or "")
+    return tool_name, tool_input
+
+
 def normalize(platform: str, declared_event: str, payload: dict[str, Any]) -> HookEvent:
     if declared_event not in SUPPORTED_EVENTS:
         raise ValueError(f"unsupported Hook event: {declared_event}")
-    event = declared_event
-    prompt = payload.get("prompt")
-    if not isinstance(prompt, str) and platform == "claude":
-        prompt = payload.get("user_prompt")
-    if not isinstance(prompt, str):
-        prompt = ""
-    tool_input = payload.get("tool_input") or payload.get("tool") or {}
-    if not isinstance(tool_input, dict):
-        tool_input = {}
+    event = "UserPromptSubmit" if (platform == "antigravity" and declared_event == "PreInvocation") else declared_event
+    session_id = str(
+        payload.get("session_id")
+        or (payload.get("conversationId") if platform == "antigravity" else "")
+        or payload.get("sessionId")
+        or ""
+    )
+    cwd = str(payload.get("cwd") or "")
+    if not cwd and platform == "antigravity":
+        workspaces = payload.get("workspacePaths")
+        if isinstance(workspaces, list) and workspaces and isinstance(workspaces[0], str):
+            cwd = workspaces[0]
+    prompt = _prompt_text(platform, payload)
+    tool_name, tool_input = _tool_fields(platform, payload)
     response = payload.get("tool_response")
     if response is None:
         response = payload.get("tool_output")
@@ -74,11 +122,11 @@ def normalize(platform: str, declared_event: str, payload: dict[str, Any]) -> Ho
     return HookEvent(
         platform=platform,
         event=event,
-        session_id=str(payload.get("session_id") or ""),
+        session_id=session_id,
         source=str(payload.get("source") or ""),
-        cwd=str(payload.get("cwd") or ""),
+        cwd=cwd,
         prompt=prompt,
-        tool_name=str(payload.get("tool_name") or payload.get("tool") or ""),
+        tool_name=tool_name,
         tool_input=tool_input,
         tool_output=_output_text(response),
         exit_status=exit_status,

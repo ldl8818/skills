@@ -130,8 +130,12 @@ def run_checks() -> list[Check]:
         if settings.get("enabled"):
             checks.append(Check(f"{platform} Hook", hook_is_installed(config, platform), "配置接线"))
             schema_root = Path(config["state_root"]) / "hook-schemas"
-            from self_improving.installer import _groups
-            seen = [schema_root / f"{platform}-{event}.json" for event in _groups(platform, config)]
+            from self_improving.installer import expected_events
+            normalized_events = [
+                "UserPromptSubmit" if (platform == "antigravity" and event == "PreInvocation") else event
+                for event in expected_events(platform, config)
+            ]
+            seen = [schema_root / f"{platform}-{event}.json" for event in normalized_events]
             count = 0
             cutoff = datetime.now(timezone.utc) - timedelta(days=30)
             for path in seen:

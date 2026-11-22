@@ -6,7 +6,7 @@ Since 3.1.3, source-checkout Hook commands change directory to `src/` before inv
 
 Legacy Markdown history may be archived without changing Hook registration or injection. This does not disable candidate capture or v2 approvals. Since 3.1.2, authorized edits and moves of memory.md and corrections.md follow ordinary document permissions, without extra Hook approval. The verified ledger and mutating review commands remain guarded.
 
-Claude Code and Codex payloads are normalized before core memory logic runs.
+Hook payloads are normalized before core memory logic runs.
 Authority decisions run before schema observations. Schema caches are diagnostic only: a malformed cache is replaced on an ordinary event, and an observation write failure does not prevent the Hook from handling the event. A protected call returns its permission decision without waiting for schema recording.
 
 The adapters are tested against sanitized payload fixtures captured from real
@@ -118,3 +118,11 @@ Read-only Python supports `startswith()` and negative indexes. Interpreter/refer
 ## Exact hook trust after changes
 
 Codex requires review and trust of the current hook definition after matcher or command changes. Use the normal `/hooks` interface to inspect the changed self-improving hook and enable that exact definition. Do not use bypass flags. Configuration wiring alone does not prove trust or execution; check a real next model request after startup, resume, clear or compact. Official contract: https://learn.chatgpt.com/docs/hooks .
+
+## Antigravity
+
+- **Antigravity**: Registers a named top-level `self-improving` group inside `~/.gemini/config/hooks.json` for `SessionStart`, `PreInvocation` (normalized to `UserPromptSubmit` with per-turn deduplication on `(conversationId, lastUserInput)` so repeated model steps inside one tool loop do not re-inject), and `PreToolUse` (`run_command|write_file|edit_file`). `PreToolUse` returns `{"decision": "allow"}` to defer to the remaining hooks and default permissions, or `{"decision": "ask", "reason": "..."}` for guarded calls. Context events emit `injectSteps.systemMessage` when there is context and `{}` when silent. See the [Antigravity Hook contract](https://antigravity.google/docs/hooks/).
+
+## Kimi Code and WorkBuddy
+- **Kimi Code**: Registers `[[hooks]]` entries inside `~/.kimi-code/config.toml` for `SessionStart`, `UserPromptSubmit` (handles both string and text-part array `prompt` payloads), and `PreToolUse` (`^(Bash|Write|Edit)$`). Existing TOML sections and third-party `[[hooks]]` entries are preserved verbatim. Because Kimi Code's external hook parser blocks only on `hookSpecificOutput.permissionDecision == "deny"`, guarded tool calls emit `deny`.
+- **WorkBuddy**: Registers `SessionStart`, `UserPromptSubmit`, and `PreToolUse` inside `~/.workbuddy-ai/settings.json` (`hooks` object, preserving existing settings). Context output is emitted as `hookSpecificOutput.additionalContext`, and guarded tool calls emit `hookSpecificOutput.permissionDecision == "ask"`.

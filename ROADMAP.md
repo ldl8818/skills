@@ -36,6 +36,8 @@ Skill-manager 的普通更新采用旧上游／本地／新上游三方合并，
 
 ## 最近完成
 
+- 2026-11-22 20:24：Mac Mini 修复 self-improving 的 Antigravity CLI `PreToolUse` 误拦截。普通命令和文件操作返回 `decision: allow`，由后续 Hook 及默认权限继续判断；受保护操作仍返回 `ask`。现役 Hook 直接加载修正源码，CLI 新会话和恢复会话均成功执行只读命令。Antigravity 独立交付版本通过140项测试及隔离 HOME 安装、升级和卸载检查。桌面 App 与 MacBook Air 未验。
+
 - 2026-11-21 12:13：MacBook Air 已启用退役 Skill 目录清理。Git 合并或变基后仅清除退役清单内无跟踪内容、只剩 Finder 或 Python 缓存的目录。实机核对 `download-video`、`health`、`hunt` 残留已清除，`video-downloader` 源码和入口可读。隔离仓库的快进拉取、变基拉取、本地内容保护和已有 Hook 保护通过，仓库 Skill 结构检查通过。已有克隆的一次性安装命令见 [README](README.md#更新后的退役目录清理)。
 
 - 2026-11-17 08:59：核实并交付已完成的 check／ui 验证范围修正：普通 push 遵循项目 CI 政策，局部界面检查按受影响组件选择，局部交付省略无关设计模板。五项冻结结构与引用检查通过，两个完整上游合并回执及六种策略场景核对通过；客户端软链直接读取源码。Ego 自然重启验收继续保留，本次未重新运行全量或查询 CI。

@@ -37,7 +37,7 @@ python3 -m self_improving init \
   --no-capture-errors
 ```
 
-只使用 Claude Code，把 `--agents` 改为 `claude`；只使用 Codex，改为 `codex`。
+只使用一个客户端时，将 `--agents` 改成对应的 `claude`、`codex` 或 `antigravity`。多个客户端名称用逗号分隔。
 
 这条命令会创建私人记忆目录、写入本机配置、合并 Hook，并给已启用 Agent 建立 Skill 入口。它不会创建 GitHub 远端，不会上传私人记忆，也不会覆盖无关 Hook。已有 Hook 配置修改前会备份；已有 self-improving 安装请使用 `upgrade`，不要用 `init` 重建配置。
 
@@ -47,7 +47,7 @@ python3 -m self_improving init \
 
 ## 4. 打开一个全新会话
 
-完全退出并重新打开已启用的 Claude Code 或 Codex 会话。启动时，Hook 默认只读取：
+在已启用的客户端中开启一个新会话。启动时，Hook 默认只读取：
 
 - `.self-improving/verified-corrections.jsonl`：只读取 v2 审核命令写入、范围适用、仍在有效期内的正确答案；`corrections.md` 只是人类审计流水。
 - 知识正文按任务读取，程序登记表放在 `.self-improving/knowledge-catalog.json`，旧根目录位置仍兼容；可选的 `memory.md` 默认不注入，删除后不会被初始化或升级重建。未配置知识目录时，恢复旧会话会比较该会话上次收到的内容，没变化就静默，变化时废止旧注入并发送完整新集合；撤销或归位最后一条规则会发送一次清空信号。

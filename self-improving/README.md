@@ -24,7 +24,7 @@ A cross-agent knowledge tool with a task-first correction workflow. Confirmed mi
 ## Requirements
 - Python 3.11+
 - macOS, Linux, or Windows WSL
-- Claude Code and/or Codex
+- Claude Code, Codex, or Antigravity
 
 Obsidian and Git are optional. Obsidian can edit the memory directory; Git can version it privately.
 
@@ -51,6 +51,8 @@ Source commands run from `src/`; documents, templates and Skill links remain at 
 In an interactive terminal it asks before enabling correction capture. In
 non-interactive use, correction capture stays off unless
 `--capture-corrections` is supplied.
+
+For a new installation, select `--agents antigravity` or include `antigravity` in the comma-separated list. The Antigravity adapter uses the client's global Hook file. [See its supported events and permission responses.](docs/hooks.md#antigravity)
 
 ## Verify
 ```bash
@@ -169,9 +171,7 @@ Legacy `corrections.md` is optional audit history. In an existing marked memory 
 
 Claude Code and Codex use separate adapters because their Hook payloads and lifecycle coverage differ. The PreToolUse guard covers Claude file tools and Shell calls, plus Codex `Bash` and `apply_patch` calls. It protects common writes to the machine-authoritative approval store, and blocks an Agent from invoking approval commands through a hooked shell. Claude returns `ask`; Codex returns `deny`. Hook handlers have a 10-second timeout so a stuck local process cannot pause a client for Codex's 600-second default. Codex terminal approvals use an interactive CLI so distilled rules and project paths do not enter copied Shell commands. Shell and patch text inspection is not an operating-system security boundary and cannot prove that every obfuscated write is blocked. Human review outside the Agent tool loop, current-file verification and version control remain the authoritative safeguards.
 
-Only Claude Code and Codex are supported. Obsidian, Git, Gemini,
-OpenClaw and other editors or Agents are not required and are not silently
-treated as installed.
+Antigravity supports session context, on-demand prompt knowledge and the `PreToolUse` guard. Antigravity prompts for approval on guarded calls and hands ordinary calls back to the configured permission policy.
 
 ## Optional reviewed knowledge routing
 

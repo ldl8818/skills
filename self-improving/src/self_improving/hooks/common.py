@@ -303,8 +303,13 @@ def _shell_write_targets(command: str) -> list[str]:
 def _dangerous_authority_write(event, memory_root: Path) -> bool:
     if event.event != "PreToolUse":
         return False
-    command = str(event.tool_input.get("command") or "")
-    file_path = str(event.tool_input.get("file_path") or "")
+    command = str(event.tool_input.get("command") or event.tool_input.get("CommandLine") or "")
+    file_path = ""
+    for key in ("file_path", "path", "target_file", "Path", "TargetFile"):
+        value = event.tool_input.get(key)
+        if isinstance(value, str) and value:
+            file_path = value
+            break
     authorities = ((memory_root / VERIFIED_RELATIVE).resolve(),)
     if file_path:
         try:
@@ -367,40 +372,99 @@ def _dangerous_authority_write(event, memory_root: Path) -> bool:
                 and "verified-corrections.jsonl" in expanded)
 
 
+def _antigravity_turn_seen(state_root: Path, session_id: str, prompt: str) -> bool:
+    """Antigravity fires PreInvocation before every model step in a turn; route once per user input."""
+    if not session_id or not prompt.strip():
+        return False
+    session_key = digest(session_id)[:24]
+    prompt_digest = digest(prompt)
+    path = state_root / "turn-dedup" / "antigravity" / f"{session_key}.json"
+    with advisory_lock(state_root / "locks" / f"turn-dedup-antigravity-{session_key}.lock"):
+        try:
+            previous = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError):
+            previous = {}
+        if isinstance(previous, dict) and previous.get("prompt_digest") == prompt_digest:
+            return True
+        atomic_write_json(path, {
+            "prompt_digest": prompt_digest,
+            "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        })
+        return False
+
+
+def _emit_empty(platform: str, event: str = "") -> None:
+    if platform == "antigravity":
+        # PreToolUse requires a decision even when this hook has no objection.
+        print('{"decision": "allow"}' if event == "PreToolUse" else "{}")
+
+
+def _emit_guard(platform: str, reason: str) -> None:
+    if platform == "antigravity":
+        print(json.dumps({"decision": "ask", "reason": reason}, ensure_ascii=False))
+        return
+    permission_decision = "deny" if platform in {"codex", "kimi"} else "ask"
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": permission_decision,
+            "permissionDecisionReason": reason,
+        }
+    }, ensure_ascii=False))
+
+
+def _emit_context(platform: str, declared_event: str, text: str) -> None:
+    if not text:
+        _emit_empty(platform)
+        return
+    if platform == "antigravity":
+        print(json.dumps({
+            "injectSteps": [{"systemMessage": {"systemMessage": text}}]
+        }, ensure_ascii=False))
+        return
+    if platform == "workbuddy":
+        print(json.dumps({
+            "hookSpecificOutput": {
+                "hookEventName": declared_event,
+                "additionalContext": text,
+            }
+        }, ensure_ascii=False))
+        return
+    print(text)
+
+
 def dispatch(platform: str, declared_event: str, payload: dict) -> int:
     config = resolved(load_config())
     event = normalize(platform, declared_event, payload)
     root = Path(config["memory_root"])
     state_root = Path(config["state_root"])
     if _dangerous_authority_write(event, root):
-        permission_decision = "deny" if platform == "codex" else "ask"
         reason = (
             "[authority-guard] 本次调用命中受保护记忆操作检测，已拒绝；不代表一定发生了写入。"
             "若为只读检查，请核对原始命令；若为已授权的写入、移动或审核，请在普通终端执行对应操作。"
-            if platform == "codex"
+            if platform in {"codex", "kimi"}
             else "本次调用命中已验证纠错账本或审核操作保护，需要你亲自批准。"
         )
-        print(json.dumps({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": permission_decision,
-                "permissionDecisionReason": reason,
-            }
-        }, ensure_ascii=False))
+        _emit_guard(platform, reason)
         return 0
     # A stale client hook must not reactivate a disabled adapter. Keep the
     # authority guard above this gate while an old PreToolUse hook still exists.
     if not config["agents"].get(platform, {}).get("enabled", False):
+        _emit_empty(platform, event.event)
         return 0
     try:
         _record_schema(state_root, platform, event.event, payload)
     except (OSError, ValueError, TypeError, RecursionError):
         pass  # Observability must not prevent protection or normal Hook handling.
+    if event.event == "PreToolUse":
+        _emit_empty(platform, event.event)
+        return 0
     if event.event == "SessionStart":
         from self_improving.knowledge import catalog_path, context as knowledge_context
         injection = config.get("injection", {})
         total_budget = int(injection.get("max_total_tokens", 1200))
         if total_budget <= 0:
+            _emit_empty(platform)
             return 0
         remaining = max(
             0,
@@ -456,9 +520,14 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
         if has_knowledge and not event.session_id:
             output = rendered
         if output and estimate_tokens(output) <= total_budget:
-            print(output)
+            _emit_context(platform, declared_event, output)
+        else:
+            _emit_empty(platform)
         return 0
     if event.event == "UserPromptSubmit":
+        if platform == "antigravity" and _antigravity_turn_seen(state_root, event.session_id, event.prompt):
+            _emit_empty(platform)
+            return 0
         from self_improving.knowledge import context as knowledge_context
         budget = int(config.get("injection", {}).get("max_total_tokens", 1200))
         sections = []
@@ -474,18 +543,24 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
             sections.append(extra)
         rendered = "\n".join(sections)
         if rendered and estimate_tokens(rendered) <= budget:
-            print(rendered)
+            _emit_context(platform, declared_event, rendered)
+        else:
+            _emit_empty(platform)
         return 0
     if event.event == "Stop":
         if not persistence_enabled(config) or not config["persistence"].get("capture_corrections"):
+            _emit_empty(platform)
             return 0
         pending = pending_correction_count(root)
         interval = int(config.get("injection", {}).get("review_reminder_interval_hours", 24))
         if pending >= REVIEW_REMINDER_THRESHOLD and _review_reminder_due(state_root, platform, interval):
             message = f"纠错候选箱已有 {pending} 条待审，请审核纠错候选。"
             print(json.dumps({"systemMessage": message}, ensure_ascii=False))
+        else:
+            _emit_empty(platform)
         return 0
     if not persistence_enabled(config):
+        _emit_empty(platform)
         return 0
     persistence = config["persistence"]
     if event.event == "PostToolUse" and persistence.get("capture_command_errors"):
@@ -499,6 +574,8 @@ def dispatch(platform: str, declared_event: str, payload: dict) -> int:
                 max_entries=int(persistence.get("max_error_entries", 200)),
             )
             print(f'<error-captured result="{result}"/>')
+            return 0
+    _emit_empty(platform)
     return 0
 
 
