@@ -2,11 +2,11 @@
   "schema_version": 1,
   "repository": "https://github.com/Panniantong/Agent-Reach",
   "channel": "main",
-  "commit": "c70ae6da5d39bc90e09ad2ae0575ccc89f31e284",
+  "commit": "8d9ecc1f5521fe7d223cde782aaa4005695e2671",
   "version": "1.6.1",
   "archive": "agent-reach.tar.gz",
-  "archive_url": "https://codeload.github.com/Panniantong/Agent-Reach/tar.gz/c70ae6da5d39bc90e09ad2ae0575ccc89f31e284",
-  "archive_sha256": "d7516b2c08465f1d63e4244eeeab4dd1cdebb080c70e30db91ec35eda5ca8c79",
+  "archive_url": "https://codeload.github.com/Panniantong/Agent-Reach/tar.gz/8d9ecc1f5521fe7d223cde782aaa4005695e2671",
+  "archive_sha256": "fde315ff6c5b44d3c877248db80f6a8a53a388c6e63736e5fcb55b53e0bac988",
   "files": {
     ".github/release-acceptance.json": {
       "sha256": "9f6ee7335aa81689e33bc3906ef02d38fbc10569fae07b2a8df8e879b4714c1d",
@@ -94,8 +94,8 @@
       "mode": 436
     },
     "agent_reach/channels/bilibili.py": {
-      "sha256": "e2bcd52db7798cc9904ba571fb88ebb4eecad4c1f92cbca498e955ea72d8e32f",
-      "size": 10949,
+      "sha256": "5db35372e31f05d8e3fa59ea4c8c393d06bdb1a34610989a88c4f422c92c54d7",
+      "size": 11155,
       "mode": 436
     },
     "agent_reach/channels/boss.py": {
@@ -199,8 +199,8 @@
       "mode": 436
     },
     "agent_reach/runtime/cdp.py": {
-      "sha256": "e4e619960842683887ca0f5a40384e1be8d9f36a0210d993de37c81640df7bd6",
-      "size": 8783,
+      "sha256": "e4e7ed62b33e63f4ee3a4872240db2cb47c5cdbd8e109db3b84d7e8375023d6d",
+      "size": 8972,
       "mode": 436
     },
     "agent_reach/runtime/cli.py": {
@@ -226,6 +226,11 @@
     "agent_reach/runtime/manage.py": {
       "sha256": "43ec2885f0a287d0d78abf675c31d7cf8647ede2c434294bd5bef7bb8abd9849",
       "size": 45811,
+      "mode": 436
+    },
+    "agent_reach/runtime/no_browser_cookies/browser_cookie3.py": {
+      "sha256": "86ef2a56fb00d22cee209f93264e1d7dd78204eb4ae96082c41e9bff57bf49d4",
+      "size": 337,
       "mode": 436
     },
     "agent_reach/runtime/onboarding.py": {
@@ -254,8 +259,8 @@
       "mode": 436
     },
     "agent_reach/runtime/sessions.py": {
-      "sha256": "59b251271f80b5cc6f904541eeac10925c4258c477488f814657f50bff176c6a",
-      "size": 2837,
+      "sha256": "efb30bfaec0f24b1af3d25013883f98c8f8a9828ee765627f8d7170671c083cf",
+      "size": 3191,
       "mode": 436
     },
     "agent_reach/runtime/state.py": {
@@ -264,8 +269,8 @@
       "mode": 436
     },
     "agent_reach/runtime/tools.py": {
-      "sha256": "172cfa8ab39d4617134a26e5a125f4e60666ef94a4698a04b41c0609b94e3575",
-      "size": 26742,
+      "sha256": "072ec3f80e1d5c1e8cbcb62fe7e3376e9652962dfededcc195629632cc491af4",
+      "size": 27487,
       "mode": 436
     },
     "agent_reach/runtime/update_notice.py": {
@@ -279,13 +284,13 @@
       "mode": 509
     },
     "agent_reach/skill/SKILL.md": {
-      "sha256": "24f81769fbd0c2ffcddee574c8255022346fc39adc1f78e75c0e30d9ec3769c1",
-      "size": 7288,
+      "sha256": "c1ca4791098e4c4f93006639ef10aa5c4180e1b143229baf598a1b8ad1b0c794",
+      "size": 7880,
       "mode": 436
     },
     "agent_reach/skill/SKILL_en.md": {
-      "sha256": "f22bae507f150547f5ddef367ff65d503842c6315033309a1b1cc57c820216c2",
-      "size": 8018,
+      "sha256": "b5a7a034a116b39ebb292afebfab34cb4bb8f8397c9ee789dfdb20c189e75727",
+      "size": 8608,
       "mode": 436
     },
     "agent_reach/skill/references/capabilities.md": {
@@ -519,8 +524,8 @@
       "mode": 436
     },
     "tests/test_manage.py": {
-      "sha256": "a007773b25394eea091dc6f2fad52a8ae923df68a98644f322588853881a0045",
-      "size": 39662,
+      "sha256": "78a3d11b28fc0a33dea4166d6047d2c6552e7d081c031eeb492d84c0958a1eb7",
+      "size": 39744,
       "mode": 436
     },
     "tests/test_native_access_errors.py": {
@@ -566,6 +571,11 @@
     "tests/test_search_harness.py": {
       "sha256": "48204a3df814773bd91dc4ee94203f317c0c16d10f466486b826fa702387885e",
       "size": 10109,
+      "mode": 436
+    },
+    "tests/test_security_report_fixes.py": {
+      "sha256": "eff75bd01bf43d81664848cde083df4c26cec7a550a69d489477a06e6fb021b6",
+      "size": 3898,
       "mode": 436
     },
     "tests/test_session_onboarding.py": {
@@ -703,8 +713,8 @@
       "reason": "The new browser-port configuration can stop a running dedicated browser; keep browser lifecycle and configuration under lookup routing."
     }
   ],
-  "previous_commit": "14c213405669414492bda0f8d52cc6531d062c45",
-  "previous_archive_sha256": "fcd21410d817ce4829bb028824d54e5288dc036d21ad2076a3f9ef72f58ba539",
+  "previous_commit": "c70ae6da5d39bc90e09ad2ae0575ccc89f31e284",
+  "previous_archive_sha256": "d7516b2c08465f1d63e4244eeeab4dd1cdebb080c70e30db91ec35eda5ca8c79",
   "local_adaptation_review": [
     {
       "file": "agent_reach/runtime/manage.py",

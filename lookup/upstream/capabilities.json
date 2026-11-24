@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "commit": "c70ae6da5d39bc90e09ad2ae0575ccc89f31e284",
+  "commit": "8d9ecc1f5521fe7d223cde782aaa4005695e2671",
   "channels": {
     "exa_search": {
       "reference": "search",

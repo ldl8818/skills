@@ -4,9 +4,9 @@
 
 ## 来源与加载
 
-完整来源为 [Agent Reach 1.6.1 main 固定快照](https://github.com/Panniantong/Agent-Reach/tree/c70ae6da5d39bc90e09ad2ae0575ccc89f31e284)，commit 为 `c70ae6da5d39bc90e09ad2ae0575ccc89f31e284`。1.6重写了命令、状态与渠道接口；版本标签不能代替文件与能力核对。
+完整来源为 [Agent Reach 1.6.1 main 固定快照](https://github.com/Panniantong/Agent-Reach/tree/8d9ecc1f5521fe7d223cde782aaa4005695e2671)，commit 为 `8d9ecc1f5521fe7d223cde782aaa4005695e2671`。1.6重写了命令、状态与渠道接口；版本标签不能代替文件与能力核对。
 
-- 完整仓库124个文件保存在 [源快照](../upstream/agent-reach.tar.gz)，逐文件清单、大小、哈希及运行适配归 [来源回执](../upstream/agent-reach.json)，[MIT 许可](../upstream/LICENSE-agent-reach) 保留。原始中英文 Skill 及所有参考保持原文，处于自动发现目录之外。
+- 完整仓库126个文件保存在 [源快照](../upstream/agent-reach.tar.gz)，逐文件清单、大小、哈希及运行适配归 [来源回执](../upstream/agent-reach.json)，[MIT 许可](../upstream/LICENSE-agent-reach) 保留。原始中英文 Skill 及所有参考保持原文，处于自动发现目录之外。
 - 当前上游参考为 `capabilities / sessions / maintenance` 三份。按任务读取一份完整原文：`python3 scripts/reach.py reference capabilities`。安装和更新分别使用 `reference install / update`。旧的7类分类名和5个 `setup-*` 读取名保留为新版完整指南的别名，不声称旧文件仍存在。
 - 上游命令在本组合中通过 `python3 scripts/reach.py run ...` 调用；先用 `run channels` 查看当前动作、参数和后端。用户输入作为独立 argv 传入。上游的浏览器、登录复用、安装和更新建议不能覆盖 lookup 的当前选路与授权。
 

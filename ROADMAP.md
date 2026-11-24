@@ -5,18 +5,18 @@
 ## 当前接力点
 
 - 状态：待验证
-- 任务：lookup 2.7.0、OpenCLI 2.0.3 与 Agent Reach c70ae6d 的多端自然触发及 MacBook Air 同步验收。
-- 范围：Mac Mini 已完成 lookup 2.7.0 路由重构、可移植入口守卫（`com.lookup.技能入口守卫`）、OpenCLI 2.0.3 三方合并升级、Agent Reach 1.6.1／c70ae6d 随包源升级与私有运行时激活，以及全局规则瘦身；待推进 MacBook Air 同步、多客户端新会话自然触发与真实平台账号验收。
+- 任务：在 Mac Mini 应用 lookup 随包 Agent Reach 新快照，并按需验证各客户端新会话的自然触发。
+- 范围：lookup 2.7.0、OpenCLI 2.0.3 与 Agent Reach 1.6.1／`8d9ecc1`。源码、各设备的运行环境及客户端验收分别记录。
 - 分支／worktree：main／当前主工作区。
-- 已做到：Mac Mini 完成 lookup 2.7.0（一屏免费优先路由、日常兜底与维护3轮修复双模式、`search-accounts.json` 一次性硬限额核验约定、`entrypoints.py` 跨代安全去重／悬空归档清理／`guard` 与可移植 `install-guard`），同步 video-downloader 与项目 AGENTS 边界；OpenCLI 托管版升级至 2.0.3 并重启 daemon，完成25份本地定制三方合并；Agent Reach 随包源升级至 1.6.1／c70ae6d（124文件）并准备本机私有 venv；ego lite 已自然运行至 0.6.3.17，历史 0.6.2.8 待重启挂起已失效并由入口守卫接管防重注册；全局规则经 chezmoi 精简并推送。
-- 已修改但未验证：MacBook Air 未同步最新源码、dotfiles 与入口守卫；Codex／Claude Code／Antigravity／WorkBuddy 新会话自然触发与 Tavily 账号重新登录（当前 401 自动回退免 Key）待验。
-- 正在执行：无后台施工；`com.lookup.技能入口守卫` 常驻监听客户端 skills 与 `~/.local/share/ego`。
-- 下一步：确认本批 skills 改动并推送后，在 MacBook Air 拉取 dotfiles／skills 并执行 `entrypoints.py install-guard`，按需补登 `mcporter auth tavily-account` 并登记 `search-accounts.json`。
-- 验证：Mac Mini 完成 lookup 全量 Python／Node 回归、OpenCLI 2.0.3 `selftest.sh --live`、Agent Reach 隔离与本机 `prepare/status/doctor/contract`、`verify_frozen.py`、链接与公私红线扫描及入口守卫实测；真实多端自然触发与 MacBook Air 未验。
-- 证据位置：本机 `~/.local/state/lookup/upstream/opencli-review-j18tm9ep/decisions.json` 与 `~/.local/state/lookup/entry-guard.log`。
+- 已做到：Mac Mini 此前已完成 lookup 2.7.0、OpenCLI 2.0.3及入口守卫验收，已验证的旧 Agent Reach 随包快照为 `c70ae6d`。MacBook Air 已启用新版随包运行环境，并实测 OpenCLI 的 X 站内搜索。
+- 已修改但未验证：Mac Mini 尚未应用 Agent Reach 新快照；各客户端的新会话自然触发待验。
+- 正在执行：无后台施工。
+- 下一步：Mac Mini 在 Skills 仓库快进拉取后，从 `lookup/` 运行 `python3 scripts/reach.py prepare`，再运行 `python3 scripts/reach.py status`，确认新快照 `8d9ecc1` 的运行环境就绪；新会话按需验证站内搜索和失败提示。
+- 验证：新版完整对账126个源文件，保留12项 lookup 适配；28项回归及干净 HOME 的安装、版本和渠道检查通过。
+- 证据位置：`lookup/upstream/agent-reach.json` 与 `lookup/tests/test_reach.py`。
 - 阻塞：无阻塞。
-- 未提交范围：skills 仓库本轮改动（lookup 2.7.0、video-downloader、AGENTS.md、ROADMAP.md）待确认后推送。
-- 北京时间：2026-11-21 11:45。
+- 未提交范围：本条随共享源码更新收录；设备本机配置不入库。
+- 北京时间：2026-11-25 00:56。
 
 ## 本次全部改动交付
 
@@ -26,7 +26,7 @@
 
 ## 当前阶段
 
-现行可分发源码为 `check` 6.2.2、`ui` 4.2.3、`write` 4.3.1、`neat-freak` 3.1.2、`luobo-ppt` 1.1.0、`lookup` 2.7.0、`self-improving` 3.2.0、`skill-manager` 2.11.1 及 `video-downloader`（跟随 `kangarooking/kangarooking-skills@34a403e`）。lookup 随包 Agent Reach 1.6.1完整源已更新至 `main@c70ae6d`（124文件、原生14渠道／40动作）；OpenCLI 源码基线为2.0.2，托管运行版已验证升级至2.0.3。源码、隔离 CLI、真实账号、客户端自然触发与其他设备分别验收。
+现行可分发源码为 `check` 7.0.0、`ui` 5.0.0、`write` 5.0.0、`neat-freak` 4.0.0、`luobo-ppt` 1.1.0、`lookup` 2.7.0、`self-improving` 3.2.0、`skill-manager` 2.11.1 及 `video-downloader`（跟随 `kangarooking/kangarooking-skills@34a403e`）。lookup 随包 Agent Reach 1.6.1完整源已更新至 `main@8d9ecc1`（126文件、原生14渠道／40动作）；OpenCLI 源码基线为2.0.2，托管运行版已验证升级至2.0.3。源码、隔离 CLI、真实账号、客户端自然触发与其他设备分别验收。
 
 ### 更新与审查边界
 
