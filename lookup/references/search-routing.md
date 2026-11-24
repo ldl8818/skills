@@ -7,6 +7,7 @@
 | 目标 | 路径 |
 |---|---|
 | 已指定服务、产品文档、代码仓库 | 专用官方资料／已连接服务／对应 Skill；对版本敏感信息核对当前来源 |
+| 第三方库／框架 API 与版本示例 | 已装依赖先查本地源码与类型定义；需查新版框架／SDK 文档时用 `scripts/context7.py`，不足再回官方站或 Exa |
 | 国内内容为主 | 豆包 → Tavily → Exa；按主题与目标来源判断，不以查询语言单独判断 |
 | 其他普通全网搜索 | Exa → Tavily → 豆包；各路径仅选已接入且费用边界满足的服务，均不可用时用宿主搜索 |
 | 国内实时话题 | 优先豆包，并核对实际发布时间；按需使用其时效参数 |
@@ -176,6 +177,23 @@ mcporter call huashu-doubao-search.doubao_search query="<词>" count=5 max_age_d
 桌面 Agent 未继承 Shell 环境变量时，可把 Key 存在本机独立的600权限文件，由支持 `--env-file` 的 Node 直接加载后启动已安装 MCP；只在 mcporter 配置中保存文件与程序路径。目录和启动参数按本机生成，凭据可通过使用者自己的加密 dotfiles 恢复；其他机器还需恢复运行依赖并完成 schema 与业务验收，复制配置不代表可用。恢复入口须保留其他 MCP 服务，遇到不同账号的同名配置时停止，不把本机绝对路径或明文 Key 固化进共享模板。此方案与上方环境变量注入二选一，不叠加安装两个搜索入口。
 
 `--search` 只报告豆包配置是否可读取，始终不发豆包查询；即便已找到 Key，也不能把“已配置”当业务验证通过或免费额度已确认。
+
+### Context7 库文档入口（可选）
+
+用于按库名、版本和语言查询第三方开源库与框架的文档和代码示例，底层直连 [Context7 Search API](https://context7.com/docs/search-api)（`GET https://context7.com/api/v3/search`），不安装 `ctx7` CLI、不挂载客户端原生 MCP。
+
+- **何时调用**：已安装在本机虚拟环境或 `node_modules` 的稳定依赖，优先直接读本地源码、类型定义（`.d.ts`）或 `inspect`；当涉及版本迭代快、破坏性变更频繁的外部框架／SDK、跨版本升级或选型调研时，再从 lookup 根目录调用 `scripts/context7.py`：
+
+```bash
+python3 scripts/context7.py "How to configure WebGPURenderer with tone mapping" \
+  --library three.js --language TypeScript
+python3 scripts/context7.py "How to cache a server function" \
+  --library Next.js --version 15.4.0 --format json
+```
+
+- **凭据与免费边界**：脚本按「当前进程 `CONTEXT7_API_KEY` → `${XDG_CONFIG_HOME:-$HOME/.config}/lookup/context7.env`（`600` 权限，不进仓库）→ 匿名模式」自动选择认证方式，绝不回显密钥。`--version` 需传数字版本号（如 `15.4.0`），非数字标签（如 `r186`）会被接口拒绝并返回 `INVALID_REQUEST`。据2026-11-24核对的 [Plans & Pricing](https://context7.com/docs/plans-pricing)，Free 账户每月包含 1,000 次免费调用，用尽后停用不自动扣费且每日提供 20 次 bonus。
+- **状态核验与隐私边界**：stderr 输出单行 `provider: lookup/context7` JSON 状态，包含 `auth_mode`、`quota_tier`、`ratelimit_remaining`、`search_version` 与命中 `sources`。若 `search_version` 为 `unverified`，表示索引未精确覆盖所请求的标签版本，不能将其当成精确版本证据；同时核对 `sources`，优先采用官方仓库或官方文档站，不盲信第三方二手摘要。按 [Data Privacy](https://context7.com/docs/security/data-privacy)，非 Enterprise 账号查询可能被匿名保存用于检索评测，因此 `query` 只放脱敏后的通用技术问题，不夹带业务数据、私有库名或凭据。
+- **失败处理**：`404` 返回 `status: "empty"`（exit 0）；超长输出按 `--max-output-chars` 截断返回 `status: "partial"`（exit 3）；`401`/`403` 返回 `AUTH_ERROR`（exit 1）且不静默回退匿名；`429` 或网络失败返回 exit 1，按内容缺口退回本地源码、官方文档 `fetch.sh` 或 Exa／Tavily。
 
 ### 共用边界
 

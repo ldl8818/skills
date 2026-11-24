@@ -1,7 +1,7 @@
 ---
 name: lookup
 description: "全网搜索（豆包/Tavily/Exa 免费优先）、主流平台内容（小红书、X/Twitter、YouTube、抖音、B站、公众号）、静态网页提取与浏览器操作（ego-lite / 本地 UI 面板）的统一入口；融合 OpenCLI 与 Agent Reach，默认优先免费通道，按需接入付费能力与工具维护。"
-when_to_use: "小红书、推特、Twitter、X、YouTube、抖音、Douyin、B站、Bilibili、公众号、ego-lite、ego-browser、全网搜索、联网搜索、查官方资料、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、在线字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、lookup upgrade、更新 lookup、升级 lookup、更新 lookup 上游"
+when_to_use: "小红书、推特、Twitter、X、YouTube、抖音、Douyin、B站、Bilibili、公众号、ego-lite、ego-browser、全网搜索、联网搜索、查官方资料、查库文档、Context7、读这个链接、平台搜索与评论、招聘与职位、行情与 RSS、在线字幕与播客转写、配置或诊断联网工具、OpenCLI 能力与适配器或插件维护、操作网页、选择浏览器、验收本地页面、web search、read URL、browser automation、lookup update、lookup upgrade、更新 lookup、升级 lookup、更新 lookup 上游"
 dispatch_intent: "统一承接全网搜索、主流平台内容检索与浏览器任务，按成本分层默认免费优先选路并核验证据；指定视频链接下载落盘与多模态逐字稿预处理交给 video-downloader；lookup 本体与上游更新由 skill-manager 发起并委派自身维护器，独立分发保留终端入口。"
 metadata:
   version: "2.7.0"
@@ -20,6 +20,7 @@ metadata:
 |---|---|---|---|
 | **国内主题全网搜索** | `T1` | `huashu-doubao-search` → `tavily` → `exa` → 宿主搜索 | 按主题来源而非语言判断；详见 [search-routing.md](references/search-routing.md#成本分层与免费顺序) |
 | **海外／技术全网搜索** | `T1` | `exa` → `tavily` → `huashu-doubao-search` → 宿主搜索 | 账号入口优先，401／缺授权直接退回免 Key 别名；单次切换各最多1次 |
+| **第三方库／框架版本文档** | `T1` | `python3 scripts/context7.py "<问题>" [--library <库名>] [--version <版本>]` | 已装依赖先读本地源码／类型；自动读取 `context7.env`（无则匿名），核对 `search_version` 与来源 |
 | **小红书**（搜／笔记／评论／下图文） | `T0` | `node scripts/opencli-run.mjs xiaohongshu <search\|note\|comments\|download> ...` | 保留完整 `access_url` 与 `xsec_token`；需裁剪字段加 `--lookup-fields` |
 | **X / Twitter**（搜／长文／推文串） | `T0` | `node scripts/opencli-run.mjs twitter <search\|tweets\|thread\|article\|download> ...` | 最新讨论用 `--product live`；短帖足够不追详情 |
 | **YouTube**（搜索／字幕） | `T0` | `yt-dlp`（搜索与字幕）→ `opencli-run.mjs youtube transcript` | 字幕清洗用 `scripts/clean-subtitles.py`；下载落盘与视觉逐字稿交 `video-downloader` |
@@ -60,7 +61,7 @@ metadata:
 
 | 任务或问题 | 读取入口 |
 |---|---|
-| 全网搜索免费顺序、mcporter 接入、静态正文、本机历史 | [search-routing.md](references/search-routing.md) |
+| 全网搜索免费顺序、Context7 库文档、mcporter 接入、静态正文、本机历史 | [search-routing.md](references/search-routing.md) |
 | 平台动作细节、时效与内容边界 | [platform-routing.md](references/platform-routing.md) |
 | 浏览器选择、本地 UI 面板例外、操作前选路 | [浏览器选路.md](references/浏览器选路.md) |
 | OpenCLI 绑定、原生加速、登录交接、诊断与定向补丁 | [opencli-windows.md](references/opencli-windows.md) |
